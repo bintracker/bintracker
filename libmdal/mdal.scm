@@ -1,9 +1,13 @@
-(import (chibi))
+; (import (chibi))
 ; hash tables, bitwise arithmetic
-(import (srfi 125) (srfi 151))
+; (import (srfi 125) (srfi 151))
+
+(require-extension r7rs)
+(require-extension ssax)
+(require-extension sxpath)
 
 (define **cpu-speed** 30000)
-(load "extensions/utils/note-tables.scm")
+(load-relative "utils/note-tables.scm")
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: ASSEMBLY SYNTAX RULES
@@ -122,7 +126,7 @@
 
 #|
 (define-record-type md:onode-config
-  (md:make-onode-config sources bytes sub-nodes composition-rule 
+  (md:make-onode-config sources bytes sub-nodes composition-rule
                         requirement-condition)
   md:onode-config?
   ;...
