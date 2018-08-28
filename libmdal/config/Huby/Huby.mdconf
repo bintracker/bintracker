@@ -42,7 +42,7 @@
 		<oblock from="?CH1, ?DRUMS" length="8">
 			<ofield bytes="1">
 				<set value="?NOTE" />
-				<set if="(set ?DRUM)" value="0x2c" mode="replace" /><!-- replace, add, and, or, eor, default=or-->
+				<set if="(set ?DRUM)" value="#x2c" mode="replace" /><!-- replace, add, and, or, eor, default=or-->
 			</ofield>
 		</oblock>
 		<oblock from="?CH2" length="8">
