@@ -6,12 +6,21 @@
 (require-extension ssax)
 (require-extension sxpath)
 
+(define *min-supported-version 2)
+(define *max-supported-version 2)
+(define *config*)
+(define *module*)
+(define *selection*)
+
 (define **cpu-speed** 30000)
 (load-relative "utils/note-tables.scm")
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: ASSEMBLY SYNTAX RULES
 ; -----------------------------------------------------------------------------
+
+(define-constant md:little-endian 0)
+(define-constant md:big-endian 1)
 
 (define-record-type md:asm-syntax
   (make-md:asm-syntax hex-prefix byte-op word-op dword-op)
@@ -21,25 +30,22 @@
   (word-op md:asm-syntax-word-op md:asm-syntax-set-word-op!)
   (dword-op md:asm-syntax-dword-op md:asm-syntax-set-dword-op!))
 
-(define (make-md:default-asm-syntax)
+(define (md:default-asm-syntax)
   (make-md:asm-syntax "$" "db" "dw" "dl"))
-
-(define md:little-endian 0)
-(define md:big-endian 1)
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: COMMANDS
 ; -----------------------------------------------------------------------------
 
-(define md:cmd-type-int 0)
-(define md:cmd-type-uint 1)
-(define md:cmd-type-key 2)
-(define md:cmd-type-ukey 3)
-(define md:cmd-type-note 4)
-(define md:cmd-type-reference 5)
-(define md:cmd-type-string 6)
-(define md:cmd-type-trigger 7)
-(define md:cmd-type-unknown 8)
+(define-constant md:cmd-type-int 0)
+(define-constant md:cmd-type-uint 1)
+(define-constant md:cmd-type-key 2)
+(define-constant md:cmd-type-ukey 3)
+(define-constant md:cmd-type-note 4)
+(define-constant md:cmd-type-reference 5)
+(define-constant md:cmd-type-string 6)
+(define-constant md:cmd-type-trigger 7)
+(define-constant md:cmd-type-unknown 8)
 
 (define-record-type md:command
   (md:make-command type bits default reference-to keys enable-modifiers
