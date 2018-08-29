@@ -1,3 +1,5 @@
+(define exact inexact->exact)
+
 (define note-names
   (vector "c" "cis" "d" "dis" "e" "f" "fis" "g" "gis" "a" "ais" "b"))
 

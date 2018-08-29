@@ -1,10 +1,9 @@
-; (import (chibi))
-; hash tables, bitwise arithmetic
-; (import (srfi 125) (srfi 151))
+; This file is part of the libmdal library.
+; Copyright (c) utz/irrlicht project 2018
+; See LICENSE for license details.
 
-(require-extension r7rs)
-(require-extension ssax)
-(require-extension sxpath)
+; (require-extension r7rs)
+(use ssax sxpath sxpath-lolevel)
 
 (define *min-supported-version 2)
 (define *max-supported-version 2)
@@ -14,6 +13,17 @@
 
 (define **cpu-speed** 30000)
 (load-relative "utils/note-tables.scm")
+
+
+; -----------------------------------------------------------------------------
+; MDCONF: UTILITIES
+; -----------------------------------------------------------------------------
+
+(define-record-type md:range
+  (md:make-range minimum maximum)
+  md:range?
+  (minimum md:range-min)
+  (maximum md:range-max))
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: ASSEMBLY SYNTAX RULES
@@ -37,69 +47,7 @@
 ; MDCONF: COMMANDS
 ; -----------------------------------------------------------------------------
 
-(define-constant md:cmd-type-int 0)
-(define-constant md:cmd-type-uint 1)
-(define-constant md:cmd-type-key 2)
-(define-constant md:cmd-type-ukey 3)
-(define-constant md:cmd-type-note 4)
-(define-constant md:cmd-type-reference 5)
-(define-constant md:cmd-type-string 6)
-(define-constant md:cmd-type-trigger 7)
-(define-constant md:cmd-type-unknown 8)
-
-(define-record-type md:command
-  (md:make-command type bits default reference-to keys enable-modifiers
-                   disable-labels range)
-  md:command?
-  (type md:command-type md:command-set-type!)
-  (bits md:command-bits md:command-set-bits!)
-  (default md:command-default md:command-set-default!)
-  (reference-to md:command-reference-to md:command-set-reference-to!)
-  (keys md:command-keys md:command-set-keys!)
-  (enable-modifiers md:command-enable-modifiers
-                    md:command-set-enable-modifiers!)
-  (disable-labels md:command-disable-labels md:command-set-disable-labels!)
-  (range md:command-range md:command-set-range!))
-
-(define (md:make-int-command bits default enable-modifiers range)
-  (md:make-command md:cmd-type-int bits default #f #f enable-modifiers
-                   #t range))
-
-(define (md:make-uint-command bits default enable-modifiers range)
-  (md:make-command md:cmd-type-uint bits default #f #f enable-modifiers
-                   #t range))
-
-(define (md:make-key-command bits default keys enable-modifiers)
-  (md:make-command md:cmd-type-key bits default #f keys enable-modifiers
-                   #t #f))
-
-(define (md:make-ukey-command bits default keys enable-modifiers)
-  (md:make-command md:cmd-type-ukey bits default #f keys enable-modifiers
-                   #t #f))
-
-(define (md:make-note-command bits keys enable-modifiers)
-  (md:make-command md:cmd-type-note bits "rest" #f keys
-                   enable-modifiers #t #f))
-
-(define (md:make-reference-command bits default reference-to disable-labels)
-  (md:make-command md:cmd-type-reference bits default reference-to #f #f
-                   disable-labels #f))
-
-(define (md:make-string-command default)
-  (md:make-command md:cmd-type-string 0 default #f #f #f #t #f))
-
-(define (md:make-trigger-command)
-  (md:make-command md:cmd-type-trigger 1 #f #f #f #t #f))
-
-(define (md:int-command? cmd) (= (md:command-type cmd) md:cmd-type-int))
-(define (md:uint-command? cmd) (= (md:command-type cmd) md:cmd-type-uint))
-(define (md:key-command? cmd) (= (md:command-type cmd) md:cmd-type-key))
-(define (md:ukey-command? cmd) (= (md:command-type cmd) md:cmd-type-ukey))
-(define (md:note-command? cmd) (= (md:command-type cmd) md:cmd-type-note))
-(define (md:reference-command? cmd)
-  (= (md:command-type cmd) md:cmd-type-reference))
-(define (md:string-command? cmd) (= (md:command-type cmd) md:cmd-type-string))
-(define (md:trigger-command? cmd) (= (md:command-type cmd) md:cmd-type-trigger))
+(include "command.scm")
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: INPUT NODE CONFIGURATION
@@ -184,6 +132,7 @@
   )
 |#
 
+; to parse: (read-lines "file.mdal")
 
 
 #|
@@ -208,4 +157,6 @@
 (define (md:field-clear! field)
   (md:field-set-val! field "")
   (md:field-set-active! field #f))
+
 |#
+
