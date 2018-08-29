@@ -3,7 +3,9 @@
 ; See LICENSE for license details.
 
 ; (require-extension r7rs)
-(use simple-exceptions ssax sxpath sxpath-lolevel)
+(use simple-exceptions ssax sxpath sxpath-lolevel hahn)
+
+@(heading "libmdal")
 
 (define *min-supported-version 2)
 (define *max-supported-version 2)
