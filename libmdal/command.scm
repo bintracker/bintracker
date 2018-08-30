@@ -110,6 +110,7 @@
 ; returns #f if no range is set, supplies missing min/max args from numeric
 ; range of the command.
 (define (md:xml-command-node->range node)
+  ; immediately abort if no range subnode found
   (if (null-list? ((sxpath "range") node))
       #f
       (let ((range-node (car ((sxpath "range") node)))

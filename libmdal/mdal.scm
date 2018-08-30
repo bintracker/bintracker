@@ -124,9 +124,10 @@
 ; TODO: where to handle max-binsize?
 
 (define-record-type md:config
-  (md:make-config target commands inodes onodes)
+  (md:make-config target description commands inodes onodes)
   md:config?
   (target md:config-target md:config-set-target!)
+  (description md:config-description md:config-set-description!)
   (commands md:config-commands md:config-set-commands!)
   (inodes md:config-inodes md:config-set-inodes!)
   (onodes md:config-onodes md:config-set-onodes!))
@@ -140,6 +141,8 @@
 
 ; generate a list of md:commands from a given list of mdconf 'command' nodes
 ; and a given target
+; TODO: generate AUTHOR/TITLE commands if not specified
+; TODO: actually we want an alist
 (define (md:xml-command-nodes->commands node-list target)
   (if (equal? '() node-list)
       '()
@@ -152,16 +155,20 @@
     (let ((target (md:config-node->target cfg)))
       (md:make-config
         target
-        ; commands
-        (md:xml-command-nodes->commands ((sxpath "mdalconfig/command") cfg) target)
-        ; (list (md:xml-node->command (car ((sxpath "mdalconfig/command") cfg)) target))
+        (if (null-list? ((sxpath "mdalconfig/description") cfg))
+            #f
+            (car ((sxpath "mdalconfig/description/text()") cfg)))
+        (md:xml-command-nodes->commands
+          ((sxpath "mdalconfig/command") cfg) target)
         #f    ;inodes
         #f    ;onodes
         ))))
+
 ; -----------------------------------------------------------------------------
 ; MDMOD: INPUT NODES
 ; -----------------------------------------------------------------------------
 ; instances?
+
 #|
 (define-record-type md:inode
   (make-md:inode cfg-id sub-nodes val is-active)
