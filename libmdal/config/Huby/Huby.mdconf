@@ -2,7 +2,6 @@
 <mdalconfig version="2" target="zxspectrum48">
 
 	<description>A simple 2 channel pin pulse (PFM) engine in less than 100 bytes. By Shiru 2011, 2013.</description>
-	<format byte="db" word="dw" hex_prefix="$" endian="little" />
 
 	<command id="BPM" bits="16" type="UInt" default="140">
 		<description>Set the speed of the tune.</description>
