@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<mdalconfig version="2" target="zxspectrum48">
+<mdalconfig version="2" target="spectrum48">
 
 	<description>A simple 2 channel pin pulse (PFM) engine in less than 100 bytes. By Shiru 2011, 2013.</description>
 

@@ -5,20 +5,9 @@
 ; (require-extension r7rs)
 (use simple-exceptions ssax sxpath sxpath-lolevel hahn)
 
-@(heading "libmdal")
-
-(define *min-supported-version 2)
-(define *max-supported-version 2)
-(define *config*)
-(define *module*)
-(define *selection*)
-
-(define **cpu-speed** 30000)
-(load-relative "utils/note-tables.scm")
-
 
 ; -----------------------------------------------------------------------------
-; MDCONF: UTILITIES
+; MDAL: UTILITIES
 ; -----------------------------------------------------------------------------
 
 (define-record-type md:range
@@ -27,12 +16,9 @@
   (minimum md:range-min)
   (maximum md:range-max))
 
-; -----------------------------------------------------------------------------
-; MDCONF: ASSEMBLY SYNTAX RULES
-; -----------------------------------------------------------------------------
-
-(define-constant md:little-endian 0)
-(define-constant md:big-endian 1)
+(define (md:in-range? val range)
+  (and (>= val (md:range-min range))
+       (<= val (md:range-max range))))
 
 (define-record-type md:asm-syntax
   (make-md:asm-syntax hex-prefix byte-op word-op dword-op)
@@ -44,6 +30,49 @@
 
 (define (md:default-asm-syntax)
   (make-md:asm-syntax "$" "db" "dw" "dl"))
+
+
+; -----------------------------------------------------------------------------
+; MDAL: GLOBAL VARS
+; -----------------------------------------------------------------------------
+
+(define *supported-versions* (md:make-range 2 2))
+(define *library-path* "")
+(define *config-path* "config/")
+(define *config*)
+(define *module*)
+(define *selection*)
+
+(define **cpu-speed** 30000)
+(load-relative "utils/note-tables.scm")
+
+
+; -----------------------------------------------------------------------------
+; MDCONF: TARGETS
+; -----------------------------------------------------------------------------
+
+(define md:little-endian 0)
+(define md:big-endian 1)
+
+(define-record-type md:cpu
+  (md:make-cpu id endianness)
+  md:cpu?
+  (id md:cpu-id)
+  (endianness md:cpu-endianness))
+
+(define-record-type md:export-format
+  (md:make-export-format id conversion-func)
+  md:export-format?
+  (id md:export-format-id)
+  (conversion-func md:export-format-conversion-func))
+
+(define-record-type md:target
+  (md:make-target id cpu clock-speed export-formats)
+  md:target?
+  (id md:target-id)
+  (cpu md:target-cpu)
+  (clock-speed md:target-clock-speed)
+  (export-format md:target-export-format))
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: COMMANDS
@@ -85,24 +114,50 @@
   (md:make-onode-config sources bytes sub-nodes composition-rule
                         requirement-condition)
   md:onode-config?
-  ;...
   )
 |#
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: MASTER CONFIGURATION
 ; -----------------------------------------------------------------------------
-#|
-(define-record-type md:config
-  (md:make-config asm-syntax target max-binsize inodes onodes)
-  md:config?
-  (asm-syntax md:config-asm-syntax md:config-set-asm-syntax!)
-  (target md:config-target md:config-set-target!)
-  (max-binsize md:config-max-binsize md:config-set-max-binsize!)
-  ; ...
-  )
-|#
 
+; TODO: where to handle max-binsize?
+
+(define-record-type md:config
+  (md:make-config target commands inodes onodes)
+  md:config?
+  (target md:config-target md:config-set-target!)
+  (commands md:config-commands md:config-set-commands!)
+  (inodes md:config-inodes md:config-set-inodes!)
+  (onodes md:config-onodes md:config-set-onodes!))
+
+; create an md:target from an mdconf root node
+(define (md:config-node->target node)
+  (eval (car (read-file (string-concatenate
+                          (list "targets/"
+                                (sxml:attr (car (sxml:content node)) 'target)
+                                ".scm"))))))
+
+; generate a list of md:commands from a given list of mdconf 'command' nodes
+; and a given target
+(define (md:xml-command-nodes->commands node-list target)
+  (if (equal? '() node-list)
+      '()
+      (cons (list (md:xml-node->command (car node-list) target))
+            (md:xml-command-nodes->commands (cdr node-list) target))))
+
+; generate an md:config from a given .mdconf file
+(define (md:mdconf->config filepath)
+  (let ((cfg (ssax:xml->sxml (open-input-file filepath) '())))
+    (let ((target (md:config-node->target cfg)))
+      (md:make-config
+        target
+        ; commands
+        (md:xml-command-nodes->commands ((sxpath "mdalconfig/command") cfg) target)
+        ; (list (md:xml-node->command (car ((sxpath "mdalconfig/command") cfg)) target))
+        #f    ;inodes
+        #f    ;onodes
+        ))))
 ; -----------------------------------------------------------------------------
 ; MDMOD: INPUT NODES
 ; -----------------------------------------------------------------------------

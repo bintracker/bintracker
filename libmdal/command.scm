@@ -21,14 +21,28 @@
   (disable-labels md:command-flags-labels-disabled?)
   (use-last-set md:command-flags-use-last-set?))
 
+; returns #t if no flags set, #f otherwise.
 (define (md:command-flags-any? flags)
   (or (md:command-flags-modifiers-enabled? flags)
       (md:command-flags-labels-disabled? flags)
       (md:command-flags-use-last-set? flags)))
 
+; extract flag settings from an mdconf 'command' node, and construct a
+; md:command-flags object from it
+(define (md:xml-command-node->command-flags node)
+  (let ((attr (sxml:attr node 'flags)))
+    (if attr
+        (md:make-command-flags
+          (string-contains-ci attr "enable_modifiers")
+          (string-contains-ci attr "disable_labels")
+          (string-contains-ci attr "use_last_set"))
+        (md:make-command-flags #f #f #f))))
+
 (define-record-type md:command
-  (md:make-command type bits default reference-to keys flags range description)
+  (md:make-command id type bits default reference-to keys flags range
+                   description)
   md:command?
+  (id md:command-id md:command-set-id!)
   (type md:command-type md:command-set-type!)
   (bits md:command-bits md:command-set-bits!)
   (default md:command-default md:command-set-default!)
@@ -72,7 +86,8 @@
 
 (define-record-printer (md:command cmd out)
   (begin
-    (fprintf out "#<md:command>\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
+    (fprintf out "#<md:command> ~A\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
+             (md:command-id cmd)
              (md:command-type->string (md:command-type cmd))
              (md:command-bits cmd)
              (md:command-default cmd))
@@ -95,37 +110,40 @@
 ; returns #f if no range is set, supplies missing min/max args from numeric
 ; range of the command.
 (define (md:xml-command-node->range node)
-  (let ((range-node (car ((sxpath "range") node)))
-        (lower-limit (lambda (cmd-type bits)
-                       (if (equal? cmd-type md:cmd-type-int)
-                           (- (expt 2 (- bits 1)))
-                           0)))
-        (upper-limit (lambda (cmd-type bits)
-                       (- (if (equal? cmd-type md:cmd-type-int)
-                              (expt 2 (- bits 1))
-                              (expt 2 bits))
-                          1))))
-    (if (equal? '() range-node)
-        #f
-        (md:make-range
-          (if (sxml:num-attr range-node 'min)
-              (sxml:num-attr range-node 'min)
-              (lower-limit (sxml:attr node 'type)
-                           (sxml:num-attr node 'bits)))
-          (if (sxml:num-attr range-node 'max)
-              (sxml:num-attr range-node 'max)
-              (upper-limit (sxml:attr node 'type)
-                           (sxml:num-attr node 'bits)))))))
+  (if (null-list? ((sxpath "range") node))
+      #f
+      (let ((range-node (car ((sxpath "range") node)))
+            (lower-limit (lambda (cmd-type bits)
+                           (if (equal? cmd-type md:cmd-type-int)
+                               (- (expt 2 (- bits 1)))
+                               0)))
+            (upper-limit (lambda (cmd-type bits)
+                           (- (if (equal? cmd-type md:cmd-type-int)
+                                  (expt 2 (- bits 1))
+                                  (expt 2 bits))
+                              1))))
+        (if (equal? '() range-node)
+            #f
+            (md:make-range
+              (if (sxml:num-attr range-node 'min)
+                  (sxml:num-attr range-node 'min)
+                  (lower-limit (sxml:attr node 'type)
+                               (sxml:num-attr node 'bits)))
+              (if (sxml:num-attr range-node 'max)
+                  (sxml:num-attr range-node 'max)
+                  (upper-limit (sxml:attr node 'type)
+                               (sxml:num-attr node 'bits))))))))
 
-; generate an md:command object from a 'command' mdconf node.
-(define (md:xml-node->command node)
+; generate an md:command object from a 'command' mdconf node and a md:target
+(define (md:xml-node->command node target)
   (md:make-command
+    (sxml:attr node 'id)
     (md:string->command-type (sxml:attr node 'type))
     (sxml:num-attr node 'bits)
     (sxml:attr node 'default)
     (sxml:attr node 'to)
-    #f  ;keys
-    (md:make-command-flags #f #f #t)
+    #f  ; TODO: keys
+    (md:xml-command-node->command-flags node)
     (md:xml-command-node->range node)
     (if (equal? '() ((sxpath "description/text()") node))
         #f
