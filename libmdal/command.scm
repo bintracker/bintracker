@@ -3,6 +3,10 @@
 ; See LICENSE for license details.
 
 
+; -----------------------------------------------------------------------------
+; MDCONF: COMMANDS
+; -----------------------------------------------------------------------------
+
 (define md:cmd-type-int 0)
 (define md:cmd-type-uint 1)
 (define md:cmd-type-key 2)
@@ -147,6 +151,7 @@
                   (upper-limit (sxml:attr node 'type)
                                (sxml:num-attr node 'bits))))))))
 
+
 ; generate an md:command object from a 'command' mdconf node and a md:target
 (define (md:xml-node->command node target)
   (md:make-command
@@ -160,4 +165,30 @@
     (if (equal? '() ((sxpath "description/text()") node))
         #f
         (car ((sxpath "description/text()") node)))))
+
+
+; construct an alist containing the default commands AUTHOR and TITLE
+(define (md:make-default-commands)
+  (list
+    (list "AUTHOR" (md:make-command md:cmd-type-string 0 "unknown" #f #f
+                                    (md:make-empty-command-flags) #f #f))
+    (list "TITLE" (md:make-command md:cmd-type-string 0 "untitled" #f #f
+                                   (md:make-empty-command-flags) #f #f))))
+
+
+; generate a hash-table of md:commands from a given list of mdconf 'command'
+; nodes and a given target. Also generates AUTHOR/TITLE commands if not
+; specified in node list
+(define (md:xml-command-nodes->commands node-list target)
+  (alist->hash-table
+    (append
+      (letrec ((make-commands
+                 (lambda (lst trgt)
+                   (if (null-list? lst)
+                       '()
+                       (cons (list (sxml:attr (car lst) 'id)
+                                   (md:xml-node->command (car lst) trgt))
+                             (make-commands (cdr lst) trgt))))))
+        (make-commands node-list target))
+      (md:make-default-commands))))
 
