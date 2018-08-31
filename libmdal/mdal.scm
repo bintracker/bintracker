@@ -42,6 +42,7 @@
 (define *config*)
 (define *module*)
 (define *selection*)
+(define *asm-syntax* (md:default-asm-syntax))
 
 (define **cpu-speed** 30000)
 (load-relative "utils/note-tables.scm")
@@ -86,6 +87,13 @@
 ; sub-nodes should be virtual (store id only)
 ; every node must have a unique id
 
+; aux record type for tracking instantiation requirements of md:inode-config
+(define-record-type md:instance-range
+  (md:make-instance-range min-instances max-instances)
+  md:instance-range?
+  (min-instances md:instance-range-min md:set-instance-range-min)
+  (max-instances md:instance-range-max md:set-instance-range-max))
+
 (define-record-type md:inode-config
   (md:make-inode-config instance-range subnodes cmd-id order-id)
   md:inode-config?
@@ -95,6 +103,38 @@
   (cmd-id md:inode-config-cmd-id md:set-inode-config-cmd-id!)
   (order-id md:inode-config-order-id md:set-inode-config-order-id!))
 
+(define (md:inode-config-endpoint? inode-cfg)
+  (if (md:inode-config-subnodes) #f #t))
+
+; would need to pass block-member? in order to determine instance-range
+; perhaps always need to pass range
+(define (md:xml-ifield->inode-config node instance-range)
+  (md:make-inode-config instance-range #f (sxml:attr node 'from) #f))
+
+(define (md:xml-iblock->inode-config node instance-range)
+  (md:make-inode-config instance-range #f #f #f))
+
+(define (md:xml-igroup->inode-config node instance-range)
+  (md:make-inode-config instance-range #f #f #f))
+
+(define (md:xml-clone-node->inode-config node instance-range)
+  (md:make-inode-config instance-range #f #f #f))
+
+; dispatch function
+(define (md:xml-node->inode-config node instance-range)
+  (cond ((equal? (sxml:name node) "ifield")
+         (md:xml-ifield->inode-config node instance-range))
+        ((equal? (sxml:name node) "iblock")
+         (md:xml-iblock->inode-config node instance-range))
+        ((equal? (sxml:name node) "clone")
+         (md:xml-clone-node->inode-config node instance-range))
+        (else (md:xml-igroup->inode-config node instance-range))))
+
+; TODO: generate orders, default inodes, clone blocks
+
+; construct the input tree (forest) config from a given mdconf root node
+(define (md:mdconf->inode-configs cfg-node)
+  (list "GLOBAL" (md:make-inode-config (md:make-instance-range 1 1) #f #f #f)))
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: OUTPUT NODE CONFIGURATION
@@ -109,13 +149,11 @@
 ; doesn't exist in chibi
 ; but should perhaps use empty list '()
 
-#|
 (define-record-type md:onode-config
   (md:make-onode-config sources bytes sub-nodes composition-rule
                         requirement-condition)
   md:onode-config?
   )
-|#
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: MASTER CONFIGURATION
@@ -132,13 +170,16 @@
   (inodes md:config-inodes md:config-set-inodes!)
   (onodes md:config-onodes md:config-set-onodes!))
 
-; TODO: record-printer
 (define-record-printer (md:config cfg out)
   (begin
-    (fprintf out "#<md:config>\n\nCOMMANDS:\n\n")
-    (for-each (lambda (x) (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
-              (hash-table->alist (md:config-commands cfg)))))
-             ; (car (car (hash-table->alist (md:config-commands cfg)))))))
+    (fprintf out "#<md:config>\n\n")
+    (when (md:config-description cfg)
+      (fprintf out "DESCRIPTION:\n~A\n\n" (md:config-description cfg)))
+    (fprintf out "COMMANDS:\n\n")
+    (for-each (lambda (x)
+                (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
+              (hash-table->alist (md:config-commands cfg)))
+    (fprintf out "\nINPUT NODES:\n\n~S\n\n" (md:config-inodes cfg))))
 
 ; create an md:target from an mdconf root node
 (define (md:config-node->target node)
@@ -182,7 +223,7 @@
             (car ((sxpath "mdalconfig/description/text()") cfg)))
         (md:xml-command-nodes->commands
           ((sxpath "mdalconfig/command") cfg) target)
-        #f    ;inodes
+        (md:mdconf->inode-configs cfg)
         #f    ;onodes
         ))))
 
