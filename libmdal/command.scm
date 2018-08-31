@@ -11,7 +11,6 @@
 (define md:cmd-type-uint 1)
 (define md:cmd-type-key 2)
 (define md:cmd-type-ukey 3)
-(define md:cmd-type-note 4)
 (define md:cmd-type-reference 5)
 (define md:cmd-type-string 6)
 (define md:cmd-type-trigger 7)
@@ -54,10 +53,11 @@
 ; reference-to - #f or an identifier string
 ; keys - #f or a hash-map
 ; flags - an md:command-flags object
+; tags - #f or a list of strings
 ; range - #f or an md:range object
 ; description - #f or a string
 (define-record-type md:command
-  (md:make-command type bits default reference-to keys flags range
+  (md:make-command type bits default reference-to keys flags tags range
                    description)
   md:command?
   (type md:command-type md:command-set-type!)
@@ -66,8 +66,15 @@
   (reference-to md:command-reference-to md:command-set-reference-to!)
   (keys md:command-keys md:command-set-keys!)
   (flags md:command-flags md:command-set-flags!)
+  (tags md:command-tags md:command-set-tags!)
   (range md:command-range md:command-set-range!)
   (description md:command-description md:command-set-description!))
+
+; check if the given command has the given tag
+(define (md:command-has-tag? cmd tag)
+  (if (md:command-tags cmd)
+      (any (lambda (x) (string-ci= x tag)) (md:command-tags cmd))
+      #f))
 
 (define (md:int-command? cmd) (= (md:command-type cmd) md:cmd-type-int))
 (define (md:uint-command? cmd) (= (md:command-type cmd) md:cmd-type-uint))
@@ -84,7 +91,6 @@
         ((string-ci= str "uint") md:cmd-type-uint)
         ((string-ci= str "key") md:cmd-type-key)
         ((string-ci= str "ukey") md:cmd-type-ukey)
-        ((string-ci= str "note") md:cmd-type-note)
         ((string-ci= str "reference") md:cmd-type-reference)
         ((string-ci= str "string") md:cmd-type-string)
         ((string-ci= str "trigger") md:cmd-type-trigger)
@@ -95,7 +101,6 @@
         ((= type md:cmd-type-uint) "UInt")
         ((= type md:cmd-type-key) "Key")
         ((= type md:cmd-type-ukey) "UKey")
-        ((= type md:cmd-type-note) "Note")
         ((= type md:cmd-type-reference) "Reference")
         ((= type md:cmd-type-string) "String")
         ((= type md:cmd-type-trigger) "Trigger")
@@ -115,6 +120,8 @@
         (fprintf out "disable_labels "))
       (when (md:command-flags-use-last-set? (md:command-flags cmd))
         (fprintf out "use_last_set")))
+    (when (md:command-tags cmd)
+      (fprintf out "\ntags:    ~S" (md:command-tags cmd)))
     (when (md:command-range cmd)
       (fprintf out "\nrange:   ~S - ~S"
                (md:range-min (md:command-range cmd))
@@ -151,6 +158,10 @@
                   (upper-limit (sxml:attr node 'type)
                                (sxml:num-attr node 'bits))))))))
 
+(define (md:xml-attr->tags attr)
+  (if (not attr)
+      #f
+      (string-split (string-delete char-set:whitespace attr) ",")))
 
 ; generate an md:command object from a 'command' mdconf node and a md:target
 (define (md:xml-node->command node target)
@@ -161,6 +172,7 @@
     (sxml:attr node 'to)
     #f  ; TODO: keys
     (md:xml-command-node->command-flags node)
+    (md:xml-attr->tags (sxml:attr node 'tags))
     (md:xml-command-node->range node)
     (if (equal? '() ((sxpath "description/text()") node))
         #f
@@ -171,9 +183,9 @@
 (define (md:make-default-commands)
   (list
     (list "AUTHOR" (md:make-command md:cmd-type-string 0 "unknown" #f #f
-                                    (md:make-empty-command-flags) #f #f))
+                                    (md:make-empty-command-flags) #f #f #f))
     (list "TITLE" (md:make-command md:cmd-type-string 0 "untitled" #f #f
-                                   (md:make-empty-command-flags) #f #f))))
+                                   (md:make-empty-command-flags) #f #f #f))))
 
 
 ; generate a hash-table of md:commands from a given list of mdconf 'command'

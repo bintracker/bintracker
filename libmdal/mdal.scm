@@ -3,7 +3,7 @@
 ; See LICENSE for license details.
 
 ; (require-extension r7rs)
-(use simple-exceptions ssax sxpath sxpath-lolevel hahn)
+(use simple-exceptions srfi-13 ssax sxpath sxpath-lolevel hahn)
 
 
 ; -----------------------------------------------------------------------------
