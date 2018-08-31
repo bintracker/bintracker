@@ -133,6 +133,12 @@
   (onodes md:config-onodes md:config-set-onodes!))
 
 ; TODO: record-printer
+(define-record-printer (md:config cfg out)
+  (begin
+    (fprintf out "#<md:config>\n\nCOMMANDS:\n\n")
+    (for-each (lambda (x) (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
+              (hash-table->alist (md:config-commands cfg)))))
+             ; (car (car (hash-table->alist (md:config-commands cfg)))))))
 
 ; create an md:target from an mdconf root node
 (define (md:config-node->target node)
