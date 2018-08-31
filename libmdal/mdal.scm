@@ -132,6 +132,8 @@
   (inodes md:config-inodes md:config-set-inodes!)
   (onodes md:config-onodes md:config-set-onodes!))
 
+; TODO: record-printer
+
 ; create an md:target from an mdconf root node
 (define (md:config-node->target node)
   (eval (car (read-file (string-concatenate
@@ -139,15 +141,29 @@
                                 (sxml:attr (car (sxml:content node)) 'target)
                                 ".scm"))))))
 
-; generate a list of md:commands from a given list of mdconf 'command' nodes
-; and a given target
-; TODO: generate AUTHOR/TITLE commands if not specified
-; TODO: actually we want an alist
+; construct an alist containing the default commands AUTHOR and TITLE
+(define (md:make-default-commands)
+  (list
+    (list "AUTHOR" (md:make-command md:cmd-type-string 0 "unknown" #f #f
+                                    (md:make-empty-command-flags) #f #f))
+    (list "TITLE" (md:make-command md:cmd-type-string 0 "untitled" #f #f
+                                   (md:make-empty-command-flags) #f #f))))
+
+; generate a hash-table of md:commands from a given list of mdconf 'command'
+; nodes and a given target. Also generates AUTHOR/TITLE commands if not
+; specified in node list
 (define (md:xml-command-nodes->commands node-list target)
-  (if (equal? '() node-list)
-      '()
-      (cons (list (md:xml-node->command (car node-list) target))
-            (md:xml-command-nodes->commands (cdr node-list) target))))
+  (alist->hash-table
+    (append
+      (letrec ((make-commands
+                 (lambda (lst trgt)
+                   (if (null-list? lst)
+                       '()
+                       (cons (list (sxml:attr (car lst) 'id)
+                                   (md:xml-node->command (car lst) trgt))
+                             (make-commands (cdr lst) trgt))))))
+        (make-commands node-list target))
+      (md:make-default-commands))))
 
 ; generate an md:config from a given .mdconf file
 (define (md:mdconf->config filepath)

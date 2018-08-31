@@ -21,6 +21,10 @@
   (disable-labels md:command-flags-labels-disabled?)
   (use-last-set md:command-flags-use-last-set?))
 
+; construct an empty md:command-flags object
+(define (md:make-empty-command-flags)
+  (md:make-command-flags #f #f #f))
+
 ; returns #t if no flags set, #f otherwise.
 (define (md:command-flags-any? flags)
   (or (md:command-flags-modifiers-enabled? flags)
@@ -38,11 +42,20 @@
           (string-contains-ci attr "use_last_set"))
         (md:make-command-flags #f #f #f))))
 
+; command config record
+; fields:
+; type - one of md:cmd-type-***
+; bits - uint number of bits in command
+; default - default value string
+; reference-to - #f or an identifier string
+; keys - #f or a hash-map
+; flags - an md:command-flags object
+; range - #f or an md:range object
+; description - #f or a string
 (define-record-type md:command
-  (md:make-command id type bits default reference-to keys flags range
+  (md:make-command type bits default reference-to keys flags range
                    description)
   md:command?
-  (id md:command-id md:command-set-id!)
   (type md:command-type md:command-set-type!)
   (bits md:command-bits md:command-set-bits!)
   (default md:command-default md:command-set-default!)
@@ -86,8 +99,7 @@
 
 (define-record-printer (md:command cmd out)
   (begin
-    (fprintf out "#<md:command> ~A\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
-             (md:command-id cmd)
+    (fprintf out "#<md:command>\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
              (md:command-type->string (md:command-type cmd))
              (md:command-bits cmd)
              (md:command-default cmd))
@@ -138,7 +150,6 @@
 ; generate an md:command object from a 'command' mdconf node and a md:target
 (define (md:xml-node->command node target)
   (md:make-command
-    (sxml:attr node 'id)
     (md:string->command-type (sxml:attr node 'type))
     (sxml:num-attr node 'bits)
     (sxml:attr node 'default)
