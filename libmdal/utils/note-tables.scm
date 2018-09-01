@@ -82,8 +82,7 @@
   (letrec
     ((try-lower
        (lambda (offset tbl)
-         (if (hash-table-ref/default
-               tbl (md:offset->note-name offset) #f)
+         (if (hash-table-ref/default tbl (md:offset->note-name offset) #f)
              (md:offset->note-name offset)
              (try-lower (+ offset 1) tbl)))))
     (try-lower 0 table)))
@@ -93,8 +92,7 @@
   (letrec
     ((try-upper
        (lambda (offset tbl)
-         (if (hash-table-ref/default
-               tbl (md:offset->note-name offset) #f)
+         (if (hash-table-ref/default tbl (md:offset->note-name offset) #f)
              (md:offset->note-name offset)
              (try-upper (- offset 1) tbl)))))
     (try-upper 119 table)))
