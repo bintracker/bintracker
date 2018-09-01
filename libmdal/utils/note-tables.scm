@@ -73,3 +73,29 @@
                          (mkcounters (+ 1 beg) end rest))))))
     (alist->hash-table (mkcounters beg end rest))))
 
+; returns the lowest note in the given note table
+(define (md:lowest-note table)
+  (letrec
+    ((try-lower
+       (lambda (offset tbl)
+         (if (hash-table-ref/default
+               tbl (md:offset->note-name offset) #f)
+             (md:offset->note-name offset)
+             (try-lower (+ offset 1) tbl)))))
+    (try-lower 1 table)))
+
+; returns the highest note in the given note table
+(define (md:highest-note table)
+  (letrec
+    ((try-upper
+       (lambda (offset tbl)
+         (if (hash-table-ref/default
+               tbl (md:offset->note-name offset) #f)
+             (md:offset->note-name offset)
+             (try-upper (- offset 1) tbl)))))
+    (try-upper 119 table)))
+
+; returns (lowest highest) notes in the given note table
+(define (md:note-table-range table)
+  (list (md:lowest-note table) (md:highest-note table)))
+

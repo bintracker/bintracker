@@ -31,6 +31,13 @@
 (define (md:default-asm-syntax)
   (make-md:asm-syntax "$" "db" "dw" "dl"))
 
+; chicken does not define nth??? So here it goes, 0-indexed
+(define (nth n l)
+  (if (or (> n (- (length l) 1)) (< n 0))
+      (error "Index out of bounds.")
+      (if (eq? n 0)
+          (car l)
+          (nth (- n 1) (cdr l)))))
 
 ; -----------------------------------------------------------------------------
 ; MDAL: GLOBAL VARS
