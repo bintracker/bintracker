@@ -169,10 +169,9 @@
 (define (md:mapfile->map filepath)
   (alist->hash-table
     (map (lambda (str)
-           (let((entry
-                   (string-split (string-delete char-set:whitespace str) "=")))
-             (list (car entry)
-                   (string->number (cadr entry)))))
+           (let ((entry (string-split (string-delete char-set:whitespace str)
+                                      "=")))
+             (list (car entry) (string->number (cadr entry)))))
          (filter (lambda (x) (string-contains x "="))
                  (call-with-input-file filepath read-lines)))))
 
@@ -181,13 +180,14 @@
 (define (md:xml-command-node->map node configpath)
   (if (sxml:attr node 'map)
       (let ((attr (sxml:attr node 'map)))
-        (cond ((string-ci= (substring/shared attr 0 5)
-                           "file(")
+        (cond ((string-ci= (substring/shared attr 0 5) "file(")
                (md:mapfile->map
                  (string-concatenate
                    (list configpath
                          (substring/shared attr 5
                                            (- (string-length attr) 1))))))
+              ((string-ci= (substring/shared attr 0 5) "func(")
+               (eval (read (open-input-string (substring/shared attr 4)))))
               (else #f)))
       #f))
 

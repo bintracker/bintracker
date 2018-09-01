@@ -7,7 +7,9 @@
 		<description>Set the speed of the tune.</description>
         <range min="1" />
 	</command>
-	<command id="NOTE" bits="8" type="UKey" tags="Note" flags="enable_modifiers, use_last_set" map="file(note_names.inc)" default="rest">
+    <command id="NOTE" bits="8" type="UKey" tags="Note"
+        flags="enable_modifiers, use_last_set"
+        map="func(md:make-counters 1 12 0)" default="rest">
 		<description>Set the note for the given channel.</description>
 	</command>
 	<command id="DRUM" bits="0" type="Trigger" default="false">
