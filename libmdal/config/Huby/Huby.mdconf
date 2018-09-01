@@ -7,21 +7,21 @@
 		<description>Set the speed of the tune.</description>
         <range min="1" />
 	</command>
-	<command id="NOTE" bits="8" type="UKey" tags="Note" flags="enable_modifiers, use_last_set" map="note_names.inc" default="rest">
+	<command id="NOTE" bits="8" type="UKey" tags="Note" flags="enable_modifiers, use_last_set" map="file(note_names.inc)" default="rest">
 		<description>Set the note for the given channel.</description>
 	</command>
-	<command id="DRUM" bits="0" type="Trigger" default="false"><!-- actually bits=0, we only care if command was set. Use cmd type "Trigger"?-->
+	<command id="DRUM" bits="0" type="Trigger" default="false">
 		<description>Trigger a click drum. Replaces note on channel 1.</description>
 	</command>
 
 	<ifield from="?BPM" />
-	<igroup id="PATTERNS"><!-- an igroup containing iblocks of type "pattern" infers that a sequence must be made available-->
+	<igroup id="PATTERNS">
 		<iblock id="DRUMS" flags="ordered">
 			<ifield from="?DRUM" /><!-- ifields inherit their id from the command-->
 		</iblock>
 		<clone count="2">
 			<iblock id="CH%d" flags="ordered"><!-- %d = decimal, %x = hex, %a = alphabetic -->
-				<ifield from="?NOTE" /><!-- for fields that aren't referenced directly, no id attr needs to be given (id will be generated internally)-->
+				<ifield from="?NOTE" />
 			</iblock>
 		</clone>
 	</igroup>

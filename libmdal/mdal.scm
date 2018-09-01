@@ -190,15 +190,17 @@
 
 ; generate an md:config from a given .mdconf file
 (define (md:mdconf->config filepath)
-  (let ((cfg (ssax:xml->sxml (open-input-file filepath) '())))
+  (let ((cfg (call-with-input-file filepath
+                                   (lambda (x) (ssax:xml->sxml x '())))))
     (let ((target (md:config-node->target cfg)))
       (md:make-config
         target
         (if (null-list? ((sxpath "mdalconfig/description") cfg))
             #f
             (car ((sxpath "mdalconfig/description/text()") cfg)))
+        ; TODO: properly extract configpath
         (md:xml-command-nodes->commands
-          ((sxpath "mdalconfig/command") cfg) target)
+          ((sxpath "mdalconfig/command") cfg) target "config/Huby/")
         (md:mdconf->inode-configs cfg)
         #f    ;onodes
         ))))

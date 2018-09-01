@@ -112,6 +112,8 @@
              (md:command-type->string (md:command-type cmd))
              (md:command-bits cmd)
              (md:command-default cmd))
+    (when (md:command-keys cmd)
+      (fprintf out "\nkeys:    ~S" (md:command-keys cmd)))
     (when (md:command-flags-any? (md:command-flags cmd))
       (fprintf out "\nflags:   ")
       (when (md:command-flags-modifiers-enabled? (md:command-flags cmd))
@@ -163,14 +165,40 @@
       #f
       (string-split (string-delete char-set:whitespace attr) ",")))
 
-; generate an md:command object from a 'command' mdconf node and a md:target
-(define (md:xml-node->command node target)
+; construct a hash table from a file containing key/value definitions
+(define (md:mapfile->map filepath)
+  (alist->hash-table
+    (map (lambda (str)
+           (let((entry
+                   (string-split (string-delete char-set:whitespace str) "=")))
+             (list (car entry)
+                   (string->number (cadr entry)))))
+         (filter (lambda (x) (string-contains x "="))
+                 (call-with-input-file filepath read-lines)))))
+
+; construct a keymap from a 'command' mdconf node
+; returns a hash table or #f
+(define (md:xml-command-node->map node configpath)
+  (if (sxml:attr node 'map)
+      (let ((attr (sxml:attr node 'map)))
+        (cond ((string-ci= (substring/shared attr 0 5)
+                           "file(")
+               (md:mapfile->map
+                 (string-concatenate
+                   (list configpath
+                         (substring/shared attr 5
+                                           (- (string-length attr) 1))))))
+              (else #f)))
+      #f))
+
+; construct an md:command object from a 'command' mdconf node and a md:target
+(define (md:xml-node->command node target configpath)
   (md:make-command
     (md:string->command-type (sxml:attr node 'type))
     (sxml:num-attr node 'bits)
     (sxml:attr node 'default)
     (sxml:attr node 'to)
-    #f  ; TODO: keys
+    (md:xml-command-node->map node configpath)
     (md:xml-command-node->command-flags node)
     (md:xml-attr->tags (sxml:attr node 'tags))
     (md:xml-command-node->range node)
@@ -191,7 +219,7 @@
 ; generate a hash-table of md:commands from a given list of mdconf 'command'
 ; nodes and a given target. Also generates AUTHOR/TITLE commands if not
 ; specified in node list
-(define (md:xml-command-nodes->commands node-list target)
+(define (md:xml-command-nodes->commands node-list target configpath)
   (alist->hash-table
     (append
       (letrec ((make-commands
@@ -199,7 +227,8 @@
                    (if (null-list? lst)
                        '()
                        (cons (list (sxml:attr (car lst) 'id)
-                                   (md:xml-node->command (car lst) trgt))
+                                   (md:xml-node->command
+                                     (car lst) trgt configpath))
                              (make-commands (cdr lst) trgt))))))
         (make-commands node-list target))
       (md:make-default-commands))))
