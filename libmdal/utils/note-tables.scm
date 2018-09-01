@@ -1,69 +1,75 @@
-(define exact inexact->exact)
+; This file is part of the libmdal library.
+; Copyright (c) utz/irrlicht project 2018
+; See LICENSE for license details.
 
-(define note-names
-  (vector "c" "cis" "d" "dis" "e" "f" "fis" "g" "gis" "a" "ais" "b"))
+
+(define md:note-names
+  (vector "c" "c#" "d" "d#" "e" "f" "f#" "g" "g#" "a" "a#" "b"))
 
 ; fn = f0 * (2^(1/12))^n
 ; using c-9 as base note (f0)
-(define (offset->freq offset)
+(define (md:offset->freq offset)
   (* 8372.018 (expt (expt 2 (/ 1 12))
                     (- (- 108 offset)))))
 
-(define (freq->divider freq cycles bits)
-  (exact (round (* (/ (* freq cycles) **cpu-speed**)
-                   (expt 2 bits)))))
+(define (md:freq->divider freq cycles bits)
+  (inexact->exact (round (* (/ (* freq cycles) **cpu-speed**)
+                            (expt 2 bits)))))
 
-(define (offset->divider offset cycles bits)
-  (freq->divider (offset->freq offset)
-                 cycles bits))
+(define (md:offset->divider offset cycles bits)
+  (md:freq->divider (md:offset->freq offset) cycles bits))
 
-(define (offset->octave offset) (quotient offset 12))
+(define (md:offset->octave offset) (quotient offset 12))
 
 ; lower bound defined as: the offset in half-tones from C-0 that will
 ; produce a divider value that is 1) > 0, and 2) distinct from the divider
 ; value produced by (+ offset 1)
-(define (get-lower-bound cycles bits)
+(define (md:get-lower-bound cycles bits)
   (do ((offs 0 (+ offs 1)))
-    ((and (> (offset->divider offs cycles bits) 0)
-          (not (= (offset->divider offs cycles bits)
-                  (offset->divider (+ offs 1) cycles bits))))
+    ((and (> (md:offset->divider offs cycles bits) 0)
+          (not (= (md:offset->divider offs cycles bits)
+                  (md:offset->divider (+ offs 1) cycles bits))))
      offs)))
 
 ; upper bound defined as: the offset in half-tones from C-0 that will
 ; produce a divider value that is larger than the max integer value
 ; representable in <bits>
-(define (get-upper-bound cycles bits)
+(define (md:get-upper-bound cycles bits)
   (do ((offs 0 (+ offs 1)))
-    ((>= (offset->divider offs cycles bits)
+    ((>= (md:offset->divider offs cycles bits)
          (expt 2 bits))
     offs)))
 
-(define (offset->note-name offset)
-  (string-append (vector-ref note-names (modulo offset 12))
-                 (number->string (offset->octave offset))))
+(define (md:offset->note-name offset)
+  (string-append (vector-ref md:note-names (modulo offset 12))
+                 (number->string (md:offset->octave offset))))
 
-(define (make-dividers-range cycles beg end rest bits)
+(define (md:make-dividers-range cycles beg end rest bits)
     (if (= beg end)
         (list (list "rest" rest))
-        (cons (list (offset->note-name beg)
-                    (offset->divider beg cycles bits))
-              (make-dividers-range cycles (+ 1 beg) end rest bits))))
+        (cons (list (md:offset->note-name beg)
+                    (md:offset->divider beg cycles bits))
+              (md:make-dividers-range cycles (+ 1 beg) end rest bits))))
 
 ; generate a note table with divider->note-name mappings
 ; wrapper func for make-dividers-range that will auto-deduce optimal range
 ; parameters: cycles - number of cycles in sound generation loop
 ;             bits - size of the dividers, as number of bits
 ;             rest - the value that represents a rest/note-off
-(define (make-dividers cycles bits rest)
-  (make-dividers-range cycles
-                       (get-lower-bound cycles bits)
-                       (get-upper-bound cycles bits)
-                       rest bits))
+(define (md:make-dividers cycles bits rest)
+  (alist->hash-table
+    (md:make-dividers-range cycles
+                            (md:get-lower-bound cycles bits)
+                            (md:get-upper-bound cycles bits)
+                            rest bits)))
 
 ; generate a note table with simple note-name->offset mappings
-(define (make-counters beg end rest)
-    (if (= beg end)
-        (list (list "rest" rest))
-        (cons (list (offset->note-name beg) beg)
-                    (make-counters (+ 1 beg) end rest))))
+(define (md:make-counters beg end rest)
+  (letrec ((mkcounters
+             (lambda (beg end rest)
+               (if (= beg end)
+                   (list (list "rest" rest))
+                   (cons (list (md:offset->note-name beg) beg)
+                         (mkcounters (+ 1 beg) end rest))))))
+    (alist->hash-table (mkcounters beg end rest))))
 
