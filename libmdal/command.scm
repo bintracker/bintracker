@@ -14,7 +14,8 @@
 (define md:cmd-type-reference 5)
 (define md:cmd-type-string 6)
 (define md:cmd-type-trigger 7)
-(define md:cmd-type-unknown 8)
+(define md:cmd-type-label 8)
+(define md:cmd-type-unknown 9)
 
 ; aux record type for encapsulating md:command-flags.
 (define-record-type md:command-flags
@@ -193,18 +194,22 @@
 
 ; construct an md:command object from a 'command' mdconf node and a md:target
 (define (md:xml-node->command node target configpath)
-  (md:make-command
-    (md:string->command-type (sxml:attr node 'type))
-    (sxml:num-attr node 'bits)
-    (sxml:attr node 'default)
-    (sxml:attr node 'to)
-    (md:xml-command-node->map node configpath)
-    (md:xml-command-node->command-flags node)
-    (md:xml-attr->tags (sxml:attr node 'tags))
-    (md:xml-command-node->range node)
-    (if (equal? '() ((sxpath "description/text()") node))
-        #f
-        (car ((sxpath "description/text()") node)))))
+  (let ((cmd-type (md:string->command-type (sxml:attr node 'type))))
+    (md:make-command
+      cmd-type
+      (if (or (equal? cmd-type md:cmd-type-trigger)
+              (equal? cmd-type md:cmd-type-label))
+          0
+          (sxml:num-attr node 'bits))
+      (sxml:attr node 'default)
+      (sxml:attr node 'to)
+      (md:xml-command-node->map node configpath)
+      (md:xml-command-node->command-flags node)
+      (md:xml-attr->tags (sxml:attr node 'tags))
+      (md:xml-command-node->range node)
+      (if (equal? '() ((sxpath "description/text()") node))
+          #f
+          (car ((sxpath "description/text()") node))))))
 
 
 ; construct an alist containing the default commands AUTHOR and TITLE

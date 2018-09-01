@@ -9,10 +9,10 @@
     </command>
     <command id="NOTE" bits="8" type="UKey" tags="Note"
         flags="enable_modifiers, use_last_set"
-        map="func(md:make-counters 1 12 0)" default="rest">
+        map="func(md:make-counters 0 12 1 0)" default="rest">
 		<description>Set the note for the given channel.</description>
 	</command>
-	<command id="DRUM" bits="0" type="Trigger" default="false">
+	<command id="DRUM" type="Trigger" default="false">
 		<description>Trigger a click drum. Replaces note on channel 1.</description>
 	</command>
 

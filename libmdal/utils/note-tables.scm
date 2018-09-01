@@ -63,15 +63,19 @@
                             (md:get-upper-bound cycles bits)
                             rest bits)))
 
-; generate a note table with simple note-name->offset mappings
-(define (md:make-counters beg end rest)
+; generate a note table with simple note-name->index mappings
+; beg   lowest note, as offset from c-0
+; end   highest note, as offset from c-0
+; first-index   index of the lowest note
+; rest-index    index of the rest/note-off
+(define (md:make-counters beg end first-index rest-index)
   (letrec ((mkcounters
-             (lambda (beg end rest)
+             (lambda (beg end first rest)
                (if (= beg end)
                    (list (list "rest" rest))
-                   (cons (list (md:offset->note-name beg) beg)
-                         (mkcounters (+ 1 beg) end rest))))))
-    (alist->hash-table (mkcounters beg end rest))))
+                   (cons (list (md:offset->note-name beg) first)
+                         (mkcounters (+ 1 beg) end (+ 1 first) rest))))))
+    (alist->hash-table (mkcounters beg end first-index rest-index))))
 
 ; returns the lowest note in the given note table
 (define (md:lowest-note table)
@@ -82,7 +86,7 @@
                tbl (md:offset->note-name offset) #f)
              (md:offset->note-name offset)
              (try-lower (+ offset 1) tbl)))))
-    (try-lower 1 table)))
+    (try-lower 0 table)))
 
 ; returns the highest note in the given note table
 (define (md:highest-note table)
