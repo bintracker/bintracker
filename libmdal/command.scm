@@ -137,7 +137,7 @@
 ; range of the command.
 (define (md:xml-command-node->range node)
   ; immediately abort if no range subnode found
-  (if (null-list? ((sxpath "range") node))
+  (if (null? ((sxpath "range") node))
       #f
       (let ((range-node (car ((sxpath "range") node)))
             (lower-limit (lambda (cmd-type bits)
@@ -229,7 +229,7 @@
     (append
       (letrec ((make-commands
                  (lambda (lst trgt)
-                   (if (null-list? lst)
+                   (if (null? lst)
                        '()
                        (cons (list (sxml:attr (car lst) 'id)
                                    (md:xml-node->command

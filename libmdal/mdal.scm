@@ -101,6 +101,9 @@
   (min-instances md:instance-range-min md:set-instance-range-min)
   (max-instances md:instance-range-max md:set-instance-range-max))
 
+(define (md:make-single-instance)
+  (md:make-instance-range 1 1))
+
 (define-record-type md:inode-config
   (md:make-inode-config instance-range subnodes cmd-id order-id)
   md:inode-config?
@@ -109,6 +112,20 @@
   (subnodes md:inode-config-subnodes md:set-inode-config-subnodes!)
   (cmd-id md:inode-config-cmd-id md:set-inode-config-cmd-id!)
   (order-id md:inode-config-order-id md:set-inode-config-order-id!))
+
+(define-record-printer (md:inode-config cfg out)
+  (begin
+    (fprintf out "#<md:inode-config\nmin-instances: ~S\nmax-instances: ~S\n"
+             (md:instance-range-min (md:inode-config-instance-range cfg))
+             (md:instance-range-max (md:inode-config-instance-range cfg)))
+    (when (md:inode-config-cmd-id cfg)
+      (fprintf out "source command: ~S\n" (md:inode-config-cmd-id cfg)))
+    (when (md:inode-config-order-id cfg)
+      (fprintf out "order node: ~S\n" (md:inode-config-order-id cfg)))
+    (when (md:inode-config-subnodes cfg)
+      (fprintf out "subnodes:\n")
+      (for-each (lambda (x) (fprintf out "~S\n" x))
+                (md:inode-config-subnodes cfg)))))
 
 (define (md:inode-config-endpoint? inode-cfg)
   (if (md:inode-config-subnodes) #f #t))
@@ -129,11 +146,11 @@
 
 ; dispatch function
 (define (md:xml-node->inode-config node instance-range)
-  (cond ((equal? (sxml:name node) "ifield")
+  (cond ((equal? (sxml:name node) 'ifield)
          (md:xml-ifield->inode-config node instance-range))
-        ((equal? (sxml:name node) "iblock")
+        ((equal? (sxml:name node) 'iblock)
          (md:xml-iblock->inode-config node instance-range))
-        ((equal? (sxml:name node) "clone")
+        ((equal? (sxml:name node) 'clone)
          (md:xml-clone-node->inode-config node instance-range))
         (else (md:xml-igroup->inode-config node instance-range))))
 
@@ -141,7 +158,32 @@
 
 ; construct the input tree (forest) config from a given mdconf root node
 (define (md:mdconf->inode-configs cfg-node)
-  (list "GLOBAL" (md:make-inode-config (md:make-instance-range 1 1) #f #f #f)))
+  (list "GLOBAL" (md:make-inode-config (md:make-single-instance) #f #f #f)))
+
+; from a given mdconf root node, construct a list l
+; (car l) is the inode-cfg tree of the GLOBAL inode
+; (cdr l) is the flat list of inode configs in the GLOBAL inode
+; TODO: deriving IDs from the 'from attribute is unsafe
+(define (md:make-global-group-config cfg-node)
+  (let 
+    ((subnodes
+       (append (list (list "AUTHOR"
+                           (md:make-inode-config (md:make-single-instance)
+                                                 #f "?AUTHOR" #f))
+                     (list "TITLE"
+                           (md:make-inode-config (md:make-single-instance)
+                                                 #f "?TITLE" #f)))
+               (map (lambda (x)
+                      (list (sxml:attr x 'from)
+                            (md:xml-node->inode-config
+                              x (md:make-single-instance))))
+                    ((sxpath "mdalconfig/ifield") cfg-node)))))
+    (let ((subnode-ids (map (lambda (x) (car x)) subnodes)))
+      (cons (list "GLOBAL" subnode-ids)
+            (cons (list "GLOBAL" (md:make-inode-config
+                                     (md:make-single-instance)
+                                     subnode-ids #f #f))
+                  subnodes)))))
 
 ; -----------------------------------------------------------------------------
 ; MDCONF: OUTPUT NODE CONFIGURATION
@@ -151,10 +193,6 @@
 ; order-layout reference-type
 ; order? list?
 ; some of these can probably be combined into a 'flags' field
-
-; should perhaps prefer 'null' over #f where appropriate -> no, because it
-; doesn't exist in chibi
-; but should perhaps use empty list '()
 
 (define-record-type md:onode-config
   (md:make-onode-config sources bytes sub-nodes composition-rule
@@ -202,7 +240,7 @@
     (let ((target (md:config-node->target cfg)))
       (md:make-config
         target
-        (if (null-list? ((sxpath "mdalconfig/description") cfg))
+        (if (null? ((sxpath "mdalconfig/description") cfg))
             #f
             (car ((sxpath "mdalconfig/description/text()") cfg)))
         ; TODO: properly extract configpath
