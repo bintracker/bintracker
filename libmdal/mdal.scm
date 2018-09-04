@@ -1,14 +1,14 @@
-; This file is part of the libmdal library.
-; Copyright (c) utz/irrlicht project 2018
-; See LICENSE for license details.
+;; This file is part of the libmdal library.
+;; Copyright (c) utz/irrlicht project 2018
+;; See LICENSE for license details.
 
-; (require-extension r7rs)
+;; (require-extension r7rs)
 (use simple-exceptions srfi-13 ssax sxpath sxpath-lolevel hahn)
 
 
-; -----------------------------------------------------------------------------
-; MDAL: UTILITIES
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDAL: UTILITIES
+;; -----------------------------------------------------------------------------
 
 (define-record-type md:range
   (md:make-range minimum maximum)
@@ -31,7 +31,7 @@
 (define (md:default-asm-syntax)
   (make-md:asm-syntax "$" "db" "dw" "dl"))
 
-; chicken does not define nth??? So here it goes, 0-indexed
+;; chicken does not define nth??? So here it goes, 0-indexed
 (define (nth n l)
   (if (or (> n (- (length l) 1)) (< n 0))
       (error "Index out of bounds.")
@@ -39,9 +39,9 @@
           (car l)
           (nth (- n 1) (cdr l)))))
 
-; -----------------------------------------------------------------------------
-; MDAL: GLOBAL VARS
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDAL: GLOBAL VARS
+;; -----------------------------------------------------------------------------
 
 (define *supported-versions* (md:make-range 2 2))
 (define *library-path* "")
@@ -55,9 +55,9 @@
 (load-relative "utils/note-tables.scm")
 
 
-; -----------------------------------------------------------------------------
-; MDCONF: TARGETS
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDCONF: TARGETS
+;; -----------------------------------------------------------------------------
 
 (define md:little-endian 0)
 (define md:big-endian 1)
@@ -82,19 +82,19 @@
   (clock-speed md:target-clock-speed)
   (export-format md:target-export-format))
 
-; -----------------------------------------------------------------------------
-; MDCONF: COMMANDS
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDCONF: COMMANDS
+;; -----------------------------------------------------------------------------
 
 (include "command.scm")
 
-; -----------------------------------------------------------------------------
-; MDCONF: INPUT NODE CONFIGURATION
-; -----------------------------------------------------------------------------
-; sub-nodes should be virtual (store id only)
-; every node must have a unique id
+;; -----------------------------------------------------------------------------
+;; MDCONF: INPUT NODE CONFIGURATION
+;; -----------------------------------------------------------------------------
+;; sub-nodes should be virtual (store id only)
+;; every node must have a unique id
 
-; aux record type for tracking instantiation requirements of md:inode-config
+;; aux record type for tracking instantiation requirements of md:inode-config
 (define-record-type md:instance-range
   (md:make-instance-range min-instances max-instances)
   md:instance-range?
@@ -130,8 +130,8 @@
 (define (md:inode-config-endpoint? inode-cfg)
   (if (md:inode-config-subnodes) #f #t))
 
-; would need to pass block-member? in order to determine instance-range
-; perhaps always need to pass range
+;; would need to pass block-member? in order to determine instance-range
+;; perhaps always need to pass range
 (define (md:xml-ifield->inode-config node instance-range)
   (md:make-inode-config instance-range #f (sxml:attr node 'from) #f))
 
@@ -144,7 +144,7 @@
 (define (md:xml-clone-node->inode-config node instance-range)
   (md:make-inode-config instance-range #f #f #f))
 
-; dispatch function
+;; dispatch function
 (define (md:xml-node->inode-config node instance-range)
   (cond ((equal? (sxml:name node) 'ifield)
          (md:xml-ifield->inode-config node instance-range))
@@ -154,45 +154,45 @@
          (md:xml-clone-node->inode-config node instance-range))
         (else (md:xml-igroup->inode-config node instance-range))))
 
-; TODO: generate orders, default inodes, clone blocks
+;; TODO: generate orders, default inodes, clone blocks
 
-; construct the input tree (forest) config from a given mdconf root node
+;; construct the input tree (forest) config from a given mdconf root node
 (define (md:mdconf->inode-configs cfg-node)
   (list "GLOBAL" (md:make-inode-config (md:make-single-instance) #f #f #f)))
 
-; from a given mdconf root node, construct a list l
-; (car l) is the inode-cfg tree of the GLOBAL inode
-; (cdr l) is the flat list of inode configs in the GLOBAL inode
-; TODO: deriving IDs from the 'from attribute is unsafe
+;; from a given mdconf root node, construct a list l
+;; (car l) is the inode-cfg tree of the GLOBAL inode
+;; (cdr l) is the flat list of inode configs in the GLOBAL inode
+;; TODO: deriving IDs from the 'from attribute is unsafe
 (define (md:make-global-group-config cfg-node)
   (let 
-    ((subnodes
-       (append (list (list "AUTHOR"
-                           (md:make-inode-config (md:make-single-instance)
-                                                 #f "?AUTHOR" #f))
-                     (list "TITLE"
-                           (md:make-inode-config (md:make-single-instance)
-                                                 #f "?TITLE" #f)))
-               (map (lambda (x)
-                      (list (sxml:attr x 'from)
-                            (md:xml-node->inode-config
+      ((subnodes
+	(append (list (list "AUTHOR"
+                            (md:make-inode-config (md:make-single-instance)
+                                                  #f "?AUTHOR" #f))
+                      (list "TITLE"
+                            (md:make-inode-config (md:make-single-instance)
+                                                  #f "?TITLE" #f)))
+		(map (lambda (x)
+                       (list (sxml:attr x 'from)
+                             (md:xml-node->inode-config
                               x (md:make-single-instance))))
-                    ((sxpath "mdalconfig/ifield") cfg-node)))))
+                     ((sxpath "mdalconfig/ifield") cfg-node)))))
     (let ((subnode-ids (map (lambda (x) (car x)) subnodes)))
       (cons (list "GLOBAL" subnode-ids)
             (cons (list "GLOBAL" (md:make-inode-config
-                                     (md:make-single-instance)
-                                     subnode-ids #f #f))
+				  (md:make-single-instance)
+                                  subnode-ids #f #f))
                   subnodes)))))
 
-; -----------------------------------------------------------------------------
-; MDCONF: OUTPUT NODE CONFIGURATION
-; -----------------------------------------------------------------------------
-; additional fields: fixed-length, max-length, min-instances, max-instances,
-; sort-ascending, use-little-endian (aka override-endianness)
-; order-layout reference-type
-; order? list?
-; some of these can probably be combined into a 'flags' field
+;; -----------------------------------------------------------------------------
+;; MDCONF: OUTPUT NODE CONFIGURATION
+;; -----------------------------------------------------------------------------
+;; additional fields: fixed-length, max-length, min-instances, max-instances,
+;; sort-ascending, use-little-endian (aka override-endianness)
+;; order-layout reference-type
+;; order? list?
+;; some of these can probably be combined into a 'flags' field
 
 (define-record-type md:onode-config
   (md:make-onode-config sources bytes sub-nodes composition-rule
@@ -200,11 +200,11 @@
   md:onode-config?
   )
 
-; -----------------------------------------------------------------------------
-; MDCONF: MASTER CONFIGURATION
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDCONF: MASTER CONFIGURATION
+;; -----------------------------------------------------------------------------
 
-; TODO: where to handle max-binsize?
+;; TODO: where to handle max-binsize?
 
 (define-record-type md:config
   (md:make-config target description commands inodes onodes)
@@ -226,87 +226,87 @@
               (hash-table->alist (md:config-commands cfg)))
     (fprintf out "\nINPUT NODES:\n\n~S\n\n" (md:config-inodes cfg))))
 
-; create an md:target from an mdconf root node
+;; create an md:target from an mdconf root node
 (define (md:config-node->target node)
   (eval (car (read-file (string-concatenate
-                          (list "targets/"
-                                (sxml:attr (car (sxml:content node)) 'target)
-                                ".scm"))))))
+                         (list "targets/"
+                               (sxml:attr (car (sxml:content node)) 'target)
+                               ".scm"))))))
 
-; generate an md:config from a given .mdconf file
+;; generate an md:config from a given .mdconf file
 (define (md:mdconf->config filepath)
   (let ((cfg (call-with-input-file filepath
-                                   (lambda (x) (ssax:xml->sxml x '())))))
+               (lambda (x) (ssax:xml->sxml x '())))))
     (let ((target (md:config-node->target cfg)))
       (md:make-config
-        target
-        (if (null? ((sxpath "mdalconfig/description") cfg))
-            #f
-            (car ((sxpath "mdalconfig/description/text()") cfg)))
-        ; TODO: properly extract configpath
-        (md:xml-command-nodes->commands
-          ((sxpath "mdalconfig/command") cfg) target "config/Huby/")
-        (md:mdconf->inode-configs cfg)
-        #f    ;onodes
-        ))))
+       target
+       (if (null? ((sxpath "mdalconfig/description") cfg))
+           #f
+           (car ((sxpath "mdalconfig/description/text()") cfg)))
+       ;; TODO: properly extract configpath
+       (md:xml-command-nodes->commands
+        ((sxpath "mdalconfig/command") cfg) target "config/Huby/")
+       (md:mdconf->inode-configs cfg)
+       #f    ;; onodes
+       ))))
 
-; -----------------------------------------------------------------------------
-; MDMOD: INPUT NODES
-; -----------------------------------------------------------------------------
-; instances?
+;; -----------------------------------------------------------------------------
+;; MDMOD: INPUT NODES
+;; -----------------------------------------------------------------------------
+;; instances?
 
 #|
 (define-record-type md:inode
-  (make-md:inode cfg-id sub-nodes val is-active)
-  md:inode?
-  ; ...
-  )
+(make-md:inode cfg-id sub-nodes val is-active)
+md:inode?
+  ; ...					; ;
+)
 |#
-; -----------------------------------------------------------------------------
-; MDMOD: OUTPUT NODES
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDMOD: OUTPUT NODES
+;; -----------------------------------------------------------------------------
 #|
 (define-record-type md:onode
-  (make-md:onode cfg-id sub-nodes instances val)
-  ; ...
-  )
+(make-md:onode cfg-id sub-nodes instances val)
+  ; ...					; ;
+)
 |#
-; -----------------------------------------------------------------------------
-; MDMOD: MODULE
-; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; MDMOD: MODULE
+;; -----------------------------------------------------------------------------
 #|
 (define-record-type md:module
-  (make-md:module cfg input-nodes output-nodes)
-  md:module?
-  ; ...
-  )
+(make-md:module cfg input-nodes output-nodes)
+md:module?
+  ; ...					; ;
+)
 |#
 
-; to parse: (read-lines "file.mdal")
+;; to parse: (read-lines "file.mdal")
 
 
 #|
-; -----------------------------------------------------------------------------
-; MDMOD: INPUT FIELDS
-; -----------------------------------------------------------------------------
+; ----------------------------------------------------------------------------- ; ;
+; MDMOD: INPUT FIELDS			; ;
+; ----------------------------------------------------------------------------- ; ;
 
 (define-record-type md:field
-  (make-md:field val is-active cfg-id)
-  md:field?
-  (val md:field-val md:field-set-val!)
-  (is-active md:field-active md:field-set-active!)
-  (cfg-id md:field-cfg md:field-set-cfg!))
+(make-md:field val is-active cfg-id)
+md:field?
+(val md:field-val md:field-set-val!)
+(is-active md:field-active md:field-set-active!)
+(cfg-id md:field-cfg md:field-set-cfg!))
 
 (define (md:field-activate! field)
-  (md:field-set-active! field #t))
+(md:field-set-active! field #t))
 
 (define (md:field-set! field val)
-  (md:field-set-val! field val)
-  (md:field-activate! field))
+(md:field-set-val! field val)
+(md:field-activate! field))
 
 (define (md:field-clear! field)
-  (md:field-set-val! field "")
-  (md:field-set-active! field #f))
+(md:field-set-val! field "")
+(md:field-set-active! field #f))
 
 |#
 
