@@ -1,56 +1,56 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <mdalconfig version="2" target="spectrum48">
 
-    <description>A simple 2 channel pin pulse (PFM) engine in less than 100 bytes. By Shiru 2011, 2013.</description>
+  <description>A simple 2 channel pin pulse (PFM) engine in less than 100 bytes. By Shiru 2011, 2013.</description>
 
-    <command id="BPM" bits="16" type="UInt" default="140">
-		<description>Set the speed of the tune.</description>
-        <range min="1" />
-    </command>
-    <command id="NOTE" bits="8" type="UKey" tags="Note"
-        flags="enable_modifiers, use_last_set"
-        map="func(md:make-counters 0 12 1 0)" default="rest">
-		<description>Set the note for the given channel.</description>
-	</command>
-	<command id="DRUM" type="Trigger" default="false">
-		<description>Trigger a click drum. Replaces note on channel 1.</description>
-	</command>
+  <command id="BPM" bits="16" type="UInt" default="140">
+    <description>Set the speed of the tune.</description>
+    <range min="1" />
+  </command>
+  <command id="NOTE" bits="8" type="UKey" tags="Note"
+           flags="enable_modifiers, use_last_set"
+           map="func(md:make-counters 0 12 1 0)" default="rest">
+    <description>Set the note for the given channel.</description>
+  </command>
+  <command id="DRUM" type="Trigger" default="false">
+    <description>Trigger a click drum. Replaces note on channel 1.</description>
+  </command>
 
-	<ifield from="?BPM" />
-	<igroup id="PATTERNS">
-		<iblock id="DRUMS" flags="ordered">
-			<ifield from="?DRUM" /><!-- ifields inherit their id from the command-->
-		</iblock>
-		<clone count="2">
-			<iblock id="CH%d" flags="ordered"><!-- %d = decimal, %x = hex, %a = alphabetic -->
-				<ifield from="?NOTE" />
-			</iblock>
-		</clone>
-	</igroup>
-    <!--<igroup id="test1">
-        <igroup id="test2" instances="3">
-            <igroup id="test3"></igroup>
-        </igroup>
-    </igroup>-->
+  <ifield from="?BPM" />
+  <igroup id="PATTERNS">
+    <iblock id="DRUMS" flags="ordered">
+      <ifield from="?DRUM" /><!-- ifields inherit their id from the command-->
+    </iblock>
+    <clone count="2">
+      <iblock id="CH%d" flags="ordered"><!-- %d = decimal, %x = hex, %a = alphabetic -->
+	<ifield from="?NOTE" />
+      </iblock>
+    </clone>
+  </igroup>
+  <!--<igroup id="test1">
+      <igroup id="test2" instances="3">
+      <igroup id="test3"></igroup>
+      </igroup>
+      </igroup>-->
 
-	<ogroup>
-		<ofield value=";sequence" /><!-- implies size="0"-->
-        <ofield value="(/ 1779661 ?BPM)" bytes="2" /><!--cpufreq*60/cyclecount*BPM)-->
-		<ofield value="\tdw sequence_end-8" bytes="2" />
-		<oorder from="?PATTERNS" type="numeric" layout="matrix" /><!--ok, but how to handle transpose/jumps? Probably better to define fields.-->
-		<ofield value="\tdb 0" />
-		<ofield value="sequence_end" />
-		<oblock from="?CH1, ?DRUMS" length="8">
-			<ofield bytes="1">
-				<set value="?NOTE" />
-				<set if="(set ?DRUM)" value="#x2c" mode="replace" /><!-- replace, add, and, or, eor, default=or-->
-			</ofield>
-		</oblock>
-		<oblock from="?CH2" length="8">
-			<ofield bytes="1" instances="8">
-				<set value="?NOTE" />
-			</ofield>
-		</oblock>
-	</ogroup>
+  <ogroup>
+    <ofield value=";sequence" /><!-- implies size="0"-->
+    <ofield value="(/ 1779661 ?BPM)" bytes="2" /><!--cpufreq*60/cyclecount*BPM)-->
+    <ofield value="\tdw sequence_end-8" bytes="2" />
+    <oorder from="?PATTERNS" type="numeric" layout="matrix" /><!--ok, but how to handle transpose/jumps? Probably better to define fields.-->
+    <ofield value="\tdb 0" />
+    <ofield value="sequence_end" />
+    <oblock from="?CH1, ?DRUMS" length="8">
+      <ofield bytes="1">
+	<set value="?NOTE" />
+	<set if="(set ?DRUM)" value="#x2c" mode="replace" /><!-- replace, add, and, or, eor, default=or-->
+      </ofield>
+    </oblock>
+    <oblock from="?CH2" length="8">
+      <ofield bytes="1" instances="8">
+	<set value="?NOTE" />
+      </ofield>
+    </oblock>
+  </ogroup>
 
 </mdalconfig>

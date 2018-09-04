@@ -130,13 +130,27 @@
 (define (md:inode-config-endpoint? inode-cfg)
   (if (md:inode-config-subnodes) #f #t))
 
+(define (md:xml-node->inode-config-id node)
+  (cond ((sxml:attr node 'id) (sxml:attr node 'id))
+	((sxml:attr node 'from) (sxml:attr node 'from))
+	(else (error "Cannot determine inode config id"))))
+
 ;; would need to pass block-member? in order to determine instance-range
 ;; perhaps always need to pass range
 (define (md:xml-ifield->inode-config node instance-range)
-  (md:make-inode-config instance-range #f (sxml:attr node 'from) #f))
+  (list (md:xml-node->inode-config-id node)
+	(md:make-inode-config instance-range #f (sxml:attr node 'from) #f)))
 
 (define (md:xml-iblock->inode-config node instance-range)
-  (md:make-inode-config instance-range #f #f #f))
+  (let ((subnodes (map (lambda (x)
+			 (md:xml-node->inode-config
+			  x (md:make-instance-range 1 #f)))
+		       ((sxpath "ifield") node))))
+    (cons (list (md:xml-node->inode-config-id node)
+		(map (lambda (x) (car x)) subnodes))
+	  (cons (list (md:xml-node->inode-config-id node)
+		      (md:make-inode-config instance-range #f #f #f))
+		subnodes))))
 
 (define (md:xml-igroup->inode-config node instance-range)
   (md:make-inode-config instance-range #f #f #f))
@@ -174,9 +188,7 @@
                             (md:make-inode-config (md:make-single-instance)
                                                   #f "?TITLE" #f)))
 		(map (lambda (x)
-                       (list (sxml:attr x 'from)
-                             (md:xml-node->inode-config
-                              x (md:make-single-instance))))
+                       (md:xml-node->inode-config x (md:make-single-instance)))
                      ((sxpath "mdalconfig/ifield") cfg-node)))))
     (let ((subnode-ids (map (lambda (x) (car x)) subnodes)))
       (cons (list "GLOBAL" subnode-ids)

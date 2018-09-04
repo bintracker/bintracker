@@ -6,3 +6,5 @@
 (define my-ifield (car ((sxpath "mdalconfig/ifield") cfg)))
 (define my-node (md:xml-node->inode-config my-ifield (md:make-single-instance)))
 (define globals (md:make-global-group-config cfg))
+(define blknode (car ((sxpath "mdalconfig/igroup/iblock") cfg)))
+(define blk (md:xml-iblock->inode-config blknode (md:make-instance-range 1 #f)))
