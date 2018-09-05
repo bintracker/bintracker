@@ -133,7 +133,7 @@
 ;; determine ID of a mdconf inode config node.
 ;; ID is derived from the 'id' attribute, or from the 'from' attribute if 'id'
 ;; is not found.
-(define (md:xml-node->inode-config-id node)
+(define (md:parse-inode-config-id node)
   (cond ((sxml:attr node 'id) (sxml:attr node 'id))
 	((sxml:attr node 'from) (sxml:attr node 'from))
 	(else (error "Cannot determine inode config id"))))
@@ -142,7 +142,7 @@
 ;; (car lst) is the ID tree (containing only one node)
 ;; (cdr lst) is a list containing the inode config
 (define (md:parse-ifield-config node instance-range)
-  (list (list (md:xml-node->inode-config-id node))
+  (list (list (md:parse-inode-config-id node))
 	(list (md:make-inode-config instance-range #f
 				    (sxml:attr node 'from) #f))))
   
@@ -151,12 +151,12 @@
 ;; (cdr lst) is the flat list of the node config and all subnodes
 (define (md:parse-iblock-config node instance-range)
   (let ((subnodes (map (lambda (x)
-			 (md:xml-node->inode-config
+			 (md:parse-inode-config
 			  x (md:make-instance-range 1 #f)))
 		       ((sxpath "ifield") node))))
-    (cons (list (md:xml-node->inode-config-id node)
+    (cons (list (md:parse-inode-config-id node)
 		(map (lambda (x) (caar x)) subnodes))
-	  (cons (list (md:xml-node->inode-config-id node)
+	  (cons (list (md:parse-inode-config-id node)
 		      (md:make-inode-config instance-range #f #f #f))
 		(map (lambda (x) (cons (caar x) (cadr x)))
 		     subnodes)))))
@@ -164,14 +164,15 @@
 ;; From a given mdconf igroup node, construct a list lst
 ;; (car lst) is the ID tree
 ;; (cdr lst) is the flat list of the node and all subnodes
+;; TODO pass down correct instance ranges
 (define (md:parse-igroup-config node instance-range)
   (let ((subnodes (map (lambda (x)
-			 (md:xml-node->inode-config
+			 (md:parse-inode-config
 			  x (md:make-instance-range 1 #f)))
-		       ((sxpath "ifield") node))))
-    (cons (list (md:xml-node->inode-config-id node)
+		       (cddr node))))
+    (cons (list (md:parse-inode-config-id node)
 		(map (lambda (x) (caar x)) subnodes))
-	  (cons (list (md:xml-node->inode-config-id node)
+	  (cons (list (md:parse-inode-config-id node)
 		      (md:make-inode-config instance-range #f #f #f))
 		(map (lambda (x) (cons (caar x) (cadr x)))
 		     subnodes)))))
@@ -180,13 +181,16 @@
   (md:make-inode-config instance-range #f #f #f))
 
 ;; dispatch function
-(define (md:xml-node->inode-config node instance-range)
+;; from a given mdconf igroup node, construct a list lst
+;; (car lst) is the ID tree
+;; (cdr lst) is the flat list of the node config and all subnodes
+(define (md:parse-inode-config node instance-range)
   (cond ((equal? (sxml:name node) 'ifield)
          (md:parse-ifield-config node instance-range))
         ((equal? (sxml:name node) 'iblock)
          (md:parse-iblock-config node instance-range))
         ((equal? (sxml:name node) 'clone)
-         (md:xml-clone-node->inode-config node instance-range))
+         (md:parse-clone-config node instance-range))
         (else (md:parse-igroup-config node instance-range))))
 
 ;; TODO: generate orders, default inodes, clone blocks
@@ -210,7 +214,7 @@
 				   (md:make-single-instance)
 				   #f "?TITLE" #f))))
 		(map (lambda (x)
-                       (md:xml-node->inode-config x (md:make-single-instance)))
+                       (md:parse-inode-config x (md:make-single-instance)))
                      ((sxpath "mdalconfig/ifield") cfg-node)))))
     (let ((subnode-ids (map (lambda (x) (caar x)) subnodes)))
       (cons (list "GLOBAL" subnode-ids)

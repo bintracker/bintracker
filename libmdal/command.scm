@@ -81,11 +81,11 @@
 (define (md:uint-command? cmd) (= (md:command-type cmd) md:cmd-type-uint))
 (define (md:key-command? cmd) (= (md:command-type cmd) md:cmd-type-key))
 (define (md:ukey-command? cmd) (= (md:command-type cmd) md:cmd-type-ukey))
-(define (md:note-command? cmd) (= (md:command-type cmd) md:cmd-type-note))
 (define (md:reference-command? cmd)
   (= (md:command-type cmd) md:cmd-type-reference))
 (define (md:string-command? cmd) (= (md:command-type cmd) md:cmd-type-string))
 (define (md:trigger-command? cmd) (= (md:command-type cmd) md:cmd-type-trigger))
+(define (md:label-command? cmd) (= (md:command-type cmd) md:cmd-type-label))
 
 (define (md:string->command-type str)
   (cond ((string-ci= str "int") md:cmd-type-int)
@@ -95,6 +95,7 @@
         ((string-ci= str "reference") md:cmd-type-reference)
         ((string-ci= str "string") md:cmd-type-string)
         ((string-ci= str "trigger") md:cmd-type-trigger)
+	((string-ci= str "label") md:cmd-type-label)
         (else #f)))
 
 (define (md:command-type->string type)
@@ -105,6 +106,7 @@
         ((= type md:cmd-type-reference) "Reference")
         ((= type md:cmd-type-string) "String")
         ((= type md:cmd-type-trigger) "Trigger")
+	((= type md:cmd-type-label) "Label")
         (else "invalid type")))
 
 (define-record-printer (md:command cmd out)

@@ -21,11 +21,11 @@
     <iblock id="DRUMS" flags="ordered">
       <ifield from="?DRUM" /><!-- ifields inherit their id from the command-->
     </iblock>
-    <clone count="2">
+    <!-- <clone count="2"> -->
       <iblock id="CH%d" flags="ordered"><!-- %d = decimal, %x = hex, %a = alphabetic -->
 	<ifield from="?NOTE" />
       </iblock>
-    </clone>
+    <!-- </clone> -->
   </igroup>
   <!--<igroup id="test1">
       <igroup id="test2" instances="3">
