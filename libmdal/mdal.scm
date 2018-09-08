@@ -132,7 +132,8 @@
     (when (md:inode-config-subnodes cfg)
       (fprintf out "subnodes:\n")
       (for-each (lambda (x) (fprintf out "~S\n" x))
-                (md:inode-config-subnodes cfg)))))
+                (md:inode-config-subnodes cfg)))
+    (fprintf out ">")))
 
 (define (md:inode-config-endpoint? inode-cfg)
   (if (md:inode-config-subnodes) #f #t))
@@ -238,11 +239,13 @@
   (let 
       ((subnodes
 	(append (list (list (list (list "AUTHOR"))
-			    (list (md:make-inode-config
+			    (list "AUTHOR"
+				  (md:make-inode-config
 				   (md:make-single-instance)
 				   #f "?AUTHOR" #f)))
 		      (list (list (list "TITLE"))
-			    (list (md:make-inode-config
+			    (list "TITLE"
+				  (md:make-inode-config
 				   (md:make-single-instance)
 				   #f "?TITLE" #f))))
 		(map (lambda (x)
@@ -253,8 +256,7 @@
 	    (cons (list "GLOBAL" (md:make-inode-config
 				  (md:make-single-instance)
 				  subnode-ids #f #f))
-		  (map (lambda (x) (cons (caaar x) (cadr x)))
-		       subnodes))))))
+		  (map (lambda (x) (cadr x)) subnodes))))))
 
 ;; parse inode configs of a given mdconf xml node, and generate an inode id tree
 ;; and a flat list of inodes from it
@@ -311,7 +313,9 @@
                 (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
               (hash-table->alist (md:config-commands cfg)))
     (fprintf out "\nINODE TREE:\n~S\n" (md:config-itree cfg))
-    (fprintf out "\nINPUT NODES:\n\n~S\n\n" (md:config-inodes cfg))))
+    (for-each (lambda (x)
+                (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
+              (hash-table->alist (md:config-inodes cfg)))))
 
 ;; create an md:target from an mdconf root node
 (define (md:config-node->target node)
