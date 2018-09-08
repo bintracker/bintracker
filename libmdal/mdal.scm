@@ -39,6 +39,13 @@
           (car l)
           (nth (- n 1) (cdr l)))))
 
+;; pair elements in a list
+(define (md:make-pairs lst)
+	  (if (null? lst)
+	      '()
+	      (cons (list (car lst) (cadr lst))
+		    (md:make-pairs (cddr lst)))))
+
 ;; -----------------------------------------------------------------------------
 ;; MDAL: GLOBAL VARS
 ;; -----------------------------------------------------------------------------
@@ -139,11 +146,12 @@
 	(else (error "Cannot determine inode config id"))))
 
 ;; From a given mdconf ifield node, construct a list lst
-;; (car lst) is the ID tree (containing only one node)
+;; (caar lst) is the ID tree (containing only one node)
 ;; (cdr lst) is a list containing the inode config
 (define (md:parse-ifield-config node instance-range)
-  (list (list (md:parse-inode-config-id node))
-	(list (md:make-inode-config instance-range #f
+  (list (list (list (md:parse-inode-config-id node)))
+	(list (md:parse-inode-config-id node)
+	      (md:make-inode-config instance-range #f
 				    (sxml:attr node 'from) #f))))
   
 ;; From a given mdconf iblock node, construct a list lst
@@ -154,12 +162,12 @@
 			 (md:parse-inode-config
 			  x (md:make-instance-range 1 #f)))
 		       ((sxpath "ifield") node))))
-    (cons (list (md:parse-inode-config-id node)
-		(map (lambda (x) (caar x)) subnodes))
+    (cons (list (list (md:parse-inode-config-id node)
+		      (map (lambda (x) (caaar x)) subnodes)))
 	  (cons (list (md:parse-inode-config-id node)
 		      (md:make-inode-config instance-range #f #f #f))
-		(map (lambda (x) (cons (caar x) (cadr x)))
-		     subnodes)))))
+		(map (lambda (x) (cadr x)) subnodes)))))
+
 
 ;; From a given mdconf igroup node, construct a list lst
 ;; (car lst) is the ID tree
@@ -174,11 +182,40 @@
 		(map (lambda (x) (caar x)) subnodes))
 	  (cons (list (md:parse-inode-config-id node)
 		      (md:make-inode-config instance-range #f #f #f))
-		(map (lambda (x) (cons (caar x) (cadr x)))
-		     subnodes)))))
+		(md:make-pairs (flatten (map (lambda (x) (cdr x))
+					     subnodes)))))))
 
+
+;; TODO: fails if there are several ifield subnodes with the same source cmd
 (define (md:parse-clone-config node instance-range)
-  (md:make-inode-config instance-range #f #f #f))
+  (letrec*
+      ((rename-lst (lambda (lst postfix)
+		     (map (lambda (x)
+			    (if (pair? x)
+				(rename-lst x postfix)
+				(string-append x (number->string postfix))))
+			  lst)))
+       (embryo (md:parse-inode-config (car (sxml:content-raw node))
+				      instance-range))
+       (clone-amount (string->number (sxml:attr node 'count)))
+       (create-id-list-copies
+	(lambda (beg end)
+	  (if (= beg end)
+	      (rename-lst (caar embryo) end)
+	      (list (rename-lst (caar embryo) beg)
+		      (create-id-list-copies (+ beg 1) end)))))
+       (rename-cfg
+	(lambda (cfg pf)
+	  (list (string-append (car cfg) (number->string pf))
+		(cadr cfg))))
+       (create-config-copies
+	(lambda (beg end)
+	  (if (= beg end)
+	      (map (lambda (x) (rename-cfg x end)) (cdr embryo))
+	      (append (map (lambda (x) (rename-cfg x beg)) (cdr embryo))
+		      (create-config-copies (+ beg 1) end))))))
+    (cons (create-id-list-copies 1 clone-amount)
+	  (create-config-copies 1 clone-amount))))
 
 ;; dispatch function
 ;; from a given mdconf igroup node, construct a list lst
@@ -193,11 +230,6 @@
          (md:parse-clone-config node instance-range))
         (else (md:parse-igroup-config node instance-range))))
 
-;; TODO: generate orders, default inodes, clone blocks
-
-;; construct the input tree (forest) config from a given mdconf root node
-(define (md:mdconf->inode-configs cfg-node)
-  (list "GLOBAL" (md:make-inode-config (md:make-single-instance) #f #f #f)))
 
 ;; from a given mdconf root node, construct a list l
 ;; (car l) is the inode-cfg tree of the GLOBAL inode
@@ -205,24 +237,38 @@
 (define (md:make-global-group-config cfg-node)
   (let 
       ((subnodes
-	(append (list (list (list "AUTHOR")
-                            (list (md:make-inode-config
+	(append (list (list (list (list "AUTHOR"))
+			    (list (md:make-inode-config
 				   (md:make-single-instance)
 				   #f "?AUTHOR" #f)))
-                      (list (list "TITLE")
-                            (list (md:make-inode-config
+		      (list (list (list "TITLE"))
+			    (list (md:make-inode-config
 				   (md:make-single-instance)
 				   #f "?TITLE" #f))))
 		(map (lambda (x)
-                       (md:parse-inode-config x (md:make-single-instance)))
-                     ((sxpath "mdalconfig/ifield") cfg-node)))))
-    (let ((subnode-ids (map (lambda (x) (caar x)) subnodes)))
-      (cons (list "GLOBAL" subnode-ids)
+		       (md:parse-inode-config x (md:make-single-instance)))
+		     ((sxpath "mdalconfig/ifield") cfg-node)))))
+    (let ((subnode-ids (map (lambda (x) (caaar x)) subnodes)))
+      (cons (list (list "GLOBAL" subnode-ids))
 	    (cons (list "GLOBAL" (md:make-inode-config
 				  (md:make-single-instance)
 				  subnode-ids #f #f))
-		  (map (lambda (x) (cons (caar x) (cadr x)))
+		  (map (lambda (x) (cons (caaar x) (cadr x)))
 		       subnodes))))))
+
+;; parse inode configs of a given mdconf xml node, and generate an inode id tree
+;; and a flat list of inodes from it
+;; also generates default nodes and orders
+(define (md:parse-inode-configs cfg-node)
+  (letrec* ((parse-igroups (lambda (lst)
+			    (map (lambda (x)
+				   (md:parse-inode-config
+				    x (md:make-single-instance)))
+				 lst)))
+	   (globals (md:make-global-group-config cfg-node))
+	   (igroups (parse-igroups ((sxpath "mdalconfig/igroup") cfg-node))))
+    (list (append (car globals) (list (caar igroups)))
+	  (append (cdr globals) (cdar igroups)))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: OUTPUT NODE CONFIGURATION
@@ -267,10 +313,10 @@
 
 ;; create an md:target from an mdconf root node
 (define (md:config-node->target node)
-  (eval (car (read-file (string-concatenate
-                         (list "targets/"
-                               (sxml:attr (car (sxml:content node)) 'target)
-                               ".scm"))))))
+  (eval (car (read-file (string-append
+			 "targets/"
+                         (sxml:attr (car (sxml:content node)) 'target)
+                         ".scm")))))
 
 ;; generate an md:config from a given .mdconf file
 (define (md:mdconf->config filepath)
@@ -285,7 +331,7 @@
        ;; TODO: properly extract configpath
        (md:xml-command-nodes->commands
         ((sxpath "mdalconfig/command") cfg) target "config/Huby/")
-       (md:mdconf->inode-configs cfg)
+       (md:parse-inode-configs cfg)
        #f    ;; onodes
        ))))
 

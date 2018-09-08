@@ -16,16 +16,18 @@
     <description>Trigger a click drum. Replaces note on channel 1.</description>
   </command>
 
-  <ifield from="?BPM" />
+  <ifield from="BPM" />
   <igroup id="PATTERNS">
+    <!-- <ifield from="BPM" /> -->
     <iblock id="DRUMS" flags="ordered">
-      <ifield from="?DRUM" /><!-- ifields inherit their id from the command-->
+      <ifield from="DRUM" />
     </iblock>
-    <!-- <clone count="2"> -->
-      <iblock id="CH%d" flags="ordered"><!-- %d = decimal, %x = hex, %a = alphabetic -->
-	<ifield from="?NOTE" />
+    <clone count="2">
+      <iblock id="CH" flags="ordered">
+	<!-- <ifield from="TEST" /> -->
+	<ifield from="NOTE" />
       </iblock>
-    <!-- </clone> -->
+    </clone>
   </igroup>
   <!--<igroup id="test1">
       <igroup id="test2" instances="3">

@@ -185,10 +185,9 @@
       (let ((attr (sxml:attr node 'map)))
         (cond ((string-ci= (substring/shared attr 0 5) "file(")
                (md:mapfile->map
-                (string-concatenate
-                 (list configpath
-                       (substring/shared attr 5
-                                         (- (string-length attr) 1))))))
+                (string-append configpath
+			       (substring/shared attr 5
+						 (- (string-length attr) 1)))))
               ((string-ci= (substring/shared attr 0 5) "func(")
                (eval (read (open-input-string (substring/shared attr 4)))))
               (else #f)))
