@@ -17,13 +17,13 @@
   </command>
 
   <ifield from="BPM" />
-  <igroup id="PATTERNS">
+  <igroup id="PATTERNS" flags="ordered">
     <!-- <ifield from="BPM" /> -->
-    <iblock id="DRUMS" flags="ordered">
+    <iblock id="DRUMS">
       <ifield from="DRUM" />
     </iblock>
     <clone count="2">
-      <iblock id="CH" flags="ordered">
+      <iblock id="CH">
 	<!-- <ifield from="TEST" /> -->
 	<ifield from="NOTE" />
       </iblock>
