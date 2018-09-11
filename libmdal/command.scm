@@ -115,6 +115,8 @@
              (md:command-type->string (md:command-type cmd))
              (md:command-bits cmd)
              (md:command-default cmd))
+    (when (md:command-reference-to cmd)
+      (fprintf out "\nref:     ~S" (md:command-reference-to cmd)))
     (when (md:command-keys cmd)
       (fprintf out "\nkeys:    ~S" (md:command-keys cmd)))
     (when (md:command-flags-any? (md:command-flags cmd))

@@ -271,14 +271,14 @@
 ;;     (list (append (car globals) (list (caar igroups)))
 ;; 	  (cons (cdr globals) (cdar igroups)))))
 
-
+;; generate the 'GLOBAL' inode tree of a given MDCONF root node
 (define (md:xml-node->global-inode-tree cfg-node)
   (list "GLOBAL"
 	(append '(("AUTHOR") ("TITLE"))
 		(map (lambda (x) (list (md:parse-inode-config-id x)))
 		     ((sxpath "mdalconfig/ifield") cfg-node)))))
 
-       
+;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID names
 (define (md:clone-inode-tree tree amount)
   (letrec*
       ((rename-lst (lambda (lst postfix)
@@ -295,12 +295,28 @@
 		      (create-id-list-copies (+ beg 1) end l))))))
     (create-id-list-copies 1 amount tree)))
 
+;; generate the inode tree of an auto-generated igroup order
 (define (md:generate-inode-order-tree node)
   (cons (string-append (sxml:name node) "_ORDER")
 	(list (map (lambda (x) (list (string-append "R_" (car x))))
 		   (cadr node)))))
 
+;; return the IDs of the subnodes of a given inode ID in the given inode tree
+(define (md:get-subnodes inode-id itree)
+  (letrec ((get-nodes (lambda (tree)
+			(let ((nodes (alist-ref inode-id tree string=)))
+			  (if (null? nodes)
+			      '()
+			      (map (lambda (x) (car x)) (car nodes)))))))
+    (if (not (member inode-id (flatten itree)))
+	#f
+	(if (not (member inode-id (flatten (car itree))))
+	    (md:get-subnodes inode-id (cdr itree))
+	    (if (not (member inode-id (map (lambda (x) (car x)) itree)))
+		(md:get-subnodes inode-id (cadar itree))
+		(get-nodes itree))))))
 
+;; return the inode tree of a given list of xml inode configs
 (define (md:xml-nodes->inode-tree nodes)
   (let ((get-tree
 	 (lambda (node)
@@ -329,10 +345,20 @@
 	    (cons (get-tree (car nodes))
 		  (md:xml-nodes->inode-tree (cdr nodes)))))))
 
-
+;; extract the inode tree from a given MDCONF root node
 (define (md:parse-inode-tree cfg-node)
   (cons (md:xml-node->global-inode-tree cfg-node)
 	(md:xml-nodes->inode-tree ((sxpath "mdalconfig/igroup") cfg-node))))
+
+;; generate a hash list of reference commands required by
+;; auto-generated order inodes
+(define (md:create-order-commands itree)
+  (alist->hash-table 
+   (map (lambda (x) (list x (md:make-command md:cmd-type-reference
+					     16 "0" (substring/shared x 2)
+					     #f (md:make-empty-command-flags)
+					     #f #f #f)))
+	(filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: OUTPUT NODE CONFIGURATION
@@ -402,16 +428,19 @@
 (define (md:mdconf->config filepath)
   (let ((cfg (call-with-input-file filepath
                (lambda (x) (ssax:xml->sxml x '())))))
-    (let ((target (md:config-node->target cfg)))
+    (let ((target (md:config-node->target cfg))
+	  (itree (md:parse-inode-tree cfg)))
       (md:make-config
        target
        (if (null? ((sxpath "mdalconfig/description") cfg))
            #f
            (car ((sxpath "mdalconfig/description/text()") cfg)))
        ;; TODO: properly extract configpath
-       (md:xml-command-nodes->commands
-        ((sxpath "mdalconfig/command") cfg) target "config/Huby/")
-       (md:parse-inode-tree cfg)   ;; (car itree+nodes)
+       (hash-table-merge (md:xml-command-nodes->commands
+			  ((sxpath "mdalconfig/command") cfg)
+			  target "config/Huby/")
+			 (md:create-order-commands itree))
+       itree
        #f    ;; (cadr itree+nodes)
        #f    ;; onodes
        ))))
