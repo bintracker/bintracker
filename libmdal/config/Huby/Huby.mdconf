@@ -24,8 +24,7 @@
     </iblock>
     <clone count="2">
       <iblock id="CH">
-	<!-- <ifield from="TEST" /> -->
-	<ifield from="NOTE" />
+    	<ifield from="NOTE" />
       </iblock>
     </clone>
   </igroup>
