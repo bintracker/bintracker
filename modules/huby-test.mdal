@@ -1,16 +1,17 @@
-CONFIG="Huby"
+MDAL_VERSION=2
+CONFIG="Huby"       //comment
 
 AUTHOR="utz"
 TITLE="Huby Test"
 BPM=120
 
-:PATTERNS {
-    :ORDER {
+PATTERNS={
+    ORDER={
         $00,$00,$00
         R_CH2=$01
     }
 
-    :DRUMS($00)[beat0] {
+    DRUMS($00)[beat0]={
         DRUM=on
         .3
         DRUM=on
@@ -21,7 +22,7 @@ BPM=120
         .3
     }
 
-    :CH1($00) {
+    CH1($00)={
         NOTE=a3
         .
         NOTE=rest
@@ -40,12 +41,12 @@ BPM=120
         .
     }
 
-    :CH2($00) {
+    CH2($00)={
         NOTE=a2
         .15
     }
 
-    :CH2($01) {
+    CH2($01)={
         NOTE=e2
         .15
     }

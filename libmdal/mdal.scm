@@ -42,7 +42,8 @@
 ;; MDAL: GLOBAL VARS
 ;; -----------------------------------------------------------------------------
 
-(define *supported-versions* (md:make-range 2 2))
+(define *supported-config-versions* (md:make-range 2 2))
+(define *supported-module-versions* (md:make-range 2 2))
 (define *library-path* "")
 (define *config-path* "config/")
 (define *config*)
@@ -359,7 +360,7 @@
     (hash-table-merge
      (hash-table-merge igroups
 		       (md:make-global-group-inodes cfg-node))
-     (md:create-order-inodes (md:parse-inode-tree cfg-node)))))
+     (md:create-iorder-inodes (md:parse-inode-tree cfg-node)))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: OUTPUT NODE CONFIGURATION
@@ -440,60 +441,68 @@
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: INPUT NODES
 ;; -----------------------------------------------------------------------------
-;; instances?
 
-#|
 (define-record-type md:inode
-(make-md:inode cfg-id sub-nodes val is-active)
-md:inode?
-  ; ...					; ;
-)
-|#
+  (make-md:inode name cfg-id val)
+  md:inode?
+  (name (md:inode-name) (md:set-inode-name!))
+  (cfg-id (md:inode-cfg-id) (md:set-inode-cfg-id!))
+  (val (md:inode-val) (md:set-inode-val!)))
+
+;; check if a given inode is active
+(define (md:is-active? inode)
+  (not (null? (md:inode-val inode))))
+
+
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: OUTPUT NODES
 ;; -----------------------------------------------------------------------------
-#|
-(define-record-type md:onode
-(make-md:onode cfg-id sub-nodes instances val)
-  ; ...					; ;
-)
-|#
+
+;; (define-record-type md:onode
+;;   (make-md:onode cfg-id sub-nodes instances val)
+
+;; )
+
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: MODULE
 ;; -----------------------------------------------------------------------------
-#|
+
 (define-record-type md:module
-(make-md:module cfg input-nodes output-nodes)
-md:module?
-  ; ...					; ;
-)
-|#
+  (make-md:module cfg-id cfg inodes)
+  md:module?
+  (cfg-id (md:module-cfg-id) (md:set-module-cfg-id!))
+  (cfg (md:module-cfg) (md:set-module-cfg!))
+  (inodes (md:module-inodes) (md:set-module-inodes!)))
 
-;; to parse: (read-lines "file.mdal")
+;; strip whitespace from MDMOD text, except where enclosed in double quotes
+(define (md:purge-whitespace lines)
+  (letrec ((purge-ws-from-every-other
+	    ;; removes whitespace from every other element in a list of strings.
+	    ;; call with ls being a string split by \" delimiter, and odd = #t
+	    (lambda (ls odd)
+	      (if (null? ls)
+		  '()
+		  (cons (if odd
+			    (string-delete char-set:whitespace (car ls))
+			    (string-append "\"" (car ls) "\""))
+			(purge-ws-from-every-other (cdr ls) (not odd)))))))
+    (map (lambda (line)
+	   (string-concatenate
+	    (purge-ws-from-every-other (string-split line "\"" #t) #t)))
+	 lines)))
 
+;; strip comments from MDMOD text
+(define (md:purge-comments lines)
+  (let ((no-block-comments (map (lambda (l)
+				  (if (string-contains l "//")
+				      (substring l 0 (substring-index "//" l))
+				      l))
+				lines)))
+    no-block-comments))
 
-#|
-; ----------------------------------------------------------------------------- ; ;
-; MDMOD: INPUT FIELDS			; ;
-; ----------------------------------------------------------------------------- ; ;
+;; construct an md:module from a given .mdal file
+(define (md:parse-module-file filepath config-dir-path)
+  (remove string-null?
+	  (md:purge-comments (md:purge-whitespace (read-lines filepath)))))
 
-(define-record-type md:field
-(make-md:field val is-active cfg-id)
-md:field?
-(val md:field-val md:field-set-val!)
-(is-active md:field-active md:field-set-active!)
-(cfg-id md:field-cfg md:field-set-cfg!))
-
-(define (md:field-activate! field)
-(md:field-set-active! field #t))
-
-(define (md:field-set! field val)
-(md:field-set-val! field val)
-(md:field-activate! field))
-
-(define (md:field-clear! field)
-(md:field-set-val! field "")
-(md:field-set-active! field #f))
-
-|#
 
