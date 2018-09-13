@@ -161,48 +161,6 @@
 	(else (error "Cannot determine inode config id"))))
 
 
-;; ;; from a given mdconf root node, construct a list l
-;; ;; (car l) is the inode-cfg tree of the GLOBAL inode
-;; ;; (cdr l) is the flat list of inode configs in the GLOBAL inode
-;; (define (md:make-global-group-config cfg-node)
-;;   (let 
-;;       ((subnodes
-;; 	(append (list (list (list (list "AUTHOR"))
-;; 			    (list "AUTHOR"
-;; 				  (md:make-inode-config
-;; 				   (md:make-single-instance)
-;; 				   #f "?AUTHOR" #f)))
-;; 		      (list (list (list "TITLE"))
-;; 			    (list "TITLE"
-;; 				  (md:make-inode-config
-;; 				   (md:make-single-instance)
-;; 				   #f "?TITLE" #f))))
-;; 		(map (lambda (x)
-;; 		       (md:parse-inode-config x (md:make-single-instance)))
-;; 		     ((sxpath "mdalconfig/ifield") cfg-node)))))
-;;     (let ((subnode-ids (map (lambda (x) (caaar x)) subnodes)))
-;;       (list (list (list "GLOBAL" subnode-ids))
-;; 	    (cons (list "GLOBAL" (md:make-inode-config
-;; 				  (md:make-single-instance)
-;; 				  subnode-ids #f #f))
-;; 		  (md:make-pairs (flatten (map (lambda (x)
-;; 							(cadr x)) subnodes))))
-;; 	    '()))))
-
-;; ;; parse inode configs of a given mdconf xml node, and generate an inode id tree
-;; ;; and a flat list of inodes from it
-;; ;; also generates default nodes and orders
-;; (define (md:parse-inode-configs cfg-node)
-;;   (letrec* ((parse-igroups (lambda (lst)
-;; 			    (map (lambda (x)
-;; 				   (md:parse-inode-config
-;; 				    x (md:make-single-instance)))
-;; 				 lst)))
-;; 	   (globals (md:make-global-group-config cfg-node))
-;; 	   (igroups (parse-igroups ((sxpath "mdalconfig/igroup") cfg-node))))
-;;     (list (append (car globals) (list (caar igroups)))
-;; 	  (cons (cdr globals) (cdar igroups)))))
-
 ;; generate the 'GLOBAL' inode tree of a given MDCONF root node
 (define (md:xml-node->global-inode-tree cfg-node)
   (list "GLOBAL"
@@ -293,6 +251,20 @@
 	(filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
 
 
+(define (md:create-iorder-inodes itree)
+  (alist->hash-table
+   (append
+    (map (lambda (id)
+	   (list id
+		 (md:make-inode-config (md:make-single-instance) #f #f #f)))
+	 (filter (lambda (id) (string-contains id "_ORDER"))
+		 (flatten itree)))
+    (map (lambda (id)
+	   (list id
+		 (md:make-inode-config (md:make-instance-range 1 #f) #f id #f)))
+	 (filter (lambda (id) (string-contains id "R_"))
+		 (flatten itree))))))
+
 ;; From a given mdconf ifield node, construct a list containing the inode-config
 (define (md:parse-ifield-config node instance-range)
   (list (md:parse-inode-config-id node)
@@ -315,8 +287,10 @@
   (md:make-pairs (flatten (list (md:parse-inode-config-id node)
 				(md:make-inode-config instance-range #f #f #f)
 				(map (lambda (x)
-				       (md:parse-inode-config
-					x (md:xml-inode-get-range-arg node)))
+				       (md:parse-inode-config x
+					(if (equal? (sxml:name x) 'ifield)
+					    (md:make-single-instance)
+					    (md:xml-inode-get-range-arg node))))
 				     ((sxpath "node()") node))))))
 
 
@@ -344,6 +318,8 @@
 ;; dispatch function
 ;; from a given mdconf inode, generate a list containing the declared
 ;; md:inode-config it's subnode configs
+;; NOTE: inode parsers do NOT create additional nodes for order lists. Those
+;;       have to be created with a call to md:create-iorder-nodes
 (define (md:parse-inode-config node instance-range)
   (cond ((equal? (sxml:name node) 'ifield)
          (md:parse-ifield-config node instance-range))
@@ -353,6 +329,37 @@
          (md:parse-clone-config node instance-range))
         (else (md:parse-igroup-config node instance-range))))
 
+
+;; from a given mdconf root node, construct the hash table of the GLOBAL
+;; inode config and it's sub-inodes
+(define (md:make-global-group-inodes cfg-node)
+  (alist->hash-table
+   (append (list (list "GLOBAL" (md:make-inode-config
+				 (md:make-single-instance) #f #f #f))
+		 (list "AUTHOR" (md:make-inode-config
+				 (md:make-single-instance) #f "AUTHOR" #f))
+		 (list "TITLE" (md:make-inode-config
+				(md:make-single-instance) #f "TITLE" #f)))
+	   (map (lambda (node)
+		  (let ((id (md:parse-inode-config-id node)))
+		    (list id
+			  (md:make-inode-config
+			   (md:make-single-instance) #f id #f))))
+		((sxpath "mdalconfig/ifield") cfg-node)))))
+
+;; returns a hash table containing all inode configs defined in the given
+;; mdconf root node
+(define (md:mdconf->inodes cfg-node)
+  (let ((igroups (alist->hash-table
+		  (md:make-pairs
+		   (flatten (map (lambda (node)
+				   (md:parse-inode-config
+				    node (md:xml-inode-get-range-arg node)))
+				 ((sxpath "mdalconfig/igroup") cfg-node)))))))
+    (hash-table-merge
+     (hash-table-merge igroups
+		       (md:make-global-group-inodes cfg-node))
+     (md:create-order-inodes (md:parse-inode-tree cfg-node)))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: OUTPUT NODE CONFIGURATION
@@ -385,20 +392,6 @@
   (inodes md:config-inodes md:config-set-inodes!)
   (onodes md:config-onodes md:config-set-onodes!))
 
-;; (define-record-printer (md:config cfg out)
-;;   (begin
-;;     (fprintf out "#<md:config>\n\n")
-;;     (when (md:config-description cfg)
-;;       (fprintf out "DESCRIPTION:\n~A\n\n" (md:config-description cfg)))
-;;     (fprintf out "COMMANDS:\n\n")
-;;     (for-each (lambda (x)
-;;                 (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
-;;               (hash-table->alist (md:config-commands cfg)))
-;;     (fprintf out "\nINODE TREE:\n~S\n" (md:config-itree cfg))
-;;     (for-each (lambda (x)
-;;                 (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
-;;               (hash-table->alist (md:config-inodes cfg)))))
-
 (define-record-printer (md:config cfg out)
   (begin
     (fprintf out "#<md:config>\n\n")
@@ -408,8 +401,12 @@
     (for-each (lambda (x)
                 (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
               (hash-table->alist (md:config-commands cfg)))
-    (fprintf out "\nINODE TREE:\n~S\n" (md:config-itree cfg))
-    (fprintf out "~S\n" (md:config-inodes cfg))))
+    (fprintf out "\nINODE TREE:\n~S\n\n" (md:config-itree cfg))
+    (fprintf out "\nINODES:\n\n")
+    (for-each (lambda (x)
+                (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
+              (hash-table->alist (md:config-inodes cfg)))))
+
 
 ;; create an md:target from an mdconf root node
 (define (md:config-node->target node)
@@ -435,27 +432,9 @@
 			  target "config/Huby/")
 			 (md:create-order-commands itree))
        itree
-       #f    ;; (cadr itree+nodes)
+       (md:mdconf->inodes cfg)
        #f    ;; onodes
        ))))
-
-;; (define (md:mdconf->config filepath)
-;;   (let ((cfg (call-with-input-file filepath
-;;                (lambda (x) (ssax:xml->sxml x '())))))
-;;     (let ((target (md:config-node->target cfg))
-;; 	  (itree+nodes (md:parse-inode-configs cfg)))
-;;       (md:make-config
-;;        target
-;;        (if (null? ((sxpath "mdalconfig/description") cfg))
-;;            #f
-;;            (car ((sxpath "mdalconfig/description/text()") cfg)))
-;;        ;; TODO: properly extract configpath
-;;        (md:xml-command-nodes->commands
-;;         ((sxpath "mdalconfig/command") cfg) target "config/Huby/")
-;;        (md:parse-inode-tree cfg)   ;; (car itree+nodes)
-;;        #f    ;; (cadr itree+nodes)
-;;        #f    ;; onodes
-;;        ))))
 
 
 ;; -----------------------------------------------------------------------------
