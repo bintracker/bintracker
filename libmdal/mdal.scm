@@ -558,6 +558,10 @@
 				(+ 7 (substring-index-ci "CONFIG="
 							 (cadr lines)))))))
 
+;; normalizes hex prefix to Scheme format before calling string->number
+(define (md:mod-string->number str)
+  (string->number (string-translate* str '(("$" . "#x")))))
+
 ;; resolve scope changes in the given mdmod text line, except for endpoints.
 ;; scope is expressed as a flat list, with (car lst) being the current (deepest)
 ;; nesting level.
@@ -569,7 +573,7 @@
 	    parent-scope)
 	(cons (let ((id (car (string-split line "([="))))
 		(list id (if (string-contains line "(")
-			     (string->number
+			     (md:mod-string->number
 			      (substring line
 					 (+ 1 (substring-index "(" line))
 					 (substring-index ")" line)))
