@@ -442,16 +442,27 @@
 ;; MDMOD: INPUT NODES
 ;; -----------------------------------------------------------------------------
 
-(define-record-type md:inode
-  (make-md:inode name cfg-id val)
-  md:inode?
-  (name (md:inode-name) (md:set-inode-name!))
-  (cfg-id (md:inode-cfg-id) (md:set-inode-cfg-id!))
-  (val (md:inode-val) (md:set-inode-val!)))
+;; val can be one of
+;;   () -> inactive node
+;;   a string of the actual value
+;;   a list of subnodes
+(define-record-type md:inode-instance
+  (md:make-inode-instance val name)
+  md:node-instance?
+  (val md:inode-instance-val md:set-inode-instance-val!)
+  (name md:inode-instance-name md:set-inode-instance-name!))
 
-;; check if a given inode is active
-(define (md:is-active? inode)
-  (not (null? (md:inode-val inode))))
+;; it might be desirable to have 'instances' be a hash map, and only turn it
+;; into an alist which is then sorted on request (eg: md:inode-get-sorted-inst)
+(define-record-type md:inode
+  (md:make-inode cfg-id instances)
+  md:inode?
+  (cfg-id md:inode-cfg-id md:set-inode-cfg-id!)
+  (instances md:inode-instances md:set-inode-instances!))
+
+;; ;; check if a given inode is active
+;; (define (md:is-active? inode instance)
+;;   (not (null? (md:inode-val inode))))
 
 
 ;; -----------------------------------------------------------------------------
@@ -468,11 +479,16 @@
 ;; -----------------------------------------------------------------------------
 
 (define-record-type md:module
-  (make-md:module cfg-id cfg inodes)
+  (md:make-module cfg-id cfg inodes)
   md:module?
-  (cfg-id (md:module-cfg-id) (md:set-module-cfg-id!))
-  (cfg (md:module-cfg) (md:set-module-cfg!))
-  (inodes (md:module-inodes) (md:set-module-inodes!)))
+  (cfg-id md:mod-cfg-id md:set-mod-cfg-id!)
+  (cfg md:mod-cfg md:set-mod-cfg!)
+  (inodes md:mod-inodes md:set-mod-inodes!))
+
+(define-record-printer (md:module mod out)
+  (begin
+    (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
+    (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
 
 ;; strip whitespace from MDMOD text, except where enclosed in double quotes
 (define (md:purge-whitespace lines)
@@ -522,9 +538,57 @@
 			       lines)
 			  #f)))
 
+;; check if mdal file text specifies a supported MDAL version
+(define (md:check-module-version lines)
+  (if (not (string-contains-ci (car lines) "MDAL_VERSION="))
+      (error "No MDAL_VERSION specified")
+      (let ((version (string->number
+		      (substring (car lines)
+				 (+ 13  (substring-index-ci "MDAL_VERSION="
+							    (car lines)))))))
+	(if (md:in-range? version *supported-module-versions*)
+	    version
+	    (error "unsupported MDAL version")))))
+
+(define (md:mod-get-config-name lines)
+  (if (not (string-contains-ci (cadr lines) "CONFIG="))
+      (error "No CONFIG specified")
+      (string-delete #\"
+		     (substring (cadr lines)
+				(+ 7 (substring-index-ci "CONFIG="
+							 (cadr lines)))))))
+
+;; resolve scope changes in the given mdmod text line, except for endpoints.
+;; scope is expressed as a flat list, with (car lst) being the current (deepest)
+;; nesting level.
+(define (md:mod-change-scope line current-scope)
+  (let ((parent-scope (cdr current-scope)))
+    (if (string-contains line "}")
+	(if (null? parent-scope)
+	    '("GLOBAL" 0)
+	    parent-scope)
+	(cons (let ((id (car (string-split line "([="))))
+		(list id (if (string-contains line "(")
+			     (string->number
+			      (substring line
+					 (+ 1 (substring-index "(" line))
+					 (substring-index ")" line)))
+			     0)))
+	      (if (equal? (caar current-scope) "GLOBAL")
+		  parent-scope
+		  current-scope)))))
+
 ;; construct an md:module from a given .mdal file
 (define (md:parse-module-file filepath config-dir-path)
-  (remove string-null?
-	  (md:purge-comments (md:purge-whitespace (read-lines filepath)))))
+  (let ((mod-lines (remove string-null?
+			   (md:purge-comments
+			    (md:purge-whitespace (read-lines filepath))))))
+    (begin (md:check-module-version mod-lines)
+	   (let ((cfg-name (md:mod-get-config-name mod-lines)))
+	     (md:make-module cfg-name
+			     (md:mdconf->config
+			      (string-append config-dir-path cfg-name "/"
+					     cfg-name ".mdconf"))
+			     #f)))))
 
 

@@ -7,11 +7,11 @@ BPM=120
 
 PATTERNS={
     ORDER={
-        $00,$00,$00
+        #x00,#x00,#x00
         R_CH2=$01
     }
 
-    DRUMS($00)[beat0]={
+    DRUMS(#x00)[beat0]={
         DRUM=on
         .3
         DRUM=on
@@ -22,7 +22,7 @@ PATTERNS={
         .3
     }
 
-    CH1($00)={
+    CH1(#x00)={
         NOTE=a3
         .
         NOTE=rest
@@ -41,12 +41,12 @@ PATTERNS={
         .
     }
 
-    CH2($00)={
+    CH2(#x00)={
         NOTE=a2
         .15
     }
 
-    CH2($01)={
+    CH2(#x01)={
         NOTE=e2
         .15
     }

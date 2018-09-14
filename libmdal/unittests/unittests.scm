@@ -15,3 +15,8 @@
 ;; (define cln (md:parse-clone-config
 ;; 	     (car ((sxpath "mdalconfig/igroup/clone") cfg))
 ;; 	     (md:make-single-instance)))
+(define modlines (remove string-null?
+			   (md:purge-comments
+			    (md:purge-whitespace
+			     (read-lines "../modules/huby-test.mdal")))))
+(define my-mod (md:parse-module-file "../modules/huby-test.mdal" "config/"))
