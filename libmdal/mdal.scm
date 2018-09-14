@@ -492,13 +492,35 @@
 	 lines)))
 
 ;; strip comments from MDMOD text
+;; TODO make more robust so it doesn't fail with multiple block comment
+;; delimiters on one line (eg. run over line again after processing)
 (define (md:purge-comments lines)
-  (let ((no-block-comments (map (lambda (l)
-				  (if (string-contains l "//")
-				      (substring l 0 (substring-index "//" l))
-				      l))
-				lines)))
-    no-block-comments))
+  (letrec ((purge-block-comments
+	    (lambda (ls in-comment-block)
+	      (if (null? ls)
+		  '()
+		  (if in-comment-block
+		      (let ((have-bc-end (string-contains (car ls) "*/")))
+			(cons (if have-bc-end
+				  (substring (car ls)
+					     (+ 2 (substring-index "*/"
+								   (car ls))))
+				  "")
+			      (purge-block-comments (cdr ls)
+						    (not have-bc-end))))
+		      (let ((have-bc-beg (string-contains (car ls) "/*")))
+			(cons (if have-bc-beg
+				  (substring (car ls)
+					     0 (substring-index "/*" (car ls)))
+				  (car ls))
+			      (purge-block-comments (cdr ls)
+						    have-bc-beg))))))))
+    (purge-block-comments (map (lambda (l)
+				 (if (string-contains l "//")
+				     (substring l 0 (substring-index "//" l))
+				     l))
+			       lines)
+			  #f)))
 
 ;; construct an md:module from a given .mdal file
 (define (md:parse-module-file filepath config-dir-path)
