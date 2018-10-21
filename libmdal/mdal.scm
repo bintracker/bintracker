@@ -228,10 +228,9 @@
     (if (null? nodes)
 	'()
 	(if (equal? (sxml:name (car nodes)) 'clone)
-	    (append (md:clone-inode-tree (md:xml-nodes->inode-tree
-					  ((sxpath "node()") (car nodes)))
-					 (string->number (sxml:attr (car nodes)
-								    'count)))
+	    (append (md:clone-inode-tree
+		     (md:xml-nodes->inode-tree ((sxpath "node()") (car nodes)))
+		     (string->number (sxml:attr (car nodes) 'count)))
 		    (md:xml-nodes->inode-tree (cdr nodes)))
 	    (cons (get-tree (car nodes))
 		  (md:xml-nodes->inode-tree (cdr nodes)))))))
