@@ -207,6 +207,15 @@
 		(md:get-subnodes inode-id (cadar itree))
 		(get-nodes itree))))))
 
+;; helper function, generates the inode tree for a given node and it's subnodes
+(define (md:inode->inode-tree node subnodes)
+  (let ((flags (sxml:attr node 'flags)))
+    (if (and flags (string-contains-ci flags "ordered"))
+	(list (append subnodes (list (md:generate-inode-order-tree
+				      (cons (md:parse-inode-config-id node)
+					    (list subnodes))))))
+	(list subnodes))))
+
 ;; return the inode tree of a given list of xml inode configs
 (define (md:xml-nodes->inode-tree nodes)
   (let ((get-tree
@@ -214,17 +223,8 @@
 	   (cons (md:parse-inode-config-id node)
 		 (if (null? ((sxpath "node()") node))
 		     '()
-		     (let ((subnodes (md:xml-nodes->inode-tree
-				      ((sxpath "node()") node)))
-			   (flags (sxml:attr node 'flags)))
-		       (if (and flags (string-contains-ci flags "ordered"))
-			   (list
-			    (append subnodes
-				    (list (md:generate-inode-order-tree
-					   (cons
-					    (md:parse-inode-config-id node)
-					    (list subnodes))))))
-			   (list subnodes))))))))
+		     (md:inode->inode-tree node (md:xml-nodes->inode-tree
+						 ((sxpath "node()") node))))))))
     (if (null? nodes)
 	'()
 	(if (equal? (sxml:name (car nodes)) 'clone)
