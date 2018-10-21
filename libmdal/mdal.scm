@@ -452,6 +452,11 @@
   (val md:inode-instance-val md:set-inode-instance-val!)
   (name md:inode-instance-name md:set-inode-instance-name!))
 
+(define-record-printer (md:inode-instance i out)
+  (begin
+    (fprintf out "#<md:inode-instance>: ~A\n" (md:inode-instance-name i))
+    (fprintf out "~S\n" (md:inode-instance-val i))))
+
 ;; it might be desirable to have 'instances' be a hash map, and only turn it
 ;; into an alist which is then sorted on request (eg: md:inode-get-sorted-inst)
 (define-record-type md:inode
@@ -459,6 +464,12 @@
   md:inode?
   (cfg-id md:inode-cfg-id md:set-inode-cfg-id!)
   (instances md:inode-instances md:set-inode-instances!))
+
+(define-record-printer (md:inode node out)
+  (begin
+    (fprintf out "#<md:inode: ~A>\n" (md:inode-cfg-id node))
+    (for-each (lambda (x) (fprintf out "instance ~S:\n~S" (car x) (cdr x)))
+	      (md:inode-instances node))))
 
 ;; ;; check if a given inode is active
 ;; (define (md:is-active? inode instance)
@@ -489,6 +500,44 @@
   (begin
     (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
     (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
+
+;; return the argument of the first node with the given id encountered in
+;; module text
+;; TODO trim remainder if line contains multiple args
+(define (md:mod-lines-get-node-arg node-id lines)
+  (let ((line (find (lambda (s) (string-contains-ci s node-id))
+		    lines)))
+    (if line
+	(string-delete #\" 
+		       (substring/shared line
+					 (+ 1 (string-length node-id)
+					    (string-contains-ci line node-id))))
+	'())))
+
+;; parse GLOBAL inode in MDMOD text
+;; constructs empty instances as needed
+(define (md:mod-lines->global-inodes lines config)
+  (md:make-inode
+   "GLOBAL"
+   (list (list 0 (md:make-inode-instance 
+		  (map (lambda (id)
+			 (md:make-inode
+			  id
+			  (list (list 0 (md:make-inode-instance
+					 (md:mod-lines-get-node-arg id lines)
+					 "")))))
+		       (md:get-subnodes "GLOBAL" (md:config-itree config)))
+		  "")))))
+
+;; convert MDMOD module text to inode tree
+(define (md:mod-lines->inodes lines config)
+  (md:mod-lines->global-inodes lines config))
+
+;; filter out pseudo-nodes MDAL_VERSION/CONFIG from MDMOD text
+(define (md:strip-pseudo-nodes lines)
+  (remove (lambda (s) (or (string-contains-ci s "MDAL_VERSION=")
+			  (string-contains-ci s "CONFIG=")))
+	  lines))
 
 ;; strip whitespace from MDMOD text, except where enclosed in double quotes
 (define (md:purge-whitespace lines)
