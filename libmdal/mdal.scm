@@ -251,7 +251,7 @@
 					     #f #f #f)))
 	(filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
 
-
+;; generate a hash list of inodes required by auto-generated order inodes
 (define (md:create-iorder-inodes itree)
   (alist->hash-table
    (append
