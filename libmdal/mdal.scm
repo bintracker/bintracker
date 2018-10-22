@@ -505,9 +505,7 @@
 (define (md:mod-trim-arg text)
   (if (string-prefix? "\"" text)
       (string-take text (+ 2 (string-contains (string-drop text 1) "\"")))
-      (if (string-contains text ",")
-	  (string-take text (string-contains text ","))
-	  text)))
+      (car (string-split text ","))))
 
 ;; helper func, split a line of MDMOD text using abreviated block syntax (no
 ;; tokens) into token/argument pairs
