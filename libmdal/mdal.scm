@@ -507,15 +507,15 @@
       (string-take text (+ 2 (string-contains (string-drop text 1) "\"")))
       (car (string-split text ","))))
 
-;; helper func, split a line of MDMOD text using abreviated block syntax (no
+;; helper func, split a line of MDMOD text using abbreviated block syntax (no
 ;; tokens) into token/argument pairs
-(define (md:mod-split-abrev-line line token-ids)
+(define (md:mod-split-abbrev-line line token-ids)
   (let* ((arg (md:mod-trim-arg line))
 	 (rest (string-trim (string-drop line (string-length arg)) #\,)))
     (if (string-null? line)
 	'()
 	(cons (list (car token-ids) arg)
-	      (md:mod-split-abrev-line rest (cdr token-ids))))))
+	      (md:mod-split-abbrev-line rest (cdr token-ids))))))
 
 ;; helper func, split a line of MDMOD text using regular block syntax into
 ;; token/argument pairs
@@ -536,11 +536,10 @@
 (define (md:mod-split-line line token-ids)
   (if (string-contains line "=")
       (md:mod-split-regular-line line)
-      (md:mod-split-abrev-line line token-ids)))
+      (md:mod-split-abbrev-line line token-ids)))
 
 ;; return the argument of the first node with the given id encountered in
 ;; module text
-;; TODO trim remainder if line contains multiple args
 (define (md:mod-lines-get-node-arg node-id lines)
   (let ((line (find (lambda (s) (string-contains-ci s node-id))
 		    lines)))
