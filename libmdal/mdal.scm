@@ -500,6 +500,52 @@
     (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
     (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
 
+;; Helper func, returns the first arg from a partially parsed line of MDMOD text
+;; preserving "string-in-string" arguments. Line must start with an argument.
+(define (md:mod-trim-arg text)
+  (if (string-prefix? "\"" text)
+      (string-take text (+ 2 (string-contains (string-drop text 1) "\"")))
+      (if (string-contains text ",")
+	  (string-take text (string-contains text ","))
+	  text)))
+
+;; helper func, drop a trailing , from text if present
+(define (md:mod-drop-comma text)
+  (if (string-prefix? "," text)
+      (string-drop text 1)
+      text))
+
+;; helper func, split a line of MDMOD text using abreviated block syntax (no
+;; tokens) into token/argument pairs
+(define (md:mod-split-abrev-line line token-ids)
+  (let* ((arg (md:mod-trim-arg line))
+	 (rest (md:mod-drop-comma (string-drop line (string-length arg)))))
+    (if (string-null? line)
+	'()
+	(cons (list (car token-ids) arg)
+	      (md:mod-split-abrev-line rest (cdr token-ids))))))
+
+;; helper func, split a line of MDMOD text using regular block syntax into
+;; token/argument pairs
+(define (md:mod-split-regular-line line)
+  (if (string-null? line)
+      '()
+      (let* ((token (string-take line (string-contains line "=")))
+	     (token-len (+ 1 (string-length token)))
+	     (arg (md:mod-trim-arg (substring/shared line token-len)))
+	     (rest (md:mod-drop-comma (substring/shared
+				       line
+				       (+ 1 token-len (string-length arg))))))
+	(cons (list token arg)
+	      (md:mod-split-regular-line rest)))))
+
+;; helper dispatch func, split a line of MDMOD block text into token/argument
+;; pairs
+(define (md:mod-split-line line token-ids)
+  (if (string-contains line "=")
+      (md:mod-split-regular-line line)
+      (md:mod-split-abrev-line line token-ids)))
+
 ;; return the argument of the first node with the given id encountered in
 ;; module text
 ;; TODO trim remainder if line contains multiple args
@@ -507,10 +553,10 @@
   (let ((line (find (lambda (s) (string-contains-ci s node-id))
 		    lines)))
     (if line
-	(string-delete #\" 
-		       (substring/shared line
-					 (+ 1 (string-length node-id)
-					    (string-contains-ci line node-id))))
+	(string-delete #\" (substring/shared
+			    line
+			    (+ 1 (string-length node-id)
+			       (string-contains-ci line node-id))))
 	'())))
 
 ;; parse GLOBAL inode in MDMOD text
