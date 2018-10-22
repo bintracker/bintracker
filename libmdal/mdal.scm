@@ -509,17 +509,11 @@
 	  (string-take text (string-contains text ","))
 	  text)))
 
-;; helper func, drop a trailing , from text if present
-(define (md:mod-drop-comma text)
-  (if (string-prefix? "," text)
-      (string-drop text 1)
-      text))
-
 ;; helper func, split a line of MDMOD text using abreviated block syntax (no
 ;; tokens) into token/argument pairs
 (define (md:mod-split-abrev-line line token-ids)
   (let* ((arg (md:mod-trim-arg line))
-	 (rest (md:mod-drop-comma (string-drop line (string-length arg)))))
+	 (rest (string-trim (string-drop line (string-length arg)) #\,)))
     (if (string-null? line)
 	'()
 	(cons (list (car token-ids) arg)
@@ -533,9 +527,9 @@
       (let* ((token (string-take line (string-contains line "=")))
 	     (token-len (+ 1 (string-length token)))
 	     (arg (md:mod-trim-arg (substring/shared line token-len)))
-	     (rest (md:mod-drop-comma (substring/shared
-				       line
-				       (+ 1 token-len (string-length arg))))))
+	     (rest (string-trim (substring/shared
+				 line (+ token-len (string-length arg)))
+				#\,)))
 	(cons (list token arg)
 	      (md:mod-split-regular-line rest)))))
 
