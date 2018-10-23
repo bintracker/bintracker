@@ -507,15 +507,15 @@
       (string-take text (+ 2 (string-contains (string-drop text 1) "\"")))
       (car (string-split text ","))))
 
-;; helper func, split a line of MDMOD text using abbreviated block syntax (no
+;; helper func, parse a line of MDMOD text using abbreviated block syntax (no
 ;; tokens) into token/argument pairs
-(define (md:mod-split-abbrev-line line token-ids)
-  (let* ((arg (md:mod-trim-arg line))
-	 (rest (string-trim (string-drop line (string-length arg)) #\,)))
-    (if (string-null? line)
-	'()
+(define (md:mod-parse-abbrev-line line token-ids)
+  (if (string-null? line)
+      '()
+      (let* ((arg (md:mod-trim-arg line))
+	     (rest (string-trim (string-drop line (string-length arg)) #\,)))
 	(cons (list (car token-ids) arg)
-	      (md:mod-split-abbrev-line rest (cdr token-ids))))))
+	      (md:mod-parse-abbrev-line rest (cdr token-ids))))))
 
 ;; helper func, split a line of MDMOD text using regular block syntax into
 ;; token/argument pairs
@@ -531,12 +531,45 @@
 	(cons (list token arg)
 	      (md:mod-split-regular-line rest)))))
 
+;; helper func, parse a line of MDMOD text using regular block syntax into
+;; token/argument pairs. Null arguments are returned for tokens not present
+;; in the given text. Will silently drop invalid tokens from text.
+(define (md:mod-parse-regular-line line token-ids)
+  (let ((splices (md:mod-split-regular-line line)))
+    (map (lambda (id)
+	   (let ((token-match (find (lambda (x)
+				      (string-ci=? id (car x))) splices)))
+	     (if token-match
+		 (list id (cadr token-match))
+		 (list id '()))))
+	 token-ids)))
+
+;; helper func, parse a line of MDMOD text using dotted block syntax (no change
+;; line) into token/argument pairs with null arguments. Expands lines using .n
+;; syntax into a flat list of pairs.
+(define (md:mod-parse-dotted-line line token-ids)
+  (let ((num-arg (string-drop line 1))
+	(pairs (map (lambda (id) (list id '())) token-ids)))
+    (if (string-null? num-arg)
+	pairs
+	(take (apply circular-list pairs)
+	      (* (string->number num-arg) (length token-ids))))))
+
 ;; helper dispatch func, split a line of MDMOD block text into token/argument
 ;; pairs
-(define (md:mod-split-line line token-ids)
-  (if (string-contains line "=")
-      (md:mod-split-regular-line line)
-      (md:mod-split-abbrev-line line token-ids)))
+(define (md:mod-parse-line line token-ids)
+  (cond ((string-contains line "=") (md:mod-parse-regular-line line token-ids))
+	((string-prefix? "." line) (md:mod-parse-dotted-line line token-ids))
+	(else (md:mod-parse-abbrev-line line token-ids))))
+
+
+;; parse MDMOD iblock text into a flat list of token/argument pairs
+(define (md:mod-parse-block-text lines token-ids)
+  (if (null? lines)
+      '()
+      (append (md:mod-parse-line (car lines) token-ids)
+	      (md:mod-parse-block-text (cdr lines) token-ids))))
+
 
 ;; return the argument of the first node with the given id encountered in
 ;; module text
