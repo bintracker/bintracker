@@ -725,11 +725,9 @@
 			   (md:purge-comments
 			    (md:purge-whitespace (read-lines filepath))))))
     (begin (md:check-module-version mod-lines)
-	   (let ((cfg-name (md:mod-get-config-name mod-lines)))
-	     (md:make-module cfg-name
-			     (md:mdconf->config
-			      (string-append config-dir-path cfg-name "/"
-					     cfg-name ".mdconf"))
-			     #f)))))
-
+	   (let* ((cfg-name (md:mod-get-config-name mod-lines))
+		  (config (md:mdconf->config
+			   (string-append config-dir-path cfg-name "/"
+					  cfg-name ".mdconf"))))
+	     (md:make-module cfg-name config #f)))))
 
