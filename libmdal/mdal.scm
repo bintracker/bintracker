@@ -235,6 +235,8 @@
 		      (map (lambda (x) (list (md:parse-inode-config-id x)))
 			   ((sxpath "mdalconfig/ifield") cfg-node))
 		      (md:xml-nodes->inode-tree
+		       ((sxpath "mdalconfig/iblock") cfg-node))
+		      (md:xml-nodes->inode-tree
 		       ((sxpath "mdalconfig/igroup") cfg-node))))))
 
 ;; generate a hash list of reference commands required by
