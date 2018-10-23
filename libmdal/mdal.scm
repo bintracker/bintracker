@@ -153,9 +153,6 @@
                 (md:inode-config-subnodes cfg)))
     (fprintf out ">")))
 
-(define (md:inode-config-endpoint? inode-cfg)
-  (if (md:inode-config-subnodes) #f #t))
-
 ;; determine ID of a mdconf inode config node.
 ;; ID is derived from the 'id' attribute, or from the 'from' attribute if 'id'
 ;; is not found.
