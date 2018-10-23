@@ -557,7 +557,7 @@
     (if (string-null? num-arg)
 	pairs
 	(take (apply circular-list pairs)
-	      (* (string->number num-arg) (length token-ids))))))
+	      (* (md:mod-string->number num-arg) (length token-ids))))))
 
 ;; helper dispatch func, split a line of MDMOD block text into token/argument
 ;; pairs
