@@ -127,8 +127,9 @@
 
 
 (define-record-type md:inode-config
-  (md:make-inode-config instance-range subnodes cmd-id order-id)
+  (md:make-inode-config type instance-range subnodes cmd-id order-id)
   md:inode-config?
+  (type md:inode-config-type md:set-inode-config-type!)
   (instance-range md:inode-config-instance-range
                   md:set-inode-config-instance-range!)
   (subnodes md:inode-config-subnodes md:set-inode-config-subnodes!)
@@ -137,7 +138,9 @@
 
 (define-record-printer (md:inode-config cfg out)
   (begin
-    (fprintf out "#<md:inode-config\nmin-instances: ~S\nmax-instances: ~S\n"
+    (fprintf out "#<md:inode-config\n")
+    (fprintf out "type: ~S\nmin-instances: ~S\nmax-instances: ~S\n"
+	     (md:inode-config-type cfg)
              (md:instance-range-min (md:inode-config-instance-range cfg))
              (md:instance-range-max (md:inode-config-instance-range cfg)))
     (when (md:inode-config-cmd-id cfg)
@@ -256,26 +259,29 @@
    (append
     (map (lambda (id)
 	   (list id
-		 (md:make-inode-config (md:make-single-instance) #f #f #f)))
+		 (md:make-inode-config 'block (md:make-single-instance)
+				       #f #f #f)))
 	 (filter (lambda (id) (string-contains id "_ORDER"))
 		 (flatten itree)))
     (map (lambda (id)
 	   (list id
-		 (md:make-inode-config (md:make-instance-range 1 #f) #f id #f)))
+		 (md:make-inode-config 'field (md:make-instance-range 1 #f)
+				       #f id #f)))
 	 (filter (lambda (id) (string-contains id "R_"))
 		 (flatten itree))))))
 
 ;; From a given mdconf ifield node, construct a list containing the inode-config
 (define (md:parse-ifield-config node instance-range)
   (list (md:parse-inode-config-id node)
-	(md:make-inode-config instance-range #f
+	(md:make-inode-config 'field instance-range #f
 			      (sxml:attr node 'from) #f)))
 
 ;; From a given mdconf iblock node, construct a list containing the given inode
 ;; definition and all subnodes
 (define (md:parse-iblock-config node instance-range)
   (md:make-pairs (flatten (list (md:parse-inode-config-id node)
-				(md:make-inode-config instance-range #f #f #f)
+				(md:make-inode-config 'block instance-range
+						      #f #f #f)
 				(map (lambda (x)
 				       (md:parse-inode-config
 					x (md:xml-inode-get-range-arg node)))
@@ -285,7 +291,8 @@
 ;; definition and all subnodes
 (define (md:parse-igroup-config node instance-range)
   (md:make-pairs (flatten (list (md:parse-inode-config-id node)
-				(md:make-inode-config instance-range #f #f #f)
+				(md:make-inode-config 'group instance-range
+						      #f #f #f)
 				(map (lambda (x)
 				       (md:parse-inode-config x
 					(if (equal? (sxml:name x) 'ifield)
@@ -334,16 +341,16 @@
 ;; inode config and it's sub-inodes
 (define (md:make-global-group-inodes cfg-node)
   (alist->hash-table
-   (append (list (list "GLOBAL" (md:make-inode-config
+   (append (list (list "GLOBAL" (md:make-inode-config 'group
 				 (md:make-single-instance) #f #f #f))
-		 (list "AUTHOR" (md:make-inode-config
+		 (list "AUTHOR" (md:make-inode-config 'field
 				 (md:make-single-instance) #f "AUTHOR" #f))
-		 (list "TITLE" (md:make-inode-config
+		 (list "TITLE" (md:make-inode-config 'field
 				(md:make-single-instance) #f "TITLE" #f)))
 	   (map (lambda (node)
 		  (let ((id (md:parse-inode-config-id node)))
 		    (list id
-			  (md:make-inode-config
+			  (md:make-inode-config 'field
 			   (md:make-single-instance) #f id #f))))
 		((sxpath "mdalconfig/ifield") cfg-node)))))
 
