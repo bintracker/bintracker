@@ -570,6 +570,21 @@
       (append (md:mod-parse-line (car lines) token-ids)
 	      (md:mod-parse-block-text (cdr lines) token-ids))))
 
+;; extract the text of the node starting at the scope assignment of the given
+;; MDMOD text
+(define (md:mod-extract-node lines)
+  (letrec ((extract-lines
+	    (lambda (next-lines nesting-level)
+	      (let ((nlevel (cond ((string-contains (car next-lines) "{")
+				    (+ nesting-level 1))
+				   ((string-contains (car next-lines) "}")
+				    (- nesting-level 1))
+				   (else nesting-level))))
+		(if (= nlevel 0)
+		    '()
+		    (cons (car next-lines)
+			  (extract-lines (cdr next-lines) nlevel)))))))
+    (extract-lines (cdr lines) 1)))
 
 ;; return the argument of the first node with the given id encountered in
 ;; module text
