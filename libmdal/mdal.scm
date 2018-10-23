@@ -161,14 +161,6 @@
 	((sxml:attr node 'from) (sxml:attr node 'from))
 	(else (error "Cannot determine inode config id"))))
 
-
-;; generate the 'GLOBAL' inode tree of a given MDCONF root node
-(define (md:xml-node->global-inode-tree cfg-node)
-  (list "GLOBAL"
-	(append '(("AUTHOR") ("TITLE"))
-		(map (lambda (x) (list (md:parse-inode-config-id x)))
-		     ((sxpath "mdalconfig/ifield") cfg-node)))))
-
 ;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID names
 (define (md:clone-inode-tree tree amount)
   (letrec*
@@ -192,7 +184,8 @@
 	(list (map (lambda (x) (list (string-append "R_" (car x))))
 		   (cadr node)))))
 
-;; return the IDs of the subnodes of a given inode ID in the given inode tree
+;; return the IDs of the direct child nodes of a given inode ID in the given
+;; inode tree
 (define (md:get-subnodes inode-id itree)
   (letrec ((get-nodes (lambda (tree)
 			(let ((nodes (alist-ref inode-id tree string=)))
@@ -237,8 +230,12 @@
 
 ;; extract the inode tree from a given MDCONF root node
 (define (md:parse-inode-tree cfg-node)
-  (cons (md:xml-node->global-inode-tree cfg-node)
-	(md:xml-nodes->inode-tree ((sxpath "mdalconfig/igroup") cfg-node))))
+  (list (list "GLOBAL"
+	      (append '(("AUTHOR") ("TITLE"))
+		      (map (lambda (x) (list (md:parse-inode-config-id x)))
+			   ((sxpath "mdalconfig/ifield") cfg-node))
+		      (md:xml-nodes->inode-tree
+		       ((sxpath "mdalconfig/igroup") cfg-node))))))
 
 ;; generate a hash list of reference commands required by
 ;; auto-generated order inodes
