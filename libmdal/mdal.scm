@@ -184,22 +184,6 @@
 	(list (map (lambda (x) (list (string-append "R_" (car x))))
 		   (cadr node)))))
 
-;; return the IDs of the direct child nodes of a given inode ID in the given
-;; inode tree
-(define (md:get-subnodes inode-id itree)
-  (letrec ((get-nodes (lambda (tree)
-			(let ((nodes (alist-ref inode-id tree string=)))
-			  (if (null? nodes)
-			      '()
-			      (map (lambda (x) (car x)) (car nodes)))))))
-    (if (not (member inode-id (flatten itree)))
-	#f
-	(if (not (member inode-id (flatten (car itree))))
-	    (md:get-subnodes inode-id (cdr itree))
-	    (if (not (member inode-id (map (lambda (x) (car x)) itree)))
-		(md:get-subnodes inode-id (cadar itree))
-		(get-nodes itree))))))
-
 ;; helper function, generates the inode tree for a given node and it's subnodes
 (define (md:inode->inode-tree node subnodes)
   (let ((flags (sxml:attr node 'flags)))
@@ -439,6 +423,29 @@
        #f    ;; onodes
        ))))
 
+;; return the IDs of the direct child nodes of a given inode ID in the given
+;; inode tree
+(define (md:config-get-subnode-ids inode-id itree)
+  (letrec ((get-nodes (lambda (tree)
+			(let ((nodes (alist-ref inode-id tree string=)))
+			  (if (null? nodes)
+			      '()
+			      (map (lambda (x) (car x)) (car nodes)))))))
+    (if (not (member inode-id (flatten itree)))
+	#f
+	(if (not (member inode-id (flatten (car itree))))
+	    (md:config-get-subnode-ids inode-id (cdr itree))
+	    (if (not (member inode-id (map (lambda (x) (car x)) itree)))
+		(md:config-get-subnode-ids inode-id (cadar itree))
+		(get-nodes itree))))))
+
+;; return the IDs of the direct child nodes of a given parent inode ID
+;; in the given config, filtered by type
+(define (md:config-get-subnode-type-ids inode-id config type)
+  (filter (lambda (id)
+	    (eq? type (md:inode-config-type
+			 (car (hash-table-ref (md:config-inodes config) id)))))
+	  (md:config-get-subnode-ids inode-id (md:config-itree config))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: INPUT NODES
@@ -613,11 +620,24 @@
 			  (list (list 0 (md:make-inode-instance
 					 (md:mod-lines-get-node-arg id lines)
 					 "")))))
-		       (md:get-subnodes "GLOBAL" (md:config-itree config)))
+		       (md:config-get-subnode-ids "GLOBAL"
+						  (md:config-itree config)))
 		  "")))))
 
+;; (define (md:mod-parse-group-fields lines config)
+;;   )
+
+;; (define (md:mod-parse-block-fields lines config)
+;;   )
+
+;; (define (md:mod-parse-group-blocks lines config)
+;;   )
+
+;; (define (md:mod-parse-group-groups lines config)
+;;   )
+
 ;; convert MDMOD module text to inode tree
-(define (md:mod-lines->inodes lines config)
+(define (md:mod-parse-module lines config)
   (md:mod-lines->global-inodes lines config))
 
 ;; filter out pseudo-nodes MDAL_VERSION/CONFIG from MDMOD text
