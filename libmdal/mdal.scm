@@ -447,6 +447,22 @@
 			 (car (hash-table-ref (md:config-inodes config) id)))))
 	  (md:config-get-subnode-ids inode-id (md:config-itree config))))
 
+;; return the source command of a given node
+(define (md:config-get-inode-source-command node-id config)
+  (md:inode-config-cmd-id (car (hash-table-ref (md:config-inodes config)
+					       node-id))))
+
+;; return the default val of the given command
+(define (md:config-get-command-default-value cmd-id config)
+  (md:command-default (car (hash-table-ref (md:config-commands config) cmd-id))))
+
+;; get the default value of a given inode config
+(define (md:config-get-node-default node-id config)
+  (let ((node-cmd (md:config-get-inode-source-command node-id config)))
+    (if node-cmd
+	(md:config-get-command-default-value node-cmd config)
+	'())))
+
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: INPUT NODES
 ;; -----------------------------------------------------------------------------
@@ -596,44 +612,63 @@
 			  (extract-lines (cdr next-lines) nlevel)))))))
     (extract-lines (cdr lines) 1)))
 
-;; return the argument of the first node with the given id encountered in
-;; module text
-(define (md:mod-lines-get-node-arg node-id lines)
-  (let ((line (find (lambda (s) (string-contains-ci s node-id))
-		    lines)))
-    (if line
-	(string-delete #\" (substring/shared
-			    line
-			    (+ 1 (string-length node-id)
-			       (string-contains-ci line node-id))))
-	'())))
+;; convert a token/argument pair into an unnamed inode instance
+;; TODO: implement argument normalization and proper error checking again config
+(define (md:mod-token/arg->inode-instance token+arg config)
+  (md:make-inode-instance (cadr token+arg) ""))
 
-;; parse GLOBAL inode in MDMOD text
-;; constructs empty instances as needed
-(define (md:mod-lines->global-inodes lines config)
-  (md:make-inode
-   "GLOBAL"
-   (list (list 0 (md:make-inode-instance 
-		  (map (lambda (id)
-			 (md:make-inode
-			  id
-			  (list (list 0 (md:make-inode-instance
-					 (md:mod-lines-get-node-arg id lines)
-					 "")))))
-		       (md:config-get-subnode-ids "GLOBAL"
-						  (md:config-itree config)))
-		  "")))))
+;; convert a list of token/argument pairs into unnamed node instances
+(define (md:mod-token/args->node-instances ta-lst config)
+  (letrec ((ta->instance (lambda (ta instance-no)
+			   (list instance-no (md:mod-token/arg->inode-instance
+					      ta config))))
+	   (make-instances (lambda (lst instance-no)
+			     (if (null? lst)
+				 '()
+				 (cons (ta->instance (car lst)
+						     instance-no)
+				       (make-instances (cdr lst)
+						       (+ 1 instance-no)))))))
+    (make-instances ta-lst 0)))
 
-;; (define (md:mod-parse-group-fields lines config)
+;; extract the argument of the given field node from a single line of MDMOD text
+(define (md:mod-parse-single-field-arg line node-id)
+  (string-drop line (+ 1 (string-length node-id))))
+
+;; parse the igroup fields in the give MDMOD text into an inode set
+(define (md:mod-parse-group-fields lines group-id config)
+  (map (lambda (node-id)
+	 (let ((line (find (lambda (line) (string-prefix? node-id line))
+			   lines)))
+	   (md:make-inode
+	    node-id
+	    (list (list 0
+			(if line
+			    (md:mod-token/arg->inode-instance
+			     (list node-id (md:mod-parse-single-field-arg
+					    line node-id))
+			     config)
+			    (md:make-inode-instance
+			     (md:config-get-node-default node-id config)
+			     "")))))))
+       (md:config-get-subnode-type-ids group-id config 'field)))
+
+;; parse the MDMOD text of a given block instance into an inode set
+(define (md:mod-parse-block-fields lines block-id config)
+  (let* ((node-ids (md:config-get-subnode-type-ids block-id config 'field))
+	 (tokens+args (md:mod-parse-block-text lines node-ids)))
+    (map (lambda (node-id)
+	   (md:mod-token/args->node-instances
+	    (filter (lambda (ta) (string=? node-id (car ta))) tokens+args)
+	    config))
+	 node-ids)))
+
+;; ;; parse the MDMOD text of a given block instance into an inode set
+;; (define (md:mod-parse-group-blocks lines group-id config)
 ;;   )
 
-;; (define (md:mod-parse-block-fields lines config)
-;;   )
-
-;; (define (md:mod-parse-group-blocks lines config)
-;;   )
-
-;; (define (md:mod-parse-group-groups lines config)
+;; ;; parse the MDMOD text of a given group instance into an inode set
+;; (define (md:mod-parse-group-groups lines group-id config)
 ;;   )
 
 ;; convert MDMOD module text to inode tree

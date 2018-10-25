@@ -20,3 +20,5 @@
 			    (md:purge-whitespace
 			     (read-lines "../modules/huby-test.mdal")))))
 (define my-mod (md:parse-module-file "../modules/huby-test.mdal" "config/"))
+(define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
+(define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
