@@ -715,10 +715,6 @@
 		       nodes)))))
 	 node-ids)))
 
-;; ;; parse the MDMOD text of a given group instance into an inode set
-;; (define (md:mod-parse-group-groups lines parent-group-id config)
-;;   )
-
 ;; parse a group instance into an inode set
 (define (md:mod-parse-group lines node-id config)
   (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
@@ -745,13 +741,6 @@
 	 (block-nodes (md:mod-parse-group-blocks lines node-id config))
 	 (field-nodes (md:mod-parse-group-fields lines node-id config)))
     (remove null? (list field-nodes block-nodes group-nodes))))
-
-;; TODO: possibly redundant
-;; filter out pseudo-nodes MDAL_VERSION/CONFIG from MDMOD text
-(define (md:strip-pseudo-nodes lines)
-  (remove (lambda (s) (or (string-contains-ci s "MDAL_VERSION=")
-			  (string-contains-ci s "CONFIG=")))
-	  lines))
 
 ;; strip whitespace from MDMOD text, except where enclosed in double quotes
 (define (md:purge-whitespace lines)
