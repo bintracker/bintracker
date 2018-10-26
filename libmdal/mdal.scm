@@ -226,7 +226,7 @@
 ;; generate a hash list of reference commands required by
 ;; auto-generated order inodes
 (define (md:create-order-commands itree)
-  (alist->hash-table 
+  (alist->hash-table
    (map (lambda (x) (list x (md:make-command md:cmd-type-reference
 					     16 "0" (substring/shared x 2)
 					     #f (md:make-empty-command-flags)
@@ -493,7 +493,7 @@
 (define-record-printer (md:inode node out)
   (begin
     (fprintf out "#<md:inode: ~A>\n" (md:inode-cfg-id node))
-    (for-each (lambda (x) (fprintf out "instance ~S:\n~S" (car x) (cdr x)))
+    (for-each (lambda (x) (fprintf out "instance ~S: ~S\n" (car x) (cdr x)))
 	      (md:inode-instances node))))
 
 ;; ;; check if a given inode is active
@@ -596,9 +596,9 @@
       (append (md:mod-parse-line (car lines) token-ids)
 	      (md:mod-parse-block-text (cdr lines) token-ids))))
 
-;; extract the text of the node starting at the scope assignment of the given
-;; MDMOD text
-(define (md:mod-extract-node lines)
+;; select the text of the group/block node starting at the scope assignment of
+;; the given MDMOD text
+(define (md:mod-crop-node-text lines)
   (letrec ((extract-lines
 	    (lambda (next-lines nesting-level)
 	      (let ((nlevel (cond ((string-contains (car next-lines) "{")
@@ -632,44 +632,96 @@
     (make-instances ta-lst 0)))
 
 ;; extract the argument of the given field node from a single line of MDMOD text
+;; probably redundant, can be handled by md:mod-parse-line
 (define (md:mod-parse-single-field-arg line node-id)
   (string-drop line (+ 1 (string-length node-id))))
 
-;; parse the igroup fields in the give MDMOD text into an inode set
+;; extract the instance argument from an MDMOD scope specifier
+;; returns 0 if none found
+(define (md:mod-parse-scope-instance-id scope)
+  (let ((ob-pos (string-contains scope "("))
+	(cb-pos (string-contains scope ")")))
+    (if (and ob-pos cb-pos)
+	(md:mod-string->number (substring/shared scope (+ 1 ob-pos) cb-pos))
+	0)))
+
+;; extract the name argument from an MDMOD scope specifier
+;; returns an empty string if none found
+(define (md:mod-parse-scope-instance-name scope)
+  (let ((ob-pos (string-contains scope "["))
+	(cb-pos (string-contains scope "]")))
+    (if (and ob-pos cb-pos)
+	(string-copy scope (+ 1 ob-pos) cb-pos)
+	"")))
+
+;; parse the igroup fields in the given MDMOD group node text into an inode set
 (define (md:mod-parse-group-fields lines group-id config)
   (map (lambda (node-id)
 	 (let ((line (find (lambda (line) (string-prefix? node-id line))
 			   lines)))
 	   (md:make-inode
 	    node-id
-	    (list (list 0
-			(if line
-			    (md:mod-token/arg->inode-instance
-			     (list node-id (md:mod-parse-single-field-arg
-					    line node-id))
-			     config)
-			    (md:make-inode-instance
-			     (md:config-get-node-default node-id config)
-			     "")))))))
+	    (list (list 0 (if line
+			      (md:mod-token/arg->inode-instance
+			       (list node-id (md:mod-parse-single-field-arg
+					      line node-id))
+			       config)
+			      (md:make-inode-instance
+			       (md:config-get-node-default node-id config)
+			       "")))))))
        (md:config-get-subnode-type-ids group-id config 'field)))
 
-;; parse the MDMOD text of a given block instance into an inode set
+;; parse the iblock fields in the given MDMOD block node text into an inode set
 (define (md:mod-parse-block-fields lines block-id config)
   (let* ((node-ids (md:config-get-subnode-type-ids block-id config 'field))
 	 (tokens+args (md:mod-parse-block-text lines node-ids)))
     (map (lambda (node-id)
-	   (md:mod-token/args->node-instances
-	    (filter (lambda (ta) (string=? node-id (car ta))) tokens+args)
-	    config))
+	   (md:make-inode node-id
+			  (md:mod-token/args->node-instances
+			   (filter (lambda (ta)
+				     (string=? node-id (car ta))) tokens+args)
+			   config)))
 	 node-ids)))
 
-;; ;; parse the MDMOD text of a given block instance into an inode set
-;; (define (md:mod-parse-group-blocks lines group-id config)
-;;   )
+;; extract non-field nodes text for a given id from the given MDMOD node text
+(define (md:mod-extract-nodes lines node-id)
+  (let ((init-lst (drop-while (lambda (l) (not (string-prefix? node-id l)))
+			      lines)))
+    (if (null? init-lst)
+	'()
+	(let ((node (cons (car init-lst)
+			  (md:mod-crop-node-text init-lst))))
+	  (cons node (md:mod-extract-nodes (drop init-lst (length node))
+					   node-id))))))
+
+;; parse the igroup blocks in the given MDMOD group node text into an inode set
+(define (md:mod-parse-group-blocks lines group-id config)
+  (let* ((node-ids (md:config-get-subnode-type-ids group-id config 'block))
+	 (blk-instances (map (lambda (id)
+			       (list id (md:mod-extract-nodes lines id)))
+			     node-ids)))
+    (map (lambda (id)
+	   (md:make-inode
+	    id
+	    (let ((nodes (cadr (find (lambda (ins) (string=? (car ins) id))
+				     blk-instances))))
+	      (if (null? nodes)
+		  '()
+		  (map (lambda (node)
+			 (list (md:mod-parse-scope-instance-id (car node))
+			       (md:make-inode-instance
+				(md:mod-parse-block-fields (cdr node) id config)
+				(md:mod-parse-scope-instance-name (car node)))))
+		       nodes)))))
+	 node-ids)))
 
 ;; ;; parse the MDMOD text of a given group instance into an inode set
-;; (define (md:mod-parse-group-groups lines group-id config)
+;; (define (md:mod-parse-group-groups lines parent-group-id config)
 ;;   )
+
+;; do we really need this?
+;; (define (md:mod-parse-groups lines parent-group-id config)
+;;   '())
 
 ;; convert MDMOD module text to inode tree
 (define (md:mod-parse-module lines config)
@@ -784,4 +836,3 @@
 			   (string-append config-dir-path cfg-name "/"
 					  cfg-name ".mdconf"))))
 	     (md:make-module cfg-name config #f)))))
-

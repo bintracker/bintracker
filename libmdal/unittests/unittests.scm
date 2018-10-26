@@ -21,4 +21,6 @@
 			     (read-lines "../modules/huby-test.mdal")))))
 (define my-mod (md:parse-module-file "../modules/huby-test.mdal" "config/"))
 (define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
+(define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
+			"}" "CH2(0)={" "NOTE2=a-3" "}"))
 (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
