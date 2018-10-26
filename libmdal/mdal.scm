@@ -719,14 +719,34 @@
 ;; (define (md:mod-parse-group-groups lines parent-group-id config)
 ;;   )
 
-;; do we really need this?
-;; (define (md:mod-parse-groups lines parent-group-id config)
-;;   '())
+;; parse a group instance into an inode set
+(define (md:mod-parse-group lines node-id config)
+  (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
+	 (group-instances (map (lambda (id)
+				 (list id (md:mod-extract-nodes lines id)))
+			       group-ids))
+	 (group-nodes
+	  (map (lambda (id)
+		 (md:make-inode
+		  id
+		  (let ((nodes (cadr (find (lambda (ins)
+					     (string=? (car ins) id))
+					   group-instances))))
+		    (if (null? nodes)
+			'()
+			(map (lambda (node)
+			       (list (md:mod-parse-scope-instance-id (car node))
+				     (md:make-inode-instance
+				      (md:mod-parse-group (cdr node) id config)
+				      (md:mod-parse-scope-instance-name
+				       (car node)))))
+			     nodes)))))
+	       group-ids))
+	 (block-nodes (md:mod-parse-group-blocks lines node-id config))
+	 (field-nodes (md:mod-parse-group-fields lines node-id config)))
+    (remove null? (list field-nodes block-nodes group-nodes))))
 
-;; convert MDMOD module text to inode tree
-(define (md:mod-parse-module lines config)
-  (md:mod-lines->global-inodes lines config))
-
+;; TODO: possibly redundant
 ;; filter out pseudo-nodes MDAL_VERSION/CONFIG from MDMOD text
 (define (md:strip-pseudo-nodes lines)
   (remove (lambda (s) (or (string-contains-ci s "MDAL_VERSION=")
@@ -835,4 +855,11 @@
 		  (config (md:mdconf->config
 			   (string-append config-dir-path cfg-name "/"
 					  cfg-name ".mdconf"))))
-	     (md:make-module cfg-name config #f)))))
+	     (md:make-module cfg-name config
+			     (md:make-inode
+			      "GLOBAL"
+			      (list (list 0
+					  (md:make-inode-instance
+					   (md:mod-parse-group mod-lines
+							       "GLOBAL" config)
+					     "")))))))))
