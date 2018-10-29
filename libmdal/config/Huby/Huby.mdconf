@@ -18,7 +18,6 @@
 
   <ifield from="BPM" />
   <igroup id="PATTERNS" flags="ordered">
-    <!-- <ifield from="BPM" /> -->
     <iblock id="DRUMS">
       <ifield from="DRUM" />
     </iblock>
@@ -28,11 +27,6 @@
       </iblock>
     </clone>
   </igroup>
-  <!--<igroup id="test1">
-      <igroup id="test2" instances="3">
-      <igroup id="test3"></igroup>
-      </igroup>
-      </igroup>-->
 
   <ogroup>
     <ofield value=";sequence" /><!-- implies size="0"-->

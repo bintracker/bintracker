@@ -515,16 +515,24 @@
 ;; -----------------------------------------------------------------------------
 
 (define-record-type md:module
-  (md:make-module cfg-id cfg inodes)
+  (md:make-module cfg-id cfg global-node)
   md:module?
   (cfg-id md:mod-cfg-id md:set-mod-cfg-id!)
   (cfg md:mod-cfg md:set-mod-cfg!)
-  (inodes md:mod-inodes md:set-mod-inodes!))
+  (global-node md:mod-global-node md:set-mod-global-node!))
 
 (define-record-printer (md:module mod out)
   (begin
     (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
     (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
+
+;; generate a function that traverses a given inode, extracting the subnode
+;; or node-instance specified by path
+(define (md:node-path path)
+  (lambda (node)
+    (find (lambda (subnode-id)
+	    (string=? (md:inode-cfg-id subnode-id) "BPM"))
+	  (md:inode-instance-val (cadar (md:inode-instances node))))))
 
 ;; Helper func, returns the first arg from a partially parsed line of MDMOD text
 ;; preserving "string-in-string" arguments. Line must start with an argument.
@@ -740,7 +748,7 @@
 	       group-ids))
 	 (block-nodes (md:mod-parse-group-blocks lines node-id config))
 	 (field-nodes (md:mod-parse-group-fields lines node-id config)))
-    (remove null? (list field-nodes block-nodes group-nodes))))
+    (remove null? (append field-nodes block-nodes group-nodes))))
 
 ;; strip whitespace from MDMOD text, except where enclosed in double quotes
 (define (md:purge-whitespace lines)
@@ -813,26 +821,6 @@
 ;; normalizes hex prefix to Scheme format before calling string->number
 (define (md:mod-string->number str)
   (string->number (string-translate* str '(("$" . "#x")))))
-
-;; resolve scope changes in the given mdmod text line, except for endpoints.
-;; scope is expressed as a flat list, with (car lst) being the current (deepest)
-;; nesting level.
-(define (md:mod-change-scope line current-scope)
-  (let ((parent-scope (cdr current-scope)))
-    (if (string-contains line "}")
-	(if (null? parent-scope)
-	    '("GLOBAL" 0)
-	    parent-scope)
-	(cons (let ((id (car (string-split line "([="))))
-		(list id (if (string-contains line "(")
-			     (md:mod-string->number
-			      (substring line
-					 (+ 1 (substring-index "(" line))
-					 (substring-index ")" line)))
-			     0)))
-	      (if (equal? (caar current-scope) "GLOBAL")
-		  parent-scope
-		  current-scope)))))
 
 ;; construct an md:module from a given .mdal file
 (define (md:parse-module-file filepath config-dir-path)
