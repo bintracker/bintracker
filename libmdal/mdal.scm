@@ -526,13 +526,31 @@
     (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
     (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
 
-;; generate a function that traverses a given inode, extracting the subnode
-;; or node-instance specified by path
-(define (md:node-path path)
+;; generate a function that takes an inode as parameter, and returns the node
+;; instance matching the given numeric instance id
+;; TODO should check if node instance actually exists
+(define (md:mod-get-node-instance id)
   (lambda (node)
-    (find (lambda (subnode-id)
-	    (string=? (md:inode-cfg-id subnode-id) "BPM"))
-	  (md:inode-instance-val (cadar (md:inode-instances node))))))
+    (car (alist-ref id (md:inode-instances node)))))
+
+;; generate a function that takes an inode as parameter, and return the subnode
+;; matching the given path
+(define (md:node-path path)
+  (letrec ((make-npath-fun
+	    (lambda (pathlist)
+	      (if (= 2 (length pathlist))
+		  (lambda (node)
+		    (find (lambda (subnode-id)
+			    (string=? (md:inode-cfg-id subnode-id)
+				      (cadr pathlist)))
+			  (md:inode-instance-val
+			   ((md:mod-get-node-instance
+			     (string->number (car pathlist)))
+			    node))))
+		  (lambda (node)
+		    ((make-npath-fun (cddr pathlist))
+		     ((make-npath-fun (take pathlist 2)) node)))))))
+    (make-npath-fun (string-split path "/"))))
 
 ;; Helper func, returns the first arg from a partially parsed line of MDMOD text
 ;; preserving "string-in-string" arguments. Line must start with an argument.
