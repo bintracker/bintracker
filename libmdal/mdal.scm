@@ -533,24 +533,37 @@
   (lambda (node)
     (car (alist-ref id (md:inode-instances node)))))
 
-;; generate a function that takes an inode as parameter, and return the subnode
+;; lo-level api, generate a function that takes an inode as param, and returns
+;; the node matching the given path
+(define (md:make-npath-fn pathlist)
+  (if (= 2 (length pathlist))
+      (lambda (node)
+	(find (lambda (subnode-id)
+		(string=? (md:inode-cfg-id subnode-id)
+			  (cadr pathlist)))
+	      (md:inode-instance-val
+	       ((md:mod-get-node-instance (string->number (car pathlist)))
+		node))))
+      (lambda (node)
+	((md:make-npath-fn (cddr pathlist))
+	 ((md:make-npath-fn (take pathlist 2)) node)))))
+
+;; generate a function that takes an inode as parameter, and returns the node
+;; instance matching the given path
+(define (md:node-instance-path path)
+  (letrec ((make-instance-path-fn
+	    (lambda (pathlist)
+	      (if (= 1 (length pathlist))
+		  (md:mod-get-node-instance (string->number (car pathlist)))
+		  (lambda (node)
+		    ((make-instance-path-fn (cddr pathlist))
+		     ((md:make-npath-fn (take pathlist 2)) node)))))))
+    (make-instance-path-fn (string-split path "/"))))
+
+;; generate a function that takes an inode as parameter, and returns the subnode
 ;; matching the given path
 (define (md:node-path path)
-  (letrec ((make-npath-fun
-	    (lambda (pathlist)
-	      (if (= 2 (length pathlist))
-		  (lambda (node)
-		    (find (lambda (subnode-id)
-			    (string=? (md:inode-cfg-id subnode-id)
-				      (cadr pathlist)))
-			  (md:inode-instance-val
-			   ((md:mod-get-node-instance
-			     (string->number (car pathlist)))
-			    node))))
-		  (lambda (node)
-		    ((make-npath-fun (cddr pathlist))
-		     ((make-npath-fun (take pathlist 2)) node)))))))
-    (make-npath-fun (string-split path "/"))))
+  (md:make-npath-fn (string-split path "/")))
 
 ;; Helper func, returns the first arg from a partially parsed line of MDMOD text
 ;; preserving "string-in-string" arguments. Line must start with an argument.
