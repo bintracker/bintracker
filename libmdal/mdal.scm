@@ -496,10 +496,46 @@
     (for-each (lambda (x) (fprintf out "instance ~S: ~S\n" (car x) (cdr x)))
 	      (md:inode-instances node))))
 
-;; ;; check if a given inode is active
-;; (define (md:is-active? inode instance)
-;;   (not (null? (md:inode-val inode))))
+;; return the command configuration associated with the given field node
+(define (md:get-node-command-cfg node config)
+  (car (hash-table-ref (md:config-commands config)
+		       (md:inode-config-cmd-id
+			(car (hash-table-ref (md:config-inodes config)
+					     (md:inode-cfg-id node)))))))
 
+;; find the last set instance of the given node before the given instance, and
+;; return its raw value, or its default value if no set instances are found
+(define (md:eval-field-last-set instance-id node command-config)
+  (let ((last-set (find (lambda (instance)
+			  (not (null? (md:inode-instance-val (cadr instance)))))
+			(reverse (take (md:inode-instances node)
+				       instance-id)))))
+    (if last-set
+	(md:inode-instance-val last-set)
+	(md:command-default command-config))))
+
+;; evaluate a field node instance, ie. generate it's output value. This will
+;; never return an empty value. If the node instance is inactive, it will return
+;; the default value, or backtrace if the use-last-set flag is enabled on the
+;; node command.
+;; To display the node's current value, use md:print-field instead.
+;; TODO: this could be optimized by constructing a dedicated eval fn in config.
+(define (md:eval-field instance-id node command-config)
+  (let* ((field ((md:mod-get-node-instance instance-id) node))
+	 (current-val (md:inode-instance-val field))
+	 (raw-val (if (null? current-val)
+		      (if (md:command-flags-use-last-set?
+			   (md:command-flags command-config))
+			  (md:eval-field-last-set
+			   instance-id node command-config)
+			  (md:command-default command-config))
+		      current-val))
+	 (cmd-type (md:command-type command-config)))
+    (cond ((or (= cmd-type md:cmd-type-int) (= cmd-type md:cmd-type-uint))
+	   raw-val)
+	  ((or (= cmd-type md:cmd-type-key) (= cmd-type md:cmd-type-ukey))
+	   (car (hash-table-ref (md:command-keys command-config) raw-val)))
+	  (else "cmd type not implemented"))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: OUTPUT NODES
