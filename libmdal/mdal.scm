@@ -349,7 +349,7 @@
      (md:create-iorder-inodes (md:parse-inode-tree cfg-node)))))
 
 ;; -----------------------------------------------------------------------------
-;; MDCONF: OUTPUT NODE CONFIGURATION
+;; MDCONF: COMPILER FUNCTION CONFIGURATION
 ;; -----------------------------------------------------------------------------
 ;; additional fields: fixed-length, max-length, min-instances, max-instances,
 ;; sort-ascending, use-little-endian (aka override-endianness)
@@ -357,11 +357,77 @@
 ;; order? list?
 ;; some of these can probably be combined into a 'flags' field
 
-(define-record-type md:onode-config
-  (md:make-onode-config sources bytes sub-nodes composition-rule
-                        requirement-condition)
-  md:onode-config?
-  )
+;; convert a node path argument from an mdconf onode function call to a
+;; function resolving that path
+(define (md:config-resolve-npath-arg arg)
+  (cond ((string-prefix? "?" arg) (lambda (node instance-id symbols)
+				    '()))
+	((string-prefix? "$" arg) (lambda (node instance-id symbols)
+				    '()))
+	;; do we even need that or should we handle it via symbols?
+	;; -> no, because they're not the same thing
+	((string-prefix? "!" arg) (lambda (node instance-id symbols)
+				    '()))
+	(else (error "unsupported path argument in onode compile function"))))
+
+;; convert a mdconf onode function call into an actual function
+;; TODO: deal with non-list fns (eg. ?FIELD)
+;; TODO: deal with full path qualifiers -> may not be required if fpq is given
+;;       as (md:node-path "n/foo")
+(define (md:config-resolve-fn-call fn-string)
+  (let ((proto-fn (read (open-input-string fn-string)))
+	(transform-arg
+	 (lambda (arg)
+	   (let ((argstr (->string arg)))
+	     (cond ((string-prefix? "?" argstr)
+		    ;; TODO resolve args by analyzing argstr
+		    '(md:eval-field instance-id node command-config))
+		   (else arg))))))
+    (eval (append '(lambda (instance-id node symbols command-config))
+		  (map (lambda (arg) (transform-arg arg))
+		       proto-fn)))))
+
+;; convert an mdconf output/comment node into a compiler function that generates
+;; an md:ocomment
+(define (md:config-make-comment-fn cfg-node)
+  (lambda () (md:make-ocomment (sxml:text cfg-node))))
+
+
+(define (md:config-make-field-fn cfg-node)
+  (lambda (node instance-id symbols config)
+    '()))
+
+(define (md:config-make-symbol-fn cfg-node)
+  (lambda (node instance-id symbols config)
+    '()))
+
+(define (md:config-make-block-fn cfg-node)
+  (lambda (node instance-id symbols config)
+    '()))
+
+(define (md:config-make-order-fn cfg-node)
+  (lambda (node instance-id symbols config)
+    '()))
+
+(define (md:config-make-group-fn cfg-node)
+  (lambda (node instance-id symbols config)
+    '()))
+
+;; dispatch helper, resolve mdconf nodes to compiler function generators
+(define (md:config-make-onode-fn cfg-node)
+  (let ((node-type (sxml:name cfg-node)))
+    (cond ((equal? node-type 'comment) (md:config-make-comment-fn cfg-node))
+	  ((equal? node-type 'field) (md:config-make-field-fn cfg-node))
+	  ((equal? node-type 'symbol) (md:config-make-symbol-fn cfg-node))
+	  ((equal? node-type 'block) (md:config-make-block-fn cfg-node))
+	  ((equal? node-type 'group) (md:config-make-group-fn cfg-node))
+	  (else (error "unsupported node type")))))
+
+;; from a given mdconf output node, generate a function that compiles an
+;; md:module into a output node structure
+(define (md:config-make-compile-fn cfg-node)
+  (lambda (global-node)
+    '()))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: MASTER CONFIGURATION
@@ -370,14 +436,14 @@
 ;; TODO: where to handle max-binsize?
 
 (define-record-type md:config
-  (md:make-config target description commands itree inodes onodes)
+  (md:make-config target description commands itree inodes compile-fn)
   md:config?
   (target md:config-target md:config-set-target!)
   (description md:config-description md:config-set-description!)
   (commands md:config-commands md:config-set-commands!)
   (itree md:config-itree md:config-set-itree)
   (inodes md:config-inodes md:config-set-inodes!)
-  (onodes md:config-onodes md:config-set-onodes!))
+  (compile-fn md:config-compile-fn md:config-set-compile-fn!))
 
 (define-record-printer (md:config cfg out)
   (begin
@@ -541,10 +607,31 @@
 ;; MDMOD: OUTPUT NODES
 ;; -----------------------------------------------------------------------------
 
-;; (define-record-type md:onode
-;;   (make-md:onode cfg-id sub-nodes instances val)
+(define-record-type md:ocomment
+  (md:make-ocomment str)
+  md:ocomment?
+  (str md:ocomment-str))
 
-;; )
+(define-record-type md:ofield
+  (md:make-ofield val bytes)
+  md:ofield?
+  (val md:ofield-val)
+  (bytes md:ofield-bytes))
+
+(define-record-type md:osymbol
+  (md:make-osymbol name)
+  md:osymbol?
+  (name md:osymbol-name))
+
+(define-record-type md:oblock
+  (md:make-oblock subnodes)
+  md:oblock?
+  (subnodes md:oblock-subnodes))
+
+(define-record-type md:ogroup
+  (md:make-ogroup subnodes)
+  md:ogroup?
+  (subnodes md:ogroup-subnodes))
 
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: MODULE

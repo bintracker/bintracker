@@ -24,3 +24,9 @@
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
 (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
+(define my-test-field (md:eval-field
+		       4 ((md:node-path "0/PATTERNS/0/CH1/0/NOTE1")
+			  (md:mod-global-node my-mod))
+		       (md:get-node-command-cfg
+			((md:node-path "0/PATTERNS/0/CH1/0/NOTE1")
+			 (md:mod-global-node my-mod)) my-cfg)))

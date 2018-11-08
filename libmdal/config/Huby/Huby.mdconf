@@ -30,24 +30,24 @@
 
   <output>
     <comment>sequence</comment>
-    <value bytes="2">(/ 1779661 ?BPM)</value><!--cpufreq*60/cyclecount*BPM)-->
-    <value bytes="2">(- $sequence_end 8)</value>
+    <field bytes="2">(/ 1779661 ?BPM)</field><!--cpufreq*60/cyclecount*BPM)-->
+    <field bytes="2">(- $sequence_end 8)</field>
     <order from="!PATTERNS" layout="matrix" />
     <!--ok, but how to handle transpose/jumps? Probably better to define fields.-->
-    <value bytes="1">0</value>
+    <field bytes="1">0</field>
     <symbol>sequence_end</symbol>
-    <ogroup id="PATTERNS" from="?PATTERNS" flags="reorder, numeric_order">
+    <group id="PATTERNS" from="?PATTERNS" flags="reorder, numeric_order">
       <!-- flags="reorder" is actually redundant: if any contained oblock sets length,
 we need to reorder. Actually, reorder might even makes sense for variable block sizes,
 in order to eliminate duplicates etc.-->
-      <oblock from="?CH1, ?DRUMS" length="8">
+      <block from="?CH1, ?DRUMS" length="8">
 	<!-- could wrap fields in a row tag, this would allow for additional single fields (eg. size etc)-->
-	<value bytes="1">(if (set ?DRUM) #x2c ?NOTE)</value>
-      </oblock>
-      <oblock from="?CH2" length="8">
-	<value bytes="1">?NOTE2</value>
-      </oblock>
-    </ogroup>
+	<field bytes="1">(if (set ?DRUM) #x2c ?NOTE)</field>
+      </block>
+      <block from="?CH2" length="8">
+	<field bytes="1">?NOTE2</field>
+      </block>
+    </group>
   </output>
 
 </mdalconfig>
