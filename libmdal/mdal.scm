@@ -384,8 +384,8 @@
 		    '(md:eval-field instance-id node command-config))
 		   (else arg))))))
     (eval (append '(lambda (instance-id node symbols command-config))
-		  (map (lambda (arg) (transform-arg arg))
-		       proto-fn)))))
+		  (list (map (lambda (arg) (transform-arg arg))
+			     proto-fn))))))
 
 ;; convert an mdconf output/comment node into a compiler function that generates
 ;; an md:ocomment
@@ -774,10 +774,24 @@
 			  (extract-lines (cdr next-lines) nlevel)))))))
     (extract-lines (cdr lines) 1)))
 
+;; convert an argument string from MDMOD text to the actual format required by
+;; the inode field command.
+;; TODO: incomplete, currently only handles int/uint cmds
+;; TODO: error checking
+(define (md:mod-normalize-arg arg node-id config)
+  (let ((field-cmd (car (hash-table-ref
+			 (md:config-commands config)
+			 (md:config-get-inode-source-command node-id config)))))
+    (cond ((or (md:int-command? field-cmd)
+	       (md:uint-command? field-cmd))
+	   (string->number arg))
+	  (else arg))))
+
 ;; convert a token/argument pair into an unnamed inode instance
 ;; TODO: implement argument normalization and proper error checking again config
 (define (md:mod-token/arg->inode-instance token+arg config)
-  (md:make-inode-instance (cadr token+arg) ""))
+  (md:make-inode-instance
+   (md:mod-normalize-arg (cadr token+arg) (car token+arg) config) ""))
 
 ;; convert a list of token/argument pairs into unnamed node instances
 (define (md:mod-token/args->node-instances ta-lst config)

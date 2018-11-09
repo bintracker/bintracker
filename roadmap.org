@@ -1,9 +1,13 @@
 * libmdal
 ** Compiler
 *** TODO output fn generator
+- output fn should generate a list with either onodes or generator fns, keep
+  iterating over the list until only ofields remain
 *** TODO expand config handling
 *** TODO more testing configs/modules
 ** Tracker API
+- need an "enable_rowplay" flag/tag for groups (and perhaps "allow_disable" for
+  mute etc)
 ** Undo/Redo stack
 *** TODO Store "reverse calls"?
 So each call invoked through the tracker api will push a function reversing the
@@ -23,11 +27,14 @@ See https://stackoverflow.com/questions/359424/detach-move-subdirectory-into-sep
 *** tk or pstk?
 egg/nuklear might be an option in case glfw3 is pulled in
 ** REPL Console
+*** Eggs: linenoise or parley (recommended)
 ** Plugin API
 *** Hash plugins?
 http://wiki.call-cc.org/eggref/4/simple-md5
+*** Eggs: noise, compressors
 ** Emulation API
 *** native
+**** look into bind egg
 *** gme
 *** MAME
 https://docs.mamedev.org/commandline/commandline-all.html
@@ -41,16 +48,23 @@ https://docs.mamedev.org/techspecs/luaengine.html
 - if MAME interface is fast enough, we could solely rely on it for a start
   (and that would deter commercial use of bintracker), but MAME is a big cpu
   hogger, and memory/state io is not implemented for all systems
+- bintracker will need to talk to MAME/Lua via files, look into passing file
+  descriptors etc to Lua
 **** Interface into MAME Debugger api to trigger breakpoints for reloading etc?
 on an even more advanced stage, interface into mame/unidasm
 ** MIDI Support
 Will most likely require building a bridge to a portable C MIDI lib
 ** Documentation
+** Random Thoughts
+*** tracker .cfg can be written in .scm
 * libmdal-algo
 * general useful stuff
 ** Optimization
 *** Profiling
 available in https://wiki.call-cc.org/man/4/Using%20the%20compiler
 ** Chicken+SWIG:
+Conclusion: Will not work because Chicken no longer actively supports it
 http://www.swig.org/Doc3.0/Chicken.html#Chicken
 http://www.swig.org/tutorial.html
+** Eggs
+*** alist-lib, amb, lookup-table
