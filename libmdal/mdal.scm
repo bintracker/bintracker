@@ -387,47 +387,77 @@
 		  (list (map (lambda (arg) (transform-arg arg))
 			     proto-fn))))))
 
-;; convert an mdconf output/comment node into a compiler function that generates
-;; an md:ocomment
-(define (md:config-make-comment-fn cfg-node)
-  (lambda () (md:make-ocomment (sxml:text cfg-node))))
+;; check whether a given MDCONF output node function definition can be resolved
+;; into a ofield node during config parsing, ie. without knowing the actual
+;; module contents.
+(define (md:config-direct-resolvable? fn-string)
+  (let* ((fn-args (read (open-input-string fn-string)))
+	 (fn-lst (if (list? fn-args)
+		     fn-args
+		     (list fn-args))))
+    (not (find (lambda (arg) (or (string-prefix? "?" (->string arg))
+				 (string-prefix? "$" (->string arg))
+				 (string-prefix? "!" (->string arg))))
+	       fn-lst))))
 
+;; convert an mdconf output-field node into a compiler function that generates
+;; an md:ofield
+;; in: cfg-node - the MDCONF node to parse
+;;     path-prefix - the nodepath to prepend to ?FIELD arguments
+(define (md:config-make-field-fn cfg-node path-prefix)
+  (let ((fn-string (sxml:text cfg-node)))
+    (if (md:config-direct-resolvable? fn-string)
+	;; TODO extract size
+	(md:make-ofield (eval (read (open-input-string fn-string)))
+			(sxml:attr cfg-node 'bytes))
+	(lambda (node instance-id symbols config)
+	  '()))))
 
-(define (md:config-make-field-fn cfg-node)
+(define (md:config-make-symbol-fn cfg-node path-prefix)
   (lambda (node instance-id symbols config)
     '()))
 
-(define (md:config-make-symbol-fn cfg-node)
+(define (md:config-make-block-fn cfg-node path-prefix)
   (lambda (node instance-id symbols config)
     '()))
 
-(define (md:config-make-block-fn cfg-node)
+(define (md:config-make-order-fn cfg-node path-prefix)
   (lambda (node instance-id symbols config)
     '()))
 
-(define (md:config-make-order-fn cfg-node)
+(define (md:config-make-group-fn cfg-node path-prefix)
   (lambda (node instance-id symbols config)
     '()))
 
-(define (md:config-make-group-fn cfg-node)
-  (lambda (node instance-id symbols config)
-    '()))
-
-;; dispatch helper, resolve mdconf nodes to compiler function generators
-(define (md:config-make-onode-fn cfg-node)
+;; dispatch helper, resolve mdconf nodes to compiler function generators or
+;; onodes (if directly resolvable)
+(define (md:config-make-onode-fn cfg-node path-prefix)
   (let ((node-type (sxml:name cfg-node)))
-    (cond ((equal? node-type 'comment) (md:config-make-comment-fn cfg-node))
-	  ((equal? node-type 'field) (md:config-make-field-fn cfg-node))
-	  ((equal? node-type 'symbol) (md:config-make-symbol-fn cfg-node))
-	  ((equal? node-type 'block) (md:config-make-block-fn cfg-node))
-	  ((equal? node-type 'group) (md:config-make-group-fn cfg-node))
+    (cond ((equal? node-type 'comment) (md:make-ocomment (sxml:text cfg-node)))
+	  ((equal? node-type 'field) (md:config-make-field-fn cfg-node
+							      path-prefix))
+	  ((equal? node-type 'symbol) (md:config-make-symbol-fn cfg-node
+								path-prefix))
+	  ((equal? node-type 'block) (md:config-make-block-fn cfg-node
+							      path-prefix))
+	  ((equal? node-type 'order) (md:config-make-order-fn cfg-node
+							      path-prefix))
+	  ((equal? node-type 'group) (md:config-make-group-fn cfg-node
+							      path-prefix))
 	  (else (error "unsupported node type")))))
 
-;; from a given mdconf output node, generate a function that compiles an
-;; md:module into a output node structure
-(define (md:config-make-compile-fn cfg-node)
-  (lambda (global-node)
-    '()))
+;; from a given mdconf output node, generate a nested list that contains either
+;; output nodes (if they can be resolved immediately) or functions that generate
+;; output nodes. To get the actual module output, iterate over the tree until
+;; all function members are resolved into nodes.
+(define (md:config-make-output-tree cfg-node)
+  (letrec ((xml-nodes ((sxpath "mdalconfig/output/node()") cfg-node))
+	   (make-otree (lambda (xnodes)
+			 (if (null? xnodes)
+			     '()
+			     (cons (md:config-make-onode-fn (car xnodes) "")
+				   (make-otree (cdr xnodes)))))))
+    (make-otree xml-nodes)))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: MASTER CONFIGURATION
@@ -436,14 +466,14 @@
 ;; TODO: where to handle max-binsize?
 
 (define-record-type md:config
-  (md:make-config target description commands itree inodes compile-fn)
+  (md:make-config target description commands itree inodes otree)
   md:config?
   (target md:config-target md:config-set-target!)
   (description md:config-description md:config-set-description!)
   (commands md:config-commands md:config-set-commands!)
   (itree md:config-itree md:config-set-itree)
   (inodes md:config-inodes md:config-set-inodes!)
-  (compile-fn md:config-compile-fn md:config-set-compile-fn!))
+  (otree md:config-otree md:config-set-otree!))
 
 (define-record-printer (md:config cfg out)
   (begin
@@ -486,8 +516,7 @@
 			 (md:create-order-commands itree))
        itree
        (md:mdconf->inodes cfg)
-       #f    ;; onodes
-       ))))
+       (md:config-make-output-tree cfg)))))
 
 ;; return the IDs of the direct child nodes of a given inode ID in the given
 ;; inode tree
