@@ -42,12 +42,12 @@ PATTERNS={
     }
 
     CH2($00)={
-        NOTE1=a2
+        NOTE2=a2
         .15
     }
 
     CH2($01)={
-        NOTE1=e2
+        NOTE2=e2
         .15
     }
 }
