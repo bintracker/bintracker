@@ -374,59 +374,96 @@
 ;; TODO: deal with non-list fns (eg. ?FIELD)
 ;; TODO: deal with full path qualifiers -> may not be required if fpq is given
 ;;       as (md:node-path "n/foo")
+;; TODO: default-path can be resolved to path-fn beforehand
+;; TODO: command-config arg for eval-field can be resolved during md:make-config
+;;       but then node-fn must keep a copy of all required command-configs
 (define (md:config-resolve-fn-call fn-string)
   (let ((proto-fn (read (open-input-string fn-string)))
 	(transform-arg
 	 (lambda (arg)
 	   (let ((argstr (->string arg)))
 	     (cond ((string-prefix? "?" argstr)
-		    ;; TODO resolve args by analyzing argstr
-		    '(md:eval-field instance-id node command-config))
+		    `(md:eval-field
+		      instance-id
+		      ((md:node-path default-path) (md:mod-global-node mod))
+		      (car (hash-table-ref
+			    (md:config-commands (md:mod-cfg mod))
+			    (md:config-get-inode-source-command
+			     (string-drop ,argstr 1) (md:mod-cfg mod))))))
 		   (else arg))))))
-    (eval (append '(lambda (instance-id node symbols command-config))
+    (eval (append '(lambda (mod default-path instance-id symbols))
 		  (list (map (lambda (arg) (transform-arg arg))
 			     proto-fn))))))
+
+;; transform an MDCONF output node function definition into a list. This will
+;; return a list even if the node function consists of only an atom.
+(define (md:config-fn-string->list fn-string)
+  (let ((fn-args (read (open-input-string fn-string))))
+    (if (list? fn-args)
+	fn-args
+	(list fn-args))))
 
 ;; check whether a given MDCONF output node function definition can be resolved
 ;; into a ofield node during config parsing, ie. without knowing the actual
 ;; module contents.
 (define (md:config-direct-resolvable? fn-string)
-  (let* ((fn-args (read (open-input-string fn-string)))
-	 (fn-lst (if (list? fn-args)
-		     fn-args
-		     (list fn-args))))
-    (not (find (lambda (arg) (or (string-prefix? "?" (->string arg))
-				 (string-prefix? "$" (->string arg))
-				 (string-prefix? "!" (->string arg))))
-	       fn-lst))))
+  (not (find (lambda (arg) (or (string-prefix? "?" (->string arg))
+			       (string-prefix? "$" (->string arg))
+			       (string-prefix? "!" (->string arg))))
+	     (md:config-fn-string->list fn-string))))
+
+;; from a given MDCONF output field node definition, extract the symbols
+;; required to resolve the field function
+;; TODO eval field condition
+(define (md:config-get-required-symbols cfg-node)
+  (map (lambda (arg) (string-drop (->string arg) 1))
+       (filter (lambda (x) (string-prefix? "$" (->string x)))
+	       (md:config-fn-string->list (sxml:text cfg-node)))))
+
+;; generate a function that takes a hash-table of symbols and checks if it
+;; contains all symbols needed to resolve an onode
+(define (md:config-make-resolve-check cfg-node)
+  (lambda (available-symbols)
+    (not (any (lambda (sym)
+		(not (member sym (hash-table-keys available-symbols))))
+	      (md:config-get-required-symbols cfg-node)))))
 
 ;; convert an mdconf output-field node into a compiler function that generates
 ;; an md:ofield
 ;; in: cfg-node - the MDCONF node to parse
 ;;     path-prefix - the nodepath to prepend to ?FIELD arguments
-(define (md:config-make-field-fn cfg-node path-prefix)
-  (let ((fn-string (sxml:text cfg-node)))
+;; TODO: field conditions
+(define (md:config-make-ofield-fn cfg-node path-prefix)
+  (let ((fn-string (sxml:text cfg-node))
+	(field-size (sxml:attr cfg-node 'bytes)))
     (if (md:config-direct-resolvable? fn-string)
-	;; TODO extract size
 	(md:make-ofield (eval (read (open-input-string fn-string)))
-			(sxml:attr cfg-node 'bytes))
-	(lambda (node instance-id symbols config)
-	  '()))))
+			field-size)
+	(letrec* ((field-fn (md:config-resolve-fn-call fn-string))
+		  (resolvable? (md:config-make-resolve-check cfg-node))
+		  (node-fn (lambda (mod default-path instance-id symbols)
+			     (if (resolvable? symbols)
+				 ;; TODO field-fn needs different args
+				 (md:make-ofield (field-fn mod default-path
+							   instance-id symbols)
+						 field-size)
+				 node-fn))))
+	  node-fn))))
 
-(define (md:config-make-symbol-fn cfg-node path-prefix)
-  (lambda (node instance-id symbols config)
+(define (md:config-make-osymbol-fn cfg-node path-prefix)
+  (lambda (mod default-path instance-id symbols)
     '()))
 
-(define (md:config-make-block-fn cfg-node path-prefix)
-  (lambda (node instance-id symbols config)
+(define (md:config-make-oblock-fn cfg-node path-prefix)
+  (lambda (mod default-path instance-id symbols)
     '()))
 
-(define (md:config-make-order-fn cfg-node path-prefix)
-  (lambda (node instance-id symbols config)
+(define (md:config-make-oorder-fn cfg-node path-prefix)
+  (lambda (mod default-path instance-id symbols)
     '()))
 
-(define (md:config-make-group-fn cfg-node path-prefix)
-  (lambda (node instance-id symbols config)
+(define (md:config-make-ogroup-fn cfg-node path-prefix)
+  (lambda (mod default-path instance-id symbols)
     '()))
 
 ;; dispatch helper, resolve mdconf nodes to compiler function generators or
@@ -434,16 +471,16 @@
 (define (md:config-make-onode-fn cfg-node path-prefix)
   (let ((node-type (sxml:name cfg-node)))
     (cond ((equal? node-type 'comment) (md:make-ocomment (sxml:text cfg-node)))
-	  ((equal? node-type 'field) (md:config-make-field-fn cfg-node
-							      path-prefix))
-	  ((equal? node-type 'symbol) (md:config-make-symbol-fn cfg-node
-								path-prefix))
-	  ((equal? node-type 'block) (md:config-make-block-fn cfg-node
-							      path-prefix))
-	  ((equal? node-type 'order) (md:config-make-order-fn cfg-node
-							      path-prefix))
-	  ((equal? node-type 'group) (md:config-make-group-fn cfg-node
-							      path-prefix))
+	  ((equal? node-type 'field) (md:config-make-ofield-fn cfg-node
+							       path-prefix))
+	  ((equal? node-type 'symbol) (md:config-make-osymbol-fn cfg-node
+								 path-prefix))
+	  ((equal? node-type 'block) (md:config-make-oblock-fn cfg-node
+							       path-prefix))
+	  ((equal? node-type 'order) (md:config-make-oorder-fn cfg-node
+							       path-prefix))
+	  ((equal? node-type 'group) (md:config-make-ogroup-fn cfg-node
+							       path-prefix))
 	  (else (error "unsupported node type")))))
 
 ;; from a given mdconf output node, generate a nested list that contains either
