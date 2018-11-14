@@ -374,7 +374,8 @@
 ;; TODO: deal with non-list fns (eg. ?FIELD)
 ;; TODO: deal with full path qualifiers -> may not be required if fpq is given
 ;;       as (md:node-path "n/foo")
-;; TODO: default-path can be resolved to path-fn beforehand
+;; TODO: default-path can be resolved to path-fn beforehand, ie. default-path
+;;       should be the actual result of (md:node-path default-path-str)
 ;; TODO: command-config arg for eval-field can be resolved during md:make-config
 ;;       but then node-fn must keep a copy of all required command-configs
 (define (md:config-resolve-fn-call fn-string)
@@ -386,10 +387,9 @@
 		    `(md:eval-field
 		      instance-id
 		      ((md:node-path default-path) (md:mod-global-node mod))
-		      (car (hash-table-ref
-			    (md:config-commands (md:mod-cfg mod))
-			    (md:config-get-inode-source-command
-			     (string-drop ,argstr 1) (md:mod-cfg mod))))))
+		      (md:config-get-inode-source-command
+		       (string-drop ,argstr 1)
+		       (md:mod-cfg mod))))
 		   (else arg))))))
     (eval (append '(lambda (mod default-path instance-id symbols))
 		  (list (map (lambda (arg) (transform-arg arg))
@@ -579,20 +579,18 @@
 			 (car (hash-table-ref (md:config-inodes config) id)))))
 	  (md:config-get-subnode-ids inode-id (md:config-itree config))))
 
-;; return the source command of a given node
+;; return the source command of a given inode
 (define (md:config-get-inode-source-command node-id config)
-  (md:inode-config-cmd-id (car (hash-table-ref (md:config-inodes config)
-					       node-id))))
-
-;; return the default val of the given command
-(define (md:config-get-command-default-value cmd-id config)
-  (md:command-default (car (hash-table-ref (md:config-commands config) cmd-id))))
+  (car (hash-table-ref (md:config-commands config)
+		       (md:inode-config-cmd-id
+			(car (hash-table-ref (md:config-inodes config)
+					     node-id))))))
 
 ;; get the default value of a given inode config
 (define (md:config-get-node-default node-id config)
   (let ((node-cmd (md:config-get-inode-source-command node-id config)))
     (if node-cmd
-	(md:config-get-command-default-value node-cmd config)
+	(md:command-default node-cmd)
 	'())))
 
 ;; -----------------------------------------------------------------------------
@@ -845,9 +843,7 @@
 ;; TODO: incomplete, currently only handles int/uint cmds
 ;; TODO: error checking
 (define (md:mod-normalize-arg arg node-id config)
-  (let ((field-cmd (car (hash-table-ref
-			 (md:config-commands config)
-			 (md:config-get-inode-source-command node-id config)))))
+  (let ((field-cmd (md:config-get-inode-source-command node-id config)))
     (cond ((or (md:int-command? field-cmd)
 	       (md:uint-command? field-cmd))
 	   (string->number arg))
