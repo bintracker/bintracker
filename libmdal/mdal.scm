@@ -936,7 +936,11 @@
 (define (md:mod-parse-group-blocks lines group-id config)
   (let* ((node-ids (md:config-get-subnode-type-ids group-id config 'block))
 	 (blk-instances (map (lambda (id)
-			       (list id (md:mod-extract-nodes lines id)))
+			       (list id (md:mod-extract-nodes
+					 lines
+					 (if (string-contains-ci id "_ORDER")
+					     "ORDER"
+					     id))))
 			     node-ids)))
     (map (lambda (id)
 	   (md:make-inode
