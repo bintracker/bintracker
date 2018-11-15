@@ -692,7 +692,7 @@
 
 (define-record-printer (md:ofield f out)
   (begin
-    (fprintf out "#<md:ofield: size ~S, value ~S\n"
+    (fprintf out "#<md:ofield: size ~S, value ~S>\n"
 	     (md:ofield-bytes f) (md:ofield-val f))))
 
 (define-record-type md:osymbol
