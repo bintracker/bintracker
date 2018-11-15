@@ -357,41 +357,31 @@
 ;; order? list?
 ;; some of these can probably be combined into a 'flags' field
 
-;; convert a node path argument from an mdconf onode function call to a
+;; convert a path argument (?/$/!) from an mdconf onode function call to a
 ;; function resolving that path
-(define (md:config-resolve-npath-arg arg)
-  (cond ((string-prefix? "?" arg) (lambda (node instance-id symbols)
-				    '()))
-	((string-prefix? "$" arg) (lambda (node instance-id symbols)
-				    '()))
-	;; do we even need that or should we handle it via symbols?
-	;; -> no, because they're not the same thing
-	((string-prefix? "!" arg) (lambda (node instance-id symbols)
-				    '()))
-	(else (error "unsupported path argument in onode compile function"))))
+;; TODO: forward onode references (!)
+(define (md:config-transform-fn-arg arg path-prefix)
+  (let* ((argstr (->string arg))
+	 (argname (string-drop argstr 1)))
+    (cond ((string-prefix? "?" argstr)
+	   `(md:eval-field
+	     instance-id
+	     ((md:node-path (string-append ,path-prefix parent-path ,argname))
+	      (md:mod-global-node mod))
+	     (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
+	  ((string-prefix? "$" argstr)
+	   `(car (hash-table-ref symbols ,argname)))
+	  (else arg))))
 
 ;; convert a mdconf onode function call into an actual function
 ;; TODO: deal with non-list fns (eg. ?FIELD)
 ;; TODO: command-config arg for eval-field can be resolved during md:make-config
 ;;       but then node-fn must keep a copy of all required command-configs
 (define (md:config-resolve-fn-call fn-string path-prefix)
-  (let ((proto-fn (read (open-input-string fn-string)))
-	(transform-arg
-	 (lambda (arg)
-	   (let ((argstr (->string arg)))
-	     (cond ((string-prefix? "?" argstr)
-		    (let ((node-name (string-drop argstr 1)))
-		      `(md:eval-field
-			instance-id
-			((md:node-path (string-append ,path-prefix parent-path
-						      ,node-name))
-			 (md:mod-global-node mod))
-			(md:config-get-inode-source-command
-			 ,node-name (md:mod-cfg mod)))))
-		   (else arg))))))
-    (eval (append '(lambda (mod parent-path instance-id symbols))
-		  (list (map (lambda (arg) (transform-arg arg))
-			     proto-fn))))))
+  (eval (append '(lambda (mod parent-path instance-id symbols))
+		(list (map (lambda (arg) (md:config-transform-fn-arg
+					  arg path-prefix))
+			   (read (open-input-string fn-string)))))))
 
 ;; transform an MDCONF output node function definition into a list. This will
 ;; return a list even if the node function consists of only an atom.
