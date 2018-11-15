@@ -372,26 +372,24 @@
 
 ;; convert a mdconf onode function call into an actual function
 ;; TODO: deal with non-list fns (eg. ?FIELD)
-;; TODO: deal with full path qualifiers -> may not be required if fpq is given
-;;       as (md:node-path "n/foo")
-;; TODO: default-path can be resolved to path-fn beforehand, ie. default-path
-;;       should be the actual result of (md:node-path default-path-str)
 ;; TODO: command-config arg for eval-field can be resolved during md:make-config
 ;;       but then node-fn must keep a copy of all required command-configs
-(define (md:config-resolve-fn-call fn-string)
+(define (md:config-resolve-fn-call fn-string path-prefix)
   (let ((proto-fn (read (open-input-string fn-string)))
 	(transform-arg
 	 (lambda (arg)
 	   (let ((argstr (->string arg)))
 	     (cond ((string-prefix? "?" argstr)
-		    `(md:eval-field
-		      instance-id
-		      ((md:node-path default-path) (md:mod-global-node mod))
-		      (md:config-get-inode-source-command
-		       (string-drop ,argstr 1)
-		       (md:mod-cfg mod))))
+		    (let ((node-name (string-drop argstr 1)))
+		      `(md:eval-field
+			instance-id
+			((md:node-path (string-append ,path-prefix parent-path
+						      ,node-name))
+			 (md:mod-global-node mod))
+			(md:config-get-inode-source-command
+			 ,node-name (md:mod-cfg mod)))))
 		   (else arg))))))
-    (eval (append '(lambda (mod default-path instance-id symbols))
+    (eval (append '(lambda (mod parent-path instance-id symbols))
 		  (list (map (lambda (arg) (transform-arg arg))
 			     proto-fn))))))
 
@@ -432,6 +430,14 @@
 ;; an md:ofield
 ;; in: cfg-node - the MDCONF node to parse
 ;;     path-prefix - the nodepath to prepend to ?FIELD arguments
+;; The resulting function will take the following arguments:
+;; in: mod - the md:module
+;;     parent-path - optional partial node-path string of the parent
+;;                   igroup/iblock node
+;;     instance-id - the instance-id of the field to evaluate
+;;     symbols - a hash-table of symbols that have been resolved at this point
+;; and it will return TODO a list containing an ofield or a new parser fn if
+;; ofield cannot be resolved, and a new list of symbols
 ;; TODO: field conditions
 (define (md:config-make-ofield-fn cfg-node path-prefix)
   (let ((fn-string (sxml:text cfg-node))
@@ -439,33 +445,33 @@
     (if (md:config-direct-resolvable? fn-string)
 	(md:make-ofield (eval (read (open-input-string fn-string)))
 			field-size)
-	(letrec* ((field-fn (md:config-resolve-fn-call fn-string))
+	(letrec* ((field-fn (md:config-resolve-fn-call fn-string path-prefix))
 		  (resolvable? (md:config-make-resolve-check cfg-node))
-		  (node-fn (lambda (mod default-path instance-id symbols)
+		  (node-fn (lambda (mod parent-path instance-id symbols)
 			     (if (resolvable? symbols)
 				 ;; TODO field-fn needs different args
 				 (md:make-ofield
 				  (inexact->exact
-				   (round (field-fn mod default-path
-						    instance-id symbols)))
+				   (round (field-fn mod parent-path instance-id
+						    symbols)))
 				  field-size)
 				 node-fn))))
 	  node-fn))))
 
 (define (md:config-make-osymbol-fn cfg-node path-prefix)
-  (lambda (mod default-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols)
     '()))
 
 (define (md:config-make-oblock-fn cfg-node path-prefix)
-  (lambda (mod default-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols)
     '()))
 
 (define (md:config-make-oorder-fn cfg-node path-prefix)
-  (lambda (mod default-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols)
     '()))
 
 (define (md:config-make-ogroup-fn cfg-node path-prefix)
-  (lambda (mod default-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols)
     '()))
 
 ;; dispatch helper, resolve mdconf nodes to compiler function generators or
@@ -494,7 +500,7 @@
 	   (make-otree (lambda (xnodes)
 			 (if (null? xnodes)
 			     '()
-			     (cons (md:config-make-onode-fn (car xnodes) "")
+			     (cons (md:config-make-onode-fn (car xnodes) "0/")
 				   (make-otree (cdr xnodes)))))))
     (make-otree xml-nodes)))
 
