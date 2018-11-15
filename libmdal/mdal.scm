@@ -435,7 +435,7 @@
 ;; TODO: field conditions
 (define (md:config-make-ofield-fn cfg-node path-prefix)
   (let ((fn-string (sxml:text cfg-node))
-	(field-size (sxml:attr cfg-node 'bytes)))
+	(field-size (string->number (sxml:attr cfg-node 'bytes))))
     (if (md:config-direct-resolvable? fn-string)
 	(md:make-ofield (eval (read (open-input-string fn-string)))
 			field-size)
@@ -444,9 +444,11 @@
 		  (node-fn (lambda (mod default-path instance-id symbols)
 			     (if (resolvable? symbols)
 				 ;; TODO field-fn needs different args
-				 (md:make-ofield (field-fn mod default-path
-							   instance-id symbols)
-						 field-size)
+				 (md:make-ofield
+				  (inexact->exact
+				   (round (field-fn mod default-path
+						    instance-id symbols)))
+				  field-size)
 				 node-fn))))
 	  node-fn))))
 
@@ -681,6 +683,11 @@
   md:ofield?
   (val md:ofield-val)
   (bytes md:ofield-bytes))
+
+(define-record-printer (md:ofield f out)
+  (begin
+    (fprintf out "#<md:ofield: size ~S, value ~S\n"
+	     (md:ofield-bytes f) (md:ofield-val f))))
 
 (define-record-type md:osymbol
   (md:make-osymbol name)
