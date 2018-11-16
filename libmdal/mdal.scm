@@ -429,38 +429,40 @@
 ;; and it will return TODO a list containing an ofield or a new parser fn if
 ;; ofield cannot be resolved, and a new list of symbols
 ;; TODO: field conditions
-(define (md:config-make-ofield-fn cfg-node path-prefix)
+(define (md:config-make-ofield cfg-node path-prefix)
   (let ((fn-string (sxml:text cfg-node))
 	(field-size (string->number (sxml:attr cfg-node 'bytes))))
     (if (md:config-direct-resolvable? fn-string)
-	(md:make-ofield (eval (read (open-input-string fn-string)))
-			field-size)
+	(md:make-onode 'field field-size
+		       (eval (read (open-input-string fn-string)))
+		       #f)
 	(letrec* ((field-fn (md:config-resolve-fn-call fn-string path-prefix))
 		  (resolvable? (md:config-make-resolve-check cfg-node))
-		  (node-fn (lambda (mod parent-path instance-id symbols)
-			     (if (resolvable? symbols)
-				 ;; TODO field-fn needs different args
-				 (md:make-ofield
-				  (inexact->exact
-				   (round (field-fn mod parent-path instance-id
-						    symbols)))
-				  field-size)
-				 node-fn))))
-	  node-fn))))
+		  (node-fn
+		   (lambda (mod parent-path instance-id symbols)
+		     (if (resolvable? symbols)
+			 (md:make-onode
+			  'field field-size
+			  (inexact->exact
+			   (round
+			    (field-fn mod parent-path instance-id symbols)))
+			  #f)
+			 (md:make-onode 'field field-size #f node-fn)))))
+	  (md:make-onode 'field field-size #f node-fn)))))
 
-(define (md:config-make-osymbol-fn cfg-node path-prefix)
+(define (md:config-make-osymbol cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols)
     '()))
 
-(define (md:config-make-oblock-fn cfg-node path-prefix)
+(define (md:config-make-oblock cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols)
     '()))
 
-(define (md:config-make-oorder-fn cfg-node path-prefix)
+(define (md:config-make-oorder cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols)
     '()))
 
-(define (md:config-make-ogroup-fn cfg-node path-prefix)
+(define (md:config-make-ogroup cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols)
     '()))
 
@@ -468,17 +470,18 @@
 ;; onodes (if directly resolvable)
 (define (md:config-make-onode-fn cfg-node path-prefix)
   (let ((node-type (sxml:name cfg-node)))
-    (cond ((equal? node-type 'comment) (md:make-ocomment (sxml:text cfg-node)))
-	  ((equal? node-type 'field) (md:config-make-ofield-fn cfg-node
-							       path-prefix))
-	  ((equal? node-type 'symbol) (md:config-make-osymbol-fn cfg-node
-								 path-prefix))
-	  ((equal? node-type 'block) (md:config-make-oblock-fn cfg-node
-							       path-prefix))
-	  ((equal? node-type 'order) (md:config-make-oorder-fn cfg-node
-							       path-prefix))
-	  ((equal? node-type 'group) (md:config-make-ogroup-fn cfg-node
-							       path-prefix))
+    (cond ((equal? node-type 'comment)
+	   (md:make-onode 'comment 0 (sxml:text cfg-node) #f))
+	  ((equal? node-type 'field) (md:config-make-ofield cfg-node
+							    path-prefix))
+	  ((equal? node-type 'symbol) (md:config-make-osymbol cfg-node
+							      path-prefix))
+	  ((equal? node-type 'block) (md:config-make-oblock cfg-node
+							    path-prefix))
+	  ((equal? node-type 'order) (md:config-make-oorder cfg-node
+							    path-prefix))
+	  ((equal? node-type 'group) (md:config-make-ogroup cfg-node
+							    path-prefix))
 	  (else (error "unsupported node type")))))
 
 ;; from a given mdconf output node, generate a nested list that contains either
@@ -669,36 +672,56 @@
 ;; MDMOD: OUTPUT NODES
 ;; -----------------------------------------------------------------------------
 
-(define-record-type md:ocomment
-  (md:make-ocomment str)
-  md:ocomment?
-  (str md:ocomment-str))
+(define-record-type md:onode
+  (md:make-onode type size val fn)
+  md:onode?
+  (type md:onode-type)
+  (size md:onode-size)
+  (val md:onode-val)
+  (fn md:onode-fn))
 
-(define-record-type md:ofield
-  (md:make-ofield val bytes)
-  md:ofield?
-  (val md:ofield-val)
-  (bytes md:ofield-bytes))
+(define (md:onode-resolved? onode)
+  (not (md:onode-fn onode)))
 
-(define-record-printer (md:ofield f out)
+(define-record-printer (md:onode node out)
   (begin
-    (fprintf out "#<md:ofield: size ~S, value ~S>\n"
-	     (md:ofield-bytes f) (md:ofield-val f))))
+    (fprintf out "#<md:onode: type ~S, size ~S, value "
+	     (md:onode-type node) (md:onode-size node))
+    (fprintf out "~S>\n"
+	     (if (md:onode-resolved? node)
+		 (md:onode-val node)
+		 "unresolved"))))
 
-(define-record-type md:osymbol
-  (md:make-osymbol name)
-  md:osymbol?
-  (name md:osymbol-name))
+;; (define-record-type md:ocomment
+;;   (md:make-ocomment str)
+;;   md:ocomment?
+;;   (str md:ocomment-str))
 
-(define-record-type md:oblock
-  (md:make-oblock subnodes)
-  md:oblock?
-  (subnodes md:oblock-subnodes))
+;; (define-record-type md:ofield
+;;   (md:make-ofield val bytes)
+;;   md:ofield?
+;;   (val md:ofield-val)
+;;   (bytes md:ofield-bytes))
 
-(define-record-type md:ogroup
-  (md:make-ogroup subnodes)
-  md:ogroup?
-  (subnodes md:ogroup-subnodes))
+;; (define-record-printer (md:ofield f out)
+;;   (begin
+;;     (fprintf out "#<md:ofield: size ~S, value ~S>\n"
+;; 	     (md:ofield-bytes f) (md:ofield-val f))))
+
+;; (define-record-type md:osymbol
+;;   (md:make-osymbol name)
+;;   md:osymbol?
+;;   (name md:osymbol-name))
+
+;; (define-record-type md:oblock
+;;   (md:make-oblock subnodes)
+;;   md:oblock?
+;;   (subnodes md:oblock-subnodes))
+
+;; (define-record-type md:ogroup
+;;   (md:make-ogroup subnodes)
+;;   md:ogroup?
+;;   (subnodes md:ogroup-subnodes))
 
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: MODULE
