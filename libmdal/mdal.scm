@@ -1178,14 +1178,6 @@
   (md:mod-fill-empty-values (md:mod-extract-field-values block-instance
 							 field-id)))
 
-;; helper function, renumber the given list of inode instances
-(define (md:mod-renumber-inode-instances init-id instances)
-  (if (null? instances)
-      '()
-      (cons (list init-id (cadar instances))
-	    (md:mod-renumber-inode-instances (+ 1 init-id)
-					     (cdr instances)))))
-
 ;; helper function, enumerate the given inode instances, starting with init-id
 (define (md:mod-enumerate-instances init-id instances)
   (if (null? instances)
@@ -1196,16 +1188,14 @@
 ;; helper function, merge instances of the given field in the given block node
 ;; according to the given order list.
 (define (md:mod-merge-fields blk-node field-id order-lst)
-  (md:mod-renumber-inode-instances
-   0
-   (if (null? order-lst)
-       '()
-       (append (md:inode-instances
-		((md:node-path
-		  (string-append (->string (car order-lst))
-				 "/" field-id))
-		 blk-node))
-	       (md:mod-merge-fields blk-node field-id (cdr order-lst))))))
+  (if (null? order-lst)
+      '()
+      (append (map cadr (md:inode-instances
+			 ((md:node-path
+			   (string-append (->string (car order-lst))
+					  "/" field-id))
+			  blk-node)))
+	      (md:mod-merge-fields blk-node field-id (cdr order-lst)))))
 
 ;; get-init-val = returns either cmd default or backtraces to find last set
 ;; val, depending on node/cmd config
@@ -1279,7 +1269,7 @@
 	  (map (lambda (field-id)
 		 (md:mod-split-fields
 		  block-size
-		  (map cadr (md:mod-merge-fields node field-id block-order))
+		  (md:mod-merge-fields node field-id block-order)
 		  field-id config))
 	       field-ids)))
     (md:make-inode block-id (md:mod-chunks->block-instances chunks field-ids))))
