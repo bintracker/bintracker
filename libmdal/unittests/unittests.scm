@@ -1,10 +1,10 @@
 (load "mdal.scm")
 ;; (define cfg (ssax:xml->sxml (open-input-file "config/Huby/Huby.mdconf") '()))
-(define cfg (call-with-input-file "config/Huby/Huby.mdconf"
-	      (lambda (x) (ssax:xml->sxml x '()))))
+;; (define cfg (call-with-input-file "config/Huby/Huby.mdconf"
+;; 	      (lambda (x) (ssax:xml->sxml x '()))))
 ;; (define cmd-node (car ((sxpath "mdalconfig/command") cfg)))
 ;; (define my-cmd (md:xml-node->command cmd-node))
-(define my-cfg (md:mdconf->config "config/Huby/Huby.mdconf"))
+(define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf"))
 ;; (define my-ifield (car ((sxpath "mdalconfig/ifield") cfg)))
 ;; (define my-node (md:parse-inode-config my-ifield (md:make-single-instance)))
 ;; (define globals (md:make-global-group-config cfg))
@@ -15,11 +15,12 @@
 ;; (define cln (md:parse-clone-config
 ;; 	     (car ((sxpath "mdalconfig/igroup/clone") cfg))
 ;; 	     (md:make-single-instance)))
-(define modlines (remove string-null?
-			   (md:purge-comments
-			    (md:purge-whitespace
-			     (read-lines "../modules/huby-test.mdal")))))
-(define my-mod (md:parse-module-file "../modules/huby-test.mdal" "config/"))
+;; (define modlines (remove string-null?
+;; 			   (md:purge-comments
+;; 			    (md:purge-whitespace
+;; 			     (read-lines "../modules/huby-test.mdal")))))
+(define my-mod (md:parse-module-file "unittests/modules/huby-test.mdal"
+				     "unittests/config/"))
 (define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
