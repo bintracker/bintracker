@@ -8,7 +8,7 @@
     <range min="1" />
   </command>
   <command id="NOTE" bits="8" type="UKey" tags="Note"
-           flags="enable_modifiers, use_last_set"
+           flags="enable_modifiers, use_last_set, is_note"
            map="func(md:make-dividers 118 8 0)" default="rest">
     <description>Set the note for the given channel.</description>
   </command>

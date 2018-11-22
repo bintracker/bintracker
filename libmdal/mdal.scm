@@ -230,7 +230,7 @@
    (map (lambda (x) (list x (md:make-command md:cmd-type-reference
 					     16 "0" (substring/shared x 2)
 					     #f '(use_last_set)
-					     #f #f #f)))
+					     #f #f)))
 	(filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
 
 ;; generate a hash list of inodes required by auto-generated order inodes
