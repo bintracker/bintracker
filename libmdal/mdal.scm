@@ -1145,9 +1145,11 @@
 			 (make-generic-instances (+ start-id 1)))))))
     (md:make-inode
      order-id
-     (list (list 0 (map (lambda (id)
-			  (md:make-inode id (make-generic-instances 0)))
-			subnode-ids))))))
+     (list (list 0 (md:make-inode-instance
+		    (map (lambda (id)
+			   (md:make-inode id (make-generic-instances 0)))
+			 subnode-ids)
+		    ""))))))
 
 ;; return a list of values of a given field node id from a given block instance
 ;; (aka strip instance IDs from node-instances)
