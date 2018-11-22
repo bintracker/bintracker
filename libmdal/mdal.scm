@@ -229,7 +229,7 @@
   (alist->hash-table
    (map (lambda (x) (list x (md:make-command md:cmd-type-reference
 					     16 "0" (substring/shared x 2)
-					     #f (md:make-command-flags #f #f #t)
+					     #f '(use_last_set)
 					     #f #f #f)))
 	(filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
 
@@ -667,8 +667,7 @@
   (let* ((field ((md:mod-get-node-instance instance-id) node))
 	 (current-val (md:inode-instance-val field))
 	 (raw-val (if (null? current-val)
-		      (if (md:command-flags-use-last-set?
-			   (md:command-flags command-config))
+		      (if (md:command-has-flag? command-config 'use_last_set)
 			  (md:eval-field-last-set
 			   instance-id node command-config)
 			  (md:command-default command-config))
@@ -1206,8 +1205,7 @@
 	     (lambda (start-pos)
 	       (let ((field-cmd
 		      (md:config-get-inode-source-command field-id config)))
-		 (if (md:command-flags-use-last-set?
-		      (md:command-flags field-cmd))
+		 (if (md:command-has-flag? field-cmd 'use_last_set)
 		     (let ((first-val
 			    (find (lambda (ins)
 				    (not (null? (md:inode-instance-val ins))))

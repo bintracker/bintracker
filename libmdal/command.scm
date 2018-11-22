@@ -17,35 +17,6 @@
 (define md:cmd-type-label 8)
 (define md:cmd-type-unknown 9)
 
-;; aux record type for encapsulating md:command-flags.
-(define-record-type md:command-flags
-  (md:make-command-flags enable-modifiers disable-labels use-last-set)
-  md:command-flags?
-  (enable-modifiers md:command-flags-modifiers-enabled?)
-  (disable-labels md:command-flags-labels-disabled?)
-  (use-last-set md:command-flags-use-last-set?))
-
-;; construct an empty md:command-flags object
-(define (md:make-empty-command-flags)
-  (md:make-command-flags #f #f #f))
-
-;; returns #t if no flags set, #f otherwise.
-(define (md:command-flags-any? flags)
-  (or (md:command-flags-modifiers-enabled? flags)
-      (md:command-flags-labels-disabled? flags)
-      (md:command-flags-use-last-set? flags)))
-
-;; extract flag settings from an mdconf 'command' node, and construct a
-;; md:command-flags object from it
-(define (md:xml-command-node->command-flags node)
-  (let ((attr (sxml:attr node 'flags)))
-    (if attr
-        (md:make-command-flags
-         (string-contains-ci attr "enable_modifiers")
-         (string-contains-ci attr "disable_labels")
-         (string-contains-ci attr "use_last_set"))
-        (md:make-command-flags #f #f #f))))
-
 ;; command config record
 ;; fields:
 ;; type - one of md:cmd-type-***
@@ -53,7 +24,7 @@
 ;; default - default value string
 ;; reference-to - #f or an identifier string
 ;; keys - #f or a hash-map
-;; flags - an md:command-flags object
+;; flags - list of command flags
 ;; tags - #f or a list of strings
 ;; range - #f or an md:range object
 ;; description - #f or a string
@@ -76,6 +47,17 @@
   (if (md:command-tags cmd)
       (any (lambda (x) (string-ci= x tag)) (md:command-tags cmd))
       #f))
+
+;; check if the given command has the given flag
+(define (md:command-has-flag? cmd flag)
+  (if (find (lambda (x)
+	      (eq? x flag))
+	    (md:command-flags cmd))
+      #t #f))
+
+(define (md:command-has-flags? cmd)
+  (if (null? (md:command-flags cmd))
+      #f #t))
 
 (define (md:int-command? cmd) (= (md:command-type cmd) md:cmd-type-int))
 (define (md:uint-command? cmd) (= (md:command-type cmd) md:cmd-type-uint))
@@ -119,14 +101,8 @@
       (fprintf out "\nref:     ~S" (md:command-reference-to cmd)))
     (when (md:command-keys cmd)
       (fprintf out "\nkeys:    ~S" (md:command-keys cmd)))
-    (when (md:command-flags-any? (md:command-flags cmd))
-      (fprintf out "\nflags:   ")
-      (when (md:command-flags-modifiers-enabled? (md:command-flags cmd))
-        (fprintf out "enable_modifiers "))
-      (when (md:command-flags-labels-disabled? (md:command-flags cmd))
-        (fprintf out "disable_labels "))
-      (when (md:command-flags-use-last-set? (md:command-flags cmd))
-        (fprintf out "use_last_set")))
+    (when (md:command-has-flags? cmd)
+      (fprintf out "\nflags:   ~S" (md:command-flags cmd)))
     (when (md:command-tags cmd)
       (fprintf out "\ntags:    ~S" (md:command-tags cmd)))
     (when (md:command-range cmd)
@@ -135,6 +111,15 @@
                (md:range-max (md:command-range cmd))))
     (when (md:command-description cmd)
       (fprintf out "\ndescription:\n~A~!" (md:command-description cmd)))))
+
+;; extract the command flags from a command mdconf node
+(define (md:xml-command-node->command-flags node)
+  (let ((attr (sxml:attr node 'flags)))
+    (if attr
+	(map (lambda (s)
+	       (read (open-input-string s)))
+	     (string-split attr ","))
+	'())))
 
 ;; utility function to extract the range argument from a 'command' mdconf node.
 ;; returns #f if no range is set, supplies missing min/max args from numeric
@@ -219,9 +204,9 @@
 (define (md:make-default-commands)
   (list
    (list "AUTHOR" (md:make-command md:cmd-type-string 0 "unknown" #f #f
-                                   (md:make-empty-command-flags) #f #f #f))
+                                   '() #f #f #f))
    (list "TITLE" (md:make-command md:cmd-type-string 0 "untitled" #f #f
-                                  (md:make-empty-command-flags) #f #f #f))))
+                                  '() #f #f #f))))
 
 
 ;; generate a hash-table of md:commands from a given list of mdconf 'command'
@@ -240,4 +225,3 @@
                           (make-commands (cdr lst) trgt))))))
       (make-commands node-list target))
     (md:make-default-commands))))
-
