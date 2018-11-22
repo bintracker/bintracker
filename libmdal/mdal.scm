@@ -633,6 +633,12 @@
     (for-each (lambda (x) (fprintf out "instance ~S: ~S\n" (car x) (cdr x)))
 	      (md:inode-instances node))))
 
+;; return the number of instances in the given inode
+(define (md:inode-count-instances node)
+  (if (not (md:inode-instances node))
+      0
+      (length (md:inode-instances node))))
+
 ;; return the command configuration associated with the given field node
 (define (md:get-node-command-cfg node config)
   (car (hash-table-ref (md:config-commands config)
@@ -1109,7 +1115,6 @@
 							       "GLOBAL" config)
 					     "")))))))))
 
-
 ;; returns the group instance's block nodes, except the order node, which can
 ;; be retrieved with md:mod-get-group-instance-order instead
 (define (md:mod-get-group-instance-blocks igroup-instance igroup-id config)
@@ -1125,6 +1130,24 @@
 (define (md:mod-get-group-instance-order igroup-instance igroup-id)
   ((md:mod-get-node-instance 0)
    (md:get-subnode igroup-instance (string-append igroup-id "_ORDER"))))
+
+;; helper, create a "default" order with single field instances all set to 0
+;; TODO expand so it takes a numeric arg and produces n field node instances
+(define (md:mod-make-default-order len igroup-id config)
+  (letrec* ((order-id (string-append igroup-id "_ORDER"))
+	    (subnode-ids
+	     (md:config-get-subnode-ids order-id (md:config-itree config)))
+	    (make-generic-instances
+	     (lambda (start-id)
+	       (if (= start-id len)
+		   '()
+		   (cons (list start-id (md:make-inode-instance start-id ""))
+			 (make-generic-instances (+ start-id 1)))))))
+    (md:make-inode
+     order-id
+     (list (list 0 (map (lambda (id)
+			  (md:make-inode id (make-generic-instances 0)))
+			subnode-ids))))))
 
 ;; return a list of values of a given field node id from a given block instance
 ;; (aka strip instance IDs from node-instances)
@@ -1161,8 +1184,15 @@
 	    (md:mod-renumber-inode-instances (+ 1 init-id)
 					     (cdr instances)))))
 
-;; helper function, merge field node instances in the given block node according
-;; to the given order list.
+;; helper function, enumerate the given inode instances, starting with init-id
+(define (md:mod-enumerate-instances init-id instances)
+  (if (null? instances)
+      '()
+      (cons (list init-id (car instances))
+	    (md:mod-enumerate-instances (+ init-id 1) (cdr instances)))))
+
+;; helper function, merge instances of the given field in the given block node
+;; according to the given order list.
 (define (md:mod-merge-fields blk-node field-id order-lst)
   (md:mod-renumber-inode-instances
    0
@@ -1175,71 +1205,113 @@
 		 blk-node))
 	       (md:mod-merge-fields blk-node field-id (cdr order-lst))))))
 
-;; Merge a block inode's instances into one according to the given order list
-;; of instance-IDs.
-(define (md:mod-merge-block-instances node order config)
-  (letrec* ((block-id (md:inode-cfg-id node))
-	    (block-order
-	     (md:mod-block-fields->values order (string-append "R_" block-id)))
-	    (block-fields
-	     (md:config-get-subnode-ids block-id (md:config-itree config))))
-    (md:make-inode
-     block-id
-     (list (list 0
-		 (md:make-inode-instance
-		  (map (lambda (field-node-id)
-			 (md:make-inode
-			  field-node-id
-			  (md:mod-merge-fields node field-node-id block-order)))
-		       block-fields)
-		  ""))))))
+;; get-init-val = returns either cmd default or backtraces to find last set
+;; val, depending on node/cmd config
+;; in: raw list of instances
+;; out: list of enumerated chunks
+(define (md:mod-split-fields block-size instances field-id config)
+  (letrec* ((get-init-val
+	     (lambda (start-pos)
+	       (let ((field-cmd
+		      (md:config-get-inode-source-command field-id config)))
+		 (if (md:command-flags-use-last-set?
+		      (md:command-flags field-cmd))
+		     (let ((first-val
+			    (find (lambda (ins)
+				    (not (null? (md:inode-instance-val ins))))
+				  (reverse (take instances start-pos)))))
+		       (if first-val first-val '()))
+		     (md:command-default field-cmd)))))
+	    (pad-chunk
+	     (lambda (chunk)
+	       (if (< (length chunk) block-size)
+		   (append chunk
+			   (make-list (- block-size chunk)
+				      (md:make-inode-instance '() "")))
+		   chunk)))
+	    (update-chunk-head
+	     (lambda (instance-lst processed-count)
+	       (if (not (null? (md:inode-instance-val (car instance-lst))))
+	       	   instance-lst
+	       	   (cons (md:make-inode-instance
+	       		  (get-init-val processed-count) "")
+	       		 (cdr instance-lst)))))
+	    (make-chunks
+	     (lambda (instance-lst processed-count)
+	       (if (<= (length instance-lst) block-size)
+		   (list (update-chunk-head
+			  (pad-chunk instance-lst) processed-count))
+		   (cons (update-chunk-head
+			  (take instance-lst block-size) processed-count)
+			 (make-chunks
+			  (drop instance-lst block-size)
+			  (+ processed-count block-size)))))))
+    (map (lambda (chunk)
+	   (md:mod-enumerate-instances 0 chunk))
+	 (make-chunks instances 0))))
 
-;; helper, create a "default" order with single field instances all set to 0
-(define (md:mod-make-default-order igroup-id config)
-  (let* ((order-id (string-append igroup-id "_ORDER"))
-	 (subnode-ids
-	  (md:config-get-subnode-ids order-id (md:config-itree config))))
-    (md:make-inode
-     order-id
-     (list (list 0
-		 (map (lambda (id)
-			(md:make-inode
-			 id
-			 (list (list 0
-				     (md:make-inode-instance 0 "")))))
-		      subnode-ids))))))
+;; helper, create block instances from a list of field instances, assigning the
+;; given field IDs
+(define (md:mod-chunks->block-instances field-chunks field-ids)
+  (letrec ((chunks->instances
+	    (lambda (chunks)
+	      (if (null? (car chunks))
+		  '()
+		  (cons (md:make-inode-instance
+			 (map (lambda (id chunk)
+				(md:make-inode id chunk))
+			      field-ids (map car chunks))
+			 "")
+			(chunks->instances (map cdr chunks)))))))
+    (md:mod-enumerate-instances 0 (chunks->instances field-chunks))))
 
-;; merge the groups' iblock instances into a single instance
-(define (md:mod-merge-group-instance-blocks igroup-instance igroup-id config)
-  (let ((order (md:mod-get-group-instance-order igroup-instance igroup-id))
-	(blocks
-	 (md:mod-get-group-instance-blocks igroup-instance igroup-id config)))
-    (md:make-inode-instance
-     (append
-      (map (lambda (blk)
-	     (md:mod-merge-block-instances blk order config))
-	   blocks)
-      (list (md:mod-make-default-order igroup-id config)))
-     "")))
+;; merge the instances of the given block node into one according to the given
+;; order, then split them into instances of the given block-size
+(define (md:mod-split-block-instances block-size node order config)
+  (let* ((block-id (md:inode-cfg-id node))
+	 (block-order
+	  (md:mod-block-fields->values order (string-append "R_" block-id)))
+	 (field-ids
+	  (md:config-get-subnode-ids block-id (md:config-itree config)))
+	 (chunks
+	  (map (lambda (field-id)
+		 (md:mod-split-fields
+		  block-size
+		  (map cadr (md:mod-merge-fields node field-id block-order))
+		  field-id config))
+	       field-ids)))
+    (md:make-inode block-id (md:mod-chunks->block-instances chunks field-ids))))
 
 ;; split the groups' iblock instances into block instances of the given block
 ;; size and create a new order list
-;; TODO must also pad last block instances if < block-size
 (define (md:mod-split-group-instance-blocks block-size igroup-instance
 					    igroup-id config)
-  '())
+  (let* ((order (md:mod-get-group-instance-order igroup-instance igroup-id))
+	 (blocks (md:mod-get-group-instance-blocks igroup-instance
+						   igroup-id config))
+	 (new-blocks
+	  (map (lambda (blk)
+		 (md:mod-split-block-instances block-size blk
+					       order config))
+	       blocks))
+	 (new-instance-count (md:inode-count-instances (car new-blocks))))
+    (md:make-inode-instance
+     (append new-blocks
+	     (list (md:mod-make-default-order
+		    (md:inode-count-instances (car new-blocks))
+		    igroup-id config)))
+     "")))
 
 ;; reorder a group by merging iblock instances according to the groups order
 ;; node, then splitting them into new iblocks of the given block-size and
 ;; generating a new order list
-;; TODO won't work like this just yet because "igroup" doesn't return it's
-;; instances
-(define (md:mod-reorder-group igroup block-size config)
+(define (md:mod-reorder-group block-size igroup config)
   (let ((group-id (md:inode-cfg-id igroup)))
     (md:make-inode
      group-id
      (map (lambda (instance)
-	    (md:mod-split-group-instance-blocks
-	     (md:mod-merge-group-instance-blocks instance group-id config)
-	     block-size))
-	  igroup))))
+	    (list
+	     (car instance)
+	     (md:mod-split-group-instance-blocks block-size (second instance)
+						 group-id config)))
+	  (md:inode-instances igroup)))))
