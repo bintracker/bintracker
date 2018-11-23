@@ -3,16 +3,16 @@
 
   <description>A simple 2 channel pin pulse (PFM) engine in less than 100 bytes. By Shiru 2011, 2013.</description>
 
-  <command id="BPM" bits="16" type="UInt" default="140">
+  <command id="BPM" bits="16" type="uint" default="140">
     <description>Set the speed of the tune.</description>
     <range min="1" />
   </command>
-  <command id="NOTE" bits="8" type="UKey" tags="Note"
+  <command id="NOTE" bits="8" type="ukey" tags="Note"
            flags="enable_modifiers, use_last_set, is_note"
            map="func(md:make-dividers 118 8 0)" default="rest">
     <description>Set the note for the given channel.</description>
   </command>
-  <command id="DRUM" type="Trigger" default="false">
+  <command id="DRUM" type="trigger" default="false">
     <description>Trigger a click drum. Replaces note on channel 1.</description>
   </command>
 

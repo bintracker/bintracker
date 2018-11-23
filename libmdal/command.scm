@@ -7,19 +7,10 @@
 ;; MDCONF: COMMANDS
 ;; -----------------------------------------------------------------------------
 
-(define md:cmd-type-int 0)
-(define md:cmd-type-uint 1)
-(define md:cmd-type-key 2)
-(define md:cmd-type-ukey 3)
-(define md:cmd-type-reference 5)
-(define md:cmd-type-string 6)
-(define md:cmd-type-trigger 7)
-(define md:cmd-type-label 8)
-(define md:cmd-type-unknown 9)
-
 ;; command config record
 ;; fields:
-;; type - one of md:cmd-type-***
+;; type - one of (int uint key ukey reference string trigger label) or a
+;;        user-defined type
 ;; bits - uint number of bits in command
 ;; default - default value string
 ;; reference-to - #f or an identifier string
@@ -40,6 +31,10 @@
   (range md:command-range md:command-set-range!)
   (description md:command-description md:command-set-description!))
 
+;; check if the given command has the given type
+(define (md:command-is-type? cmd type)
+  (eq? type (md:command-type cmd)))
+
 ;; check if the given command has the given flag
 (define (md:command-has-flag? cmd flag)
   (if (find (lambda (x)
@@ -52,42 +47,10 @@
   (if (null? (md:command-flags cmd))
       #f #t))
 
-(define (md:int-command? cmd) (= (md:command-type cmd) md:cmd-type-int))
-(define (md:uint-command? cmd) (= (md:command-type cmd) md:cmd-type-uint))
-(define (md:key-command? cmd) (= (md:command-type cmd) md:cmd-type-key))
-(define (md:ukey-command? cmd) (= (md:command-type cmd) md:cmd-type-ukey))
-(define (md:reference-command? cmd)
-  (= (md:command-type cmd) md:cmd-type-reference))
-(define (md:string-command? cmd) (= (md:command-type cmd) md:cmd-type-string))
-(define (md:trigger-command? cmd) (= (md:command-type cmd) md:cmd-type-trigger))
-(define (md:label-command? cmd) (= (md:command-type cmd) md:cmd-type-label))
-
-(define (md:string->command-type str)
-  (cond ((string-ci= str "int") md:cmd-type-int)
-        ((string-ci= str "uint") md:cmd-type-uint)
-        ((string-ci= str "key") md:cmd-type-key)
-        ((string-ci= str "ukey") md:cmd-type-ukey)
-        ((string-ci= str "reference") md:cmd-type-reference)
-        ((string-ci= str "string") md:cmd-type-string)
-        ((string-ci= str "trigger") md:cmd-type-trigger)
-	((string-ci= str "label") md:cmd-type-label)
-        (else #f)))
-
-(define (md:command-type->string type)
-  (cond ((= type md:cmd-type-int) "Int")
-        ((= type md:cmd-type-uint) "UInt")
-        ((= type md:cmd-type-key) "Key")
-        ((= type md:cmd-type-ukey) "UKey")
-        ((= type md:cmd-type-reference) "Reference")
-        ((= type md:cmd-type-string) "String")
-        ((= type md:cmd-type-trigger) "Trigger")
-	((= type md:cmd-type-label) "Label")
-        (else "invalid type")))
-
 (define-record-printer (md:command cmd out)
   (begin
     (fprintf out "#<md:command>\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
-             (md:command-type->string (md:command-type cmd))
+             (md:command-type cmd)
              (md:command-bits cmd)
              (md:command-default cmd))
     (when (md:command-reference-to cmd)
@@ -121,15 +84,15 @@
       #f
       (let ((range-node (car ((sxpath "range") node)))
             (lower-limit (lambda (cmd-type bits)
-                           (if (equal? cmd-type md:cmd-type-int)
+                           (if (eq? cmd-type 'int)
                                (- (expt 2 (- bits 1)))
                                0)))
             (upper-limit (lambda (cmd-type bits)
-                           (- (if (equal? cmd-type md:cmd-type-int)
+                           (- (if (eq? cmd-type 'int)
                                   (expt 2 (- bits 1))
                                   (expt 2 bits))
                               1))))
-        (if (equal? '() range-node)
+        (if (null? range-node)
             #f
             (md:make-range
              (if (sxml:num-attr range-node 'min)
@@ -168,11 +131,12 @@
 
 ;; construct an md:command object from a 'command' mdconf node and a md:target
 (define (md:xml-node->command node target configpath)
-  (let ((cmd-type (md:string->command-type (sxml:attr node 'type))))
+  (let* ((type-attr (sxml:attr node 'type))
+	 (cmd-type (read (open-input-string type-attr))))
     (md:make-command
      cmd-type
-     (if (or (equal? cmd-type md:cmd-type-trigger)
-             (equal? cmd-type md:cmd-type-label))
+     (if (or (eq? cmd-type 'trigger)
+             (eq? cmd-type 'label))
          0
          (sxml:num-attr node 'bits))
      (sxml:attr node 'default)
@@ -180,19 +144,15 @@
      (md:xml-command-node->map node configpath)
      (md:xml-command-node->command-flags node)
      (md:xml-command-node->range node)
-     (if (equal? '() ((sxpath "description/text()") node))
+     (if (null? ((sxpath "description/text()") node))
          #f
          (car ((sxpath "description/text()") node))))))
-
 
 ;; construct an alist containing the default commands AUTHOR and TITLE
 (define (md:make-default-commands)
   (list
-   (list "AUTHOR" (md:make-command md:cmd-type-string 0 "unknown" #f #f
-                                   '() #f #f))
-   (list "TITLE" (md:make-command md:cmd-type-string 0 "untitled" #f #f
-                                  '() #f #f))))
-
+   (list "AUTHOR" (md:make-command 'string 0 "unknown" #f #f '() #f #f))
+   (list "TITLE" (md:make-command 'string 0 "untitled" #f #f '() #f #f))))
 
 ;; generate a hash-table of md:commands from a given list of mdconf 'command'
 ;; nodes and a given target. Also generates AUTHOR/TITLE commands if not

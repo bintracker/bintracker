@@ -227,7 +227,7 @@
 ;; auto-generated order inodes
 (define (md:create-order-commands itree)
   (alist->hash-table
-   (map (lambda (x) (list x (md:make-command md:cmd-type-reference
+   (map (lambda (x) (list x (md:make-command 'reference
 					     16 "0" (substring/shared x 2)
 					     #f '(use_last_set)
 					     #f #f)))
@@ -673,9 +673,9 @@
 			  (md:command-default command-config))
 		      current-val))
 	 (cmd-type (md:command-type command-config)))
-    (cond ((or (= cmd-type md:cmd-type-int) (= cmd-type md:cmd-type-uint))
+    (cond ((or (eq? cmd-type 'int) (eq? cmd-type 'uint))
 	   raw-val)
-	  ((or (= cmd-type md:cmd-type-key) (= cmd-type md:cmd-type-ukey))
+	  ((or (eq? cmd-type 'key) (eq? cmd-type 'ukey))
 	   (car (hash-table-ref (md:command-keys command-config) raw-val)))
 	  (else "cmd type not implemented"))))
 
@@ -882,9 +882,9 @@
 (define (md:mod-normalize-arg arg node-id config)
   (let ((field-cmd (md:config-get-inode-source-command node-id config)))
     (cond ((and (not (null? arg))
-		(or (md:int-command? field-cmd)
-				      (md:uint-command? field-cmd)
-				      (md:reference-command? field-cmd)))
+		(or (md:command-is-type? field-cmd 'int)
+		    (md:command-is-type? field-cmd 'uint)
+		    (md:command-is-type? field-cmd 'reference)))
 	   (md:mod-string->number arg))
 	  (else arg))))
 
