@@ -31,10 +31,6 @@
   (range md:command-range md:command-set-range!)
   (description md:command-description md:command-set-description!))
 
-;; check if the given command has the given type
-(define (md:command-is-type? cmd type)
-  (eq? type (md:command-type cmd)))
-
 ;; check if the given command has the given flag
 (define (md:command-has-flag? cmd flag)
   (if (find (lambda (x)
