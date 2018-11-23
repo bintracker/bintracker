@@ -33,9 +33,7 @@
 
 ;; check if the given command has the given flag
 (define (md:command-has-flag? cmd flag)
-  (if (find (lambda (x)
-	      (eq? x flag))
-	    (md:command-flags cmd))
+  (if (memq flag (md:command-flags cmd))
       #t #f))
 
 ;; check if the given command has any flags
@@ -131,8 +129,7 @@
 	 (cmd-type (read (open-input-string type-attr))))
     (md:make-command
      cmd-type
-     (if (or (eq? cmd-type 'trigger)
-             (eq? cmd-type 'label))
+     (if (memq cmd-type '(trigger label))
          0
          (sxml:num-attr node 'bits))
      (sxml:attr node 'default)

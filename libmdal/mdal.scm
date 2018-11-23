@@ -882,9 +882,7 @@
 (define (md:mod-normalize-arg arg node-id config)
   (let ((field-cmd (md:config-get-inode-source-command node-id config)))
     (cond ((and (not (null? arg))
-		(or (eq? (md:command-type field-cmd) 'int)
-		    (eq? (md:command-type field-cmd) 'uint)
-		    (eq? (md:command-type field-cmd) 'reference)))
+		(memq (md:command-type field-cmd) '(int uint reference)))
 	   (md:mod-string->number arg))
 	  (else arg))))
 
