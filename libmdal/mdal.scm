@@ -484,7 +484,7 @@
 							    path-prefix))
 	  (else (error "unsupported node type")))))
 
-;; from a given mdconf output node, generate a nested list that contains either
+;; from a given mdconf root node, generate a nested list that contains either
 ;; output nodes (if they can be resolved immediately) or functions that generate
 ;; output nodes. To get the actual module output, iterate over the tree until
 ;; all function members are resolved into nodes.
@@ -496,6 +496,30 @@
 			     (cons (md:config-make-onode-fn (car xnodes) "0/")
 				   (make-otree (cdr xnodes)))))))
     (make-otree xml-nodes)))
+
+;; from a given mdconf root node, generate a function to reorder igroups as
+;; required by the compiler function
+;; TODO: currently this doesn't recurse through the whole otree config, but only
+;;       handle direct children of the output node.
+;;       The best course of action will probably be to write a generic path
+;;       generator, since this functionality will be required in other cases
+;;       as well.
+;; TODO: PRIORITY start implementing md:mod node accessor fns
+(define (md:config-make-resize-fn cfg-node)
+  (let* ((reorder-paths
+	  (map (lambda (node)
+		 (md:node-path (string-append "0/" (sxml:attr node 'from))))
+	       ((sxpath "mdalconfig/output/group[@resize]") cfg-node))))
+    (lambda (global-node)
+      '())))
+
+;; from a given mdconf root node, generate the function to compile a module
+;; with this configuration.
+(define (md:config-make-output-fn cfg-node)
+  (let ((require-reorder
+	 (not (null? ((sxpath "mdalconfig/output//group[@resize]") cfg-node)))))
+    (lambda (md-module)
+      '())))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: MASTER CONFIGURATION
@@ -556,6 +580,30 @@
        (md:mdconf->inodes cfg)
        (md:config-make-output-tree cfg)))))
 
+;; return the ID of the parent of the given inode in the given inode tree
+(define (md:config-get-parent-node-id inode-id itree)
+  (letrec ((get-parent
+	    (lambda (tree current-parent)
+	      (cond ((not (member inode-id (flatten (cdar tree)))) #f)
+		    ((member inode-id (map car (cadar tree))) (caar tree))
+		    (else (let ((subnode
+				 (filter (lambda (node)
+					   (member inode-id (flatten node)))
+					 (cadar tree))))
+			    (get-parent subnode (car tree))))))))
+    (get-parent itree #f)))
+
+;; Return the list of ancestor IDs of the given inode in the given inode tree
+;; The returned list is sorted from the closest ancestor to the most distant.
+(define  (md:config-get-node-ancestors-ids inode-id itree)
+  (letrec ((make-ancestor-list
+	    (lambda (id)
+	      (let ((parent (md:config-get-parent-node-id id itree)))
+		(if (not parent)
+		    '()
+		    (cons parent (make-ancestor-list parent)))))))
+    (make-ancestor-list inode-id)))
+
 ;; return the IDs of the direct child nodes of a given inode ID in the given
 ;; inode tree
 (define (md:config-get-subnode-ids inode-id itree)
@@ -563,12 +611,12 @@
 			(let ((nodes (alist-ref inode-id tree string=)))
 			  (if (null? nodes)
 			      '()
-			      (map (lambda (x) (car x)) (car nodes)))))))
+			      (map car (car nodes)))))))
     (if (not (member inode-id (flatten itree)))
 	#f
 	(if (not (member inode-id (flatten (car itree))))
 	    (md:config-get-subnode-ids inode-id (cdr itree))
-	    (if (not (member inode-id (map (lambda (x) (car x)) itree)))
+	    (if (not (member inode-id (map car itree)))
 		(md:config-get-subnode-ids inode-id (cadar itree))
 		(get-nodes itree))))))
 
@@ -1303,3 +1351,13 @@
 	     (md:mod-split-group-instance-blocks block-size (second instance)
 						 group-id config)))
 	  (md:inode-instances igroup)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; md:mod accessor functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; construct an inode that replaces the current subnode at node-path
+;; with the given subnode.
+(define (md:inode-set-subnode! subnode node-path parent-node)
+  '())
