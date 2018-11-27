@@ -36,15 +36,12 @@
     <!--ok, but how to handle transpose/jumps? Probably better to define fields.-->
     <field bytes="1">0</field>
     <symbol id="sequence_end" />
-    <group id="PATTERNS" from="?PATTERNS" flags="reorder, numeric_order">
-      <!-- flags="reorder" is actually redundant: if any contained oblock sets length,
-we need to reorder. Actually, reorder might even makes sense for variable block sizes,
-in order to eliminate duplicates etc.-->
-      <block from="?CH1, ?DRUMS" length="8">
+    <group id="PATTERNS" from="?PATTERNS" resize="8" flags="numeric_order">
+      <block from="?CH1, ?DRUMS">
 	<!-- could wrap fields in a row tag, this would allow for additional single fields (eg. size etc)-->
 	<field bytes="1">(if (set ?DRUM) #x2c ?NOTE1)</field>
       </block>
-      <block from="?CH2" length="8">
+      <block from="?CH2">
 	<field bytes="1">?NOTE2</field>
       </block>
     </group>
