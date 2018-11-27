@@ -582,15 +582,13 @@
 
 ;; return the ID of the parent of the given inode in the given inode tree
 (define (md:config-get-parent-node-id inode-id itree)
-  (letrec ((get-parent
-	    (lambda (tree current-parent)
-	      (cond ((not (member inode-id (flatten (cdar tree)))) #f)
-		    ((member inode-id (map car (cadar tree))) (caar tree))
-		    (else (get-parent (filter (lambda (node)
-						(member inode-id (flatten node)))
-					      (cadar tree))
-				      (car tree)))))))
-    (get-parent itree #f)))
+  (cond ((not (member inode-id (flatten (cdar itree)))) #f)
+	((member inode-id (map car (cadar itree))) (caar itree))
+	(else (md:config-get-parent-node-id
+	       inode-id
+	       (filter (lambda (node)
+			 (member inode-id (flatten node)))
+		       (cadar itree))))))
 
 ;; Return the list of ancestor IDs of the given inode in the given inode tree
 ;; The returned list is sorted from the closest ancestor to the most distant.
