@@ -586,11 +586,10 @@
 	    (lambda (tree current-parent)
 	      (cond ((not (member inode-id (flatten (cdar tree)))) #f)
 		    ((member inode-id (map car (cadar tree))) (caar tree))
-		    (else (let ((subnode
-				 (filter (lambda (node)
-					   (member inode-id (flatten node)))
-					 (cadar tree))))
-			    (get-parent subnode (car tree))))))))
+		    (else (get-parent (filter (lambda (node)
+						(member inode-id (flatten node)))
+					      (cadar tree))
+				      (car tree)))))))
     (get-parent itree #f)))
 
 ;; Return the list of ancestor IDs of the given inode in the given inode tree
