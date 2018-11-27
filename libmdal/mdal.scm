@@ -593,13 +593,10 @@
 ;; Return the list of ancestor IDs of the given inode in the given inode tree
 ;; The returned list is sorted from the closest ancestor to the most distant.
 (define  (md:config-get-node-ancestors-ids inode-id itree)
-  (letrec ((make-ancestor-list
-	    (lambda (id)
-	      (let ((parent (md:config-get-parent-node-id id itree)))
-		(if (not parent)
-		    '()
-		    (cons parent (make-ancestor-list parent)))))))
-    (make-ancestor-list inode-id)))
+  (let ((parent (md:config-get-parent-node-id inode-id itree)))
+    (if (not parent)
+	'()
+	(cons parent (md:config-get-node-ancestors-ids parent itree)))))
 
 ;; return the IDs of the direct child nodes of a given inode ID in the given
 ;; inode tree
