@@ -601,11 +601,11 @@
 ;; return the IDs of the direct child nodes of a given inode ID in the given
 ;; inode tree
 (define (md:config-get-subnode-ids inode-id itree)
-  (letrec ((get-nodes (lambda (tree)
-			(let ((nodes (alist-ref inode-id tree string=)))
-			  (if (null? nodes)
-			      '()
-			      (map car (car nodes)))))))
+  (let ((get-nodes (lambda (tree)
+		     (let ((nodes (alist-ref inode-id tree string=)))
+		       (if (null? nodes)
+			   '()
+			   (map car (car nodes)))))))
     (if (not (member inode-id (flatten itree)))
 	#f
 	(if (not (member inode-id (flatten (car itree))))
