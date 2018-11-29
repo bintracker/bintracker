@@ -378,7 +378,7 @@
 ;; TODO: command-config arg for eval-field can be resolved during md:make-config
 ;;       but then node-fn must keep a copy of all required command-configs
 (define (md:config-resolve-fn-call fn-string path-prefix)
-  (eval (append '(lambda (mod parent-path instance-id symbols))
+  (eval (append '(lambda (mod parent-path instance-id symbols preceding-onodes))
 		(list (map (lambda (arg) (md:config-transform-fn-arg
 					  arg path-prefix))
 			   (read (open-input-string fn-string)))))))
@@ -440,31 +440,44 @@
 	(letrec* ((field-fn (md:config-resolve-fn-call fn-string path-prefix))
 		  (resolvable? (md:config-make-resolve-check cfg-node))
 		  (node-fn
-		   (lambda (mod parent-path instance-id symbols)
+		   (lambda (mod parent-path instance-id
+				symbols preceding-onodes)
 		     (if (resolvable? symbols)
 			 (md:make-onode
 			  'field field-size
 			  (inexact->exact
 			   (round
-			    (field-fn mod parent-path instance-id symbols)))
+			    (field-fn mod parent-path
+				      instance-id symbols preceding-onodes)))
 			  #f)
 			 (md:make-onode 'field field-size #f node-fn)))))
 	  (md:make-onode 'field field-size #f node-fn)))))
 
 (define (md:config-make-osymbol cfg-node path-prefix)
-  (lambda (mod parent-path instance-id symbols)
-    '()))
+  (letrec* ((fn-string (sxml:text cfg-node))
+	    (symbol-fn
+	     (if (string-null? fn-string)
+		 (lambda (mod parent-path instance-id
+			      symbols preceding-onodes)
+		   (list md:mod-output-size preceding-onodes))
+		 (md:config-resolve-fn-call fn-string path-prefix)))
+	    (node-fn (lambda (mod parent-path instance-id
+				  symbols preceding-onodes)
+		       (if #t
+			   '()
+			   (md:make-onode 'symbol 0 #f node-fn)))))
+    (md:make-onode 'symbol 0 #f node-fn)))
 
 (define (md:config-make-oblock cfg-node path-prefix)
-  (lambda (mod parent-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols preceding-onodes)
     '()))
 
 (define (md:config-make-oorder cfg-node path-prefix)
-  (lambda (mod parent-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols preceding-onodes)
     '()))
 
 (define (md:config-make-ogroup cfg-node path-prefix)
-  (lambda (mod parent-path instance-id symbols)
+  (lambda (mod parent-path instance-id symbols preceding-onodes)
     '()))
 
 ;; dispatch helper, resolve mdconf nodes to compiler function generators or
@@ -556,7 +569,7 @@
   (commands md:config-commands md:config-set-commands!)
   (itree md:config-itree md:config-set-itree)
   (inodes md:config-inodes md:config-set-inodes!)
-  (otree md:config-otree md:config-set-otree!))
+  (compiler md:config-compiler md:config-set-compiler!))
 
 (define-record-printer (md:config cfg out)
   (begin
@@ -599,7 +612,7 @@
 			 (md:create-order-commands itree))
        itree
        (md:mdconf->inodes cfg)
-       (md:config-make-output-tree cfg)))))
+       (md:config-make-compiler cfg)))))
 
 ;; return the ID of the parent of the given inode in the given inode tree
 (define (md:config-get-parent-node-id inode-id itree)
@@ -1454,3 +1467,20 @@
 		    1))))
     (eval (append '(lambda (subnode ancestor-node))
 		  (list setter)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; output compilation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; compile an md:module to an onode tree
+(define (md:mod-compile mod)
+  '())
+
+;; compile an md:module into a bytevec
+(define (md:mod->bin mod)
+  '())
+
+;; compile an md:module into an assembly source
+(define (md:mod->asm mod)
+  '())

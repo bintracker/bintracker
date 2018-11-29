@@ -31,8 +31,8 @@
 		       (md:get-node-command-cfg
 			((md:node-path "0/PATTERNS/0/CH1/0/NOTE1")
 			 (md:mod-global-node my-mod)) my-cfg)))
-(define my-test-onode ((md:onode-fn (second (md:config-otree my-cfg)))
-		       my-mod "" 0 '()))
+;; (define my-test-onode ((md:onode-fn (second (md:config-otree my-cfg)))
+;; 		       my-mod "" 0 '() '()))
 (define my-reordered-node
   (md:mod-reorder-group 8 ((md:node-path "0/PATTERNS")
 			   (md:mod-global-node my-mod)) my-cfg))
