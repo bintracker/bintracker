@@ -1,7 +1,7 @@
 (load "mdal.scm")
 ;; (define cfg (ssax:xml->sxml (open-input-file "config/Huby/Huby.mdconf") '()))
-;; (define cfg (call-with-input-file "config/Huby/Huby.mdconf"
-;; 	      (lambda (x) (ssax:xml->sxml x '()))))
+(define cfg (call-with-input-file "unittests/config/Huby/Huby.mdconf"
+	      (lambda (x) (ssax:xml->sxml x '()))))
 ;; (define cmd-node (car ((sxpath "mdalconfig/command") cfg)))
 ;; (define my-cmd (md:xml-node->command cmd-node))
 (define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf"))
@@ -36,5 +36,9 @@
 (define my-reordered-node
   (md:mod-reorder-group 8 ((md:node-path "0/PATTERNS")
 			   (md:mod-global-node my-mod)) my-cfg))
+;; (define my-reordered-global-node
+;;   ((md:mod-node-setter "0") my-reordered-node (md:mod-global-node my-mod)))
+(define my-resize-fn (md:config-make-resize-fn cfg))
 (define my-reordered-global-node
-  ((md:mod-node-setter "0") my-reordered-node (md:mod-global-node my-mod)))
+  (my-resize-fn (md:mod-global-node my-mod) my-cfg))
+(define my-compile-fn (md:config-make-compiler cfg))

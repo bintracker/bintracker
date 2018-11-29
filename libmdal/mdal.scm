@@ -504,22 +504,42 @@
 ;;       The best course of action will probably be to write a generic path
 ;;       generator, since this functionality will be required in other cases
 ;;       as well.
-;; TODO: PRIORITY start implementing md:mod node accessor fns
 (define (md:config-make-resize-fn cfg-node)
-  (let* ((reorder-paths
+  (let* ((reorder-set
 	  (map (lambda (node)
-		 (md:node-path (string-append "0/" (sxml:attr node 'from))))
+		 (let ((source-node (string-drop (sxml:attr node 'from) 1)))
+		   (list source-node
+			 (md:node-path (string-append "0/" source-node))
+			 (string->number (sxml:attr node 'resize)))))
 	       ((sxpath "mdalconfig/output/group[@resize]") cfg-node))))
-    (lambda (global-node)
-      '())))
+    (lambda (global-node config)
+      (letrec ((reorder-all
+		(lambda (current-global-node items)
+		  (if (null? items)
+		      current-global-node
+		      (reorder-all ((md:mod-node-setter "0")
+				    (md:mod-reorder-group
+				     (third (car items))
+				     ((second (car items)) current-global-node)
+				     config)
+				    current-global-node)
+				   (cdr items))))))
+	(reorder-all global-node reorder-set)))))
 
 ;; from a given mdconf root node, generate the function to compile a module
 ;; with this configuration.
-(define (md:config-make-output-fn cfg-node)
-  (let ((require-reorder
-	 (not (null? ((sxpath "mdalconfig/output//group[@resize]") cfg-node)))))
+(define (md:config-make-compiler cfg-node)
+  (let ((apply-reorder
+	 (if (null? ((sxpath "mdalconfig/output//group[@resize]") cfg-node))
+	     '(md:mod-global-node mod)
+	     `(,(md:config-make-resize-fn cfg-node)
+	       (md:mod-global-node mod)
+	       (md:mod-cfg mod)))))
     (lambda (md-module)
-      '())))
+      (let ((reordered-global-node ((eval (append '(lambda (mod))
+						  (list apply-reorder)))
+				    md-module)))
+	reordered-global-node))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: MASTER CONFIGURATION
@@ -1190,6 +1210,11 @@
 			 subnode-ids)
 		    ""))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; node reordering
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 ;; return a list of values of a given field node id from a given block instance
 ;; (aka strip instance IDs from node-instances)
 (define (md:mod-extract-field-values block-instance field-id)
@@ -1364,7 +1389,7 @@
 ;; split point.
 (define (md:mod-split-instances-at inst-id instances)
   (let ((head (take-while (lambda (inst)
-			    (!= inst-id (car inst)))
+			    (not (= inst-id (car inst))))
 			  instances)))
     (list head (drop instances (length head)))))
 
@@ -1412,8 +1437,10 @@
 ;; Generate a function that replaces an arbitrarily deeply nested subnode in
 ;; the given parent node, as specified by the given node-path string.
 (define (md:mod-node-setter parent-instance-path-str)
-  (let ((setter (md:mod-make-node-setter
-		 (string-split parent-instance-path-str "/")
-		 1)))
+  (let ((setter `(md:mod-replace-inode-instance
+		  ancestor-node 0
+		  ,(md:mod-make-node-setter
+		    (string-split parent-instance-path-str "/")
+		    1))))
     (eval (append '(lambda (subnode ancestor-node))
 		  (list setter)))))
