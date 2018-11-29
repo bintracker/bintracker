@@ -416,8 +416,9 @@
 		(not (member sym (hash-table-keys available-symbols))))
 	      (md:config-get-required-symbols cfg-node)))))
 
-;; convert an mdconf output-field node into a compiler function that generates
-;; an md:ofield
+;; Convert an mdconf output-field node definitiion into an onode structure.
+;; If possible, the onode will be resolved immediately, otherwise it will
+;; contain a compiler function that can be run on the input module.
 ;; in: cfg-node - the MDCONF node to parse
 ;;     path-prefix - the nodepath to prepend to ?FIELD arguments
 ;; The resulting function will take the following arguments:
@@ -764,6 +765,15 @@
 	     (if (md:onode-resolved? node)
 		 (md:onode-val node)
 		 "unresolved"))))
+
+;; Compute the total size of the binary output of a list of onodes. Returns #f
+;; if any of the onodes does not have it's size argument resolved.
+(define (md:mod-output-size onodes)
+  (if (any (lambda (node)
+	     (not (md:onode-size node)))
+	   onodes)
+      #f
+      (apply + (map md:onode-size onodes))))
 
 ;; (define-record-type md:ocomment
 ;;   (md:make-ocomment str)
