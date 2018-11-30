@@ -416,6 +416,30 @@
 		(not (member sym (hash-table-keys available-symbols))))
 	      (md:config-get-required-symbols cfg-node)))))
 
+;; generate a function that takes a field node's value and converts it into
+;; a list of bytes
+;; TODO: must check if we are on a little endian host platform!
+(define (md:config-make-converter-fn field-size target-little-endian)
+  (let* ((core `(letrec
+		    ((eval-bytes (lambda (v bytepos)
+				   (if (= ,field-size bytepos)
+				       '()
+				       (cons (bitwise-and #xff v)
+					     (eval-bytes (arithmetic-shift v -8)
+							 (+ bytepos 1)))))))
+		  (eval-bytes val 0)))
+	 (body (if (= field-size 1)
+		   '(list (bitwise-and #xff val))
+		   (if (eq? (machine-byte-order) 'little-endian)
+		       (if target-little-endian
+			   core
+			   `(reverse ,core))
+		       (if target-little-endian
+			   `(reverse ,core)
+			   core)))))
+    (eval (append '(lambda (val))
+		  (list body)))))
+
 ;; Convert an mdconf output-field node definitiion into an onode structure.
 ;; If possible, the onode will be resolved immediately, otherwise it will
 ;; contain a compiler function that can be run on the input module.
@@ -430,13 +454,15 @@
 ;; and it will return TODO a list containing an ofield or a new parser fn if
 ;; ofield cannot be resolved, and a new list of symbols
 ;; TODO: field conditions
+;; TODO: don't assume little endian on target platform
 (define (md:config-make-ofield cfg-node path-prefix)
-  (let ((fn-string (sxml:text cfg-node))
-	(field-size (string->number (sxml:attr cfg-node 'bytes))))
+  (let* ((fn-string (sxml:text cfg-node))
+	 (field-size (string->number (sxml:attr cfg-node 'bytes)))
+	 (converter-fn (md:config-make-converter-fn field-size #t)))
     (if (md:config-direct-resolvable? fn-string)
 	(md:make-onode 'field field-size
 		       (eval (read (open-input-string fn-string)))
-		       #f)
+		       #f converter-fn)
 	(letrec* ((field-fn (md:config-resolve-fn-call fn-string path-prefix))
 		  (resolvable? (md:config-make-resolve-check cfg-node))
 		  (node-fn
@@ -449,9 +475,10 @@
 			   (round
 			    (field-fn mod parent-path
 				      instance-id symbols preceding-onodes)))
-			  #f)
-			 (md:make-onode 'field field-size #f node-fn)))))
-	  (md:make-onode 'field field-size #f node-fn)))))
+			  #f converter-fn)
+			 (md:make-onode 'field field-size #f node-fn
+					converter-fn)))))
+	  (md:make-onode 'field field-size #f node-fn converter-fn)))))
 
 (define (md:config-make-osymbol cfg-node path-prefix)
   (letrec* ((fn-string (sxml:text cfg-node))
@@ -459,14 +486,15 @@
 	     (if (string-null? fn-string)
 		 (lambda (mod parent-path instance-id
 			      symbols preceding-onodes)
-		   (list md:mod-output-size preceding-onodes))
+		   (+ (md:mod-output-size preceding-onodes)
+		      (car (hash-table-ref symbols 'mdal_output_origin))))
 		 (md:config-resolve-fn-call fn-string path-prefix)))
 	    (node-fn (lambda (mod parent-path instance-id
 				  symbols preceding-onodes)
 		       (if #t
 			   '()
-			   (md:make-onode 'symbol 0 #f node-fn)))))
-    (md:make-onode 'symbol 0 #f node-fn)))
+			   (md:make-onode 'symbol 0 #f node-fn #f)))))
+    (md:make-onode 'symbol 0 #f node-fn #f)))
 
 (define (md:config-make-oblock cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols preceding-onodes)
@@ -485,7 +513,7 @@
 (define (md:config-make-onode-fn cfg-node path-prefix)
   (let ((node-type (sxml:name cfg-node)))
     (cond ((equal? node-type 'comment)
-	   (md:make-onode 'comment 0 (sxml:text cfg-node) #f))
+	   (md:make-onode 'comment 0 (sxml:text cfg-node) #f #f))
 	  ((equal? node-type 'field) (md:config-make-ofield cfg-node
 							    path-prefix))
 	  ((equal? node-type 'symbol) (md:config-make-osymbol cfg-node
@@ -548,11 +576,15 @@
 	     '(md:mod-global-node mod)
 	     `(,(md:config-make-resize-fn cfg-node)
 	       (md:mod-global-node mod)
-	       (md:mod-cfg mod)))))
-    (lambda (md-module)
-      (let ((reordered-global-node ((eval (append '(lambda (mod))
+	       (md:mod-cfg mod))))
+	(init-otree (md:config-make-output-tree cfg-node)))
+    (lambda (md-module origin)
+      (let ((init-symbols (alist->hash-table (list `(mdal_output_origin
+						     ,origin))))
+	    (reordered-global-node ((eval (append '(lambda (mod))
 						  (list apply-reorder)))
 				    md-module)))
+	;; TODO dummy, replace with actual iteration over init-otree
 	reordered-global-node))))
 
 ;; -----------------------------------------------------------------------------
@@ -733,6 +765,7 @@
 	(md:inode-instance-val last-set)
 	(md:command-default command-config))))
 
+
 ;; evaluate a field node instance, ie. generate it's output value. This will
 ;; never return an empty value. If the node instance is inactive, it will return
 ;; the default value, or backtrace if the use-last-set flag is enabled on the
@@ -749,9 +782,8 @@
 			  (md:command-default command-config))
 		      current-val))
 	 (cmd-type (md:command-type command-config)))
-    (cond ((or (eq? cmd-type 'int) (eq? cmd-type 'uint))
-	   raw-val)
-	  ((or (eq? cmd-type 'key) (eq? cmd-type 'ukey))
+    (cond ((memq cmd-type '(int uint)) raw-val)
+	  ((memq cmd-type '(key ukey))
 	   (car (hash-table-ref (md:command-keys command-config) raw-val)))
 	  (else "cmd type not implemented"))))
 
@@ -760,12 +792,13 @@
 ;; -----------------------------------------------------------------------------
 
 (define-record-type md:onode
-  (md:make-onode type size val fn)
+  (md:make-onode type size val fn conversion-fn)
   md:onode?
   (type md:onode-type)
   (size md:onode-size)
   (val md:onode-val)
-  (fn md:onode-fn))
+  (fn md:onode-fn)
+  (conversion-fn md:onode-conversion-fn))
 
 (define (md:onode-resolved? onode)
   (not (md:onode-fn onode)))
@@ -787,6 +820,13 @@
 	   onodes)
       #f
       (apply + (map md:onode-size onodes))))
+
+;; returns true if all onodes have been resolved, false otherwise
+(define (md:mod-all-resolved? onodes)
+  (not (any (lambda (node)
+	      (if (md:onode-fn node)
+		  #t #f))
+	    onodes)))
 
 ;; (define-record-type md:ocomment
 ;;   (md:make-ocomment str)
@@ -1474,13 +1514,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; compile an md:module to an onode tree
-(define (md:mod-compile mod)
-  '())
+;; TODO and a list of symbols for mod->asm?
+(define (md:mod-compile mod origin)
+  ((md:config-compiler (md:mod-cfg mod)) mod origin))
 
 ;; compile an md:module into a bytevec
-(define (md:mod->bin mod)
-  '())
+(define (md:mod->bin mod origin)
+  (let ((otree (md:mod-compile mod origin)))
+    '()))
 
 ;; compile an md:module into an assembly source
-(define (md:mod->asm mod)
-  '())
+(define (md:mod->asm mod origin)
+  (let ((otree (md:mod-compile mod origin)))
+    '()))
