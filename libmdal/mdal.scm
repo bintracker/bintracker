@@ -518,9 +518,11 @@
 				   symbols))))))
     (md:make-onode 'symbol 0 #f node-fn #f)))
 
+;; Convert an mdconf output block node definition into an onode structure.
 (define (md:config-make-oblock cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols preceding-onodes)
-    '()))
+    (letrec* ((block-tree '()))
+      '())))
 
 ;; Convert an mdconf output order node definition into an onode structure.
 ;; TODO: only handles numeric matrix orders for now.
@@ -548,6 +550,9 @@
     (md:make-onode 'order #f #f node-fn #f)))
 
 ;; Convert an mdconf output group node definition into an onode structure.
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; TODO: gotta add order!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 (define (md:config-make-ogroup cfg-node path-prefix)
   (letrec* ((otree (md:config-make-output-tree
 		    (sxml:content cfg-node)
@@ -639,7 +644,7 @@
 			    ((eval (append '(lambda (mod))
 					   (list apply-reorder)))
 			     md-module))))
-	(md:mod-compile-otree init-otree reordered-mod "" init-symbols)))))
+	(md:mod-compile-otree init-otree reordered-mod "" 0 init-symbols)))))
 
 ;; compile an otree
 (define (md:mod-compile-otree otree mod parent-path instance-id symbols)
@@ -677,7 +682,7 @@
 ;; TODO: where to handle max-binsize?
 
 (define-record-type md:config
-  (md:make-config target description commands itree inodes otree)
+  (md:make-config target description commands itree inodes compiler)
   md:config?
   (target md:config-target md:config-set-target!)
   (description md:config-description md:config-set-description!)
