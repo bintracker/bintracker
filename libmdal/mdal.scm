@@ -1652,3 +1652,10 @@
 (define (md:mod->asm mod origin)
   (let ((otree (md:mod-compile mod origin)))
     '()))
+
+;; compile the given md:module to a binary file
+(define (md:mod-export-bin filename mod origin)
+  (call-with-output-file filename
+    (lambda (port)
+      (write-u8vector (list->u8vector (md:mod->bin mod origin))
+		      port))))
