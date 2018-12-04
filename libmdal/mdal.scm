@@ -376,7 +376,7 @@
 	      (md:mod-global-node mod))
 	     (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
 	  ((string-prefix? "$" argstr)
-	   `(car (hash-table-ref symbols ,argname)))
+	   `(car (hash-table-ref symbols (read (open-input-string ,argname)))))
 	  ((string-prefix? "!" argstr)
 	   `(car (hash-table-ref symbols
 				 ,(read (open-input-string
@@ -416,7 +416,7 @@
 ;; TODO eval field condition
 ;; TODO evaluate !forwardref symbol requirements as well
 (define (md:config-get-required-symbols cfg-node)
-  (map (lambda (arg) (string-drop (->string arg) 1))
+  (map (lambda (arg) (read (open-input-string (string-drop (->string arg) 1))))
        (filter (lambda (x) (string-prefix? "$" (->string x)))
 	       (md:config-fn-string->list (sxml:text cfg-node)))))
 
@@ -509,11 +509,15 @@
 		 (md:config-resolve-fn-call fn-string path-prefix)))
 	    (node-fn (lambda (mod parent-path instance-id
 				  symbols preceding-onodes)
-		       (let ((address (md:mod-output-size preceding-onodes)))
-			 (if address
+		       (let ((rel-address
+			      (md:mod-output-size preceding-onodes)))
+			 (if rel-address
 			     (list (md:make-onode 'symbol 0 #f #f #f)
 				   (md:add-hash-table-entry
-				    symbols symbol-id address))
+				    symbols symbol-id
+				    (+ rel-address
+				       (car (hash-table-ref
+					     symbols 'mdal_output_origin)))))
 			     (list (md:make-onode 'symbol 0 #f node-fn #f)
 				   symbols))))))
     (md:make-onode 'symbol 0 #f node-fn #f)))
@@ -522,7 +526,7 @@
 (define (md:config-make-oblock cfg-node path-prefix)
   (lambda (mod parent-path instance-id symbols preceding-onodes)
     (letrec* ((block-tree '()))
-      '())))
+      (md:make-onode 'block 0 0 #f #f))))
 
 ;; Convert an mdconf output order node definition into an onode structure.
 ;; TODO: only handles numeric matrix orders for now.
@@ -540,10 +544,11 @@
 			(if (member order-sym (hash-table-keys symbols))
 			    (let* ((result-val (order-fn symbols))
 				   ;; TODO should group export order size as sym?
-				   (result-size (length result-val)))
+				   (result-size (length (flatten result-val))))
 			      ;; TODO need proper converter fn
 			      (md:make-onode 'order result-size
-					     result-val #f result-val))
+					     result-val #f
+					     (lambda (val) result-val)))
 			    (md:make-onode 'order #f #f node-fn #f))
 			;; oorder exports no new symbols
 			symbols))))
@@ -561,7 +566,18 @@
 				   "/0/")))
 	    (node-fn (lambda (mod parent-path instance-id
 				  symbols preceding-onodes)
-		       (md:mod-compile-otree otree mod symbols)))
+		       (list
+			;; (md:mod-compile-otree otree mod parent-path
+			;; 		      instance-id symbols)
+			;; dummy
+			(md:make-onode 'group 0 0 #f
+				       (lambda (val)
+					 0))
+			(md:add-hash-table-entry
+			 ;; dummy arg
+			 symbols 'mdal_order_PATTERNS
+			 '((0 8) (1 9) (2 10) (3 11) (4 12) (5 13)
+			   (6 14) (7 15))))))
 	    (convert-fn (lambda (val)
 			  (md:mod-otree->bin val))))
     (md:make-onode 'group #f otree node-fn convert-fn)))
@@ -646,34 +662,56 @@
 			     md-module))))
 	(md:mod-compile-otree init-otree reordered-mod "" 0 init-symbols)))))
 
+
+;; helper function for md:mod-compile-otree, parse and eval otree once
+(define (md:mod-recurse-otree tree mod parent-path instance-id
+			      symbols previous-onodes)
+  (begin
+    (printf "tree ~S\nprevious-nodes ~S\nsymbols ~S\n\n" tree previous-onodes
+	    symbols)
+    (if (null? tree)
+	(begin (printf "returning ~S\n" (list previous-onodes
+					      symbols))
+	  (list previous-onodes symbols))
+	(let* ((node-fn (md:onode-fn (car tree)))
+	       (node-result
+		(if node-fn
+		    (node-fn mod parent-path instance-id symbols previous-onodes)
+		    (list (car tree) symbols)))
+	       (next-onodes (append previous-onodes
+				    (list (car node-result)))))
+	  (cons (car node-result)
+		(md:mod-recurse-otree (cdr tree)
+				      mod parent-path instance-id
+				      (second node-result)
+				      next-onodes))))))
+
 ;; compile an otree
 (define (md:mod-compile-otree otree mod parent-path instance-id symbols)
-  (letrec* ((recurse-otree
-	     (lambda (tree syms previous-onodes)
-	       (if (null? tree)
-		   (let* ((node-result
-			   (md:onode-fn (car tree) mod parent-path instance-id
-					syms previous-onodes))
-			  (next-onodes (cons (car node-result)
-					     previous-onodes)))
-		     (cons (car node-result)
-			   (recurse-otree (car tree)
-					  (second tree)
-					  next-onodes)))
-		   (list previous-onodes syms))))
-	    (parse-result (recurse-otree otree symbols '()))
-	    (new-otree (car parse-result))
-	    (new-symbols (second parse-result)))
-    (if (md:mod-all-resolved? new-otree)
-	otree
-	(md:mod-compile-otree new-otree mod parent-path
-			      instance-id new-symbols '()))))
+  (let* ((parse-result
+	  ;; for some reason we get trash at the beginning of the list even
+	  ;; though md:mod-recurse-otree returns it correctly, so drop everything
+	  ;; except what we want
+	  (take-right (md:mod-recurse-otree
+		       otree mod parent-path instance-id symbols '()) 2))
+	 (new-otree (car parse-result))
+	 (new-symbols (second parse-result)))
+    (begin
+      (printf "parse result: ~S\n" parse-result)
+      (printf "compiler pass: ~S\n" (md:mod-all-resolved? new-otree))
+      (if (md:mod-all-resolved? new-otree)
+	  new-otree
+	  (md:mod-compile-otree new-otree mod parent-path
+	  			instance-id new-symbols)))))
 
 ;; convert a compiled otree into a list of bytes
 (define (md:mod-otree->bin otree)
   (flatten (map (lambda (onode)
 		  ((md:onode-conversion-fn onode)
-		   (md:onode-val onode))))))
+		   (md:onode-val onode)))
+		(filter (lambda (node)
+			  (not (memq (md:onode-type node) '(comment symbol))))
+			otree))))
 
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: MASTER CONFIGURATION
@@ -1608,8 +1646,7 @@
 
 ;; compile an md:module into a bytevec
 (define (md:mod->bin mod origin)
-  (let ((otree (md:mod-compile mod origin)))
-    '()))
+  (md:mod-otree->bin (md:mod-compile mod origin)))
 
 ;; compile an md:module into an assembly source
 (define (md:mod->asm mod origin)
