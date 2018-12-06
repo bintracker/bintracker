@@ -362,37 +362,70 @@
 ;; order? list?
 ;; some of these can probably be combined into a 'flags' field
 
+(define (md:config-transform-conditional-arg arg path-prefix)
+  (let* ((argstr (->string arg))
+	 (argname (string-drop argstr 1)))
+    (cond ((string-prefix? "?" argstr)
+	   `((md:node-instance-path (string-append ,path-prefix parent-path
+						   ,argname "/"
+						   (->string instance-id)))
+	     (md:mod-global-node mod)))
+	  (else arg))))
+
 ;; convert a path argument (?/$/!) from an mdconf onode function call to a
 ;; function resolving that path
 ;; TODO: forward onode references (!) are currently only valid for
 ;;       oorder->ogroup references
 (define (md:config-transform-fn-arg arg path-prefix)
-  (let* ((argstr (->string arg))
-	 (argname (string-drop argstr 1)))
-    (cond ((string-prefix? "?" argstr)
-	   `(md:eval-field
-	     instance-id
-	     ((md:node-path (string-append ,path-prefix parent-path ,argname))
-	      (md:mod-global-node mod))
-	     (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
-	  ((string-prefix? "$" argstr)
-	   `(car (hash-table-ref symbols (read (open-input-string ,argname)))))
-	  ((string-prefix? "!" argstr)
-	   `(car (hash-table-ref symbols
-				 ,(read (open-input-string
-					 (string-append "mdal_order_"
-							argname))))))
-	  (else arg))))
+  (begin
+    ;; (printf "resolving arg: ~S\n" arg)
+    (let* ((argstr (->string arg))
+	   (argname (string-drop argstr 1)))
+      (cond ((string-prefix? "?" argstr)
+	     `(md:eval-field
+	       instance-id
+	       ((md:node-path (string-append ,path-prefix parent-path ,argname))
+		(md:mod-global-node mod))
+	       (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
+	    ((string-prefix? "$" argstr)
+	     `(car (hash-table-ref symbols (read (open-input-string ,argname)))))
+	    ((string-prefix? "!" argstr)
+	     `(car (hash-table-ref symbols
+				   ,(read (open-input-string
+					   (string-append "mdal_order_"
+							  argname))))))
+	    ((string-prefix? "(" argstr)
+	     (list (map (lambda (a) (md:config-transform-conditional-arg
+				     a path-prefix))
+			(read (open-input-string argstr)))))
+	    (else arg)))))
 
 ;; convert a mdconf onode function call into an actual function
 ;; TODO: deal with non-list fns (eg. ?FIELD)
 ;; TODO: command-config arg for eval-field can be resolved during md:make-config
 ;;       but then node-fn must keep a copy of all required command-configs
 (define (md:config-resolve-fn-call fn-string path-prefix)
-  (eval (append '(lambda (mod parent-path instance-id symbols preceding-onodes))
-		(list (map (lambda (arg) (md:config-transform-fn-arg
-					  arg path-prefix))
-			   (read (open-input-string fn-string)))))))
+  ;; TODO remove fn-string-normalized, it doesn't work like this
+  (let ((fn-string-normalized (if (string-prefix? "(" fn-string)
+				   fn-string
+				   (string-append "(" fn-string ")")))
+	(fn-args (read (open-input-string fn-string))))
+    (begin
+      (printf "resolving ~S" fn-string-normalized)
+      (printf " to fn body ~S\n"
+	      (list (if (list? fn-args)
+			 (map (lambda (arg) (md:config-transform-fn-arg
+					     arg path-prefix))
+			      fn-args)
+			 (md:config-transform-fn-arg fn-args path-prefix))))
+      (eval (append '(lambda (mod parent-path instance-id
+				  symbols preceding-onodes))
+		    (list
+		     (if (list? fn-args)
+			 (map (lambda (arg) (md:config-transform-fn-arg
+					     arg path-prefix))
+			      fn-args)
+			 (md:config-transform-fn-arg fn-args path-prefix))))))))
 
 ;; transform an MDCONF output node function definition into a list. This will
 ;; return a list even if the node function consists of only an atom.
@@ -496,7 +529,7 @@
 ;; Convert an mdconf output-symbol node definition into an onode structure.
 ;; TODO: only handles symbols without function definition atm (eg. symbols that
 ;;       report their address)
-;; TODO: eeeh? not callign symbol-fn at all?
+;; TODO: eeeh? not calling symbol-fn at all?
 (define (md:config-make-osymbol cfg-node path-prefix)
   (letrec* ((fn-string (sxml:text cfg-node))
 	    (symbol-id (read (open-input-string (sxml:attr cfg-node 'id))))
@@ -522,11 +555,128 @@
 				   symbols))))))
     (md:make-onode 'symbol 0 #f node-fn #f)))
 
+
+;; (define (md:config-block-instance-extractor source-blk-id)
+;;   (lambda ()))
+
+;; Generate a compiler function from the given mdconf oblock config node
+;; TODO: for the current use-case node-fn doesn't need to be letrec*, but in
+;;       the future it will need to be so we can deal with nodes that can't be
+;;       resolved on first pass
+(define (md:config-make-block-compiler block-cfg-node path-prefix convert-fn)
+  (letrec* ((iblock-sources
+	     (map (lambda (s)
+		    ;; TODO ATTN: whitespace is not stripped from sxml:attr!
+		    (string-drop (string-trim s) 1))
+		  (string-split (sxml:attr block-cfg-node 'from) ",")))
+	    (ofield-prototypes
+	     (map (lambda (field-cfg-node)
+	    	    (md:config-make-ofield field-cfg-node path-prefix))
+	    	  (sxml:content block-cfg-node)))
+	    (node-fn
+	     (lambda (mod parent-path instance-id symbols preceding-onodes)
+	       (let* ((iblock-instances
+		       (map (lambda (src)
+			      (md:inode-instances
+			       ((md:node-path
+				 (begin
+				   (printf "pathing src: ~S/~S\n" path-prefix src)
+				   (string-append path-prefix "/" src)))
+				(md:mod-global-node mod))))
+			    iblock-sources))
+		      (config (md:mod-cfg mod))
+		      ;; TODO prototypes can be determined ahead of time
+		      ;;      once proto-config is passed in
+		      (ifield-eval-proto-fns
+		       (let*
+			   ((subnode-cmds
+		      	     (map (lambda (inode)
+		      		    (md:config-get-inode-source-command
+				     (md:inode-cfg-id inode) config))
+		      		  (md:inode-instance-val
+		      		   (second (second (car iblock-instances)))))))
+		      	 (map (lambda (cmd)
+		      		(lambda (instance-id node)
+		      		  (md:eval-field instance-id node cmd)))
+		      	      subnode-cmds)))
+		      ;; TODO this will pretty much only work with current
+		      ;;      test config
+		      (get-values
+		       (lambda ()
+			 (letrec*
+			     ((block-lengths
+			       (map (lambda (inst)
+				      (length
+				       (md:inode-instances
+					(car (md:inode-instance-val
+					      (second (second inst)))))))
+				    iblock-instances))
+			      (make-onodes
+			       (lambda (init-blk-inst-id len prototype)
+				 (letrec*
+				     ((make-subnodes
+				       (lambda (init-f-inst-id tlen)
+					 (if (= init-f-inst-id tlen)
+					     '()
+					     (cons
+					      (car ((md:onode-fn prototype)
+						    mod
+						    (string-append "/" (car iblock-sources)
+								   "/" (->string init-blk-inst-id) "/")
+						    init-f-inst-id
+						    symbols
+						    '()))
+					      (make-subnodes (+ init-f-inst-id 1)
+							     tlen))))))
+				   (if (= init-blk-inst-id len)
+				       '()
+				       (cons
+					(make-subnodes 0 8)
+					;; (car ((md:onode-fn prototype)
+					;;       mod
+					;;       (string-append "/" (car iblock-sources) "/0/")
+					;;       init-blk-inst-id
+					;;       symbols
+					;;       '()))
+					(make-onodes (+ init-blk-inst-id 1)
+						     len
+						     prototype)))))))
+			   ;; sadly it bugs out on len > 1
+			   (map (lambda (prototype) (make-onodes 0 1 prototype))
+				ofield-prototypes))))
+		      (result-nodes (flatten (get-values)))
+		      (result-size
+		       (apply + (map md:onode-size result-nodes))))
+		 (list (md:make-onode 'block result-size
+				      result-nodes
+				      #f convert-fn)
+		       symbols)))))
+    (begin
+      (printf "ofield prototypes: ~S\n" ofield-prototypes)
+      node-fn)))
+
+;; (define (md:config-make-block-converter block-cfg-node target-little-endian)
+;;   (let* ((field-sizes (map (lambda (field)
+;; 			     (sxml:num-attr field 'bytes))
+;; 			   ((sxpath "field") block-cfg-node)))
+;; 	 ;; could use a circular list and apply that to fields
+;; 	 (field-converters
+;; 	  (map (lambda (size)
+;; 		 (md:config-make-converter-fn size target-little-endian))
+;; 	       field-sizes)))
+;;     (lambda (onode)
+;;       (let ((vals (md:onode-val onode)))
+;; 	'()))))
+
 ;; Convert an mdconf output block node definition into an onode structure.
 (define (md:config-make-oblock cfg-node path-prefix)
-  (lambda (mod parent-path instance-id symbols preceding-onodes)
-    (letrec* ((block-tree '()))
-      (md:make-onode 'block 0 0 #f #f))))
+  ;; TODO pass in actual byte order to converter generator
+  (let* ((compile-fn
+	  ;; (md:config-make-block-converter cfg-node #t)
+	  (lambda (val) (md:mod-otree->bin val)))
+	 (node-fn (md:config-make-block-compiler cfg-node path-prefix
+						 compile-fn)))
+    (md:make-onode 'block #f #f node-fn compile-fn)))
 
 ;; Convert an mdconf output order node definition into an onode structure.
 ;; TODO: only handles numeric matrix orders for now.
@@ -563,23 +713,27 @@
 		    (sxml:content cfg-node)
 		    (string-append path-prefix
 				   (string-drop (sxml:attr cfg-node 'from) 1)
-				   "/0/")))
+				   "/0")))
+	    ;; the "val" in converter-fn is actually the onode itself
+	    (convert-fn (lambda (val)
+			  (md:mod-otree->bin val)))
 	    (node-fn (lambda (mod parent-path instance-id
 				  symbols preceding-onodes)
-		       (list
-			;; (md:mod-compile-otree otree mod parent-path
-			;; 		      instance-id symbols)
-			;; dummy
-			(md:make-onode 'group 0 0 #f
-				       (lambda (val)
-					 0))
-			(md:add-hash-table-entry
-			 ;; dummy arg
-			 symbols 'mdal_order_PATTERNS
-			 '((0 8) (1 9) (2 10) (3 11) (4 12) (5 13)
-			   (6 14) (7 15))))))
-	    (convert-fn (lambda (val)
-			  (md:mod-otree->bin val))))
+		       (let* ((node-result
+				(md:mod-compile-otree otree mod parent-path
+						      instance-id symbols))
+			      (node-size (apply + (map md:onode-size
+						       node-result))))
+			 (list (md:make-onode
+				'group node-size node-result
+				#f convert-fn)
+			       (md:add-hash-table-entry
+				;; dummy arg
+				symbols 'mdal_order_PATTERNS
+				;; '((0 8) (1 9) (2 10) (3 11) (4 12) (5 13)
+				;;   (6 14) (7 15))
+				'((0 1))
+				))))))
     (md:make-onode 'group #f otree node-fn convert-fn)))
 
 ;; dispatch helper, resolve mdconf nodes to compiler function generators or
@@ -888,7 +1042,7 @@
 			(reverse (take (md:inode-instances node)
 				       instance-id)))))
     (if last-set
-	(md:inode-instance-val last-set)
+	(md:inode-instance-val (second last-set))
 	(md:command-default command-config))))
 
 
@@ -899,20 +1053,26 @@
 ;; To display the node's current value, use md:print-field instead.
 ;; TODO: this could be optimized by constructing a dedicated eval fn in config.
 (define (md:eval-field instance-id node command-config)
-  (let* ((field ((md:mod-get-node-instance instance-id) node))
-	 (current-val (md:inode-instance-val field))
-	 (raw-val (if (null? current-val)
-		      (if (md:command-has-flag? command-config 'use_last_set)
-			  (md:eval-field-last-set
-			   instance-id node command-config)
-			  (md:command-default command-config))
-		      current-val))
-	 (cmd-type (md:command-type command-config)))
-    (cond ((memq cmd-type '(int uint)) raw-val)
-	  ((memq cmd-type '(key ukey))
-	   (car (hash-table-ref (md:command-keys command-config) raw-val)))
-	  (else "cmd type not implemented"))))
+  (begin
+    (printf "call to eval-field with args ~S ~S ~S\n" instance-id node command-config)
+    (printf "call chain: ~S\n" (get-call-chain))
+    (let* ((field ((md:mod-get-node-instance instance-id) node))
+	   (current-val (md:inode-instance-val field))
+	   (raw-val (if (null? current-val)
+			(if (md:command-has-flag? command-config 'use_last_set)
+			    (md:eval-field-last-set
+			     instance-id node command-config)
+			    (md:command-default command-config))
+			current-val))
+	   (cmd-type (md:command-type command-config)))
+      (cond ((memq cmd-type '(int uint)) raw-val)
+	    ((memq cmd-type '(key ukey))
+	     (car (hash-table-ref (md:command-keys command-config) raw-val)))
+	    (else "cmd type not implemented")))))
 
+;; check if the given inode instance is 'active', ie. check if a value is set.
+(define (md:is-set? inode-instance)
+  (not (null? md:inode-instance-val inode-instance)))
 ;; -----------------------------------------------------------------------------
 ;; MDMOD: OUTPUT NODES
 ;; -----------------------------------------------------------------------------
@@ -1011,17 +1171,19 @@
 ;; lo-level api, generate a function that takes an inode as param, and returns
 ;; the node matching the given path
 (define (md:make-npath-fn pathlist)
-  (if (= 2 (length pathlist))
-      (lambda (node)
-	(find (lambda (subnode-id)
-		(string=? (md:inode-cfg-id subnode-id)
-			  (cadr pathlist)))
-	      (md:inode-instance-val
-	       ((md:mod-get-node-instance (string->number (car pathlist)))
-		node))))
-      (lambda (node)
-	((md:make-npath-fn (cddr pathlist))
-	 ((md:make-npath-fn (take pathlist 2)) node)))))
+  (begin
+    (printf "trying path: ~S\n" pathlist)
+    (if (= 2 (length pathlist))
+	(lambda (node)
+	  (find (lambda (subnode-id)
+		  (string=? (md:inode-cfg-id subnode-id)
+			    (cadr pathlist)))
+		(md:inode-instance-val
+		 ((md:mod-get-node-instance (string->number (car pathlist)))
+		  node))))
+	(lambda (node)
+	  ((md:make-npath-fn (cddr pathlist))
+	   ((md:make-npath-fn (take pathlist 2)) node))))))
 
 ;; generate a function that takes an inode as parameter, and returns the node
 ;; instance matching the given path

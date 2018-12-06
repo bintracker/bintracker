@@ -39,7 +39,8 @@
     <group id="PATTERNS" from="?PATTERNS" resize="8" flags="numeric_order">
       <block from="?CH1, ?DRUMS">
 	<!-- could wrap fields in a row tag, this would allow for additional single fields (eg. size etc)-->
-	<field bytes="1">(if (set ?DRUM) #x2c ?NOTE1)</field>
+	<!--TODO: <field bytes="1">(if (md:is-set? ?DRUM) #x2c ?NOTE1)</field>-->
+	<field bytes="1">?NOTE1</field>
       </block>
       <block from="?CH2">
 	<field bytes="1">?NOTE2</field>
