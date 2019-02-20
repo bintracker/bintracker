@@ -1,6 +1,11 @@
 _backup/
+libmdal/unittests/test_builds/
+tclkit/
 doc/
 *.swp
 *.org~
-\#*
-.\#*
+.#*
+\#*#
+*~
+*.so
+*.import.*
