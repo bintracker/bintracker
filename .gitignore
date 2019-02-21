@@ -1,7 +1,8 @@
 _backup/
 libmdal/unittests/test_builds/
 tclkit/
-doc/
+docs/html
+docs/generated
 *.swp
 *.org~
 .#*

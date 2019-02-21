@@ -1,0 +1,24 @@
+site_name: MDAL
+
+theme:
+  name: 'material'
+  hljs_languages:
+    - scheme
+    - xml
+
+site_dir: 'docs/html'
+
+nav:
+  - Home: index.md
+  - MDMOD: MDMOD_SPECIFICATION.md
+  - MDCONF: MDCONF_SPECIFICATION.md
+  - libmdal:
+      - 'About libmdal': libmdal.md
+      - 'API documentation':
+          - 'mdal-core': 'generated/mdal-core.scm.md'
+          - 'md-command': 'generated/md-command.scm.md'
+          - 'md-helpers': 'md-helpers.scm.md'
+          - 'md-note-tables': 'md-note-tables.scm.md'
+
+markdown_extensions:
+  - codehilite
