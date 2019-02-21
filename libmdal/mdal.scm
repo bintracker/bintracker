@@ -8,6 +8,7 @@
   (use srfi-69 simple-exceptions
        ssax sxpath sxpath-lolevel
        md-helpers md-command md-note-table)
+  (reexport md-helpers md-command md-note-table)
 
 
   ;; ---------------------------------------------------------------------------
@@ -30,8 +31,8 @@
   ;; MDCONF: TARGETS
   ;; ---------------------------------------------------------------------------
 
-  (define md:little-endian 0)
-  (define md:big-endian 1)
+  ;; (define md:little-endian 0)
+  ;; (define md:big-endian 1)
 
   (define-record-type md:cpu
     (md:make-cpu id endianness)
