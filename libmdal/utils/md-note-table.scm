@@ -2,6 +2,9 @@
 ; Copyright (c) utz/irrlicht project 2018
 ; See LICENSE for license details.
 
+;;; # Module MD-NOTE-TABLE
+;;; Generate note to frequency divider/lookup value mappings
+
 (module md-note-table
     (md:make-counters
      md:make-dividers-range
@@ -59,6 +62,7 @@
     (string-append (vector-ref md:note-names (modulo offset 12))
                    (number->string (md:offset->octave offset))))
 
+  ;;;
   (define (md:make-dividers-range cycles beg end rest bits)
     (if (= beg end)
         (list (list "rest" rest))
@@ -66,11 +70,11 @@
                     (md:offset->divider beg cycles bits))
               (md:make-dividers-range cycles (+ 1 beg) end rest bits))))
 
-  ;; generate a note table with divider->note-name mappings
-  ;; wrapper func for make-dividers-range that will auto-deduce optimal range
-  ;; parameters: cycles - number of cycles in sound generation loop
-  ;;             bits - size of the dividers, as number of bits
-  ;;             rest - the value that represents a rest/note-off
+  ;;; generate a note table with divider->note-name mappings
+  ;;; wrapper func for make-dividers-range that will auto-deduce optimal range
+  ;;; parameters: cycles - number of cycles in sound generation loop
+  ;;;             bits - size of the dividers, as number of bits
+  ;;;             rest - the value that represents a rest/note-off
   (define (md:make-dividers cycles bits rest)
     (alist->hash-table
      (md:make-dividers-range cycles
@@ -78,11 +82,11 @@
                              (md:get-upper-bound cycles bits)
                              rest bits)))
 
-  ;; generate a note table with simple note-name->index mappings
-  ;; beg   lowest note, as offset from c-0
-  ;; end   highest note, as offset from c-0
-  ;; first-index   index of the lowest note
-  ;; rest-index    index of the rest/note-off
+  ;;; generate a note table with simple note-name->index mappings
+  ;;; beg   lowest note, as offset from c-0
+  ;;; end   highest note, as offset from c-0
+  ;;; first-index   index of the lowest note
+  ;;; rest-index    index of the rest/note-off
   (define (md:make-counters beg end first-index rest-index)
     (letrec ((mkcounters
               (lambda (beg end first rest)
@@ -92,7 +96,7 @@
                           (mkcounters (+ 1 beg) end (+ 1 first) rest))))))
       (alist->hash-table (mkcounters beg end first-index rest-index))))
 
-  ;; returns the lowest note in the given note table
+  ;;; returns the lowest note in the given note table
   (define (md:lowest-note table)
     (letrec
 	((try-lower
@@ -102,7 +106,7 @@
 		(try-lower (+ offset 1) tbl)))))
       (try-lower 0 table)))
 
-  ;; returns the highest note in the given note table
+  ;;; returns the highest note in the given note table
   (define (md:highest-note table)
     (letrec
 	((try-upper
@@ -112,7 +116,7 @@
 		(try-upper (- offset 1) tbl)))))
       (try-upper 119 table)))
 
-  ;; returns (lowest highest) notes in the given note table
+  ;;; returns (lowest highest) notes in the given note table
   (define (md:note-table-range table)
     (list (md:lowest-note table) (md:highest-note table)))
 

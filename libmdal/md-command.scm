@@ -2,6 +2,9 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
+;;; # Module MD-COMMAND
+;;; MDAL Command Configuration
+
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: COMMANDS
 ;; -----------------------------------------------------------------------------
@@ -11,17 +14,20 @@
   (import scheme chicken extras data-structures)
   (use srfi-1 srfi-13 srfi-14 srfi-69 sxpath sxpath-lolevel md-helpers)
 
-  ;; command config record
-  ;; fields:
-  ;; type - one of (int uint key ukey reference string trigger label) or a
-  ;;        user-defined type
-  ;; bits - uint number of bits in command
-  ;; default - default value string
-  ;; reference-to - #f or an identifier string
-  ;; keys - #f or a hash-map
-  ;; flags - list of command flags
-  ;; range - #f or an md:range object
-  ;; description - #f or a string
+  ;;; **[RECORD]** MD:COMMAND
+  ;;; command config record type
+  ;;; Constructor:
+  ;;; `(md:make-command type bits default referene-to keys flags range description)`
+  ;;; fields:
+  ;;; type - one of (int uint key ukey reference string trigger label) or a
+  ;;;        user-defined type
+  ;;; bits - uint number of bits in command
+  ;;; default - default value string
+  ;;; reference-to - #f or an identifier string
+  ;;; keys - #f or a hash-map
+  ;;; flags - list of command flags
+  ;;; range - #f or an md:range object
+  ;;; description - #f or a string
   (define-record-type md:command
     (md:make-command type bits default reference-to keys flags range
                      description)
@@ -35,12 +41,12 @@
     (range md:command-range md:command-set-range!)
     (description md:command-description md:command-set-description!))
 
-  ;; check if the given command has the given flag
+  ;;; check if the given command has the given flag
   (define (md:command-has-flag? cmd flag)
     (if (memq flag (md:command-flags cmd))
 	#t #f))
 
-  ;; check if the given command has any flags
+  ;;; check if the given command has any flags
   (define (md:command-has-flags? cmd)
     (if (null? (md:command-flags cmd))
 	#f #t))
@@ -64,7 +70,7 @@
       (when (md:command-description cmd)
 	(fprintf out "\ndescription:\n~A~!" (md:command-description cmd)))))
 
-  ;; extract the command flags from a command mdconf node
+  ;;; extract the command flags from a command mdconf node
   (define (md:xml-command-node->command-flags node)
     (let ((attr (sxml:attr node 'flags)))
       (if attr
@@ -73,10 +79,10 @@
 	       (string-split attr ","))
 	  '())))
 
-  ;; utility function to extract the range argument from a 'command' mdconf
-  ;; node.
-  ;; returns #f if no range is set, supplies missing min/max args from numeric
-  ;; range of the command.
+  ;;; utility function to extract the range argument from a 'command' mdconf
+  ;;; node.
+  ;;; returns #f if no range is set, supplies missing min/max args from numeric
+  ;;; range of the command.
   (define (md:xml-command-node->range node)
     ;; immediately abort if no range subnode found
     (if (null? ((sxpath "range") node))
@@ -103,7 +109,7 @@
                    (upper-limit (sxml:attr node 'type)
 				(sxml:num-attr node 'bits))))))))
 
-  ;; construct a hash table from a file containing key/value definitions
+  ;;; construct a hash table from a file containing key/value definitions
   (define (md:mapfile->map filepath)
     (alist->hash-table
      (map (lambda (str)
@@ -113,8 +119,8 @@
           (filter (lambda (x) (string-contains x "="))
                   (call-with-input-file filepath read-lines)))))
 
-  ;; construct a keymap from a 'command' mdconf node
-  ;; returns a hash table or #f
+  ;;; construct a keymap from a 'command' mdconf node
+  ;;; returns a hash table or #f
   (define (md:xml-command-node->map node configpath)
     (if (sxml:attr node 'map)
 	(let ((attr (sxml:attr node 'map)))
@@ -128,7 +134,8 @@
 		(else #f)))
 	#f))
 
-  ;; construct an md:command object from a 'command' mdconf node and a md:target
+  ;;; construct an md:command object from a 'command' mdconf node and a
+  ;;; md:target
   (define (md:xml-node->command node target configpath)
     (let* ((type-attr (sxml:attr node 'type))
 	   (cmd-type (read (open-input-string type-attr))))
@@ -146,15 +153,15 @@
            #f
            (car ((sxpath "description/text()") node))))))
 
-  ;; construct an alist containing the default commands AUTHOR and TITLE
+  ;;; construct an alist containing the default commands AUTHOR and TITLE
   (define (md:make-default-commands)
     (list
      (list "AUTHOR" (md:make-command 'string 0 "unknown" #f #f '() #f #f))
      (list "TITLE" (md:make-command 'string 0 "untitled" #f #f '() #f #f))))
 
-  ;; generate a hash-table of md:commands from a given list of mdconf 'command'
-  ;; nodes and a given target. Also generates AUTHOR/TITLE commands if not
-  ;; specified in node list
+  ;;; generate a hash-table of md:commands from a given list of mdconf 'command'
+  ;;; nodes and a given target. Also generates AUTHOR/TITLE commands if not
+  ;;; specified in node list
   (define (md:xml-command-nodes->commands node-list target configpath)
     (alist->hash-table
      (append

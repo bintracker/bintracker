@@ -19,6 +19,12 @@ mdal-core: mdal-core.scm note-table helpers command
 	csc -s -d1 mdal-core.scm -j mdal-core
 	csc -s mdal-core.import.scm -d0
 
+docs: mdal-core.scm md-helpers.scm md-command.scm utils/md-note-table.scm
+	scm2wiki -i mdal-core.scm -o docs/generated/mdal-core.md -m
+	scm2wiki -i md-helpers.scm -o docs/generated/md-helpers.md -m
+	scm2wiki -i md-command.scm -o docs/generated/md-command.md -m
+	scm2wiki -i utils/md-note-table.scm -o docs/generated/util/md-note-table.md -m
+
 .PHONY: clean
 clean:
 	rm *.so *.import.scm

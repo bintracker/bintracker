@@ -2,6 +2,9 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
+;;; # Module MDAL-CORE
+;;; main libmdal cluster
+
 (module mdal-core *
 
   (import scheme chicken srfi-1 srfi-4 srfi-13 srfi-14 extras data-structures)
@@ -27,24 +30,28 @@
   (define **cpu-speed** 30000)
 
   ;; ---------------------------------------------------------------------------
-  ;; MDCONF: TARGETS
+  ;;; ## MDCONF: TARGETS
   ;; ---------------------------------------------------------------------------
 
   ;; (define md:little-endian 0)
   ;; (define md:big-endian 1)
 
+  ;;; **[RECORD]** MD:CPU
   (define-record-type md:cpu
     (md:make-cpu id endianness)
     md:cpu?
     (id md:cpu-id)
     (endianness md:cpu-endianness))
 
+  ;;; **[RECORD]** MD:EXPORT-FORMAT
   (define-record-type md:export-format
     (md:make-export-format id conversion-func)
     md:export-format?
     (id md:export-format-id)
     (conversion-func md:export-format-conversion-func))
 
+  ;;; **[RECORD]** MD:TARGET
+  ;;; Describe the target system of a sound driver.
   (define-record-type md:target
     (md:make-target id cpu clock-speed export-formats)
     md:target?
@@ -55,22 +62,24 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;; MDCONF: INPUT NODE CONFIGURATION
+  ;; ## MDCONF: INPUT NODE CONFIGURATION
   ;; ---------------------------------------------------------------------------
   ;; sub-nodes should be virtual (store id only)
   ;; every node must have a unique id
 
-  ;; aux record type for tracking instantiation requirements of md:inode-config
+  ;;; **[RECORD]** MD:INSTANCE-RANGE
+  ;;; aux record type for tracking instantiation requirements of md:inode-config
   (define-record-type md:instance-range
     (md:make-instance-range min-instances max-instances)
     md:instance-range?
     (min-instances md:instance-range-min md:set-instance-range-min)
     (max-instances md:instance-range-max md:set-instance-range-max))
 
+  ;;;
   (define (md:make-single-instance)
     (md:make-instance-range 1 1))
 
-  ;; get the subnode instance range specification from a mdconf inode
+  ;;; get the subnode instance range specification from a mdconf inode
   (define (md:xml-inode-get-range-arg node)
     (if (or (sxml:attr node 'length)
 	    (sxml:attr node 'min-length)
@@ -119,16 +128,16 @@
                   (md:inode-config-subnodes cfg)))
       (fprintf out ">")))
 
-  ;; determine ID of a mdconf inode config node.
-  ;; ID is derived from the 'id' attribute, or from the 'from' attribute if 'id'
-  ;; is not found.
+  ;;; determine ID of a mdconf inode config node.
+  ;;; ID is derived from the 'id' attribute, or from the 'from' attribute if 'id'
+  ;;; is not found.
   (define (md:parse-inode-config-id node)
     (cond ((sxml:attr node 'id) (sxml:attr node 'id))
 	  ((sxml:attr node 'from) (sxml:attr node 'from))
 	  (else (error "Cannot determine inode config id"))))
 
-  ;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID
-  ;; names
+  ;;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID
+  ;;; names
   (define (md:clone-inode-tree tree amount)
     (letrec*
 	((rename-lst (lambda (lst postfix)
@@ -145,14 +154,14 @@
 			(create-id-list-copies (+ beg 1) end l))))))
       (create-id-list-copies 1 amount tree)))
 
-  ;; generate the inode tree of an auto-generated igroup order
+  ;;; generate the inode tree of an auto-generated igroup order
   (define (md:generate-inode-order-tree node)
     (cons (string-append (sxml:name node) "_ORDER")
 	  (list (map (lambda (x) (list (string-append "R_" (car x))))
 		     (cadr node)))))
 
-  ;; helper function, generates the inode tree for a given node and it's
-  ;; subnodes
+  ;;; helper function, generates the inode tree for a given node and it's
+  ;;; subnodes
   (define (md:inode->inode-tree node subnodes)
     (let ((flags (sxml:attr node 'flags)))
       (if (and flags (string-contains-ci flags "ordered"))
@@ -161,7 +170,7 @@
 					      (list subnodes))))))
 	  (list subnodes))))
 
-  ;; return the inode tree of a given list of xml inode configs
+  ;;; return the inode tree of a given list of xml inode configs
   (define (md:xml-nodes->inode-tree nodes)
     (let ((get-tree
 	   (lambda (node)
@@ -182,7 +191,7 @@
 	      (cons (get-tree (car nodes))
 		    (md:xml-nodes->inode-tree (cdr nodes)))))))
 
-  ;; extract the inode tree from a given MDCONF root node
+  ;;; extract the inode tree from a given MDCONF root node
   (define (md:parse-inode-tree cfg-node)
     (list (list "GLOBAL"
 		(append '(("AUTHOR") ("TITLE"))
@@ -193,8 +202,8 @@
 			(md:xml-nodes->inode-tree
 			 ((sxpath "mdalconfig/igroup") cfg-node))))))
 
-  ;; generate a hash list of reference commands required by
-  ;; auto-generated order inodes
+  ;;; generate a hash list of reference commands required by
+  ;;; auto-generated order inodes
   (define (md:create-order-commands itree)
     (alist->hash-table
      (map (lambda (x) (list x (md:make-command 'reference
@@ -203,7 +212,7 @@
 					       #f #f)))
 	  (filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
 
-  ;; generate a hash list of inodes required by auto-generated order inodes
+  ;;; generate a hash list of inodes required by auto-generated order inodes
   (define (md:create-iorder-inodes itree)
     (alist->hash-table
      (append
@@ -220,15 +229,15 @@
 	   (filter (lambda (id) (string-contains id "R_"))
 		   (flatten itree))))))
 
-  ;; From a given mdconf ifield node, construct a list containing the
-  ;; inode-config
+  ;;; From a given mdconf ifield node, construct a list containing the
+  ;;; inode-config
   (define (md:parse-ifield-config node instance-range)
     (list (md:parse-inode-config-id node)
 	  (md:make-inode-config 'field instance-range #f
 				(sxml:attr node 'from) #f)))
 
-  ;; From a given mdconf iblock node, construct a list containing the given
-  ;; inode definition and all subnodes
+  ;;; From a given mdconf iblock node, construct a list containing the given
+  ;;; inode definition and all subnodes
   (define (md:parse-iblock-config node instance-range)
     (md:make-pairs (flatten (list (md:parse-inode-config-id node)
 				  (md:make-inode-config 'block instance-range
@@ -238,8 +247,8 @@
 					  x (md:xml-inode-get-range-arg node)))
 				       ((sxpath "ifield") node))))))
 
-  ;; From a given mdconf iblock node, construct a list containing the given
-  ;; inode definition and all subnodes
+  ;;; From a given mdconf iblock node, construct a list containing the given
+  ;;; inode definition and all subnodes
   (define (md:parse-igroup-config node instance-range)
     (md:make-pairs
      (flatten
@@ -255,7 +264,7 @@
 	    ((sxpath "node()") node))))))
 
 
-  ;; TODO: fails if there are several ifield subnodes with the same source cmd
+  ;;; TODO: fails if there are several ifield subnodes with the same source cmd
   (define (md:parse-clone-config node instance-range)
     (letrec*
 	((subs (md:make-pairs
@@ -277,11 +286,11 @@
 								'count)))))))
 
 
-  ;; dispatch function
-  ;; from a given mdconf inode, generate a list containing the declared
-  ;; md:inode-config it's subnode configs
-  ;; NOTE: inode parsers do NOT create additional nodes for order lists. Those
-  ;;       have to be created with a call to md:create-iorder-nodes
+  ;;; dispatch function
+  ;;; from a given mdconf inode, generate a list containing the declared
+  ;;; md:inode-config it's subnode configs
+  ;;; NOTE: inode parsers do NOT create additional nodes for order lists. Those
+  ;;;       have to be created with a call to md:create-iorder-nodes
   (define (md:parse-inode-config node instance-range)
     (cond ((equal? (sxml:name node) 'ifield)
            (md:parse-ifield-config node instance-range))
@@ -292,8 +301,8 @@
           (else (md:parse-igroup-config node instance-range))))
 
 
-  ;; from a given mdconf root node, construct the hash table of the GLOBAL
-  ;; inode config and it's sub-inodes
+  ;;; from a given mdconf root node, construct the hash table of the GLOBAL
+  ;;; inode config and it's sub-inodes
   (define (md:make-global-group-inodes cfg-node)
     (alist->hash-table
      (append (list (list "GLOBAL" (md:make-inode-config
@@ -311,8 +320,8 @@
 			     'field (md:make-single-instance) #f id #f))))
 		  ((sxpath "mdalconfig/ifield") cfg-node)))))
 
-  ;; returns a hash table containing all inode configs defined in the given
-  ;; mdconf root node
+  ;;; returns a hash table containing all inode configs defined in the given
+  ;;; mdconf root node
   (define (md:mdconf->inodes cfg-node)
     (let ((igroups (alist->hash-table
 		    (md:make-pairs
@@ -326,7 +335,7 @@
        (md:create-iorder-inodes (md:parse-inode-tree cfg-node)))))
 
   ;; ---------------------------------------------------------------------------
-  ;; MDCONF: COMPILER FUNCTION CONFIGURATION
+  ;;; ## MDCONF: COMPILER FUNCTION CONFIGURATION
   ;; ---------------------------------------------------------------------------
   ;; additional fields: fixed-length, max-length, min-instances, max-instances,
   ;; sort-ascending, use-little-endian (aka override-endianness)
@@ -344,10 +353,10 @@
 	       (md:mod-global-node mod)))
 	    (else arg))))
 
-  ;; convert a path argument (?/$/!) from an mdconf onode function call to a
-  ;; function resolving that path
-  ;; TODO: forward onode references (!) are currently only valid for
-  ;;       oorder->ogroup references
+  ;;; convert a path argument (?/$/!) from an mdconf onode function call to a
+  ;;; function resolving that path
+  ;;; TODO: forward onode references (!) are currently only valid for
+  ;;;       oorder->ogroup references
   (define (md:config-transform-fn-arg arg path-prefix)
     (begin
       ;; (printf "resolving arg: ~S\n" arg)
@@ -373,11 +382,11 @@
 		     (read (open-input-string argstr)))))
 	 (else arg)))))
 
-  ;; convert a mdconf onode function call into an actual function
-  ;; TODO: deal with non-list fns (eg. ?FIELD)
-  ;; TODO: command-config arg for eval-field can be resolved during
-  ;;       md:make-config but then node-fn must keep a copy of all required
-  ;;       command-configs
+  ;;; convert a mdconf onode function call into an actual function
+  ;;; TODO: deal with non-list fns (eg. ?FIELD)
+  ;;; TODO: command-config arg for eval-field can be resolved during
+  ;;;       md:make-config but then node-fn must keep a copy of all required
+  ;;;       command-configs
   (define (md:config-resolve-fn-call fn-string path-prefix)
     ;; TODO remove fn-string-normalized, it doesn't work like this
     (let ((fn-string-normalized (if (string-prefix? "(" fn-string)
@@ -402,44 +411,44 @@
 			   (md:config-transform-fn-arg fn-args
 						       path-prefix))))))))
 
-  ;; transform an MDCONF output node function definition into a list. This will
-  ;; return a list even if the node function consists of only an atom.
+  ;;; transform an MDCONF output node function definition into a list. This will
+  ;;; return a list even if the node function consists of only an atom.
   (define (md:config-fn-string->list fn-string)
     (let ((fn-args (read (open-input-string fn-string))))
       (if (list? fn-args)
 	  fn-args
 	  (list fn-args))))
 
-  ;; check whether a given MDCONF output node function definition can be
-  ;; resolved into a ofield node during config parsing, ie. without knowing the
-  ;; actual module contents.
+  ;;; check whether a given MDCONF output node function definition can be
+  ;;; resolved into a ofield node during config parsing, ie. without knowing the
+  ;;; actual module contents.
   (define (md:config-direct-resolvable? fn-string)
     (not (find (lambda (arg) (or (string-prefix? "?" (->string arg))
 				 (string-prefix? "$" (->string arg))
 				 (string-prefix? "!" (->string arg))))
 	       (md:config-fn-string->list fn-string))))
 
-  ;; from a given MDCONF output field node definition, extract the symbols
-  ;; required to resolve the field function
-  ;; TODO eval field condition
-  ;; TODO evaluate !forwardref symbol requirements as well
+  ;;; from a given MDCONF output field node definition, extract the symbols
+  ;;; required to resolve the field function
+  ;;; TODO eval field condition
+  ;;; TODO evaluate !forwardref symbol requirements as well
   (define (md:config-get-required-symbols cfg-node)
     (map (lambda (arg) (read (open-input-string
 			      (string-drop (->string arg) 1))))
 	 (filter (lambda (x) (string-prefix? "$" (->string x)))
 		 (md:config-fn-string->list (sxml:text cfg-node)))))
 
-  ;; generate a function that takes a hash-table of symbols and checks if it
-  ;; contains all symbols needed to resolve an onode
+  ;;; generate a function that takes a hash-table of symbols and checks if it
+  ;;; contains all symbols needed to resolve an onode
   (define (md:config-make-resolve-check cfg-node)
     (lambda (available-symbols)
       (not (any (lambda (sym)
 		  (not (member sym (hash-table-keys available-symbols))))
 		(md:config-get-required-symbols cfg-node)))))
 
-  ;; generate a function that takes a field node's value and converts it into
-  ;; a list of bytes
-  ;; TODO: must check if we are on a little endian host platform!
+  ;;; generate a function that takes a field node's value and converts it into
+  ;;; a list of bytes
+  ;;; TODO: must check if we are on a little endian host platform!
   (define (md:config-make-converter-fn field-size target-little-endian)
     (let* ((core `(letrec
 		      ((eval-bytes
@@ -462,21 +471,21 @@
       (eval (append '(lambda (val))
 		    (list body)))))
 
-  ;; Convert an mdconf output-field node definition into an onode structure.
-  ;; If possible, the onode will be resolved immediately, otherwise it will
-  ;; contain a compiler function that can be run on the input module.
-  ;; in: cfg-node - the MDCONF node to parse
-  ;;     path-prefix - the nodepath to prepend to ?FIELD arguments
-  ;; The resulting function will take the following arguments:
-  ;; in: mod - the md:module
-  ;;     parent-path - optional partial node-path string of the parent
-  ;;                   igroup/iblock node
-  ;;     instance-id - the instance-id of the field to evaluate
-  ;;     symbols - a hash-table of symbols that have been resolved at this point
-  ;; and it will return TODO a list containing an ofield or a new parser fn if
-  ;; ofield cannot be resolved, and a new list of symbols
-  ;; TODO: field conditions
-  ;; TODO: don't assume little endian on target platform
+  ;;; Convert an mdconf output-field node definition into an onode structure.
+  ;;; If possible, the onode will be resolved immediately, otherwise it will
+  ;;; contain a compiler function that can be run on the input module.
+  ;;; in: cfg-node - the MDCONF node to parse
+  ;;;     path-prefix - the nodepath to prepend to ?FIELD arguments
+  ;;; The resulting function will take the following arguments:
+  ;;; in: mod - the md:module
+  ;;;     parent-path - optional partial node-path string of the parent
+  ;;;                   igroup/iblock node
+  ;;;     instance-id - the instance-id of the field to evaluate
+  ;;;     symbols - a hash-table of symbols that have been resolved at this point
+  ;;; and it will return TODO a list containing an ofield or a new parser fn if
+  ;;; ofield cannot be resolved, and a new list of symbols
+  ;;; TODO: field conditions
+  ;;; TODO: don't assume little endian on target platform
   (define (md:config-make-ofield cfg-node path-prefix)
     (let* ((fn-string (sxml:text cfg-node))
 	   (field-size (string->number (sxml:attr cfg-node 'bytes)))
@@ -503,10 +512,10 @@
 			     symbols))))
 	    (md:make-onode 'field field-size #f node-fn converter-fn)))))
 
-  ;; Convert an mdconf output-symbol node definition into an onode structure.
-  ;; TODO: only handles symbols without function definition atm (eg. symbols
-  ;;       that report their address)
-  ;; TODO: eeeh? not calling symbol-fn at all?
+  ;;; Convert an mdconf output-symbol node definition into an onode structure.
+  ;;; TODO: only handles symbols without function definition atm (eg. symbols
+  ;;;       that report their address)
+  ;;; TODO: eeeh? not calling symbol-fn at all?
   (define (md:config-make-osymbol cfg-node path-prefix)
     (letrec* ((fn-string (sxml:text cfg-node))
 	      (symbol-id (read (open-input-string (sxml:attr cfg-node 'id))))
@@ -536,10 +545,10 @@
   ;; (define (md:config-block-instance-extractor source-blk-id)
   ;;   (lambda ()))
 
-  ;; Generate a compiler function from the given mdconf oblock config node
-  ;; TODO: for the current use-case node-fn doesn't need to be letrec*, but in
-  ;;       the future it will need to be so we can deal with nodes that can't be
-  ;;       resolved on first pass
+  ;;; Generate a compiler function from the given mdconf oblock config node
+  ;;; TODO: for the current use-case node-fn doesn't need to be letrec*, but in
+  ;;;       the future it will need to be so we can deal with nodes that can't be
+  ;;;       resolved on first pass
   (define (md:config-make-block-compiler block-cfg-node path-prefix convert-fn)
     (letrec*
 	((iblock-sources
@@ -650,7 +659,7 @@
   ;;       (let ((vals (md:onode-val onode)))
   ;; 	'()))))
 
-  ;; Convert an mdconf output block node definition into an onode structure.
+  ;;; Convert an mdconf output block node definition into an onode structure.
   (define (md:config-make-oblock cfg-node path-prefix)
     ;; TODO pass in actual byte order to converter generator
     (let* ((compile-fn
@@ -660,8 +669,8 @@
 						   compile-fn)))
       (md:make-onode 'block #f #f node-fn compile-fn)))
 
-  ;; Convert an mdconf output order node definition into an onode structure.
-  ;; TODO: only handles numeric matrix orders for now.
+  ;;; Convert an mdconf output order node definition into an onode structure.
+  ;;; TODO: only handles numeric matrix orders for now.
   (define (md:config-make-oorder cfg-node path-prefix)
     (letrec* ((order-sym
 	       (read (open-input-string
@@ -688,10 +697,10 @@
 			  symbols))))
       (md:make-onode 'order #f #f node-fn #f)))
 
-  ;; Convert an mdconf output group node definition into an onode structure.
-  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ;; TODO: gotta add order!
-  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ;;; Convert an mdconf output group node definition into an onode structure.
+  ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ;;; TODO: gotta add order!
+  ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   (define (md:config-make-ogroup cfg-node path-prefix)
     (letrec* ((otree (md:config-make-output-tree
 		      (sxml:content cfg-node)
@@ -721,8 +730,8 @@
 				  ))))))
       (md:make-onode 'group #f otree node-fn convert-fn)))
 
-  ;; dispatch helper, resolve mdconf nodes to compiler function generators or
-  ;; onodes (if directly resolvable)
+  ;;; dispatch helper, resolve mdconf nodes to compiler function generators or
+  ;;; onodes (if directly resolvable)
   (define (md:config-make-onode-fn cfg-node path-prefix)
     (let ((node-type (sxml:name cfg-node)))
       (cond ((equal? node-type 'comment)
@@ -739,10 +748,10 @@
 							      path-prefix))
 	    (else (error "unsupported node type")))))
 
-  ;; from a given set of mdconf nodes, generate a nested list that contains
-  ;; either output nodes (if they can be resolved immediately) or functions that
-  ;; generate output nodes. To get the actual module output, iterate over the
-  ;; tree until all function members are resolved into nodes.
+  ;;; from a given set of mdconf nodes, generate a nested list that contains
+  ;;; either output nodes (if they can be resolved immediately) or functions
+  ;;; that generate output nodes. To get the actual module output, iterate over
+  ;;; the tree until all function members are resolved into nodes.
   (define (md:config-make-output-tree xml-nodes path-prefix)
     (if (null? xml-nodes)
 	'()
@@ -750,13 +759,13 @@
 				       path-prefix)
 	      (md:config-make-output-tree (cdr xml-nodes) path-prefix))))
 
-  ;; from a given mdconf root node, generate a function to reorder igroups as
-  ;; required by the compiler function
-  ;; TODO: currently this doesn't recurse through the whole otree config, but
-  ;;       only handle direct children of the output node.
-  ;;       The best course of action will probably be to write a generic path
-  ;;       generator, since this functionality will be required in other cases
-  ;;       as well.
+  ;;; from a given mdconf root node, generate a function to reorder igroups as
+  ;;; required by the compiler function
+  ;;; TODO: currently this doesn't recurse through the whole otree config, but
+  ;;;       only handle direct children of the output node.
+  ;;;       The best course of action will probably be to write a generic path
+  ;;;       generator, since this functionality will be required in other cases
+  ;;;       as well.
   (define (md:config-make-resize-fn cfg-node)
     (let* ((reorder-set
 	    (map (lambda (node)
@@ -780,8 +789,8 @@
 				     (cdr items))))))
 	  (reorder-all global-node reorder-set)))))
 
-  ;; from a given mdconf root node, generate the function to compile a module
-  ;; with this configuration.
+  ;;; from a given mdconf root node, generate the function to compile a module
+  ;;; with this configuration.
   (define (md:config-make-compiler cfg-node)
     (let ((apply-reorder
 	   (if (null? ((sxpath "mdalconfig/output//group[@resize]") cfg-node))
@@ -803,7 +812,7 @@
 	  (md:mod-compile-otree init-otree reordered-mod "" 0 init-symbols)))))
 
 
-  ;; helper function for md:mod-compile-otree, parse and eval otree once
+  ;;; helper function for md:mod-compile-otree, parse and eval otree once
   (define (md:mod-recurse-otree tree mod parent-path instance-id
 				symbols previous-onodes)
     (begin
@@ -827,7 +836,7 @@
 					(second node-result)
 					next-onodes))))))
 
-  ;; compile an otree
+  ;;; compile an otree
   (define (md:mod-compile-otree otree mod parent-path instance-id symbols)
     (let* ((parse-result
 	    ;; for some reason we get trash at the beginning of the list even
@@ -845,7 +854,7 @@
 	    (md:mod-compile-otree new-otree mod parent-path
 	  			  instance-id new-symbols)))))
 
-  ;; convert a compiled otree into a list of bytes
+  ;;; convert a compiled otree into a list of bytes
   (define (md:mod-otree->bin otree)
     (flatten (map (lambda (onode)
 		    ((md:onode-conversion-fn onode)
@@ -855,7 +864,7 @@
 			  otree))))
 
   ;; ---------------------------------------------------------------------------
-  ;; MDCONF: MASTER CONFIGURATION
+  ;;; ## MDCONF: MASTER CONFIGURATION
   ;; ---------------------------------------------------------------------------
 
   ;; TODO: where to handle max-binsize?
@@ -886,14 +895,14 @@
 		(hash-table->alist (md:config-inodes cfg)))))
 
 
-  ;; create an md:target from an mdconf root node
+  ;;; create an md:target from an mdconf root node
   (define (md:config-node->target node)
     (eval (car (read-file (string-append
 			   "targets/"
                            (sxml:attr (car (sxml:content node)) 'target)
                            ".scm")))))
 
-  ;; generate an md:config from a given .mdconf file
+  ;;; generate an md:config from a given .mdconf file
   (define (md:mdconf->config filepath)
     (let ((cfg (call-with-input-file filepath
 		 (lambda (x) (ssax:xml->sxml x '())))))
@@ -913,7 +922,7 @@
 	 (md:mdconf->inodes cfg)
 	 (md:config-make-compiler cfg)))))
 
-  ;; return the ID of the parent of the given inode in the given inode tree
+  ;;; return the ID of the parent of the given inode in the given inode tree
   (define (md:config-get-parent-node-id inode-id itree)
     (cond ((not (member inode-id (flatten (cdar itree)))) #f)
 	  ((member inode-id (map car (cadar itree))) (caar itree))
@@ -923,16 +932,16 @@
 			   (member inode-id (flatten node)))
 			 (cadar itree))))))
 
-  ;; Return the list of ancestor IDs of the given inode in the given inode tree
-  ;; The returned list is sorted from the closest ancestor to the most distant.
+  ;;; Return the list of ancestor IDs of the given inode in the given inode tree
+  ;;; The returned list is sorted from the closest ancestor to the most distant.
   (define  (md:config-get-node-ancestors-ids inode-id itree)
     (let ((parent (md:config-get-parent-node-id inode-id itree)))
       (if (not parent)
 	  '()
 	  (cons parent (md:config-get-node-ancestors-ids parent itree)))))
 
-  ;; return the IDs of the direct child nodes of a given inode ID in the given
-  ;; inode tree
+  ;;; return the IDs of the direct child nodes of a given inode ID in the given
+  ;;; inode tree
   (define (md:config-get-subnode-ids inode-id itree)
     (let ((get-nodes (lambda (tree)
 		       (let ((nodes (alist-ref inode-id tree string=)))
@@ -947,22 +956,22 @@
 		  (md:config-get-subnode-ids inode-id (cadar itree))
 		  (get-nodes itree))))))
 
-  ;; return the IDs of the direct child nodes of a given parent inode ID
-  ;; in the given config, filtered by type
+  ;;; return the IDs of the direct child nodes of a given parent inode ID
+  ;;; in the given config, filtered by type
   (define (md:config-get-subnode-type-ids inode-id config type)
     (filter (lambda (id)
 	      (eq? type (md:inode-config-type
 			 (car (hash-table-ref (md:config-inodes config) id)))))
 	    (md:config-get-subnode-ids inode-id (md:config-itree config))))
 
-  ;; return the source command of a given inode
+  ;;; return the source command of a given inode
   (define (md:config-get-inode-source-command node-id config)
     (car (hash-table-ref (md:config-commands config)
 			 (md:inode-config-cmd-id
 			  (car (hash-table-ref (md:config-inodes config)
 					       node-id))))))
 
-  ;; get the default value of a given inode config
+  ;;; get the default value of a given inode config
   (define (md:config-get-node-default node-id config)
     (let ((node-cmd (md:config-get-inode-source-command node-id config)))
       (if node-cmd
@@ -970,13 +979,13 @@
 	  '())))
 
   ;; ---------------------------------------------------------------------------
-  ;; MDMOD: INPUT NODES
+  ;;; ## MDMOD: INPUT NODES
   ;; ---------------------------------------------------------------------------
 
-  ;; val can be one of
-  ;;   () -> inactive node
-  ;;   a string of the actual value
-  ;;   a list of subnodes
+  ;;; val can be one of
+  ;;;   () -> inactive node
+  ;;;   a string of the actual value
+  ;;;   a list of subnodes
   (define-record-type md:inode-instance
     (md:make-inode-instance val name)
     md:node-instance?
@@ -988,14 +997,15 @@
       (fprintf out "#<md:inode-instance>: ~A\n" (md:inode-instance-name i))
       (fprintf out "~S\n" (md:inode-instance-val i))))
 
-  ;; return the subnode of the given id
+  ;;; return the subnode of the given id
   (define (md:get-subnode inode-instance subnode-id)
     (find (lambda (node)
 	    (string=? (md:inode-cfg-id node) subnode-id))
 	  (md:inode-instance-val inode-instance)))
 
-  ;; it might be desirable to have 'instances' be a hash map, and only turn it
-  ;; into an alist which is then sorted on request (eg md:inode-get-sorted-inst)
+  ;;; it might be desirable to have 'instances' be a hash map, and only turn it
+  ;;; into an alist which is then sorted on request
+  ;;; (eg md:inode-get-sorted-inst)
   (define-record-type md:inode
     (md:make-inode cfg-id instances)
     md:inode?
@@ -1008,21 +1018,22 @@
       (for-each (lambda (x) (fprintf out "instance ~S: ~S\n" (car x) (cdr x)))
 		(md:inode-instances node))))
 
-  ;; return the number of instances in the given inode
+  ;;; return the number of instances in the given inode
   (define (md:inode-count-instances node)
     (if (not (md:inode-instances node))
 	0
 	(length (md:inode-instances node))))
 
-  ;; return the command configuration associated with the given field node
+  ;;; return the command configuration associated with the given field node
   (define (md:get-node-command-cfg node config)
     (car (hash-table-ref (md:config-commands config)
 			 (md:inode-config-cmd-id
 			  (car (hash-table-ref (md:config-inodes config)
 					       (md:inode-cfg-id node)))))))
 
-  ;; find the last set instance of the given node before the given instance, and
-  ;; return its raw value, or its default value if no set instances are found
+  ;;; find the last set instance of the given node before the given instance,
+  ;;; and return its raw value, or its default value if no set instances are
+  ;;; found
   (define (md:eval-field-last-set instance-id node command-config)
     (let ((last-set
 	   (find (lambda (instance)
@@ -1034,12 +1045,13 @@
 	  (md:command-default command-config))))
 
 
-  ;; evaluate a field node instance, ie. generate it's output value. This will
-  ;; never return an empty value. If the node instance is inactive, it will return
-  ;; the default value, or backtrace if the use-last-set flag is enabled on the
-  ;; node command.
-  ;; To display the node's current value, use md:print-field instead.
-  ;; TODO: this could be optimized by constructing a dedicated eval fn in config.
+  ;;; evaluate a field node instance, ie. generate it's output value. This will
+  ;;; never return an empty value. If the node instance is inactive, it will
+  ;;; return the default value, or backtrace if the use-last-set flag is enabled
+  ;;; on the node command.
+  ;;; To display the node's current value, use md:print-field instead.
+  ;;; TODO: this could be optimized by constructing a dedicated eval fn in
+  ;;; config.
   (define (md:eval-field instance-id node command-config)
     (begin
       (printf "call to eval-field with args ~S ~S ~S\n"
@@ -1060,11 +1072,12 @@
 	       (car (hash-table-ref (md:command-keys command-config) raw-val)))
 	      (else "cmd type not implemented")))))
 
-  ;; check if the given inode instance is 'active', ie. check if a value is set.
+  ;;; check if the given inode instance is 'active', ie. check if a value is set.
   (define (md:is-set? inode-instance)
     (not (null? md:inode-instance-val inode-instance)))
+
   ;; ---------------------------------------------------------------------------
-  ;; MDMOD: OUTPUT NODES
+  ;;; ## MDMOD: OUTPUT NODES
   ;; ---------------------------------------------------------------------------
 
   (define-record-type md:onode
@@ -1088,8 +1101,8 @@
 		   (md:onode-val node)
 		   "unresolved"))))
 
-  ;; Compute the total size of the binary output of a list of onodes. Returns #f
-  ;; if any of the onodes does not have it's size argument resolved.
+  ;;; Compute the total size of the binary output of a list of onodes. Returns #f
+  ;;; if any of the onodes does not have it's size argument resolved.
   (define (md:mod-output-size onodes)
     (if (any (lambda (node)
 	       (not (md:onode-size node)))
@@ -1097,7 +1110,7 @@
 	#f
 	(apply + (map md:onode-size onodes))))
 
-  ;; returns true if all onodes have been resolved, false otherwise
+  ;;; returns true if all onodes have been resolved, false otherwise
   (define (md:mod-all-resolved? onodes)
     (not (any (lambda (node)
 		(if (md:onode-fn node)
@@ -1136,7 +1149,7 @@
   ;;   (subnodes md:ogroup-subnodes))
 
   ;; ---------------------------------------------------------------------------
-  ;; MDMOD: MODULE
+  ;;; ## MDMOD: MODULE
   ;; ---------------------------------------------------------------------------
 
   (define-record-type md:module
@@ -1151,15 +1164,15 @@
       (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
       (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
 
-  ;; generate a function that takes an inode as parameter, and returns the node
-  ;; instance matching the given numeric instance id
-  ;; TODO should check if node instance actually exists
+  ;;; generate a function that takes an inode as parameter, and returns the node
+  ;;; instance matching the given numeric instance id
+  ;;; TODO should check if node instance actually exists
   (define (md:mod-get-node-instance id)
     (lambda (node)
       (car (alist-ref id (md:inode-instances node)))))
 
-  ;; lo-level api, generate a function that takes an inode as param, and returns
-  ;; the node matching the given path
+  ;;; lo-level api, generate a function that takes an inode as param, and returns
+  ;;; the node matching the given path
   (define (md:make-npath-fn pathlist)
     (begin
       (printf "trying path: ~S\n" pathlist)
@@ -1175,8 +1188,8 @@
 	    ((md:make-npath-fn (cddr pathlist))
 	     ((md:make-npath-fn (take pathlist 2)) node))))))
 
-  ;; generate a function that takes an inode as parameter, and returns the node
-  ;; instance matching the given path
+  ;;; generate a function that takes an inode as parameter, and returns the node
+  ;;; instance matching the given path
   (define (md:node-instance-path path)
     (letrec ((make-instance-path-fn
 	      (lambda (pathlist)
@@ -1187,21 +1200,21 @@
 		       ((md:make-npath-fn (take pathlist 2)) node)))))))
       (make-instance-path-fn (string-split path "/"))))
 
-  ;; generate a function that takes an inode as parameter, and returns the
-  ;; subnode matching the given path
+  ;;; generate a function that takes an inode as parameter, and returns the
+  ;;; subnode matching the given path
   (define (md:node-path path)
     (md:make-npath-fn (string-split path "/")))
 
-  ;; Helper func, returns the first arg from a partially parsed line of MDMOD
-  ;; text preserving "string-in-string" arguments. Line must start with an
-  ;; argument.
+  ;;; Helper func, returns the first arg from a partially parsed line of MDMOD
+  ;;; text preserving "string-in-string" arguments. Line must start with an
+  ;;; argument.
   (define (md:mod-trim-arg text)
     (if (string-prefix? "\"" text)
 	(string-take text (+ 2 (string-contains (string-drop text 1) "\"")))
 	(car (string-split text ","))))
 
-  ;; helper func, parse a line of MDMOD text using abbreviated block syntax (no
-  ;; tokens) into token/argument pairs
+  ;;; helper func, parse a line of MDMOD text using abbreviated block syntax (no
+  ;;; tokens) into token/argument pairs
   (define (md:mod-parse-abbrev-line line token-ids)
     (if (string-null? line)
 	'()
@@ -1210,8 +1223,8 @@
 	  (cons (list (car token-ids) arg)
 		(md:mod-parse-abbrev-line rest (cdr token-ids))))))
 
-  ;; helper func, split a line of MDMOD text using regular block syntax into
-  ;; token/argument pairs
+  ;;; helper func, split a line of MDMOD text using regular block syntax into
+  ;;; token/argument pairs
   (define (md:mod-split-regular-line line)
     (if (string-null? line)
 	'()
@@ -1224,9 +1237,9 @@
 	  (cons (list token arg)
 		(md:mod-split-regular-line rest)))))
 
-  ;; helper func, parse a line of MDMOD text using regular block syntax into
-  ;; token/argument pairs. Null arguments are returned for tokens not present
-  ;; in the given text. Will silently drop invalid tokens from text.
+  ;;; helper func, parse a line of MDMOD text using regular block syntax into
+  ;;; token/argument pairs. Null arguments are returned for tokens not present
+  ;;; in the given text. Will silently drop invalid tokens from text.
   (define (md:mod-parse-regular-line line token-ids)
     (let ((splices (md:mod-split-regular-line line)))
       (map (lambda (id)
@@ -1237,9 +1250,9 @@
 		   (list id '()))))
 	   token-ids)))
 
-  ;; helper func, parse a line of MDMOD text using dotted block syntax (no
-  ;; change line) into token/argument pairs with null arguments. Expands lines
-  ;; using .n syntax into a flat list of pairs.
+  ;;; helper func, parse a line of MDMOD text using dotted block syntax (no
+  ;;; change line) into token/argument pairs with null arguments. Expands lines
+  ;;; using .n syntax into a flat list of pairs.
   (define (md:mod-parse-dotted-line line token-ids)
     (let ((num-arg (string-drop line 1))
 	  (pairs (map (lambda (id) (list id '())) token-ids)))
@@ -1248,8 +1261,8 @@
 	  (take (apply circular-list pairs)
 		(* (md:mod-string->number num-arg) (length token-ids))))))
 
-  ;; helper dispatch func, split a line of MDMOD block text into token/argument
-  ;; pairs
+  ;;; helper dispatch func, split a line of MDMOD block text into token/argument
+  ;;; pairs
   (define (md:mod-parse-line line token-ids)
     (cond
      ((string-contains line "=") (md:mod-parse-regular-line line token-ids))
@@ -1257,15 +1270,15 @@
      (else (md:mod-parse-abbrev-line line token-ids))))
 
 
-  ;; parse MDMOD iblock text into a flat list of token/argument pairs
+  ;;; parse MDMOD iblock text into a flat list of token/argument pairs
   (define (md:mod-parse-block-text lines token-ids)
     (if (null? lines)
 	'()
 	(append (md:mod-parse-line (car lines) token-ids)
 		(md:mod-parse-block-text (cdr lines) token-ids))))
 
-  ;; select the text of the group/block node starting at the scope assignment of
-  ;; the given MDMOD text
+  ;;; select the text of the group/block node starting at the scope assignment of
+  ;;; the given MDMOD text
   (define (md:mod-crop-node-text lines)
     (letrec ((extract-lines
 	      (lambda (next-lines nesting-level)
@@ -1280,10 +1293,10 @@
 			    (extract-lines (cdr next-lines) nlevel)))))))
       (extract-lines (cdr lines) 1)))
 
-  ;; convert an argument string from MDMOD text to the actual format required by
-  ;; the inode field command.
-  ;; TODO: incomplete, currently only handles int/uint cmds
-  ;; TODO: error checking
+  ;;; convert an argument string from MDMOD text to the actual format required by
+  ;;; the inode field command.
+  ;;; TODO: incomplete, currently only handles int/uint cmds
+  ;;; TODO: error checking
   (define (md:mod-normalize-arg arg node-id config)
     (let ((field-cmd (md:config-get-inode-source-command node-id config)))
       (cond ((and (not (null? arg))
@@ -1291,14 +1304,14 @@
 	     (md:mod-string->number arg))
 	    (else arg))))
 
-  ;; convert a token/argument pair into an unnamed inode instance
-  ;; TODO: implement argument normalization and proper error checking again
-  ;;       config
+  ;;; convert a token/argument pair into an unnamed inode instance
+  ;;; TODO: implement argument normalization and proper error checking again
+  ;;;       config
   (define (md:mod-token/arg->inode-instance token+arg config)
     (md:make-inode-instance
      (md:mod-normalize-arg (cadr token+arg) (car token+arg) config) ""))
 
-  ;; convert a list of token/argument pairs into unnamed node instances
+  ;;; convert a list of token/argument pairs into unnamed node instances
   (define (md:mod-token/args->node-instances ta-lst config)
     (letrec ((ta->instance (lambda (ta instance-no)
 			     (list instance-no (md:mod-token/arg->inode-instance
@@ -1312,13 +1325,13 @@
 							 (+ 1 instance-no)))))))
       (make-instances ta-lst 0)))
 
-  ;; extract the argument of the given field node from a single line of MDMOD
-  ;; text probably redundant, can be handled by md:mod-parse-line
+  ;;; extract the argument of the given field node from a single line of MDMOD
+  ;;; text probably redundant, can be handled by md:mod-parse-line
   (define (md:mod-parse-single-field-arg line node-id)
     (string-drop line (+ 1 (string-length node-id))))
 
-  ;; extract the instance argument from an MDMOD scope specifier
-  ;; returns 0 if none found
+  ;;; extract the instance argument from an MDMOD scope specifier
+  ;;; returns 0 if none found
   (define (md:mod-parse-scope-instance-id scope)
     (let ((ob-pos (string-contains scope "("))
 	  (cb-pos (string-contains scope ")")))
@@ -1326,8 +1339,8 @@
 	  (md:mod-string->number (substring/shared scope (+ 1 ob-pos) cb-pos))
 	  0)))
 
-  ;; extract the name argument from an MDMOD scope specifier
-  ;; returns an empty string if none found
+  ;;; extract the name argument from an MDMOD scope specifier
+  ;;; returns an empty string if none found
   (define (md:mod-parse-scope-instance-name scope)
     (let ((ob-pos (string-contains scope "["))
 	  (cb-pos (string-contains scope "]")))
@@ -1335,8 +1348,8 @@
 	  (string-copy scope (+ 1 ob-pos) cb-pos)
 	  "")))
 
-  ;; parse the igroup fields in the given MDMOD group node text into an inode
-  ;; set
+  ;;; parse the igroup fields in the given MDMOD group node text into an inode
+  ;;; set
   (define (md:mod-parse-group-fields lines group-id config)
     (map (lambda (node-id)
 	   (let ((line (find (lambda (line) (string-prefix? node-id line))
@@ -1353,8 +1366,8 @@
 				 "")))))))
 	 (md:config-get-subnode-type-ids group-id config 'field)))
 
-  ;; parse the iblock fields in the given MDMOD block node text into an inode
-  ;; set
+  ;;; parse the iblock fields in the given MDMOD block node text into an inode
+  ;;; set
   (define (md:mod-parse-block-fields lines block-id config)
     (let* ((node-ids (md:config-get-subnode-type-ids block-id config 'field))
 	   (tokens+args (md:mod-parse-block-text lines node-ids)))
@@ -1366,7 +1379,7 @@
 			     config)))
 	   node-ids)))
 
-  ;; extract non-field nodes text for a given id from the given MDMOD node text
+  ;;; extract non-field nodes text for a given id from the given MDMOD node text
   (define (md:mod-extract-nodes lines node-id)
     (let ((init-lst (drop-while (lambda (l) (not (string-prefix? node-id l)))
 				lines)))
@@ -1377,8 +1390,8 @@
 	    (cons node (md:mod-extract-nodes (drop init-lst (length node))
 					     node-id))))))
 
-  ;; parse the igroup blocks in the given MDMOD group node text into an inode
-  ;; set
+  ;;; parse the igroup blocks in the given MDMOD group node text into an inode
+  ;;; set
   (define (md:mod-parse-group-blocks lines group-id config)
     (let* ((node-ids (md:config-get-subnode-type-ids group-id config 'block))
 	   (blk-instances (map (lambda (id)
@@ -1404,7 +1417,7 @@
 			 nodes)))))
 	   node-ids)))
 
-  ;; parse a group instance into an inode set
+  ;;; parse a group instance into an inode set
   (define (md:mod-parse-group lines node-id config)
     (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
 	   (group-instances (map (lambda (id)
@@ -1432,7 +1445,7 @@
 	   (field-nodes (md:mod-parse-group-fields lines node-id config)))
       (remove null? (append field-nodes block-nodes group-nodes))))
 
-  ;; strip whitespace from MDMOD text, except where enclosed in double quotes
+  ;;; strip whitespace from MDMOD text, except where enclosed in double quotes
   (define (md:purge-whitespace lines)
     (letrec ((purge-ws-from-every-other
 	      ;; removes whitespace from every other element in a list of
@@ -1450,9 +1463,9 @@
 	      (purge-ws-from-every-other (string-split line "\"" #t) #t)))
 	   lines)))
 
-  ;; strip comments from MDMOD text
-  ;; TODO make more robust so it doesn't fail with multiple block comment
-  ;; delimiters on one line (eg. run over line again after processing)
+  ;;; strip comments from MDMOD text
+  ;;; TODO make more robust so it doesn't fail with multiple block comment
+  ;;; delimiters on one line (eg. run over line again after processing)
   (define (md:purge-comments lines)
     (letrec ((purge-block-comments
 	      (lambda (ls in-comment-block)
@@ -1482,7 +1495,7 @@
 				 lines)
 			    #f)))
 
-  ;; check if mdal file text specifies a supported MDAL version
+  ;;; check if mdal file text specifies a supported MDAL version
   (define (md:check-module-version lines)
     (if (not (string-contains-ci (car lines) "MDAL_VERSION="))
 	(error "No MDAL_VERSION specified")
@@ -1502,11 +1515,11 @@
 				  (+ 7 (substring-index-ci "CONFIG="
 							   (cadr lines)))))))
 
-  ;; normalizes hex prefix to Scheme format before calling string->number
+  ;;; normalizes hex prefix to Scheme format before calling string->number
   (define (md:mod-string->number str)
     (string->number (string-translate* str '(("$" . "#x")))))
 
-  ;; construct an md:module from a given .mdal file
+  ;;; construct an md:module from a given .mdal file
   (define (md:parse-module-file filepath config-dir-path)
     (let ((mod-lines (remove string-null?
 			     (md:purge-comments
@@ -1525,8 +1538,8 @@
 					      mod-lines "GLOBAL" config)
 					     "")))))))))
 
-  ;; returns the group instance's block nodes, except the order node, which can
-  ;; be retrieved with md:mod-get-group-instance-order instead
+  ;;; returns the group instance's block nodes, except the order node, which can
+  ;;; be retrieved with md:mod-get-group-instance-order instead
   (define (md:mod-get-group-instance-blocks igroup-instance igroup-id config)
     (let ((subnode-ids
 	   (filter (lambda (id)
@@ -1536,13 +1549,13 @@
 	     (md:get-subnode igroup-instance id))
 	   subnode-ids)))
 
-  ;; returns the group instance's order node (instance 0)
+  ;;; returns the group instance's order node (instance 0)
   (define (md:mod-get-group-instance-order igroup-instance igroup-id)
     ((md:mod-get-node-instance 0)
      (md:get-subnode igroup-instance (string-append igroup-id "_ORDER"))))
 
-  ;; helper, create a "default" order with single field instances all set to 0
-  ;; TODO expand so it takes a numeric arg and produces n field node instances
+  ;;; helper, create a "default" order with single field instances all set to 0
+  ;;; TODO expand so it takes a numeric arg and produces n field node instances
   (define (md:mod-make-default-order len igroup-id config)
     (letrec* ((order-id (string-append igroup-id "_ORDER"))
 	      (subnode-ids
@@ -1561,20 +1574,20 @@
 			   subnode-ids)
 		      ""))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; node reordering
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;----------------------------------------------------------------------------
+  ;;; ### node reordering
+  ;;----------------------------------------------------------------------------
 
 
-  ;; return a list of values of a given field node id from a given block
-  ;; instance
-  ;; (aka strip instance IDs from node-instances)
+  ;;; return a list of values of a given field node id from a given block
+  ;;; instance
+  ;;; (aka strip instance IDs from node-instances)
   (define (md:mod-extract-field-values block-instance field-id)
     (map md:inode-instance-val
 	 (map cadr
 	      (md:inode-instances (md:get-subnode block-instance field-id)))))
 
-  ;; take a list of extracted field values and fill empty nodes by backtracing
+  ;;; take a list of extracted field values and fill empty nodes by backtracing
   (define (md:mod-fill-empty-values field-values)
     (letrec ((fill-up (lambda (lst previous)
 			(if (null? lst)
@@ -1586,23 +1599,23 @@
 				    (fill-up (cdr lst) next)))))))
       (fill-up field-values '())))
 
-  ;; return a list of values of the instances of a given field node in the given
-  ;; block instance, replacing empty nodes with the previous value.
-  ;; TODO actually we should check config to see whether to replace by previous
-  ;; value or by default - don't we have md:eval-field-last-set for this?
+  ;;; return a list of values of the instances of a given field node in the given
+  ;;; block instance, replacing empty nodes with the previous value.
+  ;;; TODO actually we should check config to see whether to replace by previous
+  ;;; value or by default - don't we have md:eval-field-last-set for this?
   (define (md:mod-block-fields->values block-instance field-id)
     (md:mod-fill-empty-values (md:mod-extract-field-values block-instance
 							   field-id)))
 
-  ;; helper function, enumerate the given inode instances, starting with init-id
+  ;;; helper function, enumerate the given inode instances, starting with init-id
   (define (md:mod-enumerate-instances init-id instances)
     (if (null? instances)
 	'()
 	(cons (list init-id (car instances))
 	      (md:mod-enumerate-instances (+ init-id 1) (cdr instances)))))
 
-  ;; helper function, merge instances of the given field in the given block node
-  ;; according to the given order list.
+  ;;; helper function, merge instances of the given field in the given block node
+  ;;; according to the given order list.
   (define (md:mod-merge-fields blk-node field-id order-lst)
     (if (null? order-lst)
 	'()
@@ -1613,10 +1626,10 @@
 			    blk-node)))
 		(md:mod-merge-fields blk-node field-id (cdr order-lst)))))
 
-  ;; get-init-val = returns either cmd default or backtraces to find last set
-  ;; val, depending on node/cmd config
-  ;; in: raw list of instances
-  ;; out: list of enumerated chunks
+  ;;; get-init-val = returns either cmd default or backtraces to find last set
+  ;;; val, depending on node/cmd config
+  ;;; in: raw list of instances
+  ;;; out: list of enumerated chunks
   (define (md:mod-split-fields block-size instances field-id config)
     (letrec* ((get-init-val
 	       (lambda (start-pos)
@@ -1657,8 +1670,8 @@
 	     (md:mod-enumerate-instances 0 chunk))
 	   (make-chunks instances 0))))
 
-  ;; helper, create block instances from a list of field instances, assigning
-  ;; the given field IDs
+  ;;; helper, create block instances from a list of field instances, assigning
+  ;;; the given field IDs
   (define (md:mod-chunks->block-instances field-chunks field-ids)
     (letrec ((chunks->instances
 	      (lambda (chunks)
@@ -1672,8 +1685,8 @@
 			  (chunks->instances (map cdr chunks)))))))
       (md:mod-enumerate-instances 0 (chunks->instances field-chunks))))
 
-  ;; merge the instances of the given block node into one according to the given
-  ;; order, then split them into instances of the given block-size
+  ;;; merge the instances of the given block node into one according to the given
+  ;;; order, then split them into instances of the given block-size
   (define (md:mod-split-block-instances block-size node order config)
     (let* ((block-id (md:inode-cfg-id node))
 	   (block-order
@@ -1690,8 +1703,8 @@
       (md:make-inode block-id (md:mod-chunks->block-instances chunks
 							      field-ids))))
 
-  ;; split the groups' iblock instances into block instances of the given block
-  ;; size and create a new order list
+  ;;; split the groups' iblock instances into block instances of the given block
+  ;;; size and create a new order list
   (define (md:mod-split-group-instance-blocks block-size igroup-instance
 					      igroup-id config)
     (let* ((order (md:mod-get-group-instance-order igroup-instance igroup-id))
@@ -1710,9 +1723,9 @@
 		      igroup-id config)))
        "")))
 
-  ;; reorder a group by merging iblock instances according to the groups order
-  ;; node, then splitting them into new iblocks of the given block-size and
-  ;; generating a new order list
+  ;;; reorder a group by merging iblock instances according to the groups order
+  ;;; node, then splitting them into new iblocks of the given block-size and
+  ;;; generating a new order list
   (define (md:mod-reorder-group block-size igroup config)
     (let ((group-id (md:inode-cfg-id igroup)))
       (md:make-inode
@@ -1725,29 +1738,29 @@
 	    (md:inode-instances igroup)))))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; md:mod accessor functions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;----------------------------------------------------------------------------
+  ;;; ### md:mod accessor functions
+  ;;----------------------------------------------------------------------------
 
-  ;; split a list of subnodes into two seperate lists at the given node-id. The
-  ;; second list will be the tail, including the node at split point.
+  ;;; split a list of subnodes into two seperate lists at the given node-id. The
+  ;;; second list will be the tail, including the node at split point.
   (define (md:mod-split-node-list-at node-id nodes)
     (let ((head (take-while (lambda (node)
 			      (not (string=? node-id (md:inode-cfg-id node))))
 			    nodes)))
       (list head (drop nodes (length head)))))
 
-  ;; split a list of inode instances into two seperate lists at the given node
-  ;; instance id. The second list will be the tail, including the instance at
-  ;; split point.
+  ;;; split a list of inode instances into two seperate lists at the given node
+  ;;; instance id. The second list will be the tail, including the instance at
+  ;;; split point.
   (define (md:mod-split-instances-at inst-id instances)
     (let ((head (take-while (lambda (inst)
 			      (not (= inst-id (car inst))))
 			    instances)))
       (list head (drop instances (length head)))))
 
-  ;; replace the subnode matching the given subnode's id in the given parent
-  ;; inode instance with the given new subnode
+  ;;; replace the subnode matching the given subnode's id in the given parent
+  ;;; inode instance with the given new subnode
   (define (md:mod-replace-subnode parent-node-instance subnode)
     (let ((split-subnodes (md:mod-split-node-list-at
 			   (md:inode-cfg-id subnode)
@@ -1757,8 +1770,8 @@
 	       (cons subnode (cdadr split-subnodes)))
        (md:inode-instance-name parent-node-instance))))
 
-  ;; replace the inode instance with the given id in the given inode with the
-  ;; given new inode instance
+  ;;; replace the inode instance with the given id in the given inode with the
+  ;;; given new inode instance
   (define (md:mod-replace-inode-instance inode inst-id instance)
     (let ((split-instances (md:mod-split-instances-at
 			    inst-id (md:inode-instances inode))))
@@ -1768,7 +1781,7 @@
 	       (cons (list inst-id instance)
 		     (cdadr split-instances))))))
 
-  ;; helper fn for md:mod-set-node
+  ;;; helper fn for md:mod-set-node
   (define (md:mod-make-node-setter path-lst nesting-level)
     (if (= nesting-level (length path-lst))
 	`(md:mod-replace-subnode
@@ -1779,7 +1792,7 @@
 	     (string-join (take path-lst nesting-level) "/")) ancestor-node)
 	  ,(md:mod-make-instance-setter path-lst (+ nesting-level 1)))))
 
-  ;; helper fn for md:mod-set-node
+  ;;; helper fn for md:mod-set-node
   (define (md:mod-make-instance-setter path-lst nesting-level)
     `(md:mod-replace-inode-instance
       (,(md:node-path
@@ -1787,8 +1800,8 @@
       ,(string->number (car (reverse path-lst)))
       ,(md:mod-make-node-setter path-lst (+ nesting-level 1))))
 
-  ;; Generate a function that replaces an arbitrarily deeply nested subnode in
-  ;; the given parent node, as specified by the given node-path string.
+  ;;; Generate a function that replaces an arbitrarily deeply nested subnode in
+  ;;; the given parent node, as specified by the given node-path string.
   (define (md:mod-node-setter parent-instance-path-str)
     (let ((setter `(md:mod-replace-inode-instance
 		    ancestor-node 0
@@ -1799,25 +1812,25 @@
 		    (list setter)))))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; output compilation
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;----------------------------------------------------------------------------
+  ;;; ### output compilation
+  ;;----------------------------------------------------------------------------
 
-  ;; compile an md:module to an onode tree
-  ;; TODO and a list of symbols for mod->asm?
+  ;;; compile an md:module to an onode tree
+  ;;; TODO and a list of symbols for mod->asm?
   (define (md:mod-compile mod origin)
     ((md:config-compiler (md:mod-cfg mod)) mod origin))
 
-  ;; compile an md:module into a bytevec
+  ;;; compile an md:module into a bytevec
   (define (md:mod->bin mod origin)
     (md:mod-otree->bin (md:mod-compile mod origin)))
 
-  ;; compile an md:module into an assembly source
+  ;;; compile an md:module into an assembly source
   (define (md:mod->asm mod origin)
     (let ((otree (md:mod-compile mod origin)))
       '()))
 
-  ;; compile the given md:module to a binary file
+  ;;; compile the given md:module to a binary file
   (define (md:mod-export-bin filename mod origin)
     (call-with-output-file filename
       (lambda (port)

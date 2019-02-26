@@ -6,9 +6,10 @@ specifically tailored for use with sound drivers operating on low-level devices
 such as [sound chips](https://en.wikipedia.org/wiki/Sound_chip) and simple
 [DACs](https://en.wikipedia.org/wiki/Digital-to-analog_converter).
 
-While traditional low-level music description languages such as ABC or the Music
-Macro Language are essentially abstractions of western sheet music notation,
-MDAL instead has strong roots in [tracker music](https://en.wikipedia.org/wiki/Music_tracker).
+While traditional low-level music description languages such as [ABC](https://en.wikipedia.org/wiki/ABC_notation) or
+[MML](https://en.wikipedia.org/wiki/Music_Macro_Language) are essentially
+abstractions of western sheet music notation, MDAL instead has strong roots in
+[tracker music](https://en.wikipedia.org/wiki/Music_tracker).
 The MDAL syntax adheres to several key elements of tracker modules:
 
 * Song structure is broken down into patterns, which are linked via a sequence
