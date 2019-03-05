@@ -1,43 +1,64 @@
-mdal: mdal.scm note-table helpers globals command core
-	csc -s -d1 mdal.scm -j mdal
-	csc -s mdal.import.scm -d0
+CSC = csc
+DOCGEN = scm2wiki
+DOCS = mdal-core.md md-helpers.md md-command.md utils/md-note-table.md
+LIBFLAGS = -s -d1
+IMPORTFLAGS = -s -d0
+COREOBJS = md-helpers.import.so md-globals.import.so md-note-table.import.so\
+ md-command.import.so
 
-note-table: utils/md-note-table.scm
-	csc -s -d1 utils/md-note-table.scm -j md-note-table
+# build libmdal
+mdal: mdal.scm $(COREOBJS) md-core.import.so
+	$(CSC) $(LIBFLAGS) mdal.scm -j mdal
+	$(CSC) $(IMPORTFLAGS) mdal.import.scm
+
+md-helpers.so: md-helpers.scm
+	$(CSC) $(LIBFLAGS) md-helpers.scm -j md-helpers
+
+md-helpers.import.so: md-helpers.so
+	$(CSC) $(IMPORTFLAGS) md-helpers.import.scm
+
+md-globals.so: md-helpers.import.so md-globals.scm
+	$(CSC) $(LIBFLAGS) md-globals.scm -j md-globals
+
+md-globals.import.so: md-globals.so
+	$(CSC) $(IMPORTFLAGS) md-globals.import.scm
+
+md-note-table.so: utils/md-note-table.scm
+	$(CSC) $(LIBFLAGS) utils/md-note-table.scm -j md-note-table
 	mv utils/md-note-table.so ./
-	csc -s md-note-table.import.scm -d0
 
-helpers: md-helpers.scm
-	csc -s -d1 md-helpers.scm -j md-helpers
-	csc -s md-helpers.import.scm -d0
+md-note-table.import.so: md-note-table.so
+	$(CSC) $(IMPORTFLAGS) md-note-table.import.scm
 
-globals: helpers md-globals.scm
-	csc -s -d1 md-globals.scm -j md-globals
-	csc -s md-globals.import.scm -d0
+md-command.so: md-helpers.import.so md-command.scm
+	$(CSC) $(LIBFLAGS) md-command.scm -j md-command
 
-command: helpers md-command.scm
-	csc -s -d1 md-command.scm -j md-command
-	csc -s md-command.import.scm -d0
+md-command.import.so: md-command.so
+	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
-# config: helpers globals command md-config.scm
-# 	csc -s -d1 md-config.scm -j md-config
-# 	csc -s md-config.import.scm -d0
+mdal-core.so: mdal-core.scm $(COREOBJS)
+	$(CSC) $(LIBFLAGS) mdal-core.scm -j mdal-core
 
-core: mdal-core.scm note-table helpers globals command
-	csc -s -d1 mdal-core.scm -j mdal-core
-	csc -s mdal-core.import.scm -d0
+md-core.import.so: mdal-core.so
+	$(CSC) $(IMPORTFLAGS) mdal-core.import.scm
 
-docs: mdal-core.scm md-helpers.scm md-command.scm utils/md-note-table.scm
-	scm2wiki -i mdal-core.scm -o docs/generated/mdal-core.md -m
-	scm2wiki -i md-helpers.scm -o docs/generated/md-helpers.md -m
-	scm2wiki -i md-command.scm -o docs/generated/md-command.md -m
-	scm2wiki -i utils/md-note-table.scm -o docs/generated/util/md-note-table.md -m
+# generate documentation
+%.md: %.scm
+	$(DOCGEN) -i $< -o docs/generated/$@ -m
 
+mdal-core.md: mdal-core.scm
+md-helpers.md: md-helpers.scm
+md-command.md: md-command.scm
+md-note-table.md: utils/md-note-table.scm
+
+docs: $(DOCS)
+
+# run unit tests
 .PHONY: run-tests
-run-tests: mdal
+run-tests: mdal.so mdal.import.so
 	cp -t ./ unittests/unittests.scm && csi unittests.scm -e
 	rm unittests.scm
 
 .PHONY: clean
 clean:
-	rm *.so *.import.scm
+	-rm *.so *.import.scm docs/generated/*.md docs/generated/util/*.md
