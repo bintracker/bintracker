@@ -2,6 +2,9 @@ CSC = csc
 DOCGEN = scm2wiki
 DOCS = mdal-core.md md-helpers.md md-command.md utils/md-note-table.md
 LIBFLAGS = -s -d1
+ifdef RELEASE
+ LIBFLAGS += -O3
+endif
 IMPORTFLAGS = -s -d0
 COREOBJS = md-helpers.import.so md-globals.import.so md-note-table.import.so\
  md-command.import.so
@@ -61,4 +64,4 @@ run-tests: mdal.so mdal.import.so
 
 .PHONY: clean
 clean:
-	-rm *.so *.import.scm docs/generated/*.md docs/generated/util/*.md
+	-rm *.so *.import.scm docs/generated/*.md docs/generated/utils/*.md
