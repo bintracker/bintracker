@@ -18,6 +18,18 @@
 			  (hash-table->alist ht2))))
 
 (test-group
+ "MD-Helpers"
+ (test-assert "md:in-range?"
+   (and (md:in-range? 1 (md:make-range 0 2))
+	(not (md:in-range? 3 (md:make-range 0 2)))))
+ (test "md:make-pairs" '((a 1) (b 2)) (md:make-pairs '(a 1 b 2)))
+ (test-assert "md:add-hash-table-entry"
+   (hash-table-equal?
+    (md:add-hash-table-entry (alist->hash-table '((a 1) (b 2)))
+			     'c 3)
+    (alist->hash-table '((a 1) (b 2) (c 3))))))
+
+(test-group
  "utils/MD-Note-Table"
  (define my-test-table (alist->hash-table '(("a1" 1) ("b1" 2) ("c2" 3))))
  (test "md:lowest-note" "a1" (md:lowest-note my-test-table))
