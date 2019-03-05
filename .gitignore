@@ -3,6 +3,7 @@ libmdal/unittests/test_builds/
 libmdal/docs/html
 libmdal/docs/generated
 tclkit/
+cfg/
 *.swp
 *.org~
 .#*
