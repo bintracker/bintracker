@@ -33,6 +33,11 @@ docs: mdal-core.scm md-helpers.scm md-command.scm utils/md-note-table.scm
 	scm2wiki -i md-command.scm -o docs/generated/md-command.md -m
 	scm2wiki -i utils/md-note-table.scm -o docs/generated/util/md-note-table.md -m
 
+.PHONY: run-tests
+run-tests: mdal
+	cp -t ./ unittests/unittests.scm && csi unittests.scm -e
+	rm unittests.scm
+
 .PHONY: clean
 clean:
 	rm *.so *.import.scm
