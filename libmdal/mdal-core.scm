@@ -78,8 +78,8 @@
 		    (md:make-instance-range
 		     (string->number (sxml:attr node 'min-length)) #f)
 		    (md:make-instance-range
-		     (string->number
-		      1 (string->number (sxml:attr node 'max-length)))))))
+		     1
+		     (string->number (sxml:attr node 'max-length))))))
 	(md:make-instance-range 1 #f)))
 
 
@@ -1056,7 +1056,7 @@
 
   ;;; check if the given inode instance is 'active', ie. check if a value is set.
   (define (md:is-set? inode-instance)
-    (not (null? md:inode-instance-val inode-instance)))
+    (not (null? (md:inode-instance-val inode-instance))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDMOD: OUTPUT NODES
@@ -1628,7 +1628,7 @@
 	       (lambda (chunk)
 		 (if (< (length chunk) block-size)
 		     (append chunk
-			     (make-list (- block-size chunk)
+			     (make-list (- block-size (length chunk))
 					(md:make-inode-instance '() "")))
 		     chunk)))
 	      (update-chunk-head
