@@ -10,31 +10,13 @@
   (import scheme chicken srfi-1 srfi-4 srfi-13 srfi-14 extras data-structures)
   (use srfi-69 simple-exceptions
        ssax sxpath sxpath-lolevel
-       md-helpers md-command md-note-table)
-  (reexport md-helpers md-command md-note-table)
+       md-helpers md-globals md-command md-note-table)
+  (reexport md-helpers md-globals md-command md-note-table)
 
-
-  ;; ---------------------------------------------------------------------------
-  ;; MDAL: GLOBAL VARS
-  ;; ---------------------------------------------------------------------------
-
-  (define *supported-config-versions* (md:make-range 2 2))
-  (define *supported-module-versions* (md:make-range 2 2))
-  (define *library-path* "")
-  (define *config-path* "config/")
-  (define *config*)
-  (define *module*)
-  (define *selection*)
-  (define *asm-syntax* (md:default-asm-syntax))
-
-  (define **cpu-speed** 30000)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDCONF: TARGETS
   ;; ---------------------------------------------------------------------------
-
-  ;; (define md:little-endian 0)
-  ;; (define md:big-endian 1)
 
   ;;; **[RECORD]** MD:CPU
   (define-record-type md:cpu
