@@ -1,6 +1,6 @@
 ;; -*- geiser-scheme-implementation: 'chicken -*-
 
-(use mdal test simple-md5 srfi-13 srfi-69 ssax sxpath sxpath-lolevel)
+(use mdal test simple-md5 srfi-13 srfi-69 ports ssax sxpath sxpath-lolevel)
 
 (define my-config-path "unittests/config/")
 (define my-target (eval (car (read-file "targets/spectrum48.scm"))))
@@ -16,6 +16,8 @@
 (define (hash-table-equal? ht1 ht2)
   (null? (lset-difference equal? (hash-table->alist ht1)
 			  (hash-table->alist ht2))))
+(define (string->sxml-node str)
+  (cadr (call-with-input-string str (lambda (x) (ssax:xml->sxml x '())))))
 
 (test-group
  "MD-Helpers"
@@ -80,7 +82,52 @@
 	  (hash-table-exists? my-commands "NOTE")))))
 
 (test-group
- "MD-Config"
+ "MD-Config/Inodes"
+ (test-assert "md:xml-inode-get-range-arg"
+   (let ((range-equal? (lambda (r1 r2)
+			 (and (equal? (md:instance-range-min r1)
+				      (md:instance-range-min r2))
+			      (equal? (md:instance-range-max r1)
+				      (md:instance-range-max r2))))))
+     (and (range-equal? (md:make-instance-range 1 #f)
+			(md:xml-inode-get-range-arg
+			 (string->sxml-node "<id/>")))
+	  (range-equal? (md:make-instance-range 2 2)
+	  		(md:xml-inode-get-range-arg
+	  		 (string->sxml-node "<id length=\"2\"/>")))
+	  (range-equal? (md:make-instance-range 1 3)
+	  		(md:xml-inode-get-range-arg
+			 (string->sxml-node "<id max-length=\"3\"/>")))
+	  (range-equal? (md:make-instance-range 2 4)
+	  		(md:xml-inode-get-range-arg
+			 (string->sxml-node
+	  		  "<id min-length=\"2\" max-length=\"4\"/>"))))))
+ (test-assert "md:parse-inode-config-id"
+   (and (string= "TEST" (md:parse-inode-config-id
+			 (string->sxml-node
+			  "<node id=\"TEST\" from=\"other\"/>")))
+	(string= "TEST2" (md:parse-inode-config-id
+			  (string->sxml-node "<node from=\"TEST2\"/>")))))
+ ;; TODO md:clone-inode-tree
+ ;; (test "md:generate-inode-order-tree"
+ ;;       '("PATTERNS_ORDER" (("R_DRUMS") ("R_CH1") ("R_CH2")))
+ ;;       (md:generate-inode-order-tree
+ ;; 	(car ((sxpath "mdalconfig/igroup") my-cfg-data))))
+ (test "md:clone-inode-tree"
+       '(("FOO1" (("BAR1") ("BAZ1"))) ("TOO1")
+	 ("FOO2" (("BAR2") ("BAZ2"))) ("TOO2"))
+       (md:clone-inode-tree '(("FOO" (("BAR") ("BAZ"))) ("TOO")) 2))
+ (test "md:parse-inode-tree"
+       '(("GLOBAL" (("AUTHOR") ("TITLE") ("BPM")
+		    ("PATTERNS" (("DRUMS" (("DRUM"))) ("CH1" (("NOTE1")))
+				 ("CH2" (("NOTE2")))
+				 ("PATTERNS_ORDER" (("R_DRUMS") ("R_CH1")
+						    ("R_CH2"))))))))
+       (md:parse-inode-tree my-cfg-data))
+ )
+
+(test-group
+ "MD-Config/Master Config"
  (test "creating system target" "spectrum48"
        (md:target-id (md:config-target my-cfg)))
  (test "parsing description" "12de8ca6e0afb0fc85e86287cc79d0f8"
