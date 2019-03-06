@@ -58,7 +58,7 @@ docs: $(DOCS)
 
 # run unit tests
 .PHONY: run-tests
-run-tests: mdal.so mdal.import.so
+run-tests: mdal
 	cp -t ./ unittests/unittests.scm && csi unittests.scm -e
 	rm unittests.scm
 
