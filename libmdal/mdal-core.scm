@@ -188,11 +188,10 @@
   ;;; auto-generated order inodes
   (define (md:create-order-commands itree)
     (alist->hash-table
-     (map (lambda (x) (list x (md:make-command 'reference
-					       16 "0" (substring/shared x 2)
-					       #f '(use_last_set)
-					       #f #f)))
-	  (filter (lambda (x) (string= "R_" x 0 2 0 2)) (flatten itree)))))
+     (map (lambda (x)
+	    (list x (md:make-command 'reference 16 "0" (substring/shared x 2)
+				     #f '(use_last_set) #f #f)))
+	  (filter (lambda (x) (string-prefix? "R_" x)) (flatten itree)))))
 
   ;;; generate a hash list of inodes required by auto-generated order inodes
   (define (md:create-iorder-inodes itree)
