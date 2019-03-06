@@ -137,19 +137,19 @@
       (create-id-list-copies 1 amount tree)))
 
   ;;; generate the inode tree of an auto-generated igroup order
-  (define (md:generate-inode-order-tree node)
-    (cons (string-append (sxml:name node) "_ORDER")
+  (define (md:generate-inode-order-tree inode-id subnodes)
+    (cons (string-append inode-id "_ORDER")
 	  (list (map (lambda (x) (list (string-append "R_" (car x))))
-		     (cadr node)))))
+		     subnodes))))
 
-  ;;; helper function, generates the inode tree for a given node and it's
+  ;;; helper function, generates the inode tree for a given node and its
   ;;; subnodes
   (define (md:inode->inode-tree node subnodes)
     (let ((flags (sxml:attr node 'flags)))
       (if (and flags (string-contains-ci flags "ordered"))
 	  (list (append subnodes (list (md:generate-inode-order-tree
-					(cons (md:parse-inode-config-id node)
-					      (list subnodes))))))
+				        (md:parse-inode-config-id node)
+					subnodes))))
 	  (list subnodes))))
 
   ;;; return the inode tree of a given list of xml inode configs

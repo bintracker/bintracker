@@ -109,10 +109,10 @@
 	(string= "TEST2" (md:parse-inode-config-id
 			  (string->sxml-node "<node from=\"TEST2\"/>")))))
  ;; TODO md:clone-inode-tree
- ;; (test "md:generate-inode-order-tree"
- ;;       '("PATTERNS_ORDER" (("R_DRUMS") ("R_CH1") ("R_CH2")))
- ;;       (md:generate-inode-order-tree
- ;; 	(car ((sxpath "mdalconfig/igroup") my-cfg-data))))
+ (test "md:generate-inode-order-tree"
+       '("FOO_ORDER" (("R_BAR") ("R_BAZ")))
+       (md:generate-inode-order-tree
+	"FOO" '(("BAR") ("BAZ"))))
  (test "md:clone-inode-tree"
        '(("FOO1" (("BAR1") ("BAZ1"))) ("TOO1")
 	 ("FOO2" (("BAR2") ("BAZ2"))) ("TOO2"))
