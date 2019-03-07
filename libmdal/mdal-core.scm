@@ -231,18 +231,25 @@
   ;;; From a given mdconf iblock node, construct a list containing the given
   ;;; inode definition and all subnodes
   (define (md:parse-igroup-config node instance-range)
-    (md:make-pairs
-     (flatten
-      (list
-       (md:parse-inode-config-id node)
-       (md:make-inode-config 'group instance-range
-			     #f #f #f)
-       (map (lambda (x)
-	      (md:parse-inode-config x
-				     (if (equal? (sxml:name x) 'ifield)
-					 (md:make-single-instance)
-					 (md:xml-inode-get-range-arg node))))
-	    ((sxpath "node()") node))))))
+    (let ((inode-id (md:parse-inode-config-id node)))
+      (md:make-pairs
+       (flatten
+	(list
+	 inode-id
+	 (md:make-inode-config 'group instance-range
+			       #f #f
+			       (if (sxml:attr node 'flags)
+				   (if (string= "ordered"
+						(sxml:attr node 'flags))
+				       (string-append inode-id "_ORDER")
+				       #f)
+				   #f))
+	 (map (lambda (x)
+		(md:parse-inode-config x
+				       (if (equal? (sxml:name x) 'ifield)
+					   (md:make-single-instance)
+					   (md:xml-inode-get-range-arg node))))
+	      ((sxpath "node()") node)))))))
 
 
   ;;; TODO: fails if there are several ifield subnodes with the same source cmd
@@ -303,12 +310,13 @@
 
   ;;; returns a hash table containing all inode configs defined in the given
   ;;; mdconf root node
+  ;; TODO support multi-instance top-level igroups
   (define (md:mdconf->inodes cfg-node)
     (let ((igroups (alist->hash-table
 		    (md:make-pairs
 		     (flatten (map (lambda (node)
 				     (md:parse-inode-config
-				      node (md:xml-inode-get-range-arg node)))
+				      node (md:make-single-instance)))
 				   ((sxpath "mdalconfig/igroup") cfg-node)))))))
       (hash-table-merge
        (hash-table-merge igroups
