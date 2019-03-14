@@ -40,18 +40,22 @@
 
 (test-group
  "utils/MD-Note-Table"
- (define my-test-table (alist->hash-table '(("a1" 1) ("b1" 2) ("c2" 3))))
 
- (test "md:lowest-note" "a1" (md:lowest-note my-test-table))
+ (test "md:note-table-range" '("a1" "c2")
+       (md:note-table-range (alist->hash-table '(("a1" 1) ("b1" 2) ("c2" 3)))))
 
- (test "md:highest-note" "c2" (md:highest-note my-test-table))
+ (test-assert "md:make-counters"
+   (let ((my-note-table (md:make-counters 12 47 1 0)))
+     (and (= 37 (hash-table-size my-note-table))
+	  (string= "c1" (md:lowest-note my-note-table))
+	  (string= "b3" (md:highest-note my-note-table))
+	  (= 13 (car (hash-table-ref my-note-table "c2"))))))
 
- ;; TODO test make-counters
  (test-assert "md:make-dividers"
    (let ((my-note-table (md:make-dividers 118 8 0)))
-     (and (= 91 (hash-table-size my-note-table))
-	  (string= "e3" (md:lowest-note my-note-table))
-	  (string= "b9" (md:highest-note my-note-table))))))
+     (and (= 56 (hash-table-size my-note-table))
+	  (string= "e6" (md:lowest-note my-note-table))
+	  (string= "a#10" (md:highest-note my-note-table))))))
 
 
 (test-group
@@ -247,7 +251,18 @@
 	equal?
 	(append my-igroup-configs my-drum-iblock-configs my-iorder-configs
 		my-cloned-iblock-configs my-global-inode-configs)
-	(hash-table->alist (md:mdconf->inodes my-cfg-data))))
+	(hash-table->alist (md:mdconf->inodes my-cfg-data)))))
+
+(test-group
+ "MD-Config/Compiler Function Generation"
+
+ (test-assert "md:config-transform-conditional-arg"
+   (and (equal? 0 (md:config-transform-conditional-arg 0 #f))
+	(equal? '((md:node-instance-path
+		   (string-append "" parent-path "FOO" "/"
+				  (->string instance-id)))
+		  (md:mod-global-node mod))
+		(md:config-transform-conditional-arg "?FOO" ""))))
  )
 
 
@@ -271,6 +286,31 @@
 
  (test "all commands created" 8
        (hash-table-size (md:config-commands my-cfg))))
+
+
+(test-group
+ "MD-Config/Auxilliary Accessors"
+
+ (define my-itree (md:config-itree my-cfg))
+
+ (test "md:config-get-parent-node-id" "CH2"
+       (md:config-get-parent-node-id "NOTE2" my-itree))
+
+ (test "md:config-get-node-ancestors-ids" '("CH1" "PATTERNS" "GLOBAL")
+       (md:config-get-node-ancestors-ids "NOTE1" my-itree))
+
+ (test "md:config-get-subnode-ids" '("DRUMS" "CH1" "CH2" "PATTERNS_ORDER")
+       (md:config-get-subnode-ids "PATTERNS" my-itree))
+
+ (test "md-config-get-subnode-type-ids" '("AUTHOR" "TITLE" "BPM")
+       (md:config-get-subnode-type-ids "GLOBAL" my-cfg 'field))
+
+ (test "md:config-get-inode-source-command"
+       (car (hash-table-ref (md:config-commands my-cfg) "DRUM"))
+       (md:config-get-inode-source-command "DRUM" my-cfg))
+
+ (test "md:config-get-node-default" "false"
+       (md:config-get-node-default "DRUM" my-cfg)))
 
 
 (test-exit)
