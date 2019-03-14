@@ -10,7 +10,8 @@
      md:make-dividers-range
      md:make-dividers
      md:highest-note
-     md:lowest-note)
+     md:lowest-note
+     md:note-table-range)
 
   (import scheme chicken)
   (use srfi-69)
@@ -64,7 +65,7 @@
 
   ;;;
   (define (md:make-dividers-range cycles beg end rest bits)
-    (if (= beg end)
+    (if (> beg end)
         (list (list "rest" rest))
         (cons (list (md:offset->note-name beg)
                     (md:offset->divider beg cycles bits))
@@ -90,7 +91,7 @@
   (define (md:make-counters beg end first-index rest-index)
     (letrec ((mkcounters
               (lambda (beg end first rest)
-		(if (= beg end)
+		(if (> beg end)
                     (list (list "rest" rest))
                     (cons (list (md:offset->note-name beg) first)
                           (mkcounters (+ 1 beg) end (+ 1 first) rest))))))
@@ -114,7 +115,7 @@
             (if (hash-table-ref/default tbl (md:offset->note-name offset) #f)
 		(md:offset->note-name offset)
 		(try-upper (- offset 1) tbl)))))
-      (try-upper 119 table)))
+      (try-upper 131 table)))
 
   ;;; returns (lowest highest) notes in the given note table
   (define (md:note-table-range table)
