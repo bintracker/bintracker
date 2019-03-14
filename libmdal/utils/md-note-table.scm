@@ -47,7 +47,9 @@
     (do ((offs 0 (+ offs 1)))
 	((and (> (md:offset->divider offs cycles bits) 0)
               (not (= (md:offset->divider offs cycles bits)
-                      (md:offset->divider (+ offs 1) cycles bits))))
+                      (md:offset->divider (+ offs 1) cycles bits)))
+	      (not (= (md:offset->divider (+ offs 1) cycles bits)
+		      (md:offset->divider (+ offs 2) cycles bits))))
 	 offs)))
 
   ;; upper bound defined as: the offset in half-tones from C-0 that will
