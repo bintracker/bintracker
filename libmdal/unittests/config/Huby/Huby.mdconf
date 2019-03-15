@@ -9,7 +9,7 @@
   </command>
   <command id="NOTE" bits="8" type="ukey" tags="Note"
            flags="enable_modifiers, use_last_set, is_note"
-           map="func(md:make-dividers 118 8 0)" default="rest">
+           map="func(md:make-dividers 118 8 0 -4)" default="rest">
     <description>Set the note for the given channel.</description>
   </command>
   <command id="DRUM" type="trigger" default="false">

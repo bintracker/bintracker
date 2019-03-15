@@ -78,12 +78,17 @@
   ;;; parameters: cycles - number of cycles in sound generation loop
   ;;;             bits - size of the dividers, as number of bits
   ;;;             rest - the value that represents a rest/note-off
-  (define (md:make-dividers cycles bits rest)
-    (alist->hash-table
-     (md:make-dividers-range cycles
-                             (md:get-lower-bound cycles bits)
-                             (md:get-upper-bound cycles bits)
-                             rest bits)))
+  ;;;             [shift] - number of octaves to shift the table
+  (define (md:make-dividers cycles bits rest . shift)
+    (let* ((prescaler (if (null? shift)
+			  1
+			  (expt 2 (- (car shift)))))
+	   (prescaled-cycles (* cycles prescaler)))
+      (alist->hash-table
+       (md:make-dividers-range prescaled-cycles
+                               (md:get-lower-bound prescaled-cycles bits)
+                               (md:get-upper-bound prescaled-cycles bits)
+                               rest bits))))
 
   ;;; generate a note table with simple note-name->index mappings
   ;;; beg   lowest note, as offset from c-0

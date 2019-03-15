@@ -52,10 +52,10 @@
 	  (= 13 (car (hash-table-ref my-note-table "c2"))))))
 
  (test-assert "md:make-dividers"
-   (let ((my-note-table (md:make-dividers 118 8 0)))
+   (let ((my-note-table (md:make-dividers 118 8 0 -4)))
      (and (= 56 (hash-table-size my-note-table))
-	  (string= "e6" (md:lowest-note my-note-table))
-	  (string= "a#10" (md:highest-note my-note-table))))))
+	  (string= "e2" (md:lowest-note my-note-table))
+	  (string= "a#6" (md:highest-note my-note-table))))))
 
 
 (test-group
@@ -69,7 +69,7 @@
  (test-assert "md:xml-command-node->map"
    ;; TODO test with map file
    (let ((my-node (cadr ((sxpath "mdalconfig/command") my-cfg-data))))
-     (hash-table-equal? (md:make-dividers 118 8 0)
+     (hash-table-equal? (md:make-dividers 118 8 0 -4)
 			(md:xml-command-node->map my-node my-config-path))))
 
  (test-assert "md:xml-node->command"
@@ -82,7 +82,7 @@
 	  (not (md:command-reference-to my-cmd))
 	  (equal? '(enable_modifiers use_last_set is_note)
 		  (md:command-flags my-cmd))
-	  (hash-table-equal? (md:make-dividers 118 8 0)
+	  (hash-table-equal? (md:make-dividers 118 8 0 -4)
 			     (md:command-keys my-cmd))
 	  (not (md:command-range my-cmd))
 	  (string= "Set the note for the given channel."
