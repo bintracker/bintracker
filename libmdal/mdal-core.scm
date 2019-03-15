@@ -1297,19 +1297,14 @@
     (md:make-inode-instance
      (md:mod-normalize-arg (cadr token+arg) (car token+arg) config) ""))
 
-  ;;; convert a list of token/argument pairs into unnamed node instances
+  ;;; convert a list of token/argument pairs into enumerated node instances
   (define (md:mod-token/args->node-instances ta-lst config)
-    (letrec ((ta->instance (lambda (ta instance-no)
-			     (list instance-no (md:mod-token/arg->inode-instance
-						ta config))))
-	     (make-instances (lambda (lst instance-no)
-			       (if (null? lst)
-				   '()
-				   (cons (ta->instance (car lst)
-						       instance-no)
-					 (make-instances (cdr lst)
-							 (+ 1 instance-no)))))))
-      (make-instances ta-lst 0)))
+    (let ((node-instances
+	   (map (lambda (token+arg)
+		  (md:mod-token/arg->inode-instance token+arg config))
+		ta-lst)))
+      (zip (iota (length node-instances))
+	   node-instances)))
 
   ;;; extract the argument of the given field node from a single line of MDMOD
   ;;; text probably redundant, can be handled by md:mod-parse-line
