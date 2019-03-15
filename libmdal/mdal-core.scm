@@ -947,6 +947,8 @@
 
   ;;; return the IDs of the direct child nodes of a given parent inode ID
   ;;; in the given config, filtered by type
+  ;; TODO inconsistent with other itree traversers as it accepts a config,
+  ;; rather than an itree
   (define (md:config-get-subnode-type-ids inode-id config type)
     (filter (lambda (id)
 	      (eq? type (md:inode-config-type
@@ -1205,12 +1207,7 @@
   ;;; helper func, parse a line of MDMOD text using abbreviated block syntax (no
   ;;; tokens) into token/argument pairs
   (define (md:mod-parse-abbrev-line line token-ids)
-    (if (string-null? line)
-	'()
-	(let* ((arg (md:mod-trim-arg line))
-	       (rest (string-trim (string-drop line (string-length arg)) #\,)))
-	  (cons (list (car token-ids) arg)
-		(md:mod-parse-abbrev-line rest (cdr token-ids))))))
+    (zip token-ids (map string-trim-both (string-split line ","))))
 
   ;;; helper func, split a line of MDMOD text using regular block syntax into
   ;;; token/argument pairs
