@@ -313,24 +313,199 @@
        (md:config-get-node-default "DRUM" my-cfg)))
 
 
+(test-group
+ "MD-Module/Inodes"
+
+ (define my-global-inode-instance
+   (car (alist-ref 0 (md:inode-instances (md:mod-global-node my-mod)))))
+
+ (test "md:get-subnode"
+       (find (lambda (node)
+	       (string=? (md:inode-cfg-id node) "PATTERNS"))
+	     (md:inode-instance-val my-global-inode-instance))
+       (md:get-subnode my-global-inode-instance "PATTERNS"))
+
+ (define my-ch2-inode
+   (md:get-subnode
+    (car (alist-ref 0 (md:inode-instances
+		       (md:get-subnode my-global-inode-instance "PATTERNS"))))
+    "CH2"))
+
+ (test "md:inode-count-instances" 2 (md:inode-count-instances my-ch2-inode))
+
+ (define my-note1-inode
+   (md:get-subnode
+    (car (alist-ref
+	  0 (md:inode-instances
+	     (md:get-subnode
+	      (car (alist-ref
+		    0 (md:inode-instances
+		       (md:get-subnode my-global-inode-instance "PATTERNS"))))
+	      "CH1"))))
+    "NOTE1"))
+
+ (test "md:get-node-comamnd-cfg"
+       (car (hash-table-ref (md:config-commands my-cfg) "NOTE"))
+       (md:get-node-command-cfg my-note1-inode my-cfg))
+
+ (test "md:eval-field-last-set" "c4"
+       (md:eval-field-last-set
+	5 my-note1-inode (md:get-node-command-cfg my-note1-inode my-cfg)))
+
+ (test "md:eval-field" 0
+       (md:eval-field 3 my-note1-inode
+		      (md:get-node-command-cfg my-note1-inode my-cfg))))
+
+
+(test-group
+ "MD-Module/Accessors"
+
+ ;; GLOBAL/0/PATTERNS/0/CH1/0/NOTE1
+ (define my-test-node
+   (md:get-subnode
+    (car (alist-ref
+	  0
+	  (md:inode-instances
+	   (md:get-subnode
+	    (car (alist-ref
+		  0
+		  (md:inode-instances
+		   (md:get-subnode
+		    (car (alist-ref
+			  0
+			  (md:inode-instances
+			   (md:mod-global-node my-mod))))
+		    "PATTERNS"))))
+	    "CH1"))))
+    "NOTE1"))
+
+ (test "md:node-path" my-test-node
+       ((md:node-path "0/PATTERNS/0/CH1/0/NOTE1") (md:mod-global-node my-mod)))
+
+ (test "md:node-instance-path"
+       (car (alist-ref 4 (md:inode-instances my-test-node)))
+       ((md:node-instance-path "0/PATTERNS/0/CH1/0/NOTE1/4")
+	(md:mod-global-node my-mod))))
+
+
+(test-group
+ "MD-Module/Parser"
+
+ (test "md:mod-trim-arg" "\"foo bar\"" (md:mod-trim-arg "\"foo bar\",BAZ=3"))
+
+ (test "md:mod-parse-abbrev-line" '(("foo" "1") ("bar" "2") ("baz" "3"))
+       (md:mod-parse-abbrev-line "1,2,3" '("foo" "bar" "baz")))
+
+ (test "md:mod-split-regular-line" '(("foo" "1") ("bar" "2") ("baz" "3"))
+       (md:mod-split-regular-line "foo=1,bar=2,baz=3"))
+
+ (test "md:mod-parse-regular-line" '(("foo" "1") ("bar" "2") ("baz" ()))
+       (md:mod-parse-regular-line "bar=2,foo=1,invalid=x"
+				  '("foo" "bar" "baz")))
+
+ (test "md:mod-parse-dotted-line"
+       '(("foo" ()) ("bar" ()) ("baz" ())
+	 ("foo" ()) ("bar" ()) ("baz" ()))
+       (md:mod-parse-dotted-line ".2" '("foo" "bar" "baz")))
+
+ (test "md:mod-parse-line"
+       '((("foo" "1") ("bar" "2") ("baz" "3"))
+	 (("foo" ()) ("bar" "2") ("baz" ()))
+	 (("foo" ()) ("bar" ()) ("baz" ())))
+       (map (lambda (line)
+	      (md:mod-parse-line line '("foo" "bar" "baz")))
+	    '("1,2,3" "bar=2" ".")))
+
+ (test "md:mod-parse-block-text"
+       '(("foo" "1") ("bar" "2") ("baz" "3")
+	 ("foo" ()) ("bar" "2") ("baz" ())
+	 ("foo" ()) ("bar" ()) ("baz" ()))
+       (md:mod-parse-block-text '("1,2,3" "bar=2" ".")
+				'("foo" "bar" "baz")))
+
+ (test "md:mod-crop-node-text"
+       '("FOO(0)={" "BAR=1,BAZ=2" "." "}" "FOO(1)={" "." "}")
+       (md:mod-crop-node-text
+	'("THIS(0)={" "FOO(0)={" "BAR=1,BAZ=2" "." "}" "FOO(1)={" "." "}" "}"
+	  "NEXT(0)={")))
+
+ (test "md:mod-normalize-arg" 64
+       (md:mod-normalize-arg "$40" "BPM" my-cfg))
+
+ (test "md:mod-token/arg->inode-instance"
+       (md:make-inode-instance 64 "")
+       (md:mod-token/arg->inode-instance '("BPM" "$40") my-cfg))
+
+ (test "md:mod-token/args->inode-instances"
+       (list (list 0 (md:make-inode-instance "c3" ""))
+	     (list 1 (md:make-inode-instance '() ""))
+	     (list 2 (md:make-inode-instance "rest" "")))
+       (md:mod-token/args->node-instances
+	'(("NOTE1" "c3") ("NOTE1" ()) ("NOTE1" "rest"))
+	my-cfg))
+
+ (test "md:mod-parse-scope-instance-id" '(0 1)
+       (list (md:mod-parse-scope-instance-id "FOO={")
+	     (md:mod-parse-scope-instance-id "BAR(1)={")))
+
+ (test "md:mod-parse-scope-instance-name" '("" "baz")
+       (list (md:mod-parse-scope-instance-name "FOO(1)={")
+	     (md:mod-parse-scope-instance-name "BAR(2)[baz]={")))
+
+ (define my-modlines
+   (remove string-null?
+	   (md:purge-comments
+	    (md:purge-whitespace
+	     (read-lines "unittests/modules/huby-test.mdal")))))
+
+ (test "md:mod-parse-group-fields"
+       (list
+	(md:make-inode "AUTHOR" (list (list 0 (md:make-inode-instance
+					       "\"utz\"" ""))))
+	(md:make-inode "TITLE" (list (list 0 (md:make-inode-instance
+					      "\"Huby Test\"" ""))))
+	(md:make-inode "BPM" (list (list 0 (md:make-inode-instance 120 "")))))
+       (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg))
+
+ (test "md:mod-extract-nodes"
+       '(("CH2($00)={" "NOTE2=a2" ".15")
+	 ("CH2($01)={" "NOTE2=e2" ".15"))
+       (md:mod-extract-nodes my-modlines "CH2"))
+
+ (test "md:mod-parse-block-fields"
+       (list (md:make-inode
+	      "NOTE1"
+	      (list (list 0 (md:make-inode-instance "a3" ""))
+		    (list 1 (md:make-inode-instance '() ""))
+		    (list 2 (md:make-inode-instance "rest" ""))
+		    (list 3 (md:make-inode-instance '() ""))
+		    (list 4 (md:make-inode-instance "c4" ""))
+		    (list 5 (md:make-inode-instance '() ""))
+		    (list 6 (md:make-inode-instance "rest" ""))
+		    (list 7 (md:make-inode-instance '() ""))
+		    (list 8 (md:make-inode-instance "e4" ""))
+		    (list 9 (md:make-inode-instance '() ""))
+		    (list 10 (md:make-inode-instance "rest" ""))
+		    (list 11 (md:make-inode-instance '() ""))
+		    (list 12 (md:make-inode-instance "g4" ""))
+		    (list 13 (md:make-inode-instance '() ""))
+		    (list 14 (md:make-inode-instance "rest" ""))
+		    (list 15 (md:make-inode-instance '() "")))))
+       (md:mod-parse-block-fields
+	(cdr (car (md:mod-extract-nodes my-modlines "CH1")))
+	"CH1" my-cfg))
+
+ ;; (test "md:mod-parse-group-blocks")
+
+ )
+
 (test-exit)
 
-
-;; ;; (define modlines (remove string-null?
-;; ;; 			   (md:purge-comments
-;; ;; 			    (md:purge-whitespace
-;; ;; 			     (read-lines "../modules/huby-test.mdal")))))
 
 ;; (define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
 ;; (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 ;; 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
 ;; (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
-;; (define my-test-field (md:eval-field
-;; 		       4 ((md:node-path "0/PATTERNS/0/CH1/0/NOTE1")
-;; 			  (md:mod-global-node my-mod))
-;; 		       (md:get-node-command-cfg
-;; 			((md:node-path "0/PATTERNS/0/CH1/0/NOTE1")
-;; 			 (md:mod-global-node my-mod)) my-cfg)))
 ;; ;; (define my-test-onode ((md:onode-fn (second (md:config-otree my-cfg)))
 ;; ;; 		       my-mod "" 0 '() '()))
 ;; (define my-reordered-node
