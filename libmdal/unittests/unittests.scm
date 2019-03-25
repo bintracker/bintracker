@@ -472,30 +472,119 @@
 	 ("CH2($01)={" "NOTE2=e2" ".15"))
        (md:mod-extract-nodes my-modlines "CH2"))
 
+ (define my-drum-inode
+   (md:make-inode "DRUM"
+		  (zip (iota 16)
+		       (circular-list (md:make-inode-instance "on" "")
+				      (md:make-inode-instance '() "")
+				      (md:make-inode-instance '() "")
+				      (md:make-inode-instance '() "")))))
+
+ (define my-note1-inode
+   (md:make-inode "NOTE1"
+		  (list (list 0 (md:make-inode-instance "a3" ""))
+			(list 1 (md:make-inode-instance '() ""))
+			(list 2 (md:make-inode-instance "rest" ""))
+			(list 3 (md:make-inode-instance '() ""))
+			(list 4 (md:make-inode-instance "c4" ""))
+			(list 5 (md:make-inode-instance '() ""))
+			(list 6 (md:make-inode-instance "rest" ""))
+			(list 7 (md:make-inode-instance '() ""))
+			(list 8 (md:make-inode-instance "e4" ""))
+			(list 9 (md:make-inode-instance '() ""))
+			(list 10 (md:make-inode-instance "rest" ""))
+			(list 11 (md:make-inode-instance '() ""))
+			(list 12 (md:make-inode-instance "g4" ""))
+			(list 13 (md:make-inode-instance '() ""))
+			(list 14 (md:make-inode-instance "rest" ""))
+			(list 15 (md:make-inode-instance '() "")))))
+
+ (define my-note2-inode0
+   (md:make-inode "NOTE2"
+		  (zip (iota 16)
+		       (cons (md:make-inode-instance "a2" "")
+			     (make-list 15 (md:make-inode-instance '() ""))))))
+
+ (define my-note2-inode1
+   (md:make-inode "NOTE2"
+		  (zip (iota 16)
+		       (cons (md:make-inode-instance "e2" "")
+			     (make-list 15 (md:make-inode-instance '() ""))))))
+
+ (define my-patterns-order-inode
+   (md:make-inode
+    "PATTERNS_ORDER"
+    (list (list 0 (md:make-inode-instance
+		   (list (md:make-inode
+			  "R_DRUMS"
+			  (list (list 0 (md:make-inode-instance 0 ""))
+				(list 1 (md:make-inode-instance '() ""))))
+			 (md:make-inode
+			  "R_CH1"
+			  (list (list 0 (md:make-inode-instance 0 ""))
+				(list 1 (md:make-inode-instance '() ""))))
+			 (md:make-inode
+			  "R_CH2"
+			  (list (list 0 (md:make-inode-instance 0 ""))
+				(list 1 (md:make-inode-instance 1 "")))))
+		   "")))))
+
+ (define my-patterns-subnodes
+   (list (md:make-inode "DRUMS" (list (list 0 (md:make-inode-instance
+					       (list my-drum-inode)
+					       "beat0"))))
+	 (md:make-inode "CH1" (list (list 0 (md:make-inode-instance
+					     (list my-note1-inode) ""))))
+	 (md:make-inode "CH2" (list (list 0 (md:make-inode-instance
+					     (list my-note2-inode0) ""))
+				    (list 1 (md:make-inode-instance
+					     (list my-note2-inode1) ""))))
+	 my-patterns-order-inode))
+
  (test "md:mod-parse-block-fields"
-       (list (md:make-inode
-	      "NOTE1"
-	      (list (list 0 (md:make-inode-instance "a3" ""))
-		    (list 1 (md:make-inode-instance '() ""))
-		    (list 2 (md:make-inode-instance "rest" ""))
-		    (list 3 (md:make-inode-instance '() ""))
-		    (list 4 (md:make-inode-instance "c4" ""))
-		    (list 5 (md:make-inode-instance '() ""))
-		    (list 6 (md:make-inode-instance "rest" ""))
-		    (list 7 (md:make-inode-instance '() ""))
-		    (list 8 (md:make-inode-instance "e4" ""))
-		    (list 9 (md:make-inode-instance '() ""))
-		    (list 10 (md:make-inode-instance "rest" ""))
-		    (list 11 (md:make-inode-instance '() ""))
-		    (list 12 (md:make-inode-instance "g4" ""))
-		    (list 13 (md:make-inode-instance '() ""))
-		    (list 14 (md:make-inode-instance "rest" ""))
-		    (list 15 (md:make-inode-instance '() "")))))
+       (list my-note1-inode)
        (md:mod-parse-block-fields
 	(cdr (car (md:mod-extract-nodes my-modlines "CH1")))
 	"CH1" my-cfg))
 
- ;; (test "md:mod-parse-group-blocks")
+ (test "md:mod-parse-group-blocks"
+       my-patterns-subnodes
+       (md:mod-parse-group-blocks
+	(cdr (car (md:mod-extract-nodes my-modlines "PATTERNS")))
+	"PATTERNS" my-cfg))
+
+ (test "md:mod-parse-group"
+       (append (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg)
+	       (list (md:make-inode "PATTERNS"
+				    (list (list 0 (md:make-inode-instance
+						   my-patterns-subnodes
+						   ""))))))
+       (md:mod-parse-group my-modlines "GLOBAL" my-cfg))
+
+ (test "md:purge-whitespace"
+       '("foo,bar,baz" "foo=\"bar baz \"")
+       (md:purge-whitespace '(" foo, bar, baz " " foo = \"bar baz \"")))
+
+ (test "md:purge-comments"
+       '("foo " "bar " "" " baz")
+       (md:purge-comments '("foo // a comment" "bar /* a" "multi-line comment"
+			    "*/ baz")))
+
+ (test-assert "md:check-module-version: valid"
+   (md:check-module-version '("MDAL_VERSION=2")))
+ (test-error "md:check-module-version: invalid"
+	     (md:check-module-version '("MDAL_VERSION=5")))
+
+ (test "md:mod-get-config-name"
+       "Huby"
+       (md:mod-get-config-name '("foo" "CONFIG=\"Huby\"")))
+
+ (test "md:mod-string->number"
+       '(64 64 64)
+       (list (md:mod-string->number "64")
+	     (md:mod-string->number "$40")
+	     (md:mod-string->number "#x40")))
+
 
  )
 
