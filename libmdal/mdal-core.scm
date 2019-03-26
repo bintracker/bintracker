@@ -1588,12 +1588,9 @@
     (md:mod-fill-empty-values (md:mod-extract-field-values block-instance
 							   field-id)))
 
-  ;;; helper function, enumerate the given inode instances, starting with init-id
+  ;;; helper function, enumerate the given inode instances, starting at init-id
   (define (md:mod-enumerate-instances init-id instances)
-    (if (null? instances)
-	'()
-	(cons (list init-id (car instances))
-	      (md:mod-enumerate-instances (+ init-id 1) (cdr instances)))))
+    (zip (iota (length instances) init-id 1) instances))
 
   ;;; helper function, merge instances of the given field in the given block node
   ;;; according to the given order list.
