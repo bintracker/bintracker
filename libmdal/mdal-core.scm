@@ -1631,8 +1631,7 @@
 	       (lambda (instance-lst processed-count)
 		 (if (not (null? (md:inode-instance-val (car instance-lst))))
 	       	     instance-lst
-	       	     (cons (md:make-inode-instance
-	       		    (get-init-val processed-count) "")
+	       	     (cons (get-init-val processed-count)
 	       		   (cdr instance-lst)))))
 	      (make-chunks
 	       (lambda (instance-lst processed-count)
