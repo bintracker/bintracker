@@ -553,12 +553,15 @@
 	(cdr (car (md:mod-extract-nodes my-modlines "PATTERNS")))
 	"PATTERNS" my-cfg))
 
+ (define my-global-subnodes
+   (append (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg)
+	   (list (md:make-inode "PATTERNS"
+				(list (list 0 (md:make-inode-instance
+					       my-patterns-subnodes
+					       "")))))))
+
  (test "md:mod-parse-group"
-       (append (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg)
-	       (list (md:make-inode "PATTERNS"
-				    (list (list 0 (md:make-inode-instance
-						   my-patterns-subnodes
-						   ""))))))
+       my-global-subnodes
        (md:mod-parse-group my-modlines "GLOBAL" my-cfg))
 
  (test "md:purge-whitespace"
@@ -585,16 +588,211 @@
 	     (md:mod-string->number "$40")
 	     (md:mod-string->number "#x40")))
 
+ (test "md:parse-module-file"
+       (md:make-inode "GLOBAL" (list (list 0 (md:make-inode-instance
+					      my-global-subnodes
+					      ""))))
+       (md:mod-global-node
+	(md:parse-module-file "unittests/modules/huby-test.mdal"
+			      my-config-path)))
 
+ (test "md:mod-get-group-instance-blocks"
+       (list ((md:node-path "0/PATTERNS/0/DRUMS") (md:mod-global-node my-mod))
+	     ((md:node-path "0/PATTERNS/0/CH1") (md:mod-global-node my-mod))
+	     ((md:node-path "0/PATTERNS/0/CH2") (md:mod-global-node my-mod)))
+       (md:mod-get-group-instance-blocks
+	((md:node-instance-path "0/PATTERNS/0") (md:mod-global-node my-mod))
+	"PATTERNS" my-cfg))
+
+ (test "md:mod-get-group-instance-order"
+       ((md:node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
+	(md:mod-global-node my-mod))
+       (md:mod-get-group-instance-order
+	((md:node-instance-path "0/PATTERNS/0") (md:mod-global-node my-mod))
+	"PATTERNS"))
+
+ (test "md:mod-make-default-order"
+       (md:make-inode
+	"PATTERNS_ORDER"
+	(list (list 0 (md:make-inode-instance
+		       (list (md:make-inode
+			      "R_DRUMS"
+			      (list (list 0 (md:make-inode-instance 0 ""))))
+			     (md:make-inode
+			      "R_CH1"
+			      (list (list 0 (md:make-inode-instance 0 ""))))
+			     (md:make-inode
+			      "R_CH2"
+			      (list (list 0 (md:make-inode-instance 0 "")))))
+		       ""))))
+       (md:mod-make-default-order 1 "PATTERNS" my-cfg)))
+
+
+(test-group
+ "MD-Module/Node Reordering"
+
+ (test "md:mod-extract-field-values"
+       (cons "a2" (make-list 15 '()))
+       (md:mod-extract-field-values
+	((md:node-instance-path "0/PATTERNS/0/CH2/0")
+	 (md:mod-global-node my-mod))
+	"NOTE2"))
+
+ (test "md:mod-fill-empty-values"
+       (append (make-list 3 "foo")
+	       (make-list 3 "bar")
+	       (make-list 3 "baz"))
+       (md:mod-fill-empty-values '("foo" () () "bar" () () "baz" () ())))
+
+ (test "md:mod-enumerate-instances"
+       '((1 "foo") (2 "bar") (3 "baz"))
+       (md:mod-enumerate-instances 1 '("foo" "bar" "baz")))
+
+ (test "md:mod-merge-fields"
+       (append (cons (md:make-inode-instance "a2" "")
+		     (make-list 15 (md:make-inode-instance '() "")))
+	       (cons (md:make-inode-instance "e2" "")
+		     (make-list 15 (md:make-inode-instance '() ""))))
+       (md:mod-merge-fields ((md:node-path "0/PATTERNS/0/CH2")
+			 (md:mod-global-node my-mod))
+			"NOTE2" '(0 1)))
+
+ (define my-field-chunks
+   (append
+    (make-list 2 (zip (iota 8)
+		      (cons (md:make-inode-instance "a2" "")
+			    (make-list
+			     7 (md:make-inode-instance '() "")))))
+    (make-list 2 (zip (iota 8)
+		      (cons (md:make-inode-instance "e2" "")
+			    (make-list
+			     7 (md:make-inode-instance '() "")))))))
+
+ (test "md:mod-split-fields"
+       my-field-chunks
+       (md:mod-split-fields
+	8
+	(md:mod-merge-fields ((md:node-path "0/PATTERNS/0/CH2")
+			      (md:mod-global-node my-mod))
+			     "NOTE2" '(0 1))
+	"NOTE2" my-cfg))
+
+ (define my-resized-block-instances
+   (zip (iota 4)
+	(map (lambda (chunk)
+	       (md:make-inode-instance (list (md:make-inode "NOTE2" chunk))
+				       ""))
+	     my-field-chunks)))
+
+ (test "md:mod-chunks->block-instances"
+       my-resized-block-instances
+       (md:mod-chunks->block-instances (list my-field-chunks) '("NOTE2")))
+
+ (test "md:mod-split-block-instances"
+       (md:make-inode "CH2" my-resized-block-instances)
+       (md:mod-split-block-instances
+	8 ((md:node-path "0/PATTERNS/0/CH2") (md:mod-global-node my-mod))
+	((md:node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
+	 (md:mod-global-node my-mod))
+	my-cfg))
  )
+
+(test-group
+ "MD-Module/Accessors II"
+
+ (test "md:mod-split-node-list-at"
+       (list (list ((md:node-path "0/PATTERNS/0/DRUMS")
+		    (md:mod-global-node my-mod)))
+	     (list ((md:node-path "0/PATTERNS/0/CH1")
+		    (md:mod-global-node my-mod))
+		   ((md:node-path "0/PATTERNS/0/CH2")
+		    (md:mod-global-node my-mod))
+		   ((md:node-path "0/PATTERNS/0/PATTERNS_ORDER")
+		    (md:mod-global-node my-mod))))
+       (md:mod-split-node-list-at
+	"CH1" (md:inode-instance-val ((md:node-instance-path "0/PATTERNS/0")
+				      (md:mod-global-node my-mod)))))
+
+ (test "md:mod-split-instances-at"
+       (list (zip (iota 5)
+		  (cons (md:make-inode-instance "a2" "")
+			(make-list 4 (md:make-inode-instance '() ""))))
+	     (zip (iota 11 5)
+		  (make-list 11 (md:make-inode-instance '() ""))))
+       (md:mod-split-instances-at
+	5 (md:inode-instances ((md:node-path "0/PATTERNS/0/CH2/0/NOTE2")
+			       (md:mod-global-node my-mod)))))
+
+ (test "md:mod-replace-subnode"
+       (md:make-inode-instance
+	(list (md:make-inode "NOTE1"
+			     (zip (iota 4)
+				  (make-list
+				   4 (md:make-inode-instance '() "")))))
+	"")
+       (md:mod-replace-subnode
+	((md:node-instance-path "0/PATTERNS/0/CH1/0")
+	 (md:mod-global-node my-mod))
+	(md:make-inode "NOTE1"
+		       (zip (iota 4)
+			    (make-list 4 (md:make-inode-instance '() ""))))))
+
+ (test "md:mod-replace-inode-instance"
+       (md:make-inode "NOTE2"
+		      (zip (iota 16)
+			   (make-list 16 (md:make-inode-instance '() ""))))
+       (md:mod-replace-inode-instance
+	((md:node-path "0/PATTERNS/0/CH2/0/NOTE2")
+	 (md:mod-global-node my-mod))
+	0 (md:make-inode-instance '() "")))
+
+ (test "md:mod-node-setter"
+       (md:make-inode
+	"CH2"
+	(list
+	 (list 0 (md:make-inode-instance
+		  (list (md:make-inode
+			 "NOTE2"
+			 (zip (iota 16)
+			      (make-list 16 (md:make-inode-instance '() "")))))
+		  ""))
+	 (list 1 (md:make-inode-instance
+		  (list (md:make-inode
+			 "NOTE2"
+			 (zip (iota 16)
+			      (cons (md:make-inode-instance "e2" "")
+				    (make-list
+				     15 (md:make-inode-instance '() ""))))))
+		  ""))))
+       ((md:mod-node-setter "0")
+	(md:make-inode "NOTE2"
+		       (zip (iota 16)
+			    (make-list 16 (md:make-inode-instance '() ""))))
+	((md:node-path "0/PATTERNS/0/CH2")
+	 (md:mod-global-node my-mod))))
+ )
+
+;; (test-group
+;;  "MD-Module: Compilation"
+
+;;  (test "md:mod->bin"
+;;        (list #xef #x39
+;; 	     #x04 #x80
+;; 	     #x00 #x02
+;; 	     #x01 #x03
+;; 	     #x00 #x04
+;; 	     #x01 #x05
+;; 	     #x2c #x1e #x00 #x00 #x2c #x24 #x00 #x00
+;; 	     #x2c #x2e #x00 #x00 #x2c #x36 #x00 #x00
+;; 	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
+;; 	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
+;; 	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b
+;; 	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b)
+;;        (md:mod->bin my-mod #x8000)))
 
 (test-exit)
 
 
-;; (define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
-;; (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
-;; 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
-;; (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
 ;; ;; (define my-test-onode ((md:onode-fn (second (md:config-otree my-cfg)))
 ;; ;; 		       my-mod "" 0 '() '()))
 ;; (define my-reordered-node
