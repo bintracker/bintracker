@@ -695,6 +695,112 @@
 	((md:node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
 	 (md:mod-global-node my-mod))
 	my-cfg))
+
+ (define (my-resized-group-blocks-generator)
+   (let ((order-inode-instances
+	  (zip (iota 4)
+	       (list (md:make-inode-instance 0 "")
+		     (md:make-inode-instance 1 "")
+		     (md:make-inode-instance 2 "")
+		     (md:make-inode-instance 3 "")))))
+     (md:make-inode-instance
+      (list
+       (md:make-inode
+	"DRUMS"
+	(zip (iota 4)
+	     (make-list
+	      4 (md:make-inode-instance
+		 (list (md:make-inode
+			"DRUM"
+			(zip (iota 8)
+			     (list (md:make-inode-instance "on" "")
+				   (md:make-inode-instance '() "")
+				   (md:make-inode-instance '() "")
+				   (md:make-inode-instance '() "")
+				   (md:make-inode-instance "on" "")
+				   (md:make-inode-instance '() "")
+				   (md:make-inode-instance '() "")
+				   (md:make-inode-instance '() "")))))
+		 ""))))
+       (md:make-inode
+	"CH1"
+	(list
+	 (list 0 (md:make-inode-instance
+		  (list (md:make-inode
+			 "NOTE1"
+			 (zip (iota 8)
+			      (list (md:make-inode-instance "a3" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "c4" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")))))
+		  ""))
+	 (list 1 (md:make-inode-instance
+		  (list (md:make-inode
+			 "NOTE1"
+			 (zip (iota 8)
+			      (list (md:make-inode-instance "e4" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "g4" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")))))
+		  ""))
+	 (list 2 (md:make-inode-instance
+		  (list (md:make-inode
+			 "NOTE1"
+			 (zip (iota 8)
+			      (list (md:make-inode-instance "a3" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "c4" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")))))
+		  ""))
+	 (list 3 (md:make-inode-instance
+		  (list (md:make-inode
+			 "NOTE1"
+			 (zip (iota 8)
+			      (list (md:make-inode-instance "e4" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "g4" "")
+				    (md:make-inode-instance '() "")
+				    (md:make-inode-instance "rest" "")
+				    (md:make-inode-instance '() "")))))
+		  ""))))
+       (md:make-inode "CH2" my-resized-block-instances)
+       (md:make-inode
+	"PATTERNS_ORDER"
+	(list
+	 (list 0 (md:make-inode-instance
+		  (list (md:make-inode "R_DRUMS" order-inode-instances)
+			(md:make-inode "R_CH1" order-inode-instances)
+			(md:make-inode "R_CH2" order-inode-instances))
+		  "")))))
+      "")))
+
+ (test "md:mod-split-group-instance-blocks"
+       (my-resized-group-blocks-generator)
+       (md:mod-split-group-instance-blocks
+	8 ((md:node-instance-path "0/PATTERNS/0")
+	   (md:mod-global-node my-mod))
+	"PATTERNS" my-cfg))
+
+ (test "md:mod-reorder-group"
+       (md:make-inode "PATTERNS"
+		      (list (list 0 (my-resized-group-blocks-generator))))
+       (md:mod-reorder-group
+	8 ((md:node-path "0/PATTERNS") (md:mod-global-node my-mod))
+	my-cfg))
  )
 
 (test-group
@@ -769,11 +875,10 @@
 		       (zip (iota 16)
 			    (make-list 16 (md:make-inode-instance '() ""))))
 	((md:node-path "0/PATTERNS/0/CH2")
-	 (md:mod-global-node my-mod))))
- )
+	 (md:mod-global-node my-mod)))))
 
 ;; (test-group
-;;  "MD-Module: Compilation"
+;;  "MD-Module/Compilation"
 
 ;;  (test "md:mod->bin"
 ;;        (list #xef #x39
