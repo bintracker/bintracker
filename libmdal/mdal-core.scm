@@ -1166,7 +1166,7 @@
   ;;; the node matching the given path
   (define (md:make-npath-fn pathlist)
     (begin
-      (printf "trying path: ~S\n" pathlist)
+      ;; (printf "trying path: ~S\n" pathlist)
       (if (= 2 (length pathlist))
 	  (lambda (node)
 	    (find (lambda (subnode-id)
