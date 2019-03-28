@@ -263,6 +263,100 @@
 				  (->string instance-id)))
 		  (md:mod-global-node mod))
 		(md:config-transform-conditional-arg "?FOO" ""))))
+
+ ;; TODO symbol for $ can be resolved directly
+ (test "md:config-transform-fn-arg"
+       '((md:eval-field instance-id
+			 ((md:node-path
+			   (string-append "0/FOO/0" parent-path "BAR"))
+			  (md:mod-global-node mod))
+			 (md:config-get-inode-source-command
+			  "BAR" (md:mod-cfg mod)))
+	 (car (hash-table-ref symbols (read (open-input-string "FOO"))))
+	 (car (hash-table-ref symbols mdal_order_FOO))
+	 "FOO")
+       (list (md:config-transform-fn-arg "?BAR" "0/FOO/0")
+	     (md:config-transform-fn-arg "$FOO" "")
+	     (md:config-transform-fn-arg "!FOO" "")
+	     ;; TODO: does not yet recurse, and nesting ist wrong
+	     ;; (md:config-transform-fn-arg "(if (md:is-set ?FOO) ?FOO ?BAR)" "0")
+	     (md:config-transform-fn-arg "FOO" "")))
+
+ ;; (test "md:config-resolve-fn-call")
+
+ (test "md:config-fn-string->list"
+       '(foo bar baz)
+       (md:config-fn-string->list "(foo bar baz)"))
+
+ ;; TODO fails for nested fns
+ (test "md:config-direct-resolvable?"
+       '(#t #f)
+       (list (md:config-direct-resolvable? "(foo bar baz)")
+	     (md:config-direct-resolvable? "(foo ?bar baz)")))
+
+ ;; TODO only evaluates $, not !
+ (test "md:config-get-required-symbols"
+       '()
+       (md:config-get-required-symbols
+	(car ((sxpath "mdalconfig/output/group/block/field") my-cfg-data))))
+
+ ;; TODO
+ ;; (test "md:config-make-resolve-check")
+
+ (test "md:config-make-converter-fn"
+       '(#x04 #x80)
+       ((md:config-make-converter-fn 2 #t) #x8004))
+
+ ;; applying to end-of-order-marker field (direct-resolvable), bpm field
+ ;; (regular node) and sequence-end field (symbol lookup)
+ (test "md:config-make-ofield"
+       '((field 1 0)
+	 (field 2 #x39ef)
+	 (field 2 #x8005))
+       (let ((my-ofield0
+	      (md:config-make-ofield
+	       (list-ref ((sxpath "mdalconfig/output/field") my-cfg-data)
+			 2)
+	       ""))
+	     (my-ofield1
+	      (car ((md:onode-fn
+		     (md:config-make-ofield
+		      (car ((sxpath "mdalconfig/output/field") my-cfg-data))
+		      "0/"))
+		    my-mod "" 0 '() '())))
+	     (my-ofield2
+	      (car ((md:onode-fn
+		     (md:config-make-ofield
+		      (cadr ((sxpath "mdalconfig/output/field") my-cfg-data))
+		      "0/"))
+		    my-mod "" 0 (alist->hash-table '((sequence_end #x800d)))
+		    '()))))
+	 (list (list (md:onode-type my-ofield0)
+		     (md:onode-size my-ofield0)
+		     (md:onode-val my-ofield0))
+	       (list (md:onode-type my-ofield1)
+		     (md:onode-size my-ofield1)
+		     (md:onode-val my-ofield1))
+	       (list (md:onode-type my-ofield2)
+		     (md:onode-size my-ofield2)
+		     (md:onode-val my-ofield2)))))
+
+ (test "md:config-make-osymbol"
+       '(symbol 0 #f #x800d)
+       (let ((my-osym-eval-result
+	      ((md:onode-fn
+		(md:config-make-osymbol
+		 (car ((sxpath "mdalconfig/output/symbol") my-cfg-data))
+		 "0/"))
+	       my-mod "" 0 (alist->hash-table '((mdal_output_origin #x8000)))
+	       (make-list 13 (md:make-onode 'field 1 0 #f #f)))))
+	 (list (md:onode-type (car my-osym-eval-result))
+	       (md:onode-size (car my-osym-eval-result))
+	       (md:onode-val (car my-osym-eval-result))
+	       (car (hash-table-ref (cadr my-osym-eval-result)
+				    'sequence_end)))))
+
+ ;; (test "md:config-make-block-compiler")
  )
 
 
@@ -882,13 +976,14 @@
 
 ;;  (test "md:mod->bin"
 ;;        (list #xef #x39
-;; 	     #x04 #x80
-;; 	     #x00 #x02
+;; 	     #x05 #x80
 ;; 	     #x01 #x03
-;; 	     #x00 #x04
+;; 	     #x02 #x04
 ;; 	     #x01 #x05
-;; 	     #x2c #x1e #x00 #x00 #x2c #x24 #x00 #x00
-;; 	     #x2c #x2e #x00 #x00 #x2c #x36 #x00 #x00
+;; 	     #x02 #x06
+;;           #x00
+;; 	     #x1e #x1e #x00 #x00 #x24 #x24 #x00 #x00
+;; 	     #x2e #x2e #x00 #x00 #x36 #x36 #x00 #x00
 ;; 	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
 ;; 	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
 ;; 	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b
