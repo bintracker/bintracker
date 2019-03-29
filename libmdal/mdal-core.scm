@@ -1070,36 +1070,6 @@
 		    #t #f))
 	      onodes)))
 
-  ;; (define-record-type md:ocomment
-  ;;   (md:make-ocomment str)
-  ;;   md:ocomment?
-  ;;   (str md:ocomment-str))
-
-  ;; (define-record-type md:ofield
-  ;;   (md:make-ofield val bytes)
-  ;;   md:ofield?
-  ;;   (val md:ofield-val)
-  ;;   (bytes md:ofield-bytes))
-
-  ;; (define-record-printer (md:ofield f out)
-  ;;   (begin
-  ;;     (fprintf out "#<md:ofield: size ~S, value ~S>\n"
-  ;; 	     (md:ofield-bytes f) (md:ofield-val f))))
-
-  ;; (define-record-type md:osymbol
-  ;;   (md:make-osymbol name)
-  ;;   md:osymbol?
-  ;;   (name md:osymbol-name))
-
-  ;; (define-record-type md:oblock
-  ;;   (md:make-oblock subnodes)
-  ;;   md:oblock?
-  ;;   (subnodes md:oblock-subnodes))
-
-  ;; (define-record-type md:ogroup
-  ;;   (md:make-ogroup subnodes)
-  ;;   md:ogroup?
-  ;;   (subnodes md:ogroup-subnodes))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDMOD: MODULE
