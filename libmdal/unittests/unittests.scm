@@ -35,7 +35,12 @@
 	(hash-table->alist
 	 (md:add-hash-table-entry (alist->hash-table '((a 1) (b 2)))
 				  'c 3))
-	'((a 1) (b 2) (c 3)))))
+	'((a 1) (b 2) (c 3))))
+
+ (test "md:add-to-list"
+       '(1 (2 (3 4)) (5 6) 7)
+       (md:add-to-list '(0 (1 (2 3)) (4 5) 6) 1))
+ )
 
 
 (test-group
@@ -357,6 +362,23 @@
 				    'sequence_end)))))
 
  ;; (test "md:config-make-block-compiler")
+
+ ;; (test "md:config-make-oblock")
+
+ (test "md:config-make-oorder"
+       '(order 8 ((1 5) (2 6) (3 7) (4 8)))
+       (let ((my-oorder
+	      (car ((md:onode-fn
+		     (md:config-make-oorder
+		      (car ((sxpath "mdalconfig/output/order") my-cfg-data))
+		      "0/PATTERNS/0"))
+		    my-mod "" 0
+		    (alist->hash-table '((mdal_order_PATTERNS
+					  ((0 4) (1 5) (2 6) (3 7)))))
+		    '()))))
+	 (list (md:onode-type my-oorder)
+	       (md:onode-size my-oorder)
+	       (md:onode-val my-oorder))))
  )
 
 
@@ -971,36 +993,25 @@
 	((md:node-path "0/PATTERNS/0/CH2")
 	 (md:mod-global-node my-mod)))))
 
-;; (test-group
-;;  "MD-Module/Compilation"
+(test-group
+ "MD-Module/Compilation"
 
-;;  (test "md:mod->bin"
-;;        (list #xef #x39
-;; 	     #x05 #x80
-;; 	     #x01 #x03
-;; 	     #x02 #x04
-;; 	     #x01 #x05
-;; 	     #x02 #x06
-;;           #x00
-;; 	     #x1e #x1e #x00 #x00 #x24 #x24 #x00 #x00
-;; 	     #x2e #x2e #x00 #x00 #x36 #x36 #x00 #x00
-;; 	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
-;; 	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
-;; 	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b
-;; 	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b)
-;;        (md:mod->bin my-mod #x8000)))
+ (test "md:mod->bin"
+       (list #xef #x39
+	     #x05 #x80
+	     #x01 #x05
+	     #x02 #x06
+	     #x03 #x07
+	     #x04 #x08
+          #x00
+	     #x1e #x1e #x00 #x00 #x24 #x24 #x00 #x00
+	     #x2e #x2e #x00 #x00 #x36 #x36 #x00 #x00
+	     #x1e #x1e #x00 #x00 #x24 #x24 #x00 #x00
+	     #x2e #x2e #x00 #x00 #x36 #x36 #x00 #x00
+	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
+	     #x0f #x0f #x0f #x0f #x0f #x0f #x0f #x0f
+	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b
+	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b)
+       (md:mod->bin my-mod #x8000)))
 
 (test-exit)
-
-
-;; ;; (define my-test-onode ((md:onode-fn (second (md:config-otree my-cfg)))
-;; ;; 		       my-mod "" 0 '() '()))
-;; (define my-reordered-node
-;;   (md:mod-reorder-group 8 ((md:node-path "0/PATTERNS")
-;; 			   (md:mod-global-node my-mod)) my-cfg))
-;; ;; (define my-reordered-global-node
-;; ;;   ((md:mod-node-setter "0") my-reordered-node (md:mod-global-node my-mod)))
-;; (define my-resize-fn (md:config-make-resize-fn cfg))
-;; (define my-reordered-global-node
-;;   (my-resize-fn (md:mod-global-node my-mod) my-cfg))
-;; (define my-compile-fn (md:config-make-compiler cfg))
