@@ -383,13 +383,13 @@
 				    (string-append "(" fn-string ")")))
 	  (fn-args (read (open-input-string fn-string))))
       (begin
-	(printf "resolving ~S" fn-string-normalized)
-	(printf " to fn body ~S\n"
-		(list (if (list? fn-args)
-			  (map (lambda (arg) (md:config-transform-fn-arg
-					      arg path-prefix))
-			       fn-args)
-			  (md:config-transform-fn-arg fn-args path-prefix))))
+	;; (printf "resolving ~S" fn-string-normalized)
+	;; (printf " to fn body ~S\n"
+	;; 	(list (if (list? fn-args)
+	;; 		  (map (lambda (arg) (md:config-transform-fn-arg
+	;; 				      arg path-prefix))
+	;; 		       fn-args)
+	;; 		  (md:config-transform-fn-arg fn-args path-prefix))))
 	(eval (append '(lambda (mod parent-path instance-id
 				    symbols preceding-onodes))
 		      (list
@@ -557,8 +557,8 @@
 			 (md:inode-instances
 			  ((md:node-path
 			    (begin
-			      (printf "pathing src: ~S/~S\n"
-				      path-prefix src)
+			      ;; (printf "pathing src: ~S/~S\n"
+			      ;; 	      path-prefix src)
 			      (string-append path-prefix "/" src)))
 			   (md:mod-global-node mod))))
 		       iblock-sources))
@@ -632,7 +632,7 @@
 				   #f convert-fn)
 		    symbols)))))
       (begin
-	(printf "ofield prototypes: ~S\n" ofield-prototypes)
+	;; (printf "ofield prototypes: ~S\n" ofield-prototypes)
 	node-fn)))
 
   ;; (define (md:config-make-block-converter block-cfg-node target-little-endian)
@@ -806,11 +806,11 @@
   (define (md:mod-recurse-otree tree mod parent-path instance-id
 				symbols previous-onodes)
     (begin
-      (printf "tree ~S\nprevious-nodes ~S\nsymbols ~S\n\n" tree previous-onodes
-	      symbols)
+      ;; (printf "tree ~S\nprevious-nodes ~S\nsymbols ~S\n\n" tree previous-onodes
+      ;; 	      symbols)
       (if (null? tree)
-	  (begin (printf "returning ~S\n" (list previous-onodes
-						symbols))
+	  (begin ;; (printf "returning ~S\n" (list previous-onodes
+		 ;; 				symbols))
 		 (list previous-onodes symbols))
 	  (let* ((node-fn (md:onode-fn (car tree)))
 		 (node-result
@@ -837,7 +837,7 @@
 	   (new-otree (car parse-result))
 	   (new-symbols (second parse-result)))
       (begin
-	(printf "parse result: ~S\n" parse-result)
+	;; (printf "parse result: ~S\n" parse-result)
 	(printf "compiler pass: ~S\n" (md:mod-all-resolved? new-otree))
 	(if (md:mod-all-resolved? new-otree)
 	    new-otree
@@ -1046,9 +1046,9 @@
   ;;; config.
   (define (md:eval-field instance-id node command-config)
     (begin
-      (printf "call to eval-field with args ~S ~S ~S\n"
-	      instance-id node command-config)
-      (printf "call chain: ~S\n" (get-call-chain))
+      ;; (printf "call to eval-field with args ~S ~S ~S\n"
+      ;; 	      instance-id node command-config)
+      ;; (printf "call chain: ~S\n" (get-call-chain))
       (let* ((field ((md:mod-get-node-instance instance-id) node))
 	     (current-val (md:inode-instance-val field))
 	     (raw-val (if (null? current-val)
