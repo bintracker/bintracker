@@ -55,4 +55,12 @@
   (define (md:add-hash-table-entry ht key value)
     (hash-table-merge ht (alist->hash-table (list (list key value)))))
 
+  ;;; add {{val}} to all numeric elements of the list {{lst}}
+  (define (md:add-to-list lst val)
+    (map (lambda (elem)
+	   (if (number? elem)
+	       (+ elem val)
+	       (md:add-to-list elem val)))
+	 lst))
+
   ) ;; end module md-helpers

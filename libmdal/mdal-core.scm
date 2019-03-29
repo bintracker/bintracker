@@ -666,13 +666,18 @@
 		      (string-append "mdal_order_"
 				     (string-drop (sxml:attr cfg-node 'from)
 						  1)))))
+	      (base-index (if (sxml:attr cfg-node 'base_index)
+			      (sxml:num-attr cfg-node 'base_index)
+			      0))
 	      (order-fn (lambda (syms)
 			  (car (hash-table-ref syms order-sym))))
 	      (node-fn (lambda (mod parent-path instance-id
 				    symbols preceding-onodes)
 			 (list
 			  (if (member order-sym (hash-table-keys symbols))
-			      (let* ((result-val (order-fn symbols))
+			      (let* ((result-val
+				      (md:add-to-list (order-fn symbols)
+						      base-index))
 				     ;; TODO should group export order size as
 				     ;;      sym?
 				     (result-size
@@ -710,13 +715,9 @@
 				  'group node-size node-result
 				  #f convert-fn)
 				 (md:add-hash-table-entry
-				  ;; dummy arg
 				  symbols 'mdal_order_PATTERNS
-				  ;; '((0 8) (1 9) (2 10) (3 11) (4 12) (5 13)
-				  ;;   (6 14) (7 15))
-				  ;; TODO: pattern nums in Huby start at 1!
-				  '((1 2))
-				  ))))))
+				  ;; TODO dummy arg
+				  '((0 4) (1 5) (2 6) (3 7))))))))
       (md:make-onode 'group #f otree node-fn convert-fn)))
 
   ;;; dispatch helper, resolve mdconf nodes to compiler function generators or

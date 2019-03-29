@@ -32,7 +32,7 @@
     <comment>sequence</comment>
     <field bytes="2">(/ 1779661 ?BPM)</field><!--cpufreq*60/cyclecount*BPM)-->
     <field bytes="2">(- $sequence_end 8)</field>
-    <order from="!PATTERNS" layout="matrix" />
+    <order from="!PATTERNS" layout="matrix" base_index="1"/>
     <!--ok, but how to handle transpose/jumps? Probably better to define fields.-->
     <field bytes="1">0</field>
     <symbol id="sequence_end" />
