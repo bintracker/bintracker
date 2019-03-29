@@ -539,101 +539,76 @@
   ;;;       the future it will need to be so we can deal with nodes that can't be
   ;;;       resolved on first pass
   (define (md:config-make-block-compiler block-cfg-node path-prefix convert-fn)
-    (letrec*
-	((iblock-sources
-	  (map (lambda (s)
-		 ;; TODO ATTN: whitespace is not stripped from sxml:attr!
-		 (string-drop (string-trim s) 1))
-	       (string-split (sxml:attr block-cfg-node 'from) ",")))
-	 (ofield-prototypes
-	  (map (lambda (field-cfg-node)
-	    	 (md:config-make-ofield field-cfg-node path-prefix))
-	       (sxml:content block-cfg-node)))
-	 (node-fn
-	  (lambda (mod parent-path instance-id symbols preceding-onodes)
-	    (let*
-		((iblock-instances
-		  (map (lambda (src)
-			 (md:inode-instances
-			  ((md:node-path
-			    (begin
-			      ;; (printf "pathing src: ~S/~S\n"
-			      ;; 	      path-prefix src)
-			      (string-append path-prefix "/" src)))
-			   (md:mod-global-node mod))))
-		       iblock-sources))
-		 (config (md:mod-cfg mod))
-		 ;; TODO prototypes can be determined ahead of time
-		 ;;      once proto-config is passed in
-		 (ifield-eval-proto-fns
-		  (let*
-		      ((subnode-cmds
-		      	(map (lambda (inode)
-		      	       (md:config-get-inode-source-command
-				(md:inode-cfg-id inode) config))
-		      	     (md:inode-instance-val
-		      	      (second (second (car iblock-instances)))))))
-		    (map (lambda (cmd)
-		      	   (lambda (instance-id node)
-		      	     (md:eval-field instance-id node cmd)))
-		      	 subnode-cmds)))
-		 ;; TODO this will pretty much only work with current
-		 ;;      test config
-		 (get-values
-		  (lambda ()
-		    (letrec*
-			((block-lengths
-			  (map (lambda (inst)
-				 (length
-				  (md:inode-instances
-				   (car (md:inode-instance-val
-					 (second (second inst)))))))
-			       iblock-instances))
-			 (make-onodes
-			  (lambda (init-blk-inst-id len prototype)
-			    (letrec*
-				((make-subnodes
-				  (lambda (init-f-inst-id tlen)
-				    (if (= init-f-inst-id tlen)
-					'()
-					(cons
-					 (car ((md:onode-fn prototype)
-					       mod
-					       (string-append
-						"/" (car iblock-sources)
-						"/" (->string init-blk-inst-id)
-						"/")
-					       init-f-inst-id
-					       symbols
-					       '()))
-					 (make-subnodes (+ init-f-inst-id 1)
-							tlen))))))
-			      (if (= init-blk-inst-id len)
-				  '()
-				  (cons
-				   (make-subnodes 0 8)
-				   ;; (car ((md:onode-fn prototype)
-				   ;;       mod
-				   ;;       (string-append "/" (car iblock-sources) "/0/")
-				   ;;       init-blk-inst-id
-				   ;;       symbols
-				   ;;       '()))
-				   (make-onodes (+ init-blk-inst-id 1)
-						len
-						prototype)))))))
-		      ;; sadly it bugs out on len > 1
-		      (map (lambda (prototype) (make-onodes 0 1 prototype))
-			   ofield-prototypes))))
-		 (result-nodes (flatten (get-values)))
-		 (result-size
-		  (apply + (map md:onode-size result-nodes))))
-	      (list (md:make-onode 'block result-size
-				   result-nodes
-				   #f convert-fn)
-		    symbols)))))
-      (begin
-	;; (printf "ofield prototypes: ~S\n" ofield-prototypes)
-	node-fn)))
+    (let ((iblock-sources
+	   (map (lambda (s)
+		  (string-drop (string-trim s) 1))
+		(string-split (sxml:attr block-cfg-node 'from) ",")))
+	  (ofield-prototypes
+	   (map (lambda (field-cfg-node)
+	    	  (md:config-make-ofield field-cfg-node path-prefix))
+		(sxml:content block-cfg-node))))
+      (lambda (mod parent-path instance-id symbols preceding-onodes)
+	(let* ((iblock-instances
+		(map (lambda (src)
+		       (md:inode-instances
+			((md:node-path (string-append path-prefix "/" src))
+			 (md:mod-global-node mod))))
+		     iblock-sources))
+	       (config (md:mod-cfg mod))
+	       ;; TODO prototypes can be determined ahead of time
+	       ;;      once proto-config is passed in
+	       (ifield-eval-proto-fns
+		(let ((subnode-cmds
+		       (map (lambda (inode)
+		      	      (md:config-get-inode-source-command
+			       (md:inode-cfg-id inode) config))
+		      	    (md:inode-instance-val
+		      	     (second (second (car iblock-instances)))))))
+		  (map (lambda (cmd)
+			 (lambda (instance-id node)
+		      	   (md:eval-field instance-id node cmd)))
+		       subnode-cmds)))
+	       ;; TODO this will pretty much only work with current
+	       ;;      test config
+	       (get-values
+		(lambda ()
+		  (letrec*
+		      ((block-lengths
+			(map (lambda (inst)
+			       (length
+				(md:inode-instances
+				 (car (md:inode-instance-val
+				       (second (second inst)))))))
+			     iblock-instances))
+		       (make-onodes
+			(lambda (init-blk-inst-id len prototype)
+			  (letrec*
+			      ((make-subnodes
+				(lambda (init-f-inst-id tlen)
+				  (if (= init-f-inst-id tlen)
+				      '()
+				      (cons
+				       (car ((md:onode-fn prototype)
+					     mod
+					     (string-append
+					      "/" (car iblock-sources)
+					      "/" (->string init-blk-inst-id)
+					      "/")
+					     init-f-inst-id symbols '()))
+				       (make-subnodes (+ init-f-inst-id 1)
+						      tlen))))))
+			    (if (= init-blk-inst-id len)
+				'()
+				(cons (make-subnodes 0 8)
+				      (make-onodes (+ init-blk-inst-id 1)
+						   len prototype)))))))
+		    ;; sadly it bugs out on len > 1
+		    (map (lambda (prototype) (make-onodes 0 4 prototype))
+			 ofield-prototypes))))
+	       (result-nodes (flatten (get-values)))
+	       (result-size (apply + (map md:onode-size result-nodes))))
+	  (list (md:make-onode 'block result-size result-nodes #f convert-fn)
+		symbols)))))
 
   ;; (define (md:config-make-block-converter block-cfg-node target-little-endian)
   ;;   (let* ((field-sizes (map (lambda (field)
@@ -838,7 +813,7 @@
 	   (new-symbols (second parse-result)))
       (begin
 	;; (printf "parse result: ~S\n" parse-result)
-	(printf "compiler pass: ~S\n" (md:mod-all-resolved? new-otree))
+	;; (printf "compiler pass: ~S\n" (md:mod-all-resolved? new-otree))
 	(if (md:mod-all-resolved? new-otree)
 	    new-otree
 	    (md:mod-compile-otree new-otree mod parent-path
