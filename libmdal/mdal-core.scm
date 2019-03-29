@@ -602,26 +602,12 @@
 				(cons (make-subnodes 0 8)
 				      (make-onodes (+ init-blk-inst-id 1)
 						   len prototype)))))))
-		    ;; sadly it bugs out on len > 1
 		    (map (lambda (prototype) (make-onodes 0 4 prototype))
 			 ofield-prototypes))))
 	       (result-nodes (flatten (get-values)))
 	       (result-size (apply + (map md:onode-size result-nodes))))
 	  (list (md:make-onode 'block result-size result-nodes #f convert-fn)
 		symbols)))))
-
-  ;; (define (md:config-make-block-converter block-cfg-node target-little-endian)
-  ;;   (let* ((field-sizes (map (lambda (field)
-  ;; 			     (sxml:num-attr field 'bytes))
-  ;; 			   ((sxpath "field") block-cfg-node)))
-  ;; 	 ;; could use a circular list and apply that to fields
-  ;; 	 (field-converters
-  ;; 	  (map (lambda (size)
-  ;; 		 (md:config-make-converter-fn size target-little-endian))
-  ;; 	       field-sizes)))
-  ;;     (lambda (onode)
-  ;;       (let ((vals (md:onode-val onode)))
-  ;; 	'()))))
 
   ;;; Convert an mdconf output block node definition into an onode structure.
   (define (md:config-make-oblock cfg-node path-prefix)
