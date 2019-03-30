@@ -377,28 +377,16 @@
   ;;;       md:make-config but then node-fn must keep a copy of all required
   ;;;       command-configs
   (define (md:config-resolve-fn-call fn-string path-prefix)
-    ;; TODO remove fn-string-normalized, it doesn't work like this
-    (let ((fn-string-normalized (if (string-prefix? "(" fn-string)
-				    fn-string
-				    (string-append "(" fn-string ")")))
-	  (fn-args (read (open-input-string fn-string))))
-      (begin
-	;; (printf "resolving ~S" fn-string-normalized)
-	;; (printf " to fn body ~S\n"
-	;; 	(list (if (list? fn-args)
-	;; 		  (map (lambda (arg) (md:config-transform-fn-arg
-	;; 				      arg path-prefix))
-	;; 		       fn-args)
-	;; 		  (md:config-transform-fn-arg fn-args path-prefix))))
-	(eval (append '(lambda (mod parent-path instance-id
-				    symbols preceding-onodes))
-		      (list
-		       (if (list? fn-args)
-			   (map (lambda (arg) (md:config-transform-fn-arg
-					       arg path-prefix))
-				fn-args)
-			   (md:config-transform-fn-arg fn-args
-						       path-prefix))))))))
+    (let ((fn-args (read (open-input-string fn-string))))
+      (eval (append '(lambda (mod parent-path instance-id
+				  symbols preceding-onodes))
+		    (list
+		     (if (list? fn-args)
+			 (map (lambda (arg) (md:config-transform-fn-arg
+					     arg path-prefix))
+			      fn-args)
+			 (md:config-transform-fn-arg fn-args
+						     path-prefix)))))))
 
   ;;; transform an MDCONF output node function definition into a list. This will
   ;;; return a list even if the node function consists of only an atom.
