@@ -269,7 +269,6 @@
 		  (md:mod-global-node mod))
 		(md:config-transform-conditional-arg "?FOO" ""))))
 
- ;; TODO symbol for $ can be resolved directly
  (test "md:config-transform-fn-arg"
        '((md:eval-field instance-id
 			 ((md:node-path
@@ -305,8 +304,13 @@
        (md:config-get-required-symbols
 	(car ((sxpath "mdalconfig/output/group/block/field") my-cfg-data))))
 
- ;; TODO
- ;; (test "md:config-make-resolve-check")
+ (test "md:config-make-resolve-check"
+       '(#t #f)
+       (let ((my-resolve-check
+	      (md:config-make-resolve-check
+	       (cadr ((sxpath "mdalconfig/output/field") my-cfg-data)))))
+	 (list (my-resolve-check (alist->hash-table '((sequence_end 0))))
+	       (my-resolve-check (make-hash-table)))))
 
  (test "md:config-make-converter-fn"
        '(#x04 #x80)
@@ -361,8 +365,17 @@
 	       (car (hash-table-ref (cadr my-osym-eval-result)
 				    'sequence_end)))))
 
- ;; (test "md:config-make-block-compiler")
 
+ (test "md:config-get-onode-source-ids"
+       '("CH1" "DRUMS")
+       (md:config-get-onode-source-ids
+	(car ((sxpath "mdalconfig/output/group/block") my-cfg-data))))
+
+ ;; (test "md:config-oblock-ofield-prototypes")
+ ;; (test "md:mod-get-inode-instances")
+ ;; (test "md:config-ifield-evaluator-prototypes")
+ ;; (test "md:mod-get-iblock-lengths")
+ ;; (test "md:config-make-block-compiler")
  ;; (test "md:config-make-oblock")
 
  (test "md:config-make-oorder"

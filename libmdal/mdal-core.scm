@@ -518,80 +518,105 @@
 				     symbols))))))
       (md:make-onode 'symbol 0 #f node-fn #f)))
 
+  ;;; Read the 'from' attribute of the given onode {{cfg-node}} and return the
+  ;;; list of iblock source identifiers
+  (define (md:config-get-onode-source-ids cfg-node)
+    (map (lambda (s)
+	   (string-drop (string-trim s) 1))
+	 (string-split (sxml:attr cfg-node 'from) ",")))
 
-  ;; (define (md:config-block-instance-extractor source-blk-id)
-  ;;   (lambda ()))
+  ;;; Generate ofield prototypes for the given oblock {{cfg-node}}
+  (define (md:config-oblock-ofield-prototypes cfg-node path-prefix)
+    (map (lambda (field-cfg-node)
+	   (md:config-make-ofield field-cfg-node path-prefix))
+	 (sxml:content cfg-node)))
+
+  ;;; get a list of iblock instances with the given {{source-ids}} at the local
+  ;;; {{path-prefix}}
+  ;; TODO belongs to MD-Module/Accessors, of course
+  (define (md:mod-get-inode-instances mod source-ids path-prefix)
+    (let ((global-node (md:mod-global-node mod)))
+      (map (lambda (src)
+	     (md:inode-instances
+	      ((md:node-path (string-append path-prefix "/" src))
+	       global-node)))
+	   source-ids)))
+
+  ;;; generate a list of ifield evaluator prototypes to be used in the compiler
+  ;;; function of an oblock node
+  ;; TODO passing in iblock-instances is probably actually not needed
+  (define (md:config-ifield-evaluator-prototypes config iblock-instances)
+    (let ((subnode-cmds
+	   (map (lambda (inode)
+		  (md:config-get-inode-source-command
+		   (md:inode-cfg-id inode) config))
+		(md:inode-instance-val
+		 (second (second (car iblock-instances)))))))
+      (map (lambda (cmd)
+	     (lambda (instance-id node)
+	       (md:eval-field instance-id node cmd)))
+	   subnode-cmds)))
+
+  ;;; Return the lengths of the given iblock instances.
+  ;; TODO this is currently dead code, not used anywhere. Also, obviously
+  ;; belongs to MD-Module/Accessors or maybe inode accessors.
+  (define (md:mod-get-iblock-lengths iblock-instances)
+    (map (lambda (inst)
+	   (length
+	    (md:inode-instances
+	     (car (md:inode-instance-val
+		   (second (second inst)))))))
+	 iblock-instances))
+
+  ;;; Generate the actual oblock nodes from the given {{mod}} and oblock
+  ;;; {{prototype}}
+  ;; TODO: should possibly be a MD-Module fn, rather than MD-Config
+  ;; TODO: in current form, it'll only work with current test config
+  (define (md:config-make-oblock-nodes mod iblock-source-ids symbols
+				       len prototype)
+    (letrec* ((make-subnodes
+	       (lambda (block-inst-id init-f-inst-id tlen)
+		 (if (= init-f-inst-id tlen)
+		     '()
+		     (cons
+		      (car ((md:onode-fn prototype)
+			    mod
+			    (string-append "/" (car iblock-source-ids)
+					   "/" (->string block-inst-id)
+					   "/")
+			    init-f-inst-id symbols '()))
+		      (make-subnodes block-inst-id (+ init-f-inst-id 1)
+				     tlen)))))
+	      (make-onodes
+	       (lambda (blk-inst-id)
+		 (if (= blk-inst-id len)
+		     '()
+		     (cons (make-subnodes blk-inst-id 0 8)
+			   (make-onodes (+ blk-inst-id 1)))))))
+      (make-onodes 0)))
 
   ;;; Generate a compiler function from the given mdconf oblock config node
   ;;; TODO: for the current use-case node-fn doesn't need to be letrec*, but in
   ;;;       the future it will need to be so we can deal with nodes that can't be
   ;;;       resolved on first pass
   (define (md:config-make-block-compiler block-cfg-node path-prefix convert-fn)
-    (let ((iblock-sources
-	   (map (lambda (s)
-		  (string-drop (string-trim s) 1))
-		(string-split (sxml:attr block-cfg-node 'from) ",")))
+    (let ((iblock-source-ids (md:config-get-onode-source-ids block-cfg-node))
 	  (ofield-prototypes
-	   (map (lambda (field-cfg-node)
-	    	  (md:config-make-ofield field-cfg-node path-prefix))
-		(sxml:content block-cfg-node))))
+	   (md:config-oblock-ofield-prototypes block-cfg-node path-prefix)))
       (lambda (mod parent-path instance-id symbols preceding-onodes)
 	(let* ((iblock-instances
-		(map (lambda (src)
-		       (md:inode-instances
-			((md:node-path (string-append path-prefix "/" src))
-			 (md:mod-global-node mod))))
-		     iblock-sources))
-	       (config (md:mod-cfg mod))
+		(md:mod-get-inode-instances mod iblock-source-ids path-prefix))
 	       ;; TODO prototypes can be determined ahead of time
 	       ;;      once proto-config is passed in
 	       (ifield-eval-proto-fns
-		(let ((subnode-cmds
-		       (map (lambda (inode)
-		      	      (md:config-get-inode-source-command
-			       (md:inode-cfg-id inode) config))
-		      	    (md:inode-instance-val
-		      	     (second (second (car iblock-instances)))))))
-		  (map (lambda (cmd)
-			 (lambda (instance-id node)
-		      	   (md:eval-field instance-id node cmd)))
-		       subnode-cmds)))
-	       ;; TODO this will pretty much only work with current
-	       ;;      test config
+		(md:config-ifield-evaluator-prototypes (md:mod-cfg mod)
+						       iblock-instances))
 	       (get-values
 		(lambda ()
-		  (letrec*
-		      ((block-lengths
-			(map (lambda (inst)
-			       (length
-				(md:inode-instances
-				 (car (md:inode-instance-val
-				       (second (second inst)))))))
-			     iblock-instances))
-		       (make-onodes
-			(lambda (init-blk-inst-id len prototype)
-			  (letrec*
-			      ((make-subnodes
-				(lambda (init-f-inst-id tlen)
-				  (if (= init-f-inst-id tlen)
-				      '()
-				      (cons
-				       (car ((md:onode-fn prototype)
-					     mod
-					     (string-append
-					      "/" (car iblock-sources)
-					      "/" (->string init-blk-inst-id)
-					      "/")
-					     init-f-inst-id symbols '()))
-				       (make-subnodes (+ init-f-inst-id 1)
-						      tlen))))))
-			    (if (= init-blk-inst-id len)
-				'()
-				(cons (make-subnodes 0 8)
-				      (make-onodes (+ init-blk-inst-id 1)
-						   len prototype)))))))
-		    (map (lambda (prototype) (make-onodes 0 4 prototype))
-			 ofield-prototypes))))
+		  (map (lambda (prototype)
+			 (md:config-make-oblock-nodes mod iblock-source-ids
+						      symbols 4 prototype))
+		       ofield-prototypes)))
 	       (result-nodes (flatten (get-values)))
 	       (result-size (apply + (map md:onode-size result-nodes))))
 	  (list (md:make-onode 'block result-size result-nodes #f convert-fn)
