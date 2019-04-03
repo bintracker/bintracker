@@ -8,7 +8,7 @@
 (module mdal-core *
 
   (import scheme chicken srfi-1 srfi-4 srfi-13 srfi-14 extras data-structures)
-  (use srfi-69 simple-exceptions
+  (use srfi-69 simple-exceptions matchable
        ssax sxpath sxpath-lolevel
        md-helpers md-globals md-command md-note-table)
   (reexport md-helpers md-globals md-command md-note-table)
@@ -462,15 +462,18 @@
   ;;; and it will return TODO a list containing an ofield or a new parser fn if
   ;;; ofield cannot be resolved, and a new list of symbols
   ;;; TODO: field conditions
-  ;;; TODO: don't assume little endian on target platform
-  (define (md:config-make-ofield cfg-node path-prefix)
+  (define (md:config-make-ofield cfg-node path-prefix proto-config)
     (let* ((fn-string (sxml:text cfg-node))
 	   (field-size (string->number (sxml:attr cfg-node 'bytes)))
-	   (converter-fn (md:config-make-converter-fn field-size #t)))
+	   (converter-fn (md:config-make-converter-fn
+			  field-size
+			  (md:cpu-endianness
+			   (md:target-cpu (md:config-target proto-config))))))
       (if (md:config-direct-resolvable? fn-string)
 	  (md:make-onode 'field field-size
-			 (eval (read (open-input-string fn-string)))
-			 #f converter-fn)
+			 (converter-fn
+			  (eval (read (open-input-string fn-string))))
+			 #f)
 	  (letrec* ((field-fn (md:config-resolve-fn-call fn-string path-prefix))
 		    (resolvable? (md:config-make-resolve-check cfg-node))
 		    (node-fn
@@ -479,21 +482,21 @@
 		       (list (if (resolvable? symbols)
 				 (md:make-onode
 				  'field field-size
-				  (inexact->exact
-				   (round
-				    (field-fn mod parent-path instance-id
-					      symbols preceding-onodes)))
-				  #f converter-fn)
-				 (md:make-onode 'field field-size #f node-fn
-						converter-fn))
+				  (converter-fn
+				   (inexact->exact
+				    (round
+				     (field-fn mod parent-path instance-id
+					       symbols preceding-onodes))))
+				  #f)
+				 (md:make-onode 'field field-size #f node-fn))
 			     symbols))))
-	    (md:make-onode 'field field-size #f node-fn converter-fn)))))
+	    (md:make-onode 'field field-size #f node-fn)))))
 
   ;;; Convert an mdconf output-symbol node definition into an onode structure.
   ;;; TODO: only handles symbols without function definition atm (eg. symbols
   ;;;       that report their address)
   ;;; TODO: eeeh? not calling symbol-fn at all?
-  (define (md:config-make-osymbol cfg-node path-prefix)
+  (define (md:config-make-osymbol cfg-node path-prefix proto-config)
     (letrec* ((fn-string (sxml:text cfg-node))
 	      (symbol-id (read (open-input-string (sxml:attr cfg-node 'id))))
 	      (symbol-fn
@@ -508,15 +511,15 @@
 			 (let ((rel-address
 				(md:mod-output-size preceding-onodes)))
 			   (if rel-address
-			       (list (md:make-onode 'symbol 0 #f #f #f)
+			       (list (md:make-onode 'symbol 0 #f #f)
 				     (md:add-hash-table-entry
 				      symbols symbol-id
 				      (+ rel-address
 					 (car (hash-table-ref
 					       symbols 'mdal_output_origin)))))
-			       (list (md:make-onode 'symbol 0 #f node-fn #f)
+			       (list (md:make-onode 'symbol 0 #f node-fn)
 				     symbols))))))
-      (md:make-onode 'symbol 0 #f node-fn #f)))
+      (md:make-onode 'symbol 0 #f node-fn)))
 
   ;;; Read the 'from' attribute of the given onode {{cfg-node}} and return the
   ;;; list of iblock source identifiers
@@ -526,9 +529,9 @@
 	 (string-split (sxml:attr cfg-node 'from) ",")))
 
   ;;; Generate ofield prototypes for the given oblock {{cfg-node}}
-  (define (md:config-oblock-ofield-prototypes cfg-node path-prefix)
+  (define (md:config-oblock-ofield-prototypes cfg-node path-prefix proto-config)
     (map (lambda (field-cfg-node)
-	   (md:config-make-ofield field-cfg-node path-prefix))
+	   (md:config-make-ofield field-cfg-node path-prefix proto-config))
 	 (sxml:content cfg-node)))
 
   ;;; get a list of iblock instances with the given {{source-ids}} at the local
@@ -596,19 +599,13 @@
 			   (make-onodes (+ blk-inst-id 1)))))))
       (make-onodes 0)))
 
-  ;; replacement for md:config-make-oblock-ofield-nodes
-  ;; TODO don't think it'll work like this
-  (define (md:config-make-oblock-fields mod symbols iblock-instances
-					field-prototype)
-    (map (lambda (iblock-inst)
-	   '())
-	 iblock-instances))
-
   ;;; Generate a compiler function from the given mdconf oblock config node
-  (define (md:config-make-block-compiler block-cfg-node path-prefix convert-fn)
+  (define (md:config-make-block-compiler block-cfg-node path-prefix
+					 proto-config)
     (let ((iblock-source-ids (md:config-get-onode-source-ids block-cfg-node))
 	  (ofield-prototypes
-	   (md:config-oblock-ofield-prototypes block-cfg-node path-prefix)))
+	   (md:config-oblock-ofield-prototypes block-cfg-node path-prefix
+					       proto-config)))
       (lambda (mod parent-path instance-id symbols preceding-onodes)
 	(let* ((iblock-instances
 		(md:mod-get-inode-instances mod iblock-source-ids path-prefix))
@@ -626,22 +623,19 @@
 				 prototype))
 			      ofield-prototypes)))
 	       (result-size (apply + (map md:onode-size result-nodes))))
-	  (list (md:make-onode 'block result-size result-nodes #f convert-fn)
+	  (list (md:make-onode 'block result-size result-nodes #f)
 		symbols)))))
 
   ;;; Convert an mdconf output block node definition into an onode structure.
-  (define (md:config-make-oblock cfg-node path-prefix)
+  (define (md:config-make-oblock cfg-node path-prefix proto-config)
     ;; TODO pass in actual byte order to converter generator
-    (let* ((compile-fn
-	    ;; (md:config-make-block-converter cfg-node #t)
-	    (lambda (val) (md:mod-otree->bin val)))
-	   (node-fn (md:config-make-block-compiler cfg-node path-prefix
-						   compile-fn)))
-      (md:make-onode 'block #f #f node-fn compile-fn)))
+    (md:make-onode 'block #f #f
+		   (md:config-make-block-compiler cfg-node path-prefix
+						  proto-config)))
 
   ;;; Convert an mdconf output order node definition into an onode structure.
   ;;; TODO: only handles numeric matrix orders for now.
-  (define (md:config-make-oorder cfg-node path-prefix)
+  (define (md:config-make-oorder cfg-node path-prefix proto-config)
     (letrec* ((order-sym
 	       (read (open-input-string
 		      (string-append "mdal_order_"
@@ -665,12 +659,11 @@
 				      (length (flatten result-val))))
 				;; TODO need proper converter fn
 				(md:make-onode 'order result-size
-					       result-val #f
-					       (lambda (val) result-val)))
-			      (md:make-onode 'order #f #f node-fn #f))
+					       result-val #f))
+			      (md:make-onode 'order #f #f node-fn))
 			  ;; oorder exports no new symbols
 			  symbols))))
-      (md:make-onode 'order #f #f node-fn #f)))
+      (md:make-onode 'order #f #f node-fn)))
 
   ;;; Generate a fn to convert an ogroup otree into a numeric order list.
   ;; TODO: only does shared_matrix for now, must handle other types via
@@ -696,16 +689,14 @@
 	  (apply zip (make-track-lists block-instance-counts 0))))))
 
   ;;; Convert an mdconf output group node definition into an onode structure.
-  (define (md:config-make-ogroup cfg-node path-prefix)
+  (define (md:config-make-ogroup cfg-node path-prefix proto-config)
     (letrec* ((source-group-id (string-drop (sxml:attr cfg-node 'from) 1))
 	      (order-symbol (string->symbol (string-append "mdal_order_"
 							   source-group-id)))
-	      (otree (md:config-make-output-tree
+	      (otree (md:config-make-otree
 		      (sxml:content cfg-node)
-		      (string-append path-prefix source-group-id "/0")))
-	      ;; the "val" in converter-fn is actually the onode itself
-	      (convert-fn (lambda (val)
-			    (md:mod-otree->bin val)))
+		      (string-append path-prefix source-group-id "/0")
+		      proto-config))
 	      (order-generator (md:config-make-order-generator cfg-node))
 	      (node-fn (lambda (mod parent-path instance-id
 				    symbols preceding-onodes)
@@ -714,42 +705,35 @@
 						       instance-id symbols))
 				(node-size (apply + (map md:onode-size
 							 node-result))))
-			   (list (md:make-onode
-				  'group node-size node-result
-				  #f convert-fn)
+			   (list (md:make-onode 'group node-size node-result #f)
 				 (md:add-hash-table-entry
 				  symbols order-symbol
 				  (order-generator node-result)))))))
-      (md:make-onode 'group #f otree node-fn convert-fn)))
+      (md:make-onode 'group #f otree node-fn)))
 
   ;;; dispatch helper, resolve mdconf nodes to compiler function generators or
   ;;; onodes (if directly resolvable)
-  (define (md:config-make-onode-fn cfg-node path-prefix)
-    (let ((node-type (sxml:name cfg-node)))
-      (cond ((equal? node-type 'comment)
-	     (md:make-onode 'comment 0 (sxml:text cfg-node) #f #f))
-	    ((equal? node-type 'field) (md:config-make-ofield cfg-node
-							      path-prefix))
-	    ((equal? node-type 'symbol) (md:config-make-osymbol cfg-node
-								path-prefix))
-	    ((equal? node-type 'block) (md:config-make-oblock cfg-node
-							      path-prefix))
-	    ((equal? node-type 'order) (md:config-make-oorder cfg-node
-							      path-prefix))
-	    ((equal? node-type 'group) (md:config-make-ogroup cfg-node
-							      path-prefix))
-	    (else (error "unsupported node type")))))
+  (define (md:config-make-onode cfg-node path-prefix proto-config)
+    (let ((onode-generator
+	   (match (sxml:name cfg-node)
+	     ('comment (lambda (x . y)
+			 (md:make-onode 'comment 0 (sxml:text cfg-node) #f)))
+	     ('field md:config-make-ofield)
+	     ('symbol md:config-make-osymbol)
+	     ('block md:config-make-oblock)
+	     ('order md:config-make-oorder)
+	     ('group md:config-make-ogroup)
+	     (else (error "unsupported output node type")))))
+      (onode-generator cfg-node path-prefix proto-config)))
 
   ;;; from a given set of mdconf nodes, generate a nested list that contains
   ;;; either output nodes (if they can be resolved immediately) or functions
   ;;; that generate output nodes. To get the actual module output, iterate over
   ;;; the tree until all function members are resolved into nodes.
-  (define (md:config-make-output-tree xml-nodes path-prefix)
-    (if (null? xml-nodes)
-	'()
-	(cons (md:config-make-onode-fn (car xml-nodes)
-				       path-prefix)
-	      (md:config-make-output-tree (cdr xml-nodes) path-prefix))))
+  (define (md:config-make-otree xml-nodes path-prefix proto-config)
+    (map (lambda (xml-node)
+	   (md:config-make-onode xml-node path-prefix proto-config))
+	 xml-nodes))
 
   ;;; from a given mdconf root node, generate a function to reorder igroups as
   ;;; required by the compiler function
@@ -759,13 +743,13 @@
   ;;;       generator, since this functionality will be required in other cases
   ;;;       as well.
   (define (md:config-make-resize-fn cfg-node)
-    (let* ((reorder-set
-	    (map (lambda (node)
-		   (let ((source-node (string-drop (sxml:attr node 'from) 1)))
-		     (list source-node
-			   (md:node-path (string-append "0/" source-node))
-			   (string->number (sxml:attr node 'resize)))))
-		 ((sxpath "mdalconfig/output/group[@resize]") cfg-node))))
+    (let ((reorder-set
+	   (map (lambda (node)
+		  (let ((source-node (string-drop (sxml:attr node 'from) 1)))
+		    (list source-node
+			  (md:node-path (string-append "0/" source-node))
+			  (string->number (sxml:attr node 'resize)))))
+		((sxpath "mdalconfig/output/group[@resize]") cfg-node))))
       (lambda (global-node config)
 	(letrec ((reorder-all
 		  (lambda (current-global-node items)
@@ -783,15 +767,16 @@
 
   ;;; from a given mdconf root node, generate the function to compile a module
   ;;; with this configuration.
-  (define (md:config-make-compiler cfg-node)
+  (define (md:config-make-compiler cfg-node proto-config)
     (let ((apply-reorder
 	   (if (null? ((sxpath "mdalconfig/output//group[@resize]") cfg-node))
 	       '(md:mod-global-node mod)
 	       `(,(md:config-make-resize-fn cfg-node)
 		 (md:mod-global-node mod)
 		 (md:mod-cfg mod))))
-	  (init-otree (md:config-make-output-tree
-		       ((sxpath "mdalconfig/output/node()") cfg-node) "0/")))
+	  (init-otree (md:config-make-otree
+		       ((sxpath "mdalconfig/output/node()") cfg-node)
+		       "0/" proto-config)))
       (lambda (md-module origin)
 	(let ((init-symbols (alist->hash-table (list `(mdal_output_origin
 						       ,origin))))
@@ -807,26 +792,21 @@
   ;;; helper function for md:mod-compile-otree, parse and eval otree once
   (define (md:mod-recurse-otree tree mod parent-path instance-id
 				symbols previous-onodes)
-    (begin
-      ;; (printf "tree ~S\nprevious-nodes ~S\nsymbols ~S\n\n" tree previous-onodes
-      ;; 	      symbols)
-      (if (null? tree)
-	  (begin ;; (printf "returning ~S\n" (list previous-onodes
-		 ;; 				symbols))
-		 (list previous-onodes symbols))
-	  (let* ((node-fn (md:onode-fn (car tree)))
-		 (node-result
-		  (if node-fn
-		      (node-fn mod parent-path instance-id symbols
-			       previous-onodes)
-		      (list (car tree) symbols)))
-		 (next-onodes (append previous-onodes
-				      (list (car node-result)))))
-	    (cons (car node-result)
-		  (md:mod-recurse-otree (cdr tree)
-					mod parent-path instance-id
-					(second node-result)
-					next-onodes))))))
+    (if (null? tree)
+	(list previous-onodes symbols)
+	(let* ((node-fn (md:onode-fn (car tree)))
+	       (node-result
+		(if node-fn
+		    (node-fn mod parent-path instance-id symbols
+			     previous-onodes)
+		    (list (car tree) symbols)))
+	       (next-onodes (append previous-onodes
+				    (list (car node-result)))))
+	  (cons (car node-result)
+		(md:mod-recurse-otree (cdr tree)
+				      mod parent-path instance-id
+				      (second node-result)
+				      next-onodes)))))
 
   ;;; compile an otree
   (define (md:mod-compile-otree otree mod parent-path instance-id symbols)
@@ -839,16 +819,6 @@
 	  new-otree
 	  (md:mod-compile-otree new-otree mod parent-path
 	  			instance-id new-symbols))))
-
-  ;;; convert a compiled otree into a list of bytes
-  ;;; OBSOLETE
-  (define (md:mod-otree->bin otree)
-    (flatten (map (lambda (onode)
-		    ((md:onode-conversion-fn onode)
-		     (md:onode-val onode)))
-		  (filter (lambda (node)
-			    (not (memq (md:onode-type node) '(comment symbol))))
-			  otree))))
 
   ;;; Convert a resolved otree into a list of bytes
   (define (md:otree->bin otree)
@@ -905,21 +875,26 @@
   (define (md:mdconf->config filepath)
     (let ((cfg (call-with-input-file filepath
 		 (lambda (x) (ssax:xml->sxml x '())))))
-      (let ((target (md:config-node->target cfg))
-	    (itree (md:parse-inode-tree cfg)))
-	(md:make-config
-	 target
-	 (if (null? ((sxpath "mdalconfig/description") cfg))
-             #f
-             (car ((sxpath "mdalconfig/description/text()") cfg)))
-	 ;; TODO: properly extract configpath
-	 (hash-table-merge (md:xml-command-nodes->commands
-			    ((sxpath "mdalconfig/command") cfg)
-			    target "config/Huby/")
-			   (md:create-order-commands itree))
-	 itree
-	 (md:mdconf->inodes cfg)
-	 (md:config-make-compiler cfg)))))
+      (let* ((target (md:config-node->target cfg))
+	     (itree (md:parse-inode-tree cfg))
+	     (proto-config
+	      (md:make-config
+	       target
+	       (if (null? ((sxpath "mdalconfig/description") cfg))
+		   #f
+		   (car ((sxpath "mdalconfig/description/text()") cfg)))
+	       ;; TODO: properly extract configpath
+	       (hash-table-merge (md:xml-command-nodes->commands
+				  ((sxpath "mdalconfig/command") cfg)
+				  target "config/Huby/")
+				 (md:create-order-commands itree))
+	       itree
+	       (md:mdconf->inodes cfg)
+	       #f)))
+	(md:make-config target (md:config-description proto-config)
+			(md:config-commands proto-config)
+			itree (md:config-inodes proto-config)
+			(md:config-make-compiler cfg proto-config)))))
 
   ;;; return the ID of the parent of the given inode in the given inode tree
   (define (md:config-get-parent-node-id inode-id itree)
@@ -1054,24 +1029,20 @@
   ;;; TODO: this could be optimized by constructing a dedicated eval fn in
   ;;; config.
   (define (md:eval-field instance-id node command-config)
-    (begin
-      ;; (printf "call to eval-field with args ~S ~S ~S\n"
-      ;; 	      instance-id node command-config)
-      ;; (printf "call chain: ~S\n" (get-call-chain))
-      (let* ((field ((md:mod-get-node-instance instance-id) node))
-	     (current-val (md:inode-instance-val field))
-	     (raw-val (if (null? current-val)
-			  (if (md:command-has-flag? command-config
-						    'use_last_set)
-			      (md:eval-field-last-set
-			       instance-id node command-config)
-			      (md:command-default command-config))
-			  current-val))
-	     (cmd-type (md:command-type command-config)))
-	(cond ((memq cmd-type '(int uint)) raw-val)
-	      ((memq cmd-type '(key ukey))
-	       (car (hash-table-ref (md:command-keys command-config) raw-val)))
-	      (else "cmd type not implemented")))))
+    (let* ((field ((md:mod-get-node-instance instance-id) node))
+	   (current-val (md:inode-instance-val field))
+	   (raw-val (if (null? current-val)
+			(if (md:command-has-flag? command-config
+						  'use_last_set)
+			    (md:eval-field-last-set
+			     instance-id node command-config)
+			    (md:command-default command-config))
+			current-val))
+	   (cmd-type (md:command-type command-config)))
+      (cond ((memq cmd-type '(int uint)) raw-val)
+	    ((memq cmd-type '(key ukey))
+	     (car (hash-table-ref (md:command-keys command-config) raw-val)))
+	    (else "cmd type not implemented"))))
 
   ;;; check if the given inode instance is 'active', ie. check if a value is set.
   (define (md:is-set? inode-instance)
@@ -1082,13 +1053,12 @@
   ;; ---------------------------------------------------------------------------
 
   (define-record-type md:onode
-    (md:make-onode type size val fn conversion-fn)
+    (md:make-onode type size val fn)
     md:onode?
     (type md:onode-type)
     (size md:onode-size)
     (val md:onode-val)
-    (fn md:onode-fn)
-    (conversion-fn md:onode-conversion-fn))
+    (fn md:onode-fn))
 
   (define (md:onode-resolved? onode)
     (not (md:onode-fn onode)))
@@ -1145,19 +1115,17 @@
   ;;; lo-level api, generate a function that takes an inode as param, and returns
   ;;; the node matching the given path
   (define (md:make-npath-fn pathlist)
-    (begin
-      ;; (printf "trying path: ~S\n" pathlist)
-      (if (= 2 (length pathlist))
-	  (lambda (node)
-	    (find (lambda (subnode-id)
-		    (string=? (md:inode-cfg-id subnode-id)
-			      (cadr pathlist)))
-		  (md:inode-instance-val
-		   ((md:mod-get-node-instance (string->number (car pathlist)))
-		    node))))
-	  (lambda (node)
-	    ((md:make-npath-fn (cddr pathlist))
-	     ((md:make-npath-fn (take pathlist 2)) node))))))
+    (if (= 2 (length pathlist))
+	(lambda (node)
+	  (find (lambda (subnode-id)
+		  (string=? (md:inode-cfg-id subnode-id)
+			    (cadr pathlist)))
+		(md:inode-instance-val
+		 ((md:mod-get-node-instance (string->number (car pathlist)))
+		  node))))
+	(lambda (node)
+	  ((md:make-npath-fn (cddr pathlist))
+	   ((md:make-npath-fn (take pathlist 2)) node)))))
 
   ;;; generate a function that takes an inode as parameter, and returns the node
   ;;; instance matching the given path

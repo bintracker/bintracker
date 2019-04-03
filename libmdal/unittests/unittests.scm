@@ -319,25 +319,25 @@
  ;; applying to end-of-order-marker field (direct-resolvable), bpm field
  ;; (regular node) and sequence-end field (symbol lookup)
  (test "md:config-make-ofield"
-       '((field 1 0)
-	 (field 2 #x39ef)
-	 (field 2 #x8005))
+       '((field 1 (0))
+	 (field 2 (#xef #x39))
+	 (field 2 (#x05 #x80)))
        (let ((my-ofield0
 	      (md:config-make-ofield
 	       (list-ref ((sxpath "mdalconfig/output/field") my-cfg-data)
 			 2)
-	       ""))
+	       "" my-cfg))
 	     (my-ofield1
 	      (car ((md:onode-fn
 		     (md:config-make-ofield
 		      (car ((sxpath "mdalconfig/output/field") my-cfg-data))
-		      "0/"))
+		      "0/" my-cfg))
 		    my-mod "" 0 '() '())))
 	     (my-ofield2
 	      (car ((md:onode-fn
 		     (md:config-make-ofield
 		      (cadr ((sxpath "mdalconfig/output/field") my-cfg-data))
-		      "0/"))
+		      "0/" my-cfg))
 		    my-mod "" 0 (alist->hash-table '((sequence_end #x800d)))
 		    '()))))
 	 (list (list (md:onode-type my-ofield0)
@@ -356,9 +356,9 @@
 	      ((md:onode-fn
 		(md:config-make-osymbol
 		 (car ((sxpath "mdalconfig/output/symbol") my-cfg-data))
-		 "0/"))
+		 "0/" my-cfg))
 	       my-mod "" 0 (alist->hash-table '((mdal_output_origin #x8000)))
-	       (make-list 13 (md:make-onode 'field 1 0 #f #f)))))
+	       (make-list 13 (md:make-onode 'field 1 0 #f)))))
 	 (list (md:onode-type (car my-osym-eval-result))
 	       (md:onode-size (car my-osym-eval-result))
 	       (md:onode-val (car my-osym-eval-result))
@@ -384,7 +384,7 @@
 	      (car ((md:onode-fn
 		     (md:config-make-oorder
 		      (car ((sxpath "mdalconfig/output/order") my-cfg-data))
-		      "0/PATTERNS/0"))
+		      "0/PATTERNS/0" my-cfg))
 		    my-mod "" 0
 		    (alist->hash-table '((mdal_order_PATTERNS
 					  ((0 4) (1 5) (2 6) (3 7)))))
