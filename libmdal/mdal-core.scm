@@ -280,13 +280,11 @@
   ;;; NOTE: inode parsers do NOT create additional nodes for order lists. Those
   ;;;       have to be created with a call to md:create-iorder-nodes
   (define (md:parse-inode-config node instance-range)
-    (cond ((equal? (sxml:name node) 'ifield)
-           (md:parse-ifield-config node instance-range))
-          ((equal? (sxml:name node) 'iblock)
-           (md:parse-iblock-config node instance-range))
-          ((equal? (sxml:name node) 'clone)
-           (md:parse-clone-config node instance-range))
-          (else (md:parse-igroup-config node instance-range))))
+    (match (sxml:name node)
+      ('ifield (md:parse-ifield-config node instance-range))
+      ('iblock (md:parse-iblock-config node instance-range))
+      ('clone (md:parse-clone-config node instance-range))
+      (else (md:parse-igroup-config node instance-range))))
 
 
   ;;; from a given mdconf root node, construct the hash table of the GLOBAL
@@ -347,29 +345,24 @@
   ;;; TODO: forward onode references (!) are currently only valid for
   ;;;       oorder->ogroup references
   (define (md:config-transform-fn-arg arg path-prefix)
-    (begin
-      ;; (printf "resolving arg: ~S\n" arg)
-      (let* ((argstr (->string arg))
-	     (argname (string-drop argstr 1)))
-	(cond
-	 ((string-prefix? "?" argstr)
-	  `(md:eval-field
-	    instance-id
-	    ((md:node-path (string-append ,path-prefix parent-path ,argname))
-	     (md:mod-global-node mod))
-	    (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
-	 ((string-prefix? "$" argstr)
-	  `(car (hash-table-ref symbols (read (open-input-string ,argname)))))
-	 ((string-prefix? "!" argstr)
-	  `(car (hash-table-ref symbols
-				,(read (open-input-string
-					(string-append "mdal_order_"
-						       argname))))))
-	 ((string-prefix? "(" argstr)
-	  (list (map (lambda (a) (md:config-transform-conditional-arg
-				  a path-prefix))
-		     (read (open-input-string argstr)))))
-	 (else arg)))))
+    (let* ((argstr (->string arg))
+	   (argname (string-drop argstr 1)))
+      (match (string-take argstr 1)
+	("?" `(md:eval-field
+	       instance-id
+	       ((md:node-path (string-append ,path-prefix parent-path ,argname))
+		(md:mod-global-node mod))
+	       (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
+	("$" `(car (hash-table-ref symbols
+				   (read (open-input-string ,argname)))))
+	("!" `(car (hash-table-ref symbols
+				   ,(read (open-input-string
+					   (string-append "mdal_order_"
+							  argname))))))
+	("(" (list (map (lambda (a) (md:config-transform-conditional-arg
+				     a path-prefix))
+			(read (open-input-string argstr)))))
+	(else arg))))
 
   ;;; convert a mdconf onode function call into an actual function
   ;;; TODO: deal with non-list fns (eg. ?FIELD)
@@ -382,8 +375,8 @@
 				  symbols preceding-onodes))
 		    (list
 		     (if (list? fn-args)
-			 (map (lambda (arg) (md:config-transform-fn-arg
-					     arg path-prefix))
+			 (map (lambda (arg)
+				(md:config-transform-fn-arg arg path-prefix))
 			      fn-args)
 			 (md:config-transform-fn-arg fn-args
 						     path-prefix)))))))
