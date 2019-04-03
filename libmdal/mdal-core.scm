@@ -572,30 +572,39 @@
 		   (second (second inst)))))))
 	 iblock-instances))
 
+  (define (md:mod-make-oblock-fields mod iblock-source-ids symbols
+				     parent-path field-prototype)
+    (map (lambda (ifield-instance-id)
+	   (car ((md:onode-fn field-prototype)
+		 mod
+		 ;; TODO won't work for multi-field blocks
+		 (string-append "/" (car iblock-source-ids)
+				"/"
+				(car (reverse (string-split parent-path "/")))
+				"/")
+		 ifield-instance-id symbols '())))
+	 ;; TODO again being lazy here, (car (md:in... will just get first field
+	 (map car (md:inode-instances
+		   (car (md:inode-instance-val
+			 ((md:node-instance-path parent-path)
+			  (md:mod-global-node mod))))))))
+
   ;;; Generate the actual oblock nodes from the given {{mod}} and oblock
   ;;; {{prototype}}
   ;; TODO: should possibly be a MD-Module fn, rather than MD-Config
   ;; TODO: in current form, it'll only work with current test config
   (define (md:config-make-oblock-ofield-nodes mod iblock-source-ids symbols
-					      len prototype)
-    (letrec* ((make-subnodes
-	       (lambda (block-inst-id init-f-inst-id tlen)
-		 (if (= init-f-inst-id tlen)
-		     '()
-		     (cons
-		      (car ((md:onode-fn prototype)
-			    mod
-			    (string-append "/" (car iblock-source-ids)
-					   "/" (->string block-inst-id)
-					   "/")
-			    init-f-inst-id symbols '()))
-		      (make-subnodes block-inst-id (+ init-f-inst-id 1)
-				     tlen)))))
-	      (make-onodes
+					      len prototype parent-path)
+    (letrec* ((make-onodes
 	       (lambda (blk-inst-id)
 		 (if (= blk-inst-id len)
 		     '()
-		     (cons (make-subnodes blk-inst-id 0 8)
+		     (cons (md:mod-make-oblock-fields
+			    mod iblock-source-ids symbols
+			    (string-append parent-path "/"
+					   (car iblock-source-ids)
+					   "/" (->string blk-inst-id))
+			    prototype)
 			   (make-onodes (+ blk-inst-id 1)))))))
       (make-onodes 0)))
 
@@ -620,7 +629,8 @@
 				(md:config-make-oblock-ofield-nodes
 				 mod iblock-source-ids symbols
 				 (length (car iblock-instances))
-				 prototype))
+				 prototype (string-append path-prefix
+							  parent-path)))
 			      ofield-prototypes)))
 	       (result-size (apply + (map md:onode-size result-nodes))))
 	  (list (md:make-onode 'block result-size result-nodes #f)
