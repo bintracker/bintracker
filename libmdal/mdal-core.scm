@@ -544,18 +544,19 @@
 
   ;;; generate a list of ifield evaluator prototypes to be used in the compiler
   ;;; function of an oblock node
+  ;; TODO currently dead code
   ;; TODO passing in iblock-instances is probably actually not needed
-  (define (md:config-ifield-evaluator-prototypes config iblock-instances)
-    (let ((subnode-cmds
-	   (map (lambda (inode)
-		  (md:config-get-inode-source-command
-		   (md:inode-cfg-id inode) config))
-		(md:inode-instance-val
-		 (second (second (car iblock-instances)))))))
-      (map (lambda (cmd)
-	     (lambda (instance-id node)
-	       (md:eval-field instance-id node cmd)))
-	   subnode-cmds)))
+  ;; (define (md:config-ifield-evaluator-prototypes config iblock-instances)
+  ;;   (let ((subnode-cmds
+  ;; 	   (map (lambda (inode)
+  ;; 		  (md:config-get-inode-source-command
+  ;; 		   (md:inode-cfg-id inode) config))
+  ;; 		(md:inode-instance-val
+  ;; 		 (second (second (car iblock-instances)))))))
+  ;;     (map (lambda (cmd)
+  ;; 	     (lambda (instance-id node)
+  ;; 	       (md:eval-field instance-id node cmd)))
+  ;; 	   subnode-cmds)))
 
   ;;; Return the lengths of the given iblock instances.
   ;; TODO this is currently dead code, not used anywhere. Also, obviously
@@ -572,8 +573,8 @@
   ;;; {{prototype}}
   ;; TODO: should possibly be a MD-Module fn, rather than MD-Config
   ;; TODO: in current form, it'll only work with current test config
-  (define (md:config-make-oblock-nodes mod iblock-source-ids symbols
-				       len prototype)
+  (define (md:config-make-oblock-ofield-nodes mod iblock-source-ids symbols
+					      len prototype)
     (letrec* ((make-subnodes
 	       (lambda (block-inst-id init-f-inst-id tlen)
 		 (if (= init-f-inst-id tlen)
@@ -595,10 +596,15 @@
 			   (make-onodes (+ blk-inst-id 1)))))))
       (make-onodes 0)))
 
+  ;; replacement for md:config-make-oblock-ofield-nodes
+  ;; TODO don't think it'll work like this
+  (define (md:config-make-oblock-fields mod symbols iblock-instances
+					field-prototype)
+    (map (lambda (iblock-inst)
+	   '())
+	 iblock-instances))
+
   ;;; Generate a compiler function from the given mdconf oblock config node
-  ;;; TODO: for the current use-case node-fn doesn't need to be letrec*, but in
-  ;;;       the future it will need to be so we can deal with nodes that can't be
-  ;;;       resolved on first pass
   (define (md:config-make-block-compiler block-cfg-node path-prefix convert-fn)
     (let ((iblock-source-ids (md:config-get-onode-source-ids block-cfg-node))
 	  (ofield-prototypes
@@ -608,16 +614,17 @@
 		(md:mod-get-inode-instances mod iblock-source-ids path-prefix))
 	       ;; TODO prototypes can be determined ahead of time
 	       ;;      once proto-config is passed in
-	       (ifield-eval-proto-fns
-		(md:config-ifield-evaluator-prototypes (md:mod-cfg mod)
-						       iblock-instances))
-	       (get-values
-		(lambda ()
-		  (map (lambda (prototype)
-			 (md:config-make-oblock-nodes mod iblock-source-ids
-						      symbols 4 prototype))
-		       ofield-prototypes)))
-	       (result-nodes (flatten (get-values)))
+	       ;; TODO currently dead code
+	       ;; (ifield-eval-proto-fns
+	       ;; 	(md:config-ifield-evaluator-prototypes (md:mod-cfg mod)
+	       ;; 					       iblock-instances))
+	       (result-nodes
+		(flatten (map (lambda (prototype)
+				(md:config-make-oblock-ofield-nodes
+				 mod iblock-source-ids symbols
+				 (length (car iblock-instances))
+				 prototype))
+			      ofield-prototypes)))
 	       (result-size (apply + (map md:onode-size result-nodes))))
 	  (list (md:make-onode 'block result-size result-nodes #f convert-fn)
 		symbols)))))
@@ -665,19 +672,41 @@
 			  symbols))))
       (md:make-onode 'order #f #f node-fn #f)))
 
+  ;;; Generate a fn to convert an ogroup otree into a numeric order list.
+  ;; TODO: only does shared_matrix for now, must handle other types via
+  ;;       ogroup flag arg.
+  (define (md:config-make-order-generator cfg-node)
+    (let ((instance-size (sxml:num-attr cfg-node 'resize)))
+      (lambda (otree)
+	(letrec* ((block-instance-counts
+		   (map (lambda (block-node)
+			  (/ (length (md:onode-val block-node))
+			     instance-size))
+			(filter (lambda (onode)
+				  (eq? 'block (md:onode-type onode)))
+				otree)))
+		  (make-track-lists
+		   (lambda (instance-counts init-val)
+		     (if (null? instance-counts)
+			 '()
+			 (cons (iota (car instance-counts)
+				     init-val 1)
+			       (make-track-lists (cdr instance-counts)
+						 (car instance-counts)))))))
+	  (apply zip (make-track-lists block-instance-counts 0))))))
+
   ;;; Convert an mdconf output group node definition into an onode structure.
-  ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ;;; TODO: gotta add order!
-  ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   (define (md:config-make-ogroup cfg-node path-prefix)
-    (letrec* ((otree (md:config-make-output-tree
+    (letrec* ((source-group-id (string-drop (sxml:attr cfg-node 'from) 1))
+	      (order-symbol (string->symbol (string-append "mdal_order_"
+							   source-group-id)))
+	      (otree (md:config-make-output-tree
 		      (sxml:content cfg-node)
-		      (string-append path-prefix
-				     (string-drop (sxml:attr cfg-node 'from) 1)
-				     "/0")))
+		      (string-append path-prefix source-group-id "/0")))
 	      ;; the "val" in converter-fn is actually the onode itself
 	      (convert-fn (lambda (val)
 			    (md:mod-otree->bin val)))
+	      (order-generator (md:config-make-order-generator cfg-node))
 	      (node-fn (lambda (mod parent-path instance-id
 				    symbols preceding-onodes)
 			 (let* ((node-result
@@ -689,9 +718,8 @@
 				  'group node-size node-result
 				  #f convert-fn)
 				 (md:add-hash-table-entry
-				  symbols 'mdal_order_PATTERNS
-				  ;; TODO dummy arg
-				  '((0 4) (1 5) (2 6) (3 7))))))))
+				  symbols order-symbol
+				  (order-generator node-result)))))))
       (md:make-onode 'group #f otree node-fn convert-fn)))
 
   ;;; dispatch helper, resolve mdconf nodes to compiler function generators or
@@ -803,28 +831,35 @@
   ;;; compile an otree
   (define (md:mod-compile-otree otree mod parent-path instance-id symbols)
     (let* ((parse-result
-	    ;; for some reason we get trash at the beginning of the list even
-	    ;; though md:mod-recurse-otree returns it correctly, so drop
-	    ;; everything except what we want
 	    (take-right (md:mod-recurse-otree
 			 otree mod parent-path instance-id symbols '()) 2))
 	   (new-otree (car parse-result))
 	   (new-symbols (second parse-result)))
-      (begin
-	;; (printf "parse result: ~S\n" parse-result)
-	;; (printf "compiler pass: ~S\n" (md:mod-all-resolved? new-otree))
-	(if (md:mod-all-resolved? new-otree)
-	    new-otree
-	    (md:mod-compile-otree new-otree mod parent-path
-	  			  instance-id new-symbols)))))
+      (if (md:mod-all-resolved? new-otree)
+	  new-otree
+	  (md:mod-compile-otree new-otree mod parent-path
+	  			instance-id new-symbols))))
 
   ;;; convert a compiled otree into a list of bytes
+  ;;; OBSOLETE
   (define (md:mod-otree->bin otree)
     (flatten (map (lambda (onode)
 		    ((md:onode-conversion-fn onode)
 		     (md:onode-val onode)))
 		  (filter (lambda (node)
 			    (not (memq (md:onode-type node) '(comment symbol))))
+			  otree))))
+
+  ;;; Convert a resolved otree into a list of bytes
+  (define (md:otree->bin otree)
+    (flatten (map (lambda (onode)
+		    (if (memq (md:onode-type onode)
+			      '(field order))
+			(md:onode-val onode)
+			(md:otree->bin (md:onode-val onode))))
+		  (filter (lambda (onode)
+			    (not (memq (md:onode-type onode)
+				       '(comment symbol))))
 			  otree))))
 
   ;; ---------------------------------------------------------------------------
@@ -1745,7 +1780,7 @@
 
   ;;; compile an md:module into a bytevec
   (define (md:mod->bin mod origin)
-    (md:mod-otree->bin (md:mod-compile mod origin)))
+    (md:otree->bin (md:mod-compile mod origin)))
 
   ;;; compile an md:module into an assembly source
   (define (md:mod->asm mod origin)
