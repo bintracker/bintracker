@@ -966,10 +966,13 @@
   ;;;   a string of the actual value
   ;;;   a list of subnodes
   (define-record-type md:inode-instance
-    (md:make-inode-instance val name)
+    (md:make-inode-instance-base val name)
     md:node-instance?
     (val md:inode-instance-val md:set-inode-instance-val!)
     (name md:inode-instance-name md:set-inode-instance-name!))
+
+  (define (md:make-inode-instance val #!optional (name ""))
+    (md:make-inode-instance-base val name))
 
   (define-record-printer (md:inode-instance i out)
     (begin
@@ -1246,7 +1249,7 @@
   ;;;       config
   (define (md:mod-token/arg->inode-instance token+arg config)
     (md:make-inode-instance
-     (md:mod-normalize-arg (cadr token+arg) (car token+arg) config) ""))
+     (md:mod-normalize-arg (cadr token+arg) (car token+arg) config)))
 
   ;;; convert a list of token/argument pairs into enumerated node instances
   (define (md:mod-token/args->node-instances ta-lst config)
@@ -1288,14 +1291,14 @@
 			     lines)))
 	     (md:make-inode
 	      node-id
-	      (list (list 0 (if line
-				(md:mod-token/arg->inode-instance
-				 (list node-id (md:mod-parse-single-field-arg
-						line node-id))
-				 config)
-				(md:make-inode-instance
-				 (md:config-get-node-default node-id config)
-				 "")))))))
+	      (list
+	       (list 0 (if line
+			   (md:mod-token/arg->inode-instance
+			    (list node-id (md:mod-parse-single-field-arg
+					   line node-id))
+			    config)
+			   (md:make-inode-instance
+			    (md:config-get-node-default node-id config))))))))
 	 (md:config-get-subnode-type-ids group-id config 'field)))
 
   ;;; parse the iblock fields in the given MDMOD block node text into an inode
@@ -1464,11 +1467,11 @@
 	       (md:make-module cfg-name config
 			       (md:make-inode
 				"GLOBAL"
-				(list (list 0
-					    (md:make-inode-instance
-					     (md:mod-parse-group
-					      mod-lines "GLOBAL" config)
-					     "")))))))))
+				(list
+				 (list 0
+				       (md:make-inode-instance
+					(md:mod-parse-group
+					 mod-lines "GLOBAL" config))))))))))
 
   ;;; returns the group instance's block nodes, except the order node, which can
   ;;; be retrieved with md:mod-get-group-instance-order instead
@@ -1496,15 +1499,14 @@
 	       (lambda (start-id)
 		 (if (= start-id len)
 		     '()
-		     (cons (list start-id (md:make-inode-instance start-id ""))
+		     (cons (list start-id (md:make-inode-instance start-id))
 			   (make-generic-instances (+ start-id 1)))))))
       (md:make-inode
        order-id
        (list (list 0 (md:make-inode-instance
 		      (map (lambda (id)
 			     (md:make-inode id (make-generic-instances 0)))
-			   subnode-ids)
-		      ""))))))
+			   subnode-ids)))))))
 
   ;;----------------------------------------------------------------------------
   ;;; ### node reordering
@@ -1576,7 +1578,7 @@
 		 (if (< (length chunk) block-size)
 		     (append chunk
 			     (make-list (- block-size (length chunk))
-					(md:make-inode-instance '() "")))
+					(md:make-inode-instance '())))
 		     chunk)))
 	      (update-chunk-head
 	       (lambda (instance-lst processed-count)
@@ -1608,8 +1610,7 @@
 		    (cons (md:make-inode-instance
 			   (map (lambda (id chunk)
 				  (md:make-inode id chunk))
-				field-ids (map car chunks))
-			   "")
+				field-ids (map car chunks)))
 			  (chunks->instances (map cdr chunks)))))))
       (md:mod-enumerate-instances 0 (chunks->instances field-chunks))))
 
@@ -1648,8 +1649,7 @@
        (append new-blocks
 	       (list (md:mod-make-default-order
 		      (md:inode-count-instances (car new-blocks))
-		      igroup-id config)))
-       "")))
+		      igroup-id config))))))
 
   ;;; reorder a group by merging iblock instances according to the groups order
   ;;; node, then splitting them into new iblocks of the given block-size and
