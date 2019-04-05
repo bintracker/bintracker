@@ -1673,19 +1673,17 @@
   ;;; split a list of subnodes into two seperate lists at the given node-id. The
   ;;; second list will be the tail, including the node at split point.
   (define (md:mod-split-node-list-at node-id nodes)
-    (let ((head (take-while (lambda (node)
-			      (not (string=? node-id (md:inode-cfg-id node))))
-			    nodes)))
-      (list head (drop nodes (length head)))))
+    (receive (break (lambda (node)
+		      (string=? node-id (md:inode-cfg-id node)))
+		    nodes)))
 
   ;;; split a list of inode instances into two seperate lists at the given node
   ;;; instance id. The second list will be the tail, including the instance at
   ;;; split point.
   (define (md:mod-split-instances-at inst-id instances)
-    (let ((head (take-while (lambda (inst)
-			      (not (= inst-id (car inst))))
-			    instances)))
-      (list head (drop instances (length head)))))
+    (receive (break (lambda (inst)
+		      (= inst-id (car inst)))
+		    instances)))
 
   ;;; replace the subnode matching the given subnode's id in the given parent
   ;;; inode instance with the given new subnode
