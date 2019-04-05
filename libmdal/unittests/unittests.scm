@@ -562,13 +562,13 @@
        (md:mod-normalize-arg "$40" "BPM" my-cfg))
 
  (test "md:mod-token/arg->inode-instance"
-       (md:make-inode-instance 64 "")
+       (md:make-inode-instance 64)
        (md:mod-token/arg->inode-instance '("BPM" "$40") my-cfg))
 
  (test "md:mod-token/args->inode-instances"
-       (list (list 0 (md:make-inode-instance "c3" ""))
-	     (list 1 (md:make-inode-instance '() ""))
-	     (list 2 (md:make-inode-instance "rest" "")))
+       (list (list 0 (md:make-inode-instance "c3"))
+	     (list 1 (md:make-inode-instance '()))
+	     (list 2 (md:make-inode-instance "rest")))
        (md:mod-token/args->node-instances
 	'(("NOTE1" "c3") ("NOTE1" ()) ("NOTE1" "rest"))
 	my-cfg))
@@ -590,10 +590,10 @@
  (test "md:mod-parse-group-fields"
        (list
 	(md:make-inode "AUTHOR" (list (list 0 (md:make-inode-instance
-					       "\"utz\"" ""))))
+					       "\"utz\""))))
 	(md:make-inode "TITLE" (list (list 0 (md:make-inode-instance
-					      "\"Huby Test\"" ""))))
-	(md:make-inode "BPM" (list (list 0 (md:make-inode-instance 120 "")))))
+					      "\"Huby Test\""))))
+	(md:make-inode "BPM" (list (list 0 (md:make-inode-instance 120)))))
        (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg))
 
  (test "md:mod-extract-nodes"
@@ -604,41 +604,41 @@
  (define my-drum-inode
    (md:make-inode "DRUM"
 		  (zip (iota 16)
-		       (circular-list (md:make-inode-instance "on" "")
-				      (md:make-inode-instance '() "")
-				      (md:make-inode-instance '() "")
-				      (md:make-inode-instance '() "")))))
+		       (circular-list (md:make-inode-instance "on")
+				      (md:make-inode-instance '())
+				      (md:make-inode-instance '())
+				      (md:make-inode-instance '())))))
 
  (define my-note1-inode
    (md:make-inode "NOTE1"
-		  (list (list 0 (md:make-inode-instance "a3" ""))
-			(list 1 (md:make-inode-instance '() ""))
-			(list 2 (md:make-inode-instance "rest" ""))
-			(list 3 (md:make-inode-instance '() ""))
-			(list 4 (md:make-inode-instance "c4" ""))
-			(list 5 (md:make-inode-instance '() ""))
-			(list 6 (md:make-inode-instance "rest" ""))
-			(list 7 (md:make-inode-instance '() ""))
-			(list 8 (md:make-inode-instance "e4" ""))
-			(list 9 (md:make-inode-instance '() ""))
-			(list 10 (md:make-inode-instance "rest" ""))
-			(list 11 (md:make-inode-instance '() ""))
-			(list 12 (md:make-inode-instance "g4" ""))
-			(list 13 (md:make-inode-instance '() ""))
-			(list 14 (md:make-inode-instance "rest" ""))
-			(list 15 (md:make-inode-instance '() "")))))
+		  (list (list 0 (md:make-inode-instance "a3"))
+			(list 1 (md:make-inode-instance '()))
+			(list 2 (md:make-inode-instance "rest"))
+			(list 3 (md:make-inode-instance '()))
+			(list 4 (md:make-inode-instance "c4"))
+			(list 5 (md:make-inode-instance '()))
+			(list 6 (md:make-inode-instance "rest"))
+			(list 7 (md:make-inode-instance '()))
+			(list 8 (md:make-inode-instance "e4"))
+			(list 9 (md:make-inode-instance '()))
+			(list 10 (md:make-inode-instance "rest"))
+			(list 11 (md:make-inode-instance '()))
+			(list 12 (md:make-inode-instance "g4"))
+			(list 13 (md:make-inode-instance '()))
+			(list 14 (md:make-inode-instance "rest"))
+			(list 15 (md:make-inode-instance '())))))
 
  (define my-note2-inode0
    (md:make-inode "NOTE2"
 		  (zip (iota 16)
-		       (cons (md:make-inode-instance "a2" "")
-			     (make-list 15 (md:make-inode-instance '() ""))))))
+		       (cons (md:make-inode-instance "a2")
+			     (make-list 15 (md:make-inode-instance '()))))))
 
  (define my-note2-inode1
    (md:make-inode "NOTE2"
 		  (zip (iota 16)
-		       (cons (md:make-inode-instance "e2" "")
-			     (make-list 15 (md:make-inode-instance '() ""))))))
+		       (cons (md:make-inode-instance "e2")
+			     (make-list 15 (md:make-inode-instance '()))))))
 
  (define my-patterns-order-inode
    (md:make-inode
@@ -646,28 +646,27 @@
     (list (list 0 (md:make-inode-instance
 		   (list (md:make-inode
 			  "R_DRUMS"
-			  (list (list 0 (md:make-inode-instance 0 ""))
-				(list 1 (md:make-inode-instance '() ""))))
+			  (list (list 0 (md:make-inode-instance 0))
+				(list 1 (md:make-inode-instance '()))))
 			 (md:make-inode
 			  "R_CH1"
-			  (list (list 0 (md:make-inode-instance 0 ""))
-				(list 1 (md:make-inode-instance '() ""))))
+			  (list (list 0 (md:make-inode-instance 0))
+				(list 1 (md:make-inode-instance '()))))
 			 (md:make-inode
 			  "R_CH2"
-			  (list (list 0 (md:make-inode-instance 0 ""))
-				(list 1 (md:make-inode-instance 1 "")))))
-		   "")))))
+			  (list (list 0 (md:make-inode-instance 0))
+				(list 1 (md:make-inode-instance 1))))))))))
 
  (define my-patterns-subnodes
    (list (md:make-inode "DRUMS" (list (list 0 (md:make-inode-instance
 					       (list my-drum-inode)
 					       "beat0"))))
 	 (md:make-inode "CH1" (list (list 0 (md:make-inode-instance
-					     (list my-note1-inode) ""))))
+					     (list my-note1-inode)))))
 	 (md:make-inode "CH2" (list (list 0 (md:make-inode-instance
-					     (list my-note2-inode0) ""))
+					     (list my-note2-inode0)))
 				    (list 1 (md:make-inode-instance
-					     (list my-note2-inode1) ""))))
+					     (list my-note2-inode1)))))
 	 my-patterns-order-inode))
 
  (test "md:mod-parse-block-fields"
@@ -719,8 +718,7 @@
 
  (test "md:parse-module-file"
        (md:make-inode "GLOBAL" (list (list 0 (md:make-inode-instance
-					      my-global-subnodes
-					      ""))))
+					      my-global-subnodes))))
        (md:mod-global-node
 	(md:parse-module-file "unittests/modules/huby-test.mdal"
 			      my-config-path)))
@@ -743,17 +741,17 @@
  (test "md:mod-make-default-order"
        (md:make-inode
 	"PATTERNS_ORDER"
-	(list (list 0 (md:make-inode-instance
-		       (list (md:make-inode
-			      "R_DRUMS"
-			      (list (list 0 (md:make-inode-instance 0 ""))))
-			     (md:make-inode
-			      "R_CH1"
-			      (list (list 0 (md:make-inode-instance 0 ""))))
-			     (md:make-inode
-			      "R_CH2"
-			      (list (list 0 (md:make-inode-instance 0 "")))))
-		       ""))))
+	(list
+	 (list 0 (md:make-inode-instance
+		  (list (md:make-inode
+			 "R_DRUMS"
+			 (list (list 0 (md:make-inode-instance 0 ""))))
+			(md:make-inode
+			 "R_CH1"
+			 (list (list 0 (md:make-inode-instance 0 ""))))
+			(md:make-inode
+			 "R_CH2"
+			 (list (list 0 (md:make-inode-instance 0 "")))))))))
        (md:mod-make-default-order 1 "PATTERNS" my-cfg)))
 
 
@@ -778,10 +776,10 @@
        (md:mod-enumerate-instances 1 '("foo" "bar" "baz")))
 
  (test "md:mod-merge-fields"
-       (append (cons (md:make-inode-instance "a2" "")
-		     (make-list 15 (md:make-inode-instance '() "")))
-	       (cons (md:make-inode-instance "e2" "")
-		     (make-list 15 (md:make-inode-instance '() ""))))
+       (append (cons (md:make-inode-instance "a2")
+		     (make-list 15 (md:make-inode-instance '())))
+	       (cons (md:make-inode-instance "e2")
+		     (make-list 15 (md:make-inode-instance '()))))
        (md:mod-merge-fields ((md:node-path "0/PATTERNS/0/CH2")
 			 (md:mod-global-node my-mod))
 			"NOTE2" '(0 1)))
@@ -789,13 +787,13 @@
  (define my-field-chunks
    (append
     (make-list 2 (zip (iota 8)
-		      (cons (md:make-inode-instance "a2" "")
+		      (cons (md:make-inode-instance "a2")
 			    (make-list
-			     7 (md:make-inode-instance '() "")))))
+			     7 (md:make-inode-instance '())))))
     (make-list 2 (zip (iota 8)
-		      (cons (md:make-inode-instance "e2" "")
+		      (cons (md:make-inode-instance "e2")
 			    (make-list
-			     7 (md:make-inode-instance '() "")))))))
+			     7 (md:make-inode-instance '())))))))
 
  (test "md:mod-split-fields"
        my-field-chunks
@@ -809,8 +807,7 @@
  (define my-resized-block-instances
    (zip (iota 4)
 	(map (lambda (chunk)
-	       (md:make-inode-instance (list (md:make-inode "NOTE2" chunk))
-				       ""))
+	       (md:make-inode-instance (list (md:make-inode "NOTE2" chunk))))
 	     my-field-chunks)))
 
  (test "md:mod-chunks->block-instances"
@@ -828,10 +825,10 @@
  (define (my-resized-group-blocks-generator)
    (let ((order-inode-instances
 	  (zip (iota 4)
-	       (list (md:make-inode-instance 0 "")
-		     (md:make-inode-instance 1 "")
-		     (md:make-inode-instance 2 "")
-		     (md:make-inode-instance 3 "")))))
+	       (list (md:make-inode-instance 0)
+		     (md:make-inode-instance 1)
+		     (md:make-inode-instance 2)
+		     (md:make-inode-instance 3)))))
      (md:make-inode-instance
       (list
        (md:make-inode
@@ -842,15 +839,14 @@
 		 (list (md:make-inode
 			"DRUM"
 			(zip (iota 8)
-			     (list (md:make-inode-instance "on" "")
-				   (md:make-inode-instance '() "")
-				   (md:make-inode-instance '() "")
-				   (md:make-inode-instance '() "")
-				   (md:make-inode-instance "on" "")
-				   (md:make-inode-instance '() "")
-				   (md:make-inode-instance '() "")
-				   (md:make-inode-instance '() "")))))
-		 ""))))
+			     (list (md:make-inode-instance "on")
+				   (md:make-inode-instance '())
+				   (md:make-inode-instance '())
+				   (md:make-inode-instance '())
+				   (md:make-inode-instance "on")
+				   (md:make-inode-instance '())
+				   (md:make-inode-instance '())
+				   (md:make-inode-instance '())))))))))
        (md:make-inode
 	"CH1"
 	(list
@@ -858,54 +854,50 @@
 		  (list (md:make-inode
 			 "NOTE1"
 			 (zip (iota 8)
-			      (list (md:make-inode-instance "a3" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "c4" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")))))
-		  ""))
+			      (list (md:make-inode-instance "a3")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "c4")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())))))))
 	 (list 1 (md:make-inode-instance
 		  (list (md:make-inode
 			 "NOTE1"
 			 (zip (iota 8)
-			      (list (md:make-inode-instance "e4" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "g4" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")))))
-		  ""))
+			      (list (md:make-inode-instance "e4")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "g4")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())))))))
 	 (list 2 (md:make-inode-instance
 		  (list (md:make-inode
 			 "NOTE1"
 			 (zip (iota 8)
-			      (list (md:make-inode-instance "a3" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "c4" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")))))
-		  ""))
+			      (list (md:make-inode-instance "a3")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "c4")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())))))))
 	 (list 3 (md:make-inode-instance
 		  (list (md:make-inode
 			 "NOTE1"
 			 (zip (iota 8)
-			      (list (md:make-inode-instance "e4" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "g4" "")
-				    (md:make-inode-instance '() "")
-				    (md:make-inode-instance "rest" "")
-				    (md:make-inode-instance '() "")))))
-		  ""))))
+			      (list (md:make-inode-instance "e4")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "g4")
+				    (md:make-inode-instance '())
+				    (md:make-inode-instance "rest")
+				    (md:make-inode-instance '())))))))))
        (md:make-inode "CH2" my-resized-block-instances)
        (md:make-inode
 	"PATTERNS_ORDER"
@@ -950,10 +942,10 @@
 
  (test "md:mod-split-instances-at"
        (list (zip (iota 5)
-		  (cons (md:make-inode-instance "a2" "")
-			(make-list 4 (md:make-inode-instance '() ""))))
+		  (cons (md:make-inode-instance "a2")
+			(make-list 4 (md:make-inode-instance '()))))
 	     (zip (iota 11 5)
-		  (make-list 11 (md:make-inode-instance '() ""))))
+		  (make-list 11 (md:make-inode-instance '()))))
        (md:mod-split-instances-at
 	5 (md:inode-instances ((md:node-path "0/PATTERNS/0/CH2/0/NOTE2")
 			       (md:mod-global-node my-mod)))))
@@ -963,23 +955,22 @@
 	(list (md:make-inode "NOTE1"
 			     (zip (iota 4)
 				  (make-list
-				   4 (md:make-inode-instance '() "")))))
-	"")
+				   4 (md:make-inode-instance '()))))))
        (md:mod-replace-subnode
 	((md:node-instance-path "0/PATTERNS/0/CH1/0")
 	 (md:mod-global-node my-mod))
 	(md:make-inode "NOTE1"
 		       (zip (iota 4)
-			    (make-list 4 (md:make-inode-instance '() ""))))))
+			    (make-list 4 (md:make-inode-instance '()))))))
 
  (test "md:mod-replace-inode-instance"
        (md:make-inode "NOTE2"
 		      (zip (iota 16)
-			   (make-list 16 (md:make-inode-instance '() ""))))
+			   (make-list 16 (md:make-inode-instance '()))))
        (md:mod-replace-inode-instance
 	((md:node-path "0/PATTERNS/0/CH2/0/NOTE2")
 	 (md:mod-global-node my-mod))
-	0 (md:make-inode-instance '() "")))
+	0 (md:make-inode-instance '())))
 
  (test "md:mod-node-setter"
        (md:make-inode
@@ -989,20 +980,18 @@
 		  (list (md:make-inode
 			 "NOTE2"
 			 (zip (iota 16)
-			      (make-list 16 (md:make-inode-instance '() "")))))
-		  ""))
+			      (make-list 16 (md:make-inode-instance '())))))))
 	 (list 1 (md:make-inode-instance
 		  (list (md:make-inode
 			 "NOTE2"
 			 (zip (iota 16)
-			      (cons (md:make-inode-instance "e2" "")
+			      (cons (md:make-inode-instance "e2")
 				    (make-list
-				     15 (md:make-inode-instance '() ""))))))
-		  ""))))
+				     15 (md:make-inode-instance '()))))))))))
        ((md:mod-node-setter "0")
 	(md:make-inode "NOTE2"
 		       (zip (iota 16)
-			    (make-list 16 (md:make-inode-instance '() ""))))
+			    (make-list 16 (md:make-inode-instance '()))))
 	((md:node-path "0/PATTERNS/0/CH2")
 	 (md:mod-global-node my-mod)))))
 
@@ -1016,7 +1005,7 @@
 	     #x02 #x06
 	     #x03 #x07
 	     #x04 #x08
-          #x00
+             #x00
 	     #x1e #x1e #x00 #x00 #x24 #x24 #x00 #x00
 	     #x2e #x2e #x00 #x00 #x36 #x36 #x00 #x00
 	     #x1e #x1e #x00 #x00 #x24 #x24 #x00 #x00
