@@ -1150,158 +1150,9 @@
   (define (md:node-path path)
     (md:make-npath-fn (string-split path "/")))
 
-  ;;; Helper func, returns the first arg from a partially parsed line of MDMOD
-  ;;; text preserving "string-in-string" arguments. Line must start with an
-  ;;; argument.
-  (define (md:mod-trim-arg text)
-    (if (string-prefix? "\"" text)
-	(string-take text (+ 2 (string-contains (string-drop text 1) "\"")))
-	(car (string-split text ","))))
-
-  ;;; helper func, parse a line of MDMOD text using abbreviated block syntax (no
-  ;;; tokens) into token/argument pairs
-  (define (md:mod-parse-abbrev-line line token-ids)
-    (zip token-ids (map string-trim-both (string-split line ","))))
-
-  ;;; helper func, split a line of MDMOD text using regular block syntax into
-  ;;; token/argument pairs
-  (define (md:mod-split-regular-line line)
-    (if (string-null? line)
-	'()
-	(let* ((token (string-take line (string-contains line "=")))
-	       (token-len (+ 1 (string-length token)))
-	       (arg (md:mod-trim-arg (substring/shared line token-len)))
-	       (rest (string-trim (substring/shared
-				   line (+ token-len (string-length arg)))
-				  #\,)))
-	  (cons (list token arg)
-		(md:mod-split-regular-line rest)))))
-
-  ;;; helper func, parse a line of MDMOD text using regular block syntax into
-  ;;; token/argument pairs. Null arguments are returned for tokens not present
-  ;;; in the given text. Will silently drop invalid tokens from text.
-  (define (md:mod-parse-regular-line line token-ids)
-    (let ((splices (md:mod-split-regular-line line)))
-      (map (lambda (id)
-	     (let ((token-match (find (lambda (x)
-					(string-ci=? id (car x))) splices)))
-	       (if token-match
-		   (list id (cadr token-match))
-		   (list id '()))))
-	   token-ids)))
-
-  ;;; helper func, parse a line of MDMOD text using dotted block syntax (no
-  ;;; change line) into token/argument pairs with null arguments. Expands lines
-  ;;; using .n syntax into a flat list of pairs.
-  (define (md:mod-parse-dotted-line line token-ids)
-    (let ((num-arg (string-drop line 1))
-	  (pairs (map (lambda (id) (list id '())) token-ids)))
-      (if (string-null? num-arg)
-	  pairs
-	  (take (apply circular-list pairs)
-		(* (md:mod-string->number num-arg) (length token-ids))))))
-
-  ;;; helper dispatch func, split a line of MDMOD block text into token/argument
-  ;;; pairs
-  (define (md:mod-parse-line line token-ids)
-    (cond
-     ((string-contains line "=") (md:mod-parse-regular-line line token-ids))
-     ((string-prefix? "." line) (md:mod-parse-dotted-line line token-ids))
-     (else (md:mod-parse-abbrev-line line token-ids))))
-
-
-  ;;; parse MDMOD iblock text into a flat list of token/argument pairs
-  (define (md:mod-parse-block-text lines token-ids)
-    (if (null? lines)
-	'()
-	(append (md:mod-parse-line (car lines) token-ids)
-		(md:mod-parse-block-text (cdr lines) token-ids))))
-
-  ;;; select the text of the group/block node starting at the scope assignment of
-  ;;; the given MDMOD text
-  (define (md:mod-crop-node-text lines)
-    (letrec ((extract-lines
-	      (lambda (next-lines nesting-level)
-		(let ((nlevel (cond ((string-contains (car next-lines) "{")
-				     (+ nesting-level 1))
-				    ((string-contains (car next-lines) "}")
-				     (- nesting-level 1))
-				    (else nesting-level))))
-		  (if (= nlevel 0)
-		      '()
-		      (cons (car next-lines)
-			    (extract-lines (cdr next-lines) nlevel)))))))
-      (extract-lines (cdr lines) 1)))
-
-  ;;; convert an argument string from MDMOD text to the actual format required by
-  ;;; the inode field command.
-  ;;; TODO: incomplete, currently only handles int/uint cmds
-  ;;; TODO: error checking
-  (define (md:mod-normalize-arg arg node-id config)
-    (let ((field-cmd (md:config-get-inode-source-command node-id config)))
-      (cond ((and (not (null? arg))
-		  (memq (md:command-type field-cmd) '(int uint reference)))
-	     (md:mod-string->number arg))
-	    (else arg))))
-
-  ;;; convert a token/argument pair into an unnamed inode instance
-  ;;; TODO: implement argument normalization and proper error checking again
-  ;;;       config
-  (define (md:mod-token/arg->inode-instance token+arg config)
-    (md:make-inode-instance
-     (md:mod-normalize-arg (cadr token+arg) (car token+arg) config)))
-
-  ;;; convert a list of token/argument pairs into enumerated node instances
-  (define (md:mod-token/args->node-instances ta-lst config)
-    (let ((node-instances
-	   (map (lambda (token+arg)
-		  (md:mod-token/arg->inode-instance token+arg config))
-		ta-lst)))
-      (zip (iota (length node-instances))
-	   node-instances)))
-
-  ;;; extract the argument of the given field node from a single line of MDMOD
-  ;;; text probably redundant, can be handled by md:mod-parse-line
-  (define (md:mod-parse-single-field-arg line node-id)
-    (string-drop line (+ 1 (string-length node-id))))
-
-  ;;; extract the instance argument from an MDMOD scope specifier
-  ;;; returns 0 if none found
-  (define (md:mod-parse-scope-instance-id scope)
-    (let ((ob-pos (string-contains scope "("))
-	  (cb-pos (string-contains scope ")")))
-      (if (and ob-pos cb-pos)
-	  (md:mod-string->number (substring/shared scope (+ 1 ob-pos) cb-pos))
-	  0)))
-
-  ;;; extract the name argument from an MDMOD scope specifier
-  ;;; returns an empty string if none found
-  (define (md:mod-parse-scope-instance-name scope)
-    (let ((ob-pos (string-contains scope "["))
-	  (cb-pos (string-contains scope "]")))
-      (if (and ob-pos cb-pos)
-	  (string-copy scope (+ 1 ob-pos) cb-pos)
-	  "")))
-
   ;;; parse the igroup fields in the given MDMOD group node text into an inode
   ;;; set
-  (define (md:mod-parse-group-fields lines group-id config)
-    (map (lambda (node-id)
-	   (let ((line (find (lambda (line) (string-prefix? node-id line))
-			     lines)))
-	     (md:make-inode
-	      node-id
-	      (list
-	       (list 0 (if line
-			   (md:mod-token/arg->inode-instance
-			    (list node-id (md:mod-parse-single-field-arg
-					   line node-id))
-			    config)
-			   (md:make-inode-instance
-			    (md:config-get-node-default node-id config))))))))
-	 (md:config-get-subnode-type-ids group-id config 'field)))
-
-  (define (md:mod-parse-group-fields2 exprs group-id config)
+  (define (md:mod-parse-group-fields exprs group-id config)
     (map (lambda (node-id)
 	   (let ((assignments (md:get-assignments exprs node-id)))
 	     (md:make-inode
@@ -1311,19 +1162,6 @@
 				 (md:config-get-node-default node-id config)
 				 (last (car assignments)))))))))
 	 (md:config-get-subnode-type-ids group-id config 'field)))
-
-  ;;; parse the iblock fields in the given MDMOD block node text into an inode
-  ;;; set
-  (define (md:mod-parse-block-fields lines block-id config)
-    (let* ((node-ids (md:config-get-subnode-type-ids block-id config 'field))
-	   (tokens+args (md:mod-parse-block-text lines node-ids)))
-      (map (lambda (node-id)
-	     (md:make-inode node-id
-			    (md:mod-token/args->node-instances
-			     (filter (lambda (ta)
-				       (string=? node-id (car ta))) tokens+args)
-			     config)))
-	   node-ids)))
 
   (define (md:exprs->node-instances exprs block-id node-id config)
     (let* ((node-index
@@ -1350,7 +1188,9 @@
       (zip (iota (length instances))
 	   instances)))
 
-  (define (md:mod-parse-block-fields2 exprs block-id config)
+  ;;; parse the iblock fields in the given MDMOD block node text into an inode
+  ;;; set
+  (define (md:mod-parse-block-fields exprs block-id config)
     (let ((node-ids (md:config-get-subnode-type-ids block-id config 'field)))
       (map (lambda (node-id)
 	     (md:make-inode node-id
@@ -1358,45 +1198,9 @@
 						      node-id config)))
 	   node-ids)))
 
-  ;;; extract non-field nodes text for a given id from the given MDMOD node text
-  (define (md:mod-extract-nodes lines node-id)
-    (let ((init-lst (drop-while (lambda (l) (not (string-prefix? node-id l)))
-				lines)))
-      (if (null? init-lst)
-	  '()
-	  (let ((node (cons (car init-lst)
-			    (md:mod-crop-node-text init-lst))))
-	    (cons node (md:mod-extract-nodes (drop init-lst (length node))
-					     node-id))))))
-
   ;;; parse the igroup blocks in the given MDMOD group node text into an inode
   ;;; set
-  (define (md:mod-parse-group-blocks lines group-id config)
-    (let* ((node-ids (md:config-get-subnode-type-ids group-id config 'block))
-	   (blk-instances (map (lambda (id)
-				 (list id (md:mod-extract-nodes
-					   lines
-					   (if (string-contains-ci id "_ORDER")
-					       "ORDER"
-					       id))))
-			       node-ids)))
-      (map (lambda (id)
-	     (md:make-inode
-	      id
-	      (let ((nodes (cadr (find (lambda (ins) (string=? (car ins) id))
-				       blk-instances))))
-		(if (null? nodes)
-		    '()
-		    (map (lambda (node)
-			   (list
-			    (md:mod-parse-scope-instance-id (car node))
-			    (md:make-inode-instance
-			     (md:mod-parse-block-fields (cdr node) id config)
-			     (md:mod-parse-scope-instance-name (car node)))))
-			 nodes)))))
-	   node-ids)))
-
-  (define (md:mod-parse-group-blocks2 exprs group-id config)
+  (define (md:mod-parse-group-blocks exprs group-id config)
     (let ((node-ids (md:config-get-subnode-type-ids group-id config 'block)))
       (map (lambda (id)
 	     (md:make-inode
@@ -1405,42 +1209,14 @@
 		(map (lambda (node)
 		       (list (third node)
 			     (md:make-inode-instance
-			      (md:mod-parse-block-fields2 (last node)
-							  id config)
+			      (md:mod-parse-block-fields (last node)
+							 id config)
 			      (fourth node))))
 		     nodes))))
 	   node-ids)))
 
   ;;; parse a group instance into an inode set
-  (define (md:mod-parse-group lines node-id config)
-    (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
-	   (group-instances (map (lambda (id)
-				   (list id (md:mod-extract-nodes lines id)))
-				 group-ids))
-	   (group-nodes
-	    (map (lambda (id)
-		   (md:make-inode
-		    id
-		    (let ((nodes (cadr (find (lambda (ins)
-					       (string=? (car ins) id))
-					     group-instances))))
-		      (if (null? nodes)
-			  '()
-			  (map (lambda (node)
-				 (list
-				  (md:mod-parse-scope-instance-id (car node))
-				  (md:make-inode-instance
-				   (md:mod-parse-group (cdr node) id config)
-				   (md:mod-parse-scope-instance-name
-				    (car node)))))
-			       nodes)))))
-		 group-ids))
-	   (block-nodes (md:mod-parse-group-blocks lines node-id config))
-	   (field-nodes (md:mod-parse-group-fields lines node-id config)))
-      (remove null? (append field-nodes block-nodes group-nodes))))
-
-  ;;; parse a group instance into an inode set
-  (define (md:mod-parse-group2 exprs node-id config)
+  (define (md:mod-parse-group exprs node-id config)
     (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
 	   (group-nodes (map (lambda (id)
 			       (md:make-inode
@@ -1450,110 +1226,21 @@
 					 (list
 					  (third node)
 					  (md:make-inode-instance
-					   (md:mod-parse-group2 (last node)
+					   (md:mod-parse-group (last node)
 								id config)
 					   (fourth node))))
 				       nodes))))
 			     group-ids))
-	   (block-nodes (md:mod-parse-group-blocks2 exprs node-id config))
-	   (field-nodes (md:mod-parse-group-fields2 exprs node-id config)))
+	   (block-nodes (md:mod-parse-group-blocks exprs node-id config))
+	   (field-nodes (md:mod-parse-group-fields exprs node-id config)))
       (append field-nodes block-nodes group-nodes)))
-
-  ;;; strip whitespace from MDMOD text, except where enclosed in double quotes
-  (define (md:purge-whitespace lines)
-    (letrec ((purge-ws-from-every-other
-	      ;; removes whitespace from every other element in a list of
-	      ;; strings.
-	      ;; call with ls being a string split by \" delimiter, and odd = #t
-	      (lambda (ls odd)
-		(if (null? ls)
-		    '()
-		    (cons (if odd
-			      (string-delete char-set:whitespace (car ls))
-			      (string-append "\"" (car ls) "\""))
-			  (purge-ws-from-every-other (cdr ls) (not odd)))))))
-      (map (lambda (line)
-	     (string-concatenate
-	      (purge-ws-from-every-other (string-split line "\"" #t) #t)))
-	   lines)))
-
-  ;;; strip comments from MDMOD text
-  ;;; TODO make more robust so it doesn't fail with multiple block comment
-  ;;; delimiters on one line (eg. run over line again after processing)
-  (define (md:purge-comments lines)
-    (letrec ((purge-block-comments
-	      (lambda (ls in-comment-block)
-		(if (null? ls)
-		    '()
-		    (if in-comment-block
-			(let ((have-bc-end (string-contains (car ls) "*/")))
-			  (cons (if have-bc-end
-				    (substring (car ls)
-					       (+ 2 (substring-index "*/"
-								     (car ls))))
-				    "")
-				(purge-block-comments (cdr ls)
-						      (not have-bc-end))))
-			(let ((have-bc-beg (string-contains (car ls) "/*")))
-			  (cons (if have-bc-beg
-				    (substring (car ls)
-					       0 (substring-index "/*"
-								  (car ls)))
-				    (car ls))
-				(purge-block-comments (cdr ls)
-						      have-bc-beg))))))))
-      (purge-block-comments (map (lambda (l)
-				   (if (string-contains l "//")
-				       (substring l 0 (substring-index "//" l))
-				       l))
-				 lines)
-			    #f)))
-
-  ;;; check if mdal file text specifies a supported MDAL version
-  (define (md:check-module-version lines)
-    (if (not (string-contains-ci (car lines) "MDAL_VERSION="))
-	(error "No MDAL_VERSION specified")
-	(let ((version (string->number
-			(substring (car lines)
-				   (+ 13  (substring-index-ci "MDAL_VERSION="
-							      (car lines)))))))
-	  (if (md:in-range? version *supported-module-versions*)
-	      version
-	      (error "unsupported MDAL version")))))
-
-  (define (md:mod-get-config-name lines)
-    (if (not (string-contains-ci (cadr lines) "CONFIG="))
-	(error "No CONFIG specified")
-	(string-delete #\"
-		       (substring (cadr lines)
-				  (+ 7 (substring-index-ci "CONFIG="
-							   (cadr lines)))))))
 
   ;;; normalizes hex prefix to Scheme format before calling string->number
   (define (md:mod-string->number str)
     (string->number (string-translate* str '(("$" . "#x")))))
 
-  ;;; construct an md:module from a given .mdal file
-  (define (md:parse-module-file filepath config-dir-path)
-    (let ((mod-lines (remove string-null?
-			     (md:purge-comments
-			      (md:purge-whitespace (read-lines filepath))))))
-      (begin (md:check-module-version mod-lines)
-	     (let* ((cfg-name (md:mod-get-config-name mod-lines))
-		    (config (md:mdconf->config
-			     (string-append config-dir-path cfg-name "/"
-					    cfg-name ".mdconf"))))
-	       (md:make-module cfg-name config
-			       (md:make-inode
-				"GLOBAL"
-				(list
-				 (list 0
-				       (md:make-inode-instance
-					(md:mod-parse-group
-					 mod-lines "GLOBAL" config))))))))))
-
   ;;; check if mdmod s-expression specifies a supported MDAL version
-  (define (md:check-module-version2 mod-sexp)
+  (define (md:check-module-version mod-sexp)
     (let ((version-assignments (md:get-assignments mod-sexp "MDAL_VERSION")))
       (if (null? version-assignments)
 	  (error "NO MDAL_VERSION specified")
@@ -1562,7 +1249,7 @@
 		version
 		(error "unsupported MDAL version"))))))
 
-  (define (md:mod-get-config-name2 mod-sexp)
+  (define (md:mod-get-config-name mod-sexp)
     (let ((cfg-assignments (md:get-assignments mod-sexp "CONFIG")))
       (if (null? cfg-assignments)
 	  (error "No CONFIG specified")
@@ -1571,8 +1258,8 @@
   ;;; construct an md:module from a given .mdal file
   (define (md:file->module filepath config-dir-path)
     (let ((mod-sexp (md:file->sexp filepath)))
-      (begin (md:check-module-version2 mod-sexp)
-	     (let* ((cfg-name (md:mod-get-config-name2 mod-sexp))
+      (begin (md:check-module-version mod-sexp)
+	     (let* ((cfg-name (md:mod-get-config-name mod-sexp))
 		    (config (md:mdconf->config
 			     (string-append config-dir-path cfg-name "/"
 					    cfg-name ".mdconf"))))
@@ -1581,7 +1268,7 @@
 				"GLOBAL"
 				(list (list 0
 					    (md:make-inode-instance
-					     (md:mod-parse-group2
+					     (md:mod-parse-group
 					      mod-sexp "GLOBAL" config))))))))))
 
   ;;; returns the group instance's block nodes, except the order node, which can
