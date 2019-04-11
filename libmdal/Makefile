@@ -1,13 +1,14 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = mdal-core.md md-helpers.md md-command.md utils/md-note-table.md
+DOCS = mdal-core.md md-helpers.md md-parser.md md-command.md\
+ utils/md-note-table.md
 LIBFLAGS = -s -d1
 ifdef RELEASE
  LIBFLAGS += -O3
 endif
 IMPORTFLAGS = -s -d0
 COREOBJS = md-helpers.import.so md-globals.import.so md-note-table.import.so\
- md-command.import.so
+ md-parser.import.so md-command.import.so
 
 # build libmdal
 mdal: mdal.scm $(COREOBJS) md-core.import.so
@@ -25,6 +26,12 @@ md-globals.so: md-helpers.import.so md-globals.scm
 
 md-globals.import.so: md-globals.so
 	$(CSC) $(IMPORTFLAGS) md-globals.import.scm
+
+md-parser.so: md-parser.scm
+	$(CSC) $(LIBFLAGS) md-parser.scm -j md-parser
+
+md-parser.import.so: md-parser.so
+	$(CSC) $(IMPORTFLAGS) md-parser.import.scm
 
 md-note-table.so: utils/md-note-table.scm
 	$(CSC) $(LIBFLAGS) utils/md-note-table.scm -j md-note-table
@@ -51,6 +58,7 @@ md-core.import.so: mdal-core.so
 
 mdal-core.md: mdal-core.scm
 md-helpers.md: md-helpers.scm
+md-parser.md: md-parser.scm
 md-command.md: md-command.scm
 md-note-table.md: utils/md-note-table.scm
 

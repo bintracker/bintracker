@@ -10,8 +10,8 @@
   (import scheme chicken srfi-1 srfi-4 srfi-13 srfi-14 extras data-structures)
   (use srfi-69 simple-exceptions matchable
        ssax sxpath sxpath-lolevel
-       md-helpers md-globals md-command md-note-table)
-  (reexport md-helpers md-globals md-command md-note-table)
+       md-helpers md-globals md-parser md-command md-note-table)
+  (reexport md-helpers md-globals md-parser md-command md-note-table)
 
 
   ;; ---------------------------------------------------------------------------
@@ -1301,6 +1301,17 @@
 			    (md:config-get-node-default node-id config))))))))
 	 (md:config-get-subnode-type-ids group-id config 'field)))
 
+  (define (md:mod-parse-group-fields2 exprs group-id config)
+    (map (lambda (node-id)
+	   (let ((assignments (md:get-assignments exprs node-id)))
+	     (md:make-inode
+	      node-id
+	      (list (list 0 (md:make-inode-instance
+			     (if (null? assignments)
+				 (md:config-get-node-default node-id config)
+				 (last (car assignments)))))))))
+	 (md:config-get-subnode-type-ids group-id config 'field)))
+
   ;;; parse the iblock fields in the given MDMOD block node text into an inode
   ;;; set
   (define (md:mod-parse-block-fields lines block-id config)
@@ -1312,6 +1323,39 @@
 			     (filter (lambda (ta)
 				       (string=? node-id (car ta))) tokens+args)
 			     config)))
+	   node-ids)))
+
+  (define (md:exprs->node-instances exprs block-id node-id config)
+    (let* ((node-index
+	    (list-index (lambda (id)
+			  (string=? id node-id))
+			(md:config-get-subnode-type-ids block-id config
+							'field)))
+	   (instances
+	    (flatten
+	     (map (lambda (row)
+		    (if (eq? 'dotted (car row))
+			(make-list (last row)
+				   (md:make-inode-instance '()))
+			(md:make-inode-instance
+			 (if (eq? 'csv-shorthand (car row))
+			     (list-ref (last row)
+				       node-index)
+			     (let ((assignments (md:get-assignments (last row)
+								    node-id)))
+			       (if (null? assignments)
+				   '()
+				   (last (car assignments))))))))
+		  exprs))))
+      (zip (iota (length instances))
+	   instances)))
+
+  (define (md:mod-parse-block-fields2 exprs block-id config)
+    (let ((node-ids (md:config-get-subnode-type-ids block-id config 'field)))
+      (map (lambda (node-id)
+	     (md:make-inode node-id
+			    (md:exprs->node-instances exprs block-id
+						      node-id config)))
 	   node-ids)))
 
   ;;; extract non-field nodes text for a given id from the given MDMOD node text
@@ -1352,6 +1396,21 @@
 			 nodes)))))
 	   node-ids)))
 
+  (define (md:mod-parse-group-blocks2 exprs group-id config)
+    (let ((node-ids (md:config-get-subnode-type-ids group-id config 'block)))
+      (map (lambda (id)
+	     (md:make-inode
+	      id
+	      (let ((nodes (md:get-assignments exprs id)))
+		(map (lambda (node)
+		       (list (third node)
+			     (md:make-inode-instance
+			      (md:mod-parse-block-fields2 (last node)
+							  id config)
+			      (fourth node))))
+		     nodes))))
+	   node-ids)))
+
   ;;; parse a group instance into an inode set
   (define (md:mod-parse-group lines node-id config)
     (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
@@ -1379,6 +1438,26 @@
 	   (block-nodes (md:mod-parse-group-blocks lines node-id config))
 	   (field-nodes (md:mod-parse-group-fields lines node-id config)))
       (remove null? (append field-nodes block-nodes group-nodes))))
+
+  ;;; parse a group instance into an inode set
+  (define (md:mod-parse-group2 exprs node-id config)
+    (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
+	   (group-nodes (map (lambda (id)
+			       (md:make-inode
+				id
+				(let ((nodes (md:get-assignments exprs id)))
+				  (map (lambda (node)
+					 (list
+					  (third node)
+					  (md:make-inode-instance
+					   (md:mod-parse-group2 (last node)
+								id config)
+					   (fourth node))))
+				       nodes))))
+			     group-ids))
+	   (block-nodes (md:mod-parse-group-blocks2 exprs node-id config))
+	   (field-nodes (md:mod-parse-group-fields2 exprs node-id config)))
+      (append field-nodes block-nodes group-nodes)))
 
   ;;; strip whitespace from MDMOD text, except where enclosed in double quotes
   (define (md:purge-whitespace lines)
@@ -1472,6 +1551,38 @@
 				       (md:make-inode-instance
 					(md:mod-parse-group
 					 mod-lines "GLOBAL" config))))))))))
+
+  ;;; check if mdmod s-expression specifies a supported MDAL version
+  (define (md:check-module-version2 mod-sexp)
+    (let ((version-assignments (md:get-assignments mod-sexp "MDAL_VERSION")))
+      (if (null? version-assignments)
+	  (error "NO MDAL_VERSION specified")
+	  (let ((version (last (car version-assignments))))
+	    (if (md:in-range? version *supported-module-versions*)
+		version
+		(error "unsupported MDAL version"))))))
+
+  (define (md:mod-get-config-name2 mod-sexp)
+    (let ((cfg-assignments (md:get-assignments mod-sexp "CONFIG")))
+      (if (null? cfg-assignments)
+	  (error "No CONFIG specified")
+	  (last (car cfg-assignments)))))
+
+  ;;; construct an md:module from a given .mdal file
+  (define (md:file->module filepath config-dir-path)
+    (let ((mod-sexp (md:file->sexp filepath)))
+      (begin (md:check-module-version2 mod-sexp)
+	     (let* ((cfg-name (md:mod-get-config-name2 mod-sexp))
+		    (config (md:mdconf->config
+			     (string-append config-dir-path cfg-name "/"
+					    cfg-name ".mdconf"))))
+	       (md:make-module cfg-name config
+			       (md:make-inode
+				"GLOBAL"
+				(list (list 0
+					    (md:make-inode-instance
+					     (md:mod-parse-group2
+					      mod-sexp "GLOBAL" config))))))))))
 
   ;;; returns the group instance's block nodes, except the order node, which can
   ;;; be retrieved with md:mod-get-group-instance-order instead
