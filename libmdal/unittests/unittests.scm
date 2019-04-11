@@ -7,8 +7,8 @@
 (define my-cfg-data (call-with-input-file "unittests/config/Huby/Huby.mdconf"
 		      (lambda (x) (ssax:xml->sxml x '()))))
 (define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf"))
-(define my-mod (md:parse-module-file "unittests/modules/huby-test.mdal"
-				     my-config-path))
+(define my-mod (md:file->module "unittests/modules/huby-test.mdal"
+				my-config-path))
 (define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
@@ -520,86 +520,13 @@
 (test-group
  "MD-Module/Parser"
 
- (test "md:mod-trim-arg" "\"foo bar\"" (md:mod-trim-arg "\"foo bar\",BAZ=3"))
+ ;; (define my-modlines
+ ;;   (remove string-null?
+ ;; 	   (md:purge-comments
+ ;; 	    (md:purge-whitespace
+ ;; 	     (read-lines "unittests/modules/huby-test.mdal")))))
 
- (test "md:mod-parse-abbrev-line" '(("foo" "1") ("bar" "2") ("baz" "3"))
-       (md:mod-parse-abbrev-line "1,2,3" '("foo" "bar" "baz")))
-
- (test "md:mod-split-regular-line" '(("foo" "1") ("bar" "2") ("baz" "3"))
-       (md:mod-split-regular-line "foo=1,bar=2,baz=3"))
-
- (test "md:mod-parse-regular-line" '(("foo" "1") ("bar" "2") ("baz" ()))
-       (md:mod-parse-regular-line "bar=2,foo=1,invalid=x"
-				  '("foo" "bar" "baz")))
-
- (test "md:mod-parse-dotted-line"
-       '(("foo" ()) ("bar" ()) ("baz" ())
-	 ("foo" ()) ("bar" ()) ("baz" ()))
-       (md:mod-parse-dotted-line ".2" '("foo" "bar" "baz")))
-
- (test "md:mod-parse-line"
-       '((("foo" "1") ("bar" "2") ("baz" "3"))
-	 (("foo" ()) ("bar" "2") ("baz" ()))
-	 (("foo" ()) ("bar" ()) ("baz" ())))
-       (map (lambda (line)
-	      (md:mod-parse-line line '("foo" "bar" "baz")))
-	    '("1,2,3" "bar=2" ".")))
-
- (test "md:mod-parse-block-text"
-       '(("foo" "1") ("bar" "2") ("baz" "3")
-	 ("foo" ()) ("bar" "2") ("baz" ())
-	 ("foo" ()) ("bar" ()) ("baz" ()))
-       (md:mod-parse-block-text '("1,2,3" "bar=2" ".")
-				'("foo" "bar" "baz")))
-
- (test "md:mod-crop-node-text"
-       '("FOO(0)={" "BAR=1,BAZ=2" "." "}" "FOO(1)={" "." "}")
-       (md:mod-crop-node-text
-	'("THIS(0)={" "FOO(0)={" "BAR=1,BAZ=2" "." "}" "FOO(1)={" "." "}" "}"
-	  "NEXT(0)={")))
-
- (test "md:mod-normalize-arg" 64
-       (md:mod-normalize-arg "$40" "BPM" my-cfg))
-
- (test "md:mod-token/arg->inode-instance"
-       (md:make-inode-instance 64)
-       (md:mod-token/arg->inode-instance '("BPM" "$40") my-cfg))
-
- (test "md:mod-token/args->inode-instances"
-       (list (list 0 (md:make-inode-instance "c3"))
-	     (list 1 (md:make-inode-instance '()))
-	     (list 2 (md:make-inode-instance "rest")))
-       (md:mod-token/args->node-instances
-	'(("NOTE1" "c3") ("NOTE1" ()) ("NOTE1" "rest"))
-	my-cfg))
-
- (test "md:mod-parse-scope-instance-id" '(0 1)
-       (list (md:mod-parse-scope-instance-id "FOO={")
-	     (md:mod-parse-scope-instance-id "BAR(1)={")))
-
- (test "md:mod-parse-scope-instance-name" '("" "baz")
-       (list (md:mod-parse-scope-instance-name "FOO(1)={")
-	     (md:mod-parse-scope-instance-name "BAR(2)[baz]={")))
-
- (define my-modlines
-   (remove string-null?
-	   (md:purge-comments
-	    (md:purge-whitespace
-	     (read-lines "unittests/modules/huby-test.mdal")))))
-
- (test "md:mod-parse-group-fields"
-       (list
-	(md:make-inode "AUTHOR" (list (list 0 (md:make-inode-instance
-					       "\"utz\""))))
-	(md:make-inode "TITLE" (list (list 0 (md:make-inode-instance
-					      "\"Huby Test\""))))
-	(md:make-inode "BPM" (list (list 0 (md:make-inode-instance 120)))))
-       (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg))
-
- (test "md:mod-extract-nodes"
-       '(("CH2($00)={" "NOTE2=a2" ".15")
-	 ("CH2($01)={" "NOTE2=e2" ".15"))
-       (md:mod-extract-nodes my-modlines "CH2"))
+ (define my-mod-expr (md:file->sexp "unittests/modules/huby-test.mdal"))
 
  (define my-drum-inode
    (md:make-inode "DRUM"
@@ -669,20 +596,33 @@
 					     (list my-note2-inode1)))))
 	 my-patterns-order-inode))
 
+
+ (test "md:mod-parse-group-fields"
+       (list
+	(md:make-inode "AUTHOR" (list (list 0 (md:make-inode-instance
+					       "utz"))))
+	(md:make-inode "TITLE" (list (list 0 (md:make-inode-instance
+					      "Huby Test"))))
+	(md:make-inode "BPM" (list (list 0 (md:make-inode-instance 120)))))
+       (md:mod-parse-group-fields my-mod-expr "GLOBAL" my-cfg))
+
+
  (test "md:mod-parse-block-fields"
        (list my-note1-inode)
        (md:mod-parse-block-fields
-	(cdr (car (md:mod-extract-nodes my-modlines "CH1")))
-	"CH1" my-cfg))
+	(last (car (md:get-assignments
+		    (last (car (md:get-assignments my-mod-expr "PATTERNS")))
+		    "CH1")))
+ 	"CH1" my-cfg))
 
  (test "md:mod-parse-group-blocks"
        my-patterns-subnodes
        (md:mod-parse-group-blocks
-	(cdr (car (md:mod-extract-nodes my-modlines "PATTERNS")))
-	"PATTERNS" my-cfg))
+	(last (car (md:get-assignments my-mod-expr "PATTERNS")))
+ 	"PATTERNS" my-cfg))
 
  (define my-global-subnodes
-   (append (md:mod-parse-group-fields my-modlines "GLOBAL" my-cfg)
+   (append (md:mod-parse-group-fields my-mod-expr "GLOBAL" my-cfg)
 	   (list (md:make-inode "PATTERNS"
 				(list (list 0 (md:make-inode-instance
 					       my-patterns-subnodes
@@ -690,25 +630,16 @@
 
  (test "md:mod-parse-group"
        my-global-subnodes
-       (md:mod-parse-group my-modlines "GLOBAL" my-cfg))
-
- (test "md:purge-whitespace"
-       '("foo,bar,baz" "foo=\"bar baz \"")
-       (md:purge-whitespace '(" foo, bar, baz " " foo = \"bar baz \"")))
-
- (test "md:purge-comments"
-       '("foo " "bar " "" " baz")
-       (md:purge-comments '("foo // a comment" "bar /* a" "multi-line comment"
-			    "*/ baz")))
+       (md:mod-parse-group my-mod-expr "GLOBAL" my-cfg))
 
  (test-assert "md:check-module-version: valid"
-   (md:check-module-version '("MDAL_VERSION=2")))
+   (md:check-module-version my-mod-expr))
  (test-error "md:check-module-version: invalid"
-	     (md:check-module-version '("MDAL_VERSION=5")))
+	     (md:check-module-version '((assign CONFIG 0 "" 4))))
 
  (test "md:mod-get-config-name"
        "Huby"
-       (md:mod-get-config-name '("foo" "CONFIG=\"Huby\"")))
+       (md:mod-get-config-name my-mod-expr))
 
  (test "md:mod-string->number"
        '(64 64 64)
@@ -716,12 +647,12 @@
 	     (md:mod-string->number "$40")
 	     (md:mod-string->number "#x40")))
 
- (test "md:parse-module-file"
+ (test "md:file->module"
        (md:make-inode "GLOBAL" (list (list 0 (md:make-inode-instance
 					      my-global-subnodes))))
        (md:mod-global-node
-	(md:parse-module-file "unittests/modules/huby-test.mdal"
-			      my-config-path)))
+	(md:file->module "unittests/modules/huby-test.mdal"
+			 my-config-path)))
 
  (test "md:mod-get-group-instance-blocks"
        (list ((md:node-path "0/PATTERNS/0/DRUMS") (md:mod-global-node my-mod))
