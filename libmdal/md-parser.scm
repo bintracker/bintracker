@@ -79,6 +79,16 @@
 		   (list md:numeric-arg md:quoted-string
 			 (as-string (one-or-more (in md:string-chars)))))))
 
+  (define (md:normalize-order-ids assignments parent-id)
+    (map (lambda (a)
+	   (if (and (eq? 'assign (car a))
+		    (string=? "ORDER" (cadr a)))
+	       (cons 'assign
+		     (cons (string-append parent-id "_ORDER")
+			   (drop a 2)))
+	       a))
+	 assignments))
+
   (define (md:assignment-parser val-parser)
     (sequence* ((identifier md:identifier)
 		(instance-id (maybe md:instance-id))
@@ -89,7 +99,9 @@
 	       (result (list 'assign identifier
 			     (if instance-id instance-id 0)
 			     (if instance-name instance-name "")
-			     val))))
+			     (if (pair? val)
+				 (md:normalize-order-ids val identifier)
+				 val)))))
 
   (define md:row-assignment (md:assignment-parser (md:value-set)))
 
@@ -109,7 +121,8 @@
   (define md:block
     (recursive-parser
      (enclosed-by (is #\{)
-		  (one-or-more (enclosed-by (maybe md:linebreak)
+		  (one-or-more
+		   (enclosed-by (maybe md:linebreak)
 					    (any-of md:dotted-line
 						    md:csv-shorthand
 						    md:csv
@@ -146,30 +159,11 @@
 	      (purge-ws-from-every-other (string-split line "\"" #t) #t)))
 	   lines)))
 
-  ;; prefix ORDER identifiers with the parent-node name
-  (define (md:normalize-identifiers expr #!optional (parent-id ""))
-    (map (lambda (subexpr)
-	   (if (not (eq? 'assign (car subexpr)))
-	       subexpr
-	       (let ((normalized-id (if (string=? "ORDER" (cadr subexpr))
-					(string-append parent-id "_ORDER")
-					(cadr subexpr))))
-		 (list (car subexpr)
-		       normalized-id
-		       (third subexpr)
-		       (fourth subexpr)
-		       (if (not (list? (last subexpr)))
-			   (last subexpr)
-			   (md:normalize-identifiers (last subexpr)
-						     normalized-id))))))
-	 expr))
-
   (define (md:file->sexp filepath)
-    (md:normalize-identifiers
-     (parse md:file
-	    (string-concatenate
-	     (flatten (zip (md:purge-ws (read-lines filepath))
-			   (circular-list "\n")))))))
+    (parse md:file
+	   (string-concatenate
+	    (flatten (zip (md:purge-ws (read-lines filepath))
+			  (circular-list "\n"))))))
 
   (define (md:get-assignments exprs identifier)
     (filter (lambda (e)
