@@ -114,4 +114,76 @@
   (define (md:node-path path)
     (md:make-npath-fn (string-split path "/")))
 
+
+  ;;----------------------------------------------------------------------------
+  ;;; ### md:mod accessor functions
+  ;;----------------------------------------------------------------------------
+
+  ;;; split a list of subnodes into two seperate lists at the given node-id. The
+  ;;; second list will be the tail, including the node at split point.
+  (define (md:mod-split-node-list-at node-id nodes)
+    (receive (break (lambda (node)
+		      (string=? node-id (md:inode-cfg-id node)))
+		    nodes)))
+
+  ;;; split a list of inode instances into two seperate lists at the given node
+  ;;; instance id. The second list will be the tail, including the instance at
+  ;;; split point.
+  (define (md:mod-split-instances-at inst-id instances)
+    (receive (break (lambda (inst)
+		      (= inst-id (car inst)))
+		    instances)))
+
+  ;;; replace the subnode matching the given subnode's id in the given parent
+  ;;; inode instance with the given new subnode
+  (define (md:mod-replace-subnode parent-node-instance subnode)
+    (let ((split-subnodes (md:mod-split-node-list-at
+			   (md:inode-cfg-id subnode)
+			   (md:inode-instance-val parent-node-instance))))
+      (md:make-inode-instance
+       (append (car split-subnodes)
+	       (cons subnode (cdadr split-subnodes)))
+       (md:inode-instance-name parent-node-instance))))
+
+  ;;; replace the inode instance with the given id in the given inode with the
+  ;;; given new inode instance
+  (define (md:mod-replace-inode-instance inode inst-id instance)
+    (let ((split-instances (md:mod-split-instances-at
+			    inst-id (md:inode-instances inode))))
+      (md:make-inode
+       (md:inode-cfg-id inode)
+       (append (car split-instances)
+	       (cons (list inst-id instance)
+		     (cdadr split-instances))))))
+
+  ;;; helper fn for md:mod-set-node
+  (define (md:mod-make-node-setter path-lst nesting-level)
+    (if (= nesting-level (length path-lst))
+	`(md:mod-replace-subnode
+	  (,(md:node-instance-path (string-join path-lst "/")) ancestor-node)
+	  subnode)
+	`(md:mod-replace-subnode
+	  (,(md:node-instance-path
+	     (string-join (take path-lst nesting-level) "/")) ancestor-node)
+	  ,(md:mod-make-instance-setter path-lst (+ nesting-level 1)))))
+
+  ;;; helper fn for md:mod-set-node
+  (define (md:mod-make-instance-setter path-lst nesting-level)
+    `(md:mod-replace-inode-instance
+      (,(md:node-path
+	 (string-join (take path-lst nesting-level) "/")) ancestor-node)
+      ,(string->number (car (reverse path-lst)))
+      ,(md:mod-make-node-setter path-lst (+ nesting-level 1))))
+
+  ;;; Generate a function that replaces an arbitrarily deeply nested subnode in
+  ;;; the given parent node, as specified by the given node-path string.
+  (define (md:mod-node-setter parent-instance-path-str)
+    (let ((setter `(md:mod-replace-inode-instance
+		    ancestor-node 0
+		    ,(md:mod-make-node-setter
+		      (string-split parent-instance-path-str "/")
+		      1))))
+      (eval (append '(lambda (subnode ancestor-node))
+		    (list setter)))))
+
   ) ;; end module md-types
