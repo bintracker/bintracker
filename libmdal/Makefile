@@ -7,8 +7,8 @@ ifdef RELEASE
  LIBFLAGS += -O3
 endif
 IMPORTFLAGS = -s -d0
-COREOBJS = md-helpers.import.so md-globals.import.so md-note-table.import.so\
- md-parser.import.so md-command.import.so
+COREOBJS = md-helpers.import.so md-globals.import.so md-types.import.so\
+ md-note-table.import.so md-parser.import.so md-command.import.so
 
 # build libmdal
 mdal: mdal.scm $(COREOBJS) md-core.import.so
@@ -32,6 +32,12 @@ md-parser.so: md-parser.scm
 
 md-parser.import.so: md-parser.so
 	$(CSC) $(IMPORTFLAGS) md-parser.import.scm
+
+md-types.so: md-helpers.import.so md-types.scm
+	$(CSC) $(LIBFLAGS) md-types.scm -j md-types
+
+md-types.import.so: md-types.so
+	$(CSC) $(IMPORTFLAGS) md-types.import.scm
 
 md-note-table.so: utils/md-note-table.scm
 	$(CSC) $(LIBFLAGS) utils/md-note-table.scm -j md-note-table
@@ -58,6 +64,8 @@ md-core.import.so: mdal-core.so
 
 mdal-core.md: mdal-core.scm
 md-helpers.md: md-helpers.scm
+md-globals.md: md-globals.scm
+md-types.md: md-types.scm
 md-parser.md: md-parser.scm
 md-command.md: md-command.scm
 md-note-table.md: utils/md-note-table.scm
