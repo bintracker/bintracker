@@ -11,7 +11,7 @@ PATTERNS={
         R_CH2=$01
     }
 
-    DRUMS($00)[beat0]={
+    DRUMS($00)"beat0"={
         DRUM=on
         .3
         DRUM=on

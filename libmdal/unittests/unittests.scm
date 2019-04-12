@@ -520,12 +520,6 @@
 (test-group
  "MD-Module/Parser"
 
- ;; (define my-modlines
- ;;   (remove string-null?
- ;; 	   (md:purge-comments
- ;; 	    (md:purge-whitespace
- ;; 	     (read-lines "unittests/modules/huby-test.mdal")))))
-
  (define my-mod-expr (md:file->sexp "unittests/modules/huby-test.mdal"))
 
  (define my-drum-inode

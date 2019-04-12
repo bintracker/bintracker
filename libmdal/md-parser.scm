@@ -35,15 +35,14 @@
   (define md:string-chars
     (char-set-union char-set:letter+digit char-set:blank))
 
-  (define (md:wrapped-string begin-char end-char)
-    (enclosed-by
-     (is begin-char)
-     (as-string
-      (zero-or-more
-       (in (char-set-union
-	    char-set:letter+digit char-set:blank
-	    (char-set-delete char-set:punctuation begin-char end-char)))))
-     (is end-char)))
+  (define md:quoted-string
+    (enclosed-by (is #\")
+		 (as-string
+		  (zero-or-more
+		   (in (char-set-union
+			char-set:letter+digit char-set:blank
+			(char-set-delete char-set:punctuation #\")))))
+		 (is #\")))
 
   (define md:linebreak (sequence (one-or-more (is #\newline))))
 
@@ -77,13 +76,13 @@
   (define (md:value-set . added)
     (apply any-of
 	   (append added
-		   (list md:numeric-arg (md:wrapped-string #\" #\")
+		   (list md:numeric-arg md:quoted-string
 			 (as-string (one-or-more (in md:string-chars)))))))
 
   (define (md:assignment-parser val-parser)
     (sequence* ((identifier md:identifier)
 		(instance-id (maybe md:instance-id))
-		(instance-name (maybe (md:wrapped-string #\[ #\])))
+		(instance-name (maybe md:quoted-string))
 		(_ (is #\=))
 		(val val-parser)
 		(_ (maybe md:line-comment)))
