@@ -1,13 +1,13 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = mdal-core.md md-helpers.md md-globals.md md-types.md md-parser.md\
+DOCS = mdal-core.md md-helpers.md md-types.md md-parser.md\
  md-command.md utils/md-note-table.md
 LIBFLAGS = -s -d1
 ifdef RELEASE
  LIBFLAGS += -O3
 endif
 IMPORTFLAGS = -s -d0
-COREOBJS = md-helpers.import.so md-globals.import.so md-types.import.so\
+COREOBJS = md-helpers.import.so md-types.import.so\
  md-note-table.import.so md-parser.import.so md-command.import.so
 
 # build libmdal
@@ -20,12 +20,6 @@ md-helpers.so: md-helpers.scm
 
 md-helpers.import.so: md-helpers.so
 	$(CSC) $(IMPORTFLAGS) md-helpers.import.scm
-
-md-globals.so: md-helpers.import.so md-globals.scm
-	$(CSC) $(LIBFLAGS) md-globals.scm -j md-globals
-
-md-globals.import.so: md-globals.so
-	$(CSC) $(IMPORTFLAGS) md-globals.import.scm
 
 md-parser.so: md-parser.scm
 	$(CSC) $(LIBFLAGS) md-parser.scm -j md-parser
@@ -64,7 +58,6 @@ md-core.import.so: mdal-core.so
 
 mdal-core.md: mdal-core.scm
 md-helpers.md: md-helpers.scm
-md-globals.md: md-globals.scm
 md-types.md: md-types.scm
 md-parser.md: md-parser.scm
 md-command.md: md-command.scm

@@ -10,9 +10,16 @@
   (import scheme chicken srfi-1 srfi-4 srfi-13 srfi-14 extras data-structures)
   (use srfi-69 simple-exceptions matchable
        ssax sxpath sxpath-lolevel
-       md-helpers md-globals md-types md-parser md-command md-note-table)
-  (reexport md-helpers md-globals md-types md-parser md-command md-note-table)
+       md-helpers md-types md-parser md-command md-note-table)
+  (reexport md-helpers md-types md-parser md-command md-note-table)
 
+
+  ;; ---------------------------------------------------------------------------
+  ;; MDAL: GLOBAL VARS
+  ;; ---------------------------------------------------------------------------
+
+  (define *supported-config-versions* (md:make-range 2 2))
+  (define *supported-module-versions* (md:make-range 2 2))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDCONF: TARGETS
@@ -1210,10 +1217,10 @@
 			     (md:make-inode id (make-generic-instances 0)))
 			   subnode-ids)))))))
 
+
   ;;----------------------------------------------------------------------------
   ;;; ### node reordering
   ;;----------------------------------------------------------------------------
-
 
   ;;; return a list of values of a given field node id from a given block
   ;;; instance

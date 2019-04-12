@@ -19,7 +19,6 @@ nav:
           - 'md-types': 'generated/md-types.md'
           - 'md-parser': 'generated/md-parser.md'
           - 'md-command': 'generated/md-command.md'
-          - 'md-globals': 'generated/md-globals.md'
           - 'md-helpers': 'generated/md-helpers.md'
           - 'Utilities':
               - 'md-note-table': 'generated/utils/md-note-table.md'
