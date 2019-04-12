@@ -7,11 +7,10 @@ ifdef RELEASE
  LIBFLAGS += -O3
 endif
 IMPORTFLAGS = -s -d0
-COREOBJS = md-helpers.import.so md-types.import.so md-config.import.so\
- md-note-table.import.so md-parser.import.so md-command.import.so
+BASEDEPS = md-helpers.import.so md-types.import.so
 
 # build libmdal
-mdal: mdal.scm $(COREOBJS)
+mdal: mdal.scm $(BASEDEPS) md-config.import.so md-parser.import.so
 	$(CSC) $(LIBFLAGS) mdal.scm -j mdal
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
 
@@ -40,13 +39,14 @@ md-command.so: md-helpers.import.so md-command.scm
 md-command.import.so: md-command.so
 	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
-md-config.so: md-config.scm md-helpers.import.so md-types.import.so md-command.import.so md-note-table.import.so
+md-config.so: md-config.scm $(BASEDEPS) md-command.import.so\
+ md-note-table.import.so
 	$(CSC) $(LIBFLAGS) md-config.scm -j md-config
 
 md-config.import.so: md-config.so
 	$(CSC) $(IMPORTFLAGS) md-config.import.scm
 
-md-parser.so: md-parser.scm md-helpers.import.so md-types.import.so md-config.import.so
+md-parser.so: md-parser.scm $(BASEDEPS) md-config.import.so
 	$(CSC) $(LIBFLAGS) md-parser.scm -j md-parser
 
 md-parser.import.so: md-parser.so
