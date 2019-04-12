@@ -1,7 +1,7 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = mdal-core.md md-helpers.md md-parser.md md-command.md\
- utils/md-note-table.md
+DOCS = mdal-core.md md-helpers.md md-globals.md md-types.md md-parser.md\
+ md-command.md utils/md-note-table.md
 LIBFLAGS = -s -d1
 ifdef RELEASE
  LIBFLAGS += -O3

@@ -159,12 +159,16 @@
 	      (purge-ws-from-every-other (string-split line "\"" #t) #t)))
 	   lines)))
 
+  ;;; convert .mdal module file to internal s-expression representation, to be
+  ;;; processed further into a md:module record
   (define (md:file->sexp filepath)
     (parse md:file
 	   (string-concatenate
 	    (flatten (zip (md:purge-ws (read-lines filepath))
 			  (circular-list "\n"))))))
 
+  ;;; extract assignments for the given {{identifier}} from the given
+  ;;; expressions
   (define (md:get-assignments exprs identifier)
     (filter (lambda (e)
 	      (and (eq? 'assign (car e))
