@@ -1,17 +1,17 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = mdal.md mdal-core.md md-helpers.md md-types.md md-parser.md\
+DOCS = mdal.md md-config.md md-helpers.md md-types.md md-parser.md\
  md-command.md utils/md-note-table.md
 LIBFLAGS = -s -d1
 ifdef RELEASE
  LIBFLAGS += -O3
 endif
 IMPORTFLAGS = -s -d0
-COREOBJS = md-helpers.import.so md-types.import.so\
+COREOBJS = md-helpers.import.so md-types.import.so md-config.import.so\
  md-note-table.import.so md-parser.import.so md-command.import.so
 
 # build libmdal
-mdal: mdal.scm $(COREOBJS) md-core.import.so
+mdal: mdal.scm $(COREOBJS)
 	$(CSC) $(LIBFLAGS) mdal.scm -j mdal
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
 
@@ -20,12 +20,6 @@ md-helpers.so: md-helpers.scm
 
 md-helpers.import.so: md-helpers.so
 	$(CSC) $(IMPORTFLAGS) md-helpers.import.scm
-
-md-parser.so: md-parser.scm
-	$(CSC) $(LIBFLAGS) md-parser.scm -j md-parser
-
-md-parser.import.so: md-parser.so
-	$(CSC) $(IMPORTFLAGS) md-parser.import.scm
 
 md-types.so: md-helpers.import.so md-types.scm
 	$(CSC) $(LIBFLAGS) md-types.scm -j md-types
@@ -46,18 +40,24 @@ md-command.so: md-helpers.import.so md-command.scm
 md-command.import.so: md-command.so
 	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
-mdal-core.so: mdal-core.scm $(COREOBJS)
-	$(CSC) $(LIBFLAGS) mdal-core.scm -j mdal-core
+md-config.so: md-config.scm md-helpers.import.so md-types.import.so md-command.import.so md-note-table.import.so
+	$(CSC) $(LIBFLAGS) md-config.scm -j md-config
 
-md-core.import.so: mdal-core.so
-	$(CSC) $(IMPORTFLAGS) mdal-core.import.scm
+md-config.import.so: md-config.so
+	$(CSC) $(IMPORTFLAGS) md-config.import.scm
+
+md-parser.so: md-parser.scm md-helpers.import.so md-types.import.so md-config.import.so
+	$(CSC) $(LIBFLAGS) md-parser.scm -j md-parser
+
+md-parser.import.so: md-parser.so
+	$(CSC) $(IMPORTFLAGS) md-parser.import.scm
 
 # generate documentation
 %.md: %.scm
 	$(DOCGEN) -i $< -o docs/generated/$@ -m
 
 mdal.md: mdal.scm
-mdal-core.md: mdal-core.scm
+md-config.md: md-config.scm
 md-helpers.md: md-helpers.scm
 md-types.md: md-types.scm
 md-parser.md: md-parser.scm

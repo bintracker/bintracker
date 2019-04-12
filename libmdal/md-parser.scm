@@ -10,7 +10,7 @@
 (module md-parser *
 
   (import scheme chicken srfi-1 srfi-13 srfi-14 extras data-structures)
-  (use comparse)
+  (use comparse md-helpers md-types md-config)
 
   (define (md:string-parser char-set convert-fn)
     (bind (as-string (one-or-more (in char-set)))
@@ -174,5 +174,131 @@
 	      (and (eq? 'assign (car e))
 		   (string=? identifier (cadr e))))
 	    exprs))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## MDMOD: 2nd Stage Parsing
+  ;; ---------------------------------------------------------------------------
+
+  ;;; parse the igroup fields in the given MDMOD group node text into an inode
+  ;;; set
+  (define (md:mod-parse-group-fields exprs group-id config)
+    (map (lambda (node-id)
+	   (let ((assignments (md:get-assignments exprs node-id)))
+	     (md:make-inode
+	      node-id
+	      (list (list 0 (md:make-inode-instance
+			     (if (null? assignments)
+				 (md:config-get-node-default node-id config)
+				 (last (car assignments)))))))))
+	 (md:config-get-subnode-type-ids group-id config 'field)))
+
+  (define (md:exprs->node-instances exprs block-id node-id config)
+    (let* ((node-index
+	    (list-index (lambda (id)
+			  (string=? id node-id))
+			(md:config-get-subnode-type-ids block-id config
+							'field)))
+	   (instances
+	    (flatten
+	     (map (lambda (row)
+		    (if (eq? 'dotted (car row))
+			(make-list (last row)
+				   (md:make-inode-instance '()))
+			(md:make-inode-instance
+			 (if (eq? 'csv-shorthand (car row))
+			     (list-ref (last row)
+				       node-index)
+			     (let ((assignments (md:get-assignments (last row)
+								    node-id)))
+			       (if (null? assignments)
+				   '()
+				   (last (car assignments))))))))
+		  exprs))))
+      (zip (iota (length instances))
+	   instances)))
+
+  ;;; parse the iblock fields in the given MDMOD block node text into an inode
+  ;;; set
+  (define (md:mod-parse-block-fields exprs block-id config)
+    (let ((node-ids (md:config-get-subnode-type-ids block-id config 'field)))
+      (map (lambda (node-id)
+	     (md:make-inode node-id
+			    (md:exprs->node-instances exprs block-id
+						      node-id config)))
+	   node-ids)))
+
+  ;;; parse the igroup blocks in the given MDMOD group node text into an inode
+  ;;; set
+  (define (md:mod-parse-group-blocks exprs group-id config)
+    (let ((node-ids (md:config-get-subnode-type-ids group-id config 'block)))
+      (map (lambda (id)
+	     (md:make-inode
+	      id
+	      (let ((nodes (md:get-assignments exprs id)))
+		(map (lambda (node)
+		       (list (third node)
+			     (md:make-inode-instance
+			      (md:mod-parse-block-fields (last node)
+							 id config)
+			      (fourth node))))
+		     nodes))))
+	   node-ids)))
+
+  ;;; parse a group instance into an inode set
+  (define (md:mod-parse-group exprs node-id config)
+    (let* ((group-ids (md:config-get-subnode-type-ids node-id config 'group))
+	   (group-nodes (map (lambda (id)
+			       (md:make-inode
+				id
+				(let ((nodes (md:get-assignments exprs id)))
+				  (map (lambda (node)
+					 (list
+					  (third node)
+					  (md:make-inode-instance
+					   (md:mod-parse-group (last node)
+								id config)
+					   (fourth node))))
+				       nodes))))
+			     group-ids))
+	   (block-nodes (md:mod-parse-group-blocks exprs node-id config))
+	   (field-nodes (md:mod-parse-group-fields exprs node-id config)))
+      (append field-nodes block-nodes group-nodes)))
+
+  ;;; normalizes hex prefix to Scheme format before calling string->number
+  (define (md:mod-string->number str)
+    (string->number (string-translate* str '(("$" . "#x")))))
+
+  ;;; check if mdmod s-expression specifies a supported MDAL version
+  (define (md:check-module-version mod-sexp)
+    (let ((version-assignments (md:get-assignments mod-sexp "MDAL_VERSION")))
+      (if (null? version-assignments)
+	  (error "NO MDAL_VERSION specified")
+	  (let ((version (last (car version-assignments))))
+	    (if (md:in-range? version *supported-module-versions*)
+		version
+		(error "unsupported MDAL version"))))))
+
+  (define (md:mod-get-config-name mod-sexp)
+    (let ((cfg-assignments (md:get-assignments mod-sexp "CONFIG")))
+      (if (null? cfg-assignments)
+	  (error "No CONFIG specified")
+	  (last (car cfg-assignments)))))
+
+  ;;; construct an md:module from a given .mdal file
+  (define (md:file->module filepath config-dir-path)
+    (let ((mod-sexp (md:file->sexp filepath)))
+      (begin (md:check-module-version mod-sexp)
+	     (let* ((cfg-name (md:mod-get-config-name mod-sexp))
+		    (config (md:mdconf->config
+			     (string-append config-dir-path cfg-name "/"
+					    cfg-name ".mdconf"))))
+	       (md:make-module cfg-name config
+			       (md:make-inode
+				"GLOBAL"
+				(list (list 0
+					    (md:make-inode-instance
+					     (md:mod-parse-group
+					      mod-sexp "GLOBAL" config))))))))))
 
   ) ;; end module md-parser

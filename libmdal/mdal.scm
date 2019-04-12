@@ -5,8 +5,8 @@
 (module mdal *
 
   (import scheme chicken srfi-4)
-  (use mdal-core)
-  (reexport mdal-core)
+  (use md-config md-helpers md-types md-parser)
+  (reexport md-config md-helpers md-types md-parser)
 
   ;;----------------------------------------------------------------------------
   ;;; ### output compilation
