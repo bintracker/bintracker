@@ -7,8 +7,8 @@
 
 (module md-types *
 
-  (import scheme chicken srfi-1 srfi-13 data-structures)
-  (use srfi-69 md-helpers)
+  (import scheme (chicken base) (chicken string) (chicken format)
+	  srfi-1 srfi-13 srfi-69 md-helpers)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDMOD: INPUT NODES

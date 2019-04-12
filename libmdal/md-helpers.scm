@@ -4,8 +4,7 @@
 
 (module md-helpers *
 
-  (import scheme chicken)
-  (use srfi-69)
+  (import scheme (chicken base) srfi-69)
 
   ;; ---------------------------------------------------------------------------
   ;; MDAL: UTILITIES

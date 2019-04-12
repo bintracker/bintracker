@@ -9,8 +9,9 @@
 
 (module md-parser *
 
-  (import scheme chicken srfi-1 srfi-13 srfi-14 extras data-structures)
-  (use comparse md-helpers md-types md-config)
+  (import scheme (chicken base) (chicken io) (chicken string)
+	  srfi-1 srfi-13 srfi-14
+	  comparse md-helpers md-types md-config)
 
   (define (md:string-parser char-set convert-fn)
     (bind (as-string (one-or-more (in char-set)))
@@ -164,7 +165,7 @@
   (define (md:file->sexp filepath)
     (parse md:file
 	   (string-concatenate
-	    (flatten (zip (md:purge-ws (read-lines filepath))
+	    (flatten (zip (md:purge-ws (read-lines (open-input-file filepath)))
 			  (circular-list "\n"))))))
 
   ;;; extract assignments for the given {{identifier}} from the given

@@ -4,8 +4,8 @@
 
 (module mdal *
 
-  (import scheme chicken srfi-4)
-  (use md-config md-helpers md-types md-parser)
+  (import scheme (chicken base) (chicken module) srfi-4
+	  md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
 
   ;;----------------------------------------------------------------------------

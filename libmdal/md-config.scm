@@ -7,10 +7,11 @@
 
 (module md-config *
 
-  (import scheme chicken srfi-1 srfi-4 srfi-13 srfi-14 extras data-structures)
-  (use srfi-69 simple-exceptions matchable
-       ssax sxpath sxpath-lolevel
-       md-helpers md-types md-command md-note-table)
+  (import scheme (chicken base) (chicken string) (chicken format)
+	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
+	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
+	  ssax sxpath sxpath-lolevel
+	  md-helpers md-types md-command md-note-table)
   (reexport md-command md-note-table)
 
 
@@ -876,10 +877,11 @@
 
   ;;; create an md:target from an mdconf root node
   (define (md:config-node->target node)
-    (eval (car (read-file (string-append
-			   "targets/"
-                           (sxml:attr (car (sxml:content node)) 'target)
-                           ".scm")))))
+    (eval (car (read-list (open-input-file
+			   (string-append
+			    "targets/"
+			    (sxml:attr (car (sxml:content node)) 'target)
+			    ".scm"))))))
 
   ;;; generate an md:config from a given .mdconf file
   (define (md:mdconf->config filepath)

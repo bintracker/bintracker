@@ -13,8 +13,7 @@
      md:lowest-note
      md:note-table-range)
 
-  (import scheme chicken)
-  (use srfi-69)
+  (import scheme (chicken base) srfi-69)
 
   (define md:note-names
     (vector "c" "c#" "d" "d#" "e" "f" "f#" "g" "g#" "a" "a#" "b"))

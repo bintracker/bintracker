@@ -11,8 +11,8 @@
 
 (module md-command *
 
-  (import scheme chicken extras data-structures)
-  (use srfi-1 srfi-13 srfi-14 srfi-69 sxpath sxpath-lolevel md-helpers)
+  (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
+	  srfi-1 srfi-13 srfi-14 srfi-69 sxpath sxpath-lolevel md-helpers)
 
   ;;; **[RECORD]** MD:COMMAND
   ;;; command config record type

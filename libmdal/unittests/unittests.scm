@@ -1,9 +1,11 @@
 ;; -*- geiser-scheme-implementation: 'chicken -*-
 
-(use mdal test simple-md5 srfi-13 srfi-69 ports ssax sxpath sxpath-lolevel)
+(import scheme (chicken base) (chicken io) (chicken bitwise) srfi-1
+	mdal test simple-md5 srfi-13 srfi-69 ssax sxpath sxpath-lolevel)
 
 (define my-config-path "unittests/config/")
-(define my-target (eval (car (read-file "targets/spectrum48.scm"))))
+(define my-target (eval (car (read-list
+			      (open-input-file "targets/spectrum48.scm")))))
 (define my-cfg-data (call-with-input-file "unittests/config/Huby/Huby.mdconf"
 		      (lambda (x) (ssax:xml->sxml x '()))))
 (define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf"))
@@ -17,7 +19,7 @@
   (null? (lset-difference equal? (hash-table->alist ht1)
 			  (hash-table->alist ht2))))
 (define (string->sxml-node str)
-  (cadr (call-with-input-string str (lambda (x) (ssax:xml->sxml x '())))))
+  (cadr (ssax:xml->sxml (open-input-string str) '())))
 
 
 (test-group
