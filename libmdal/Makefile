@@ -1,6 +1,6 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = mdal-core.md md-helpers.md md-types.md md-parser.md\
+DOCS = mdal.md mdal-core.md md-helpers.md md-types.md md-parser.md\
  md-command.md utils/md-note-table.md
 LIBFLAGS = -s -d1
 ifdef RELEASE
@@ -56,6 +56,7 @@ md-core.import.so: mdal-core.so
 %.md: %.scm
 	$(DOCGEN) -i $< -o docs/generated/$@ -m
 
+mdal.md: mdal.scm
 mdal-core.md: mdal-core.scm
 md-helpers.md: md-helpers.scm
 md-types.md: md-types.scm

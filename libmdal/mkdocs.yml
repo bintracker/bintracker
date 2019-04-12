@@ -15,6 +15,7 @@ nav:
   - libmdal:
       - 'About libmdal': libmdal.md
       - 'API documentation':
+          - 'mdal': 'generated/mdal.md'
           - 'mdal-core': 'generated/mdal-core.md'
           - 'md-types': 'generated/md-types.md'
           - 'md-parser': 'generated/md-parser.md'
