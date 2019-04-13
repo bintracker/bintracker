@@ -10,7 +10,8 @@
 (module md-parser *
 
   (import scheme (chicken base) (chicken io) (chicken string)
-	  srfi-1 srfi-13 srfi-14
+	  (chicken condition)
+	  srfi-1 srfi-13 srfi-14 simple-exceptions
 	  comparse md-helpers md-types md-config)
 
   (define (md:string-parser char-set convert-fn)
@@ -163,10 +164,14 @@
   ;;; convert .mdal module file to internal s-expression representation, to be
   ;;; processed further into a md:module record
   (define (md:file->sexp filepath)
-    (parse md:file
-	   (string-concatenate
-	    (flatten (zip (md:purge-ws (read-lines (open-input-file filepath)))
-			  (circular-list "\n"))))))
+    (let ((expr (parse md:file
+		       (string-concatenate
+			(flatten (zip (md:purge-ws (read-lines (open-input-file
+								filepath)))
+				      (circular-list "\n")))))))
+      (if expr
+	  expr
+	  (raise ((make-exn "Syntax error" 'syntax-error) "")))))
 
   ;;; extract assignments for the given {{identifier}} from the given
   ;;; expressions
@@ -274,32 +279,44 @@
   (define (md:check-module-version mod-sexp)
     (let ((version-assignments (md:get-assignments mod-sexp "MDAL_VERSION")))
       (if (null? version-assignments)
-	  (error "NO MDAL_VERSION specified")
+	  (raise ((make-exn "No MDAL version specified" 'no-mdal-version) ""))
 	  (let ((version (last (car version-assignments))))
 	    (if (md:in-range? version *supported-module-versions*)
 		version
-		(error "unsupported MDAL version"))))))
+		(raise ((make-exn (string-append "Unsupported MDAL version: "
+						 (->string version))
+				  'unsupported-mdal-version) "")))))))
 
   (define (md:mod-get-config-name mod-sexp)
     (let ((cfg-assignments (md:get-assignments mod-sexp "CONFIG")))
       (if (null? cfg-assignments)
-	  (error "No CONFIG specified")
+	  (raise ((make-exn "No CONFIG specified" 'no-config) ""))
 	  (last (car cfg-assignments)))))
 
   ;;; construct an md:module from a given .mdal file
   (define (md:file->module filepath config-dir-path)
-    (let ((mod-sexp (md:file->sexp filepath)))
-      (begin (md:check-module-version mod-sexp)
-	     (let* ((cfg-name (md:mod-get-config-name mod-sexp))
-		    (config (md:mdconf->config
-			     (string-append config-dir-path cfg-name "/"
-					    cfg-name ".mdconf"))))
-	       (md:make-module cfg-name config
-			       (md:make-inode
-				"GLOBAL"
-				(list (list 0
-					    (md:make-inode-instance
-					     (md:mod-parse-group
-					      mod-sexp "GLOBAL" config))))))))))
+    (handle-exceptions
+	exn
+	(cond ((or ((exn-of? 'unsupported-mdal-version) exn)
+		   ((exn-of? 'no-config) exn)
+		   ((exn-of? 'syntax-error) exn))
+	       (raise ((make-exn (string-append "Invalid module: "
+						(message exn))
+				 'md:parse-fail)
+		       (string-append "In " filepath ""))))
+	      (else (abort exn)))
+	(let ((mod-sexp (md:file->sexp filepath)))
+	  (begin (md:check-module-version mod-sexp)
+		 (let* ((cfg-name (md:mod-get-config-name mod-sexp))
+			(config (md:mdconf->config
+				 (string-append config-dir-path cfg-name "/"
+						cfg-name ".mdconf"))))
+		   (md:make-module
+		    cfg-name config
+		    (md:make-inode
+		     "GLOBAL"
+		     (list (list 0 (md:make-inode-instance
+				    (md:mod-parse-group
+				     mod-sexp "GLOBAL" config)))))))))))
 
   ) ;; end module md-parser

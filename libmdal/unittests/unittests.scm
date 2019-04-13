@@ -1,6 +1,7 @@
 ;; -*- geiser-scheme-implementation: 'chicken -*-
 
-(import scheme (chicken base) (chicken io) (chicken bitwise) srfi-1
+(import scheme (chicken base) (chicken io) (chicken bitwise)
+	srfi-1 simple-exceptions
 	mdal test simple-md5 srfi-13 srfi-69 ssax sxpath sxpath-lolevel)
 
 (define my-config-path "unittests/config/")
@@ -642,8 +643,12 @@
 
  (test-assert "md:check-module-version: valid"
    (md:check-module-version my-mod-expr))
- (test-error "md:check-module-version: invalid"
-	     (md:check-module-version '((assign CONFIG 0 "" 4))))
+ (test "md:check-module-version: invalid"
+       "Unsupported MDAL version: 4"
+       (with-exn-handler (lambda (e) (message e))
+			 (lambda ()
+			   (md:check-module-version
+			    '((assign "MDAL_VERSION" 0 "" 4))))))
 
  (test "md:mod-get-config-name"
        "Huby"
