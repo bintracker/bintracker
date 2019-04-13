@@ -874,6 +874,18 @@
                   (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
 		(hash-table->alist (md:config-inodes cfg)))))
 
+  ;; internal helper
+  (define (md:config-x-ref accessor id cfg)
+    (let ((val (hash-table-ref/default (accessor cfg) id #f)))
+      (if val (car val) #f)))
+
+  ;;; return the command config for the given {{id}}
+  (define (md:config-command-ref id cfg)
+    (md:config-x-ref md:config-commands id cfg))
+
+  ;;; return the inode config for the given {{id}}
+  (define (md:config-inode-ref id cfg)
+    (md:config-x-ref md:config-inodes id cfg))
 
   ;;; create an md:target from an mdconf root node
   (define (md:config-node->target node)
@@ -948,16 +960,14 @@
   ;; rather than an itree
   (define (md:config-get-subnode-type-ids inode-id config type)
     (filter (lambda (id)
-	      (eq? type (md:inode-config-type
-			 (car (hash-table-ref (md:config-inodes config) id)))))
+	      (eq? type (md:inode-config-type (md:config-inode-ref id config))))
 	    (md:config-get-subnode-ids inode-id (md:config-itree config))))
 
   ;;; return the source command of a given inode
   (define (md:config-get-inode-source-command node-id config)
-    (car (hash-table-ref (md:config-commands config)
-			 (md:inode-config-cmd-id
-			  (car (hash-table-ref (md:config-inodes config)
-					       node-id))))))
+    (md:config-command-ref (md:inode-config-cmd-id
+			    (md:config-inode-ref node-id config))
+			   config))
 
   ;;; get the default value of a given inode config
   (define (md:config-get-node-default node-id config)
@@ -972,10 +982,10 @@
 
   ;;; return the command configuration associated with the given field node
   (define (md:get-node-command-cfg node config)
-    (car (hash-table-ref (md:config-commands config)
-			 (md:inode-config-cmd-id
-			  (car (hash-table-ref (md:config-inodes config)
-					       (md:inode-cfg-id node)))))))
+    (md:config-command-ref
+     (md:inode-config-cmd-id (md:config-inode-ref (md:inode-cfg-id node)
+						  config))
+     config))
 
   ;;; find the last set instance of the given node before the given instance,
   ;;; and return its raw value, or its default value if no set instances are

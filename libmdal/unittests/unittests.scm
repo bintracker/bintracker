@@ -424,6 +424,18 @@
 
  (define my-itree (md:config-itree my-cfg))
 
+ (test "md:config-command-ref"
+       (list (car (hash-table-ref (md:config-commands my-cfg) "AUTHOR"))
+	     #f)
+       (list (md:config-command-ref "AUTHOR" my-cfg)
+	     (md:config-command-ref "INVALID" my-cfg)))
+
+ (test "md:config-inode-ref"
+       (list (car (hash-table-ref (md:config-inodes my-cfg) "AUTHOR"))
+	     #f)
+       (list (md:config-inode-ref "AUTHOR" my-cfg)
+	     (md:config-inode-ref "INVALID" my-cfg)))
+
  (test "md:config-get-parent-node-id" "CH2"
        (md:config-get-parent-node-id "NOTE2" my-itree))
 
@@ -475,7 +487,7 @@
 	      "CH1"))))
     "NOTE1"))
 
- (test "md:get-node-comamnd-cfg"
+ (test "md:get-node-command-cfg"
        (car (hash-table-ref (md:config-commands my-cfg) "NOTE"))
        (md:get-node-command-cfg my-note1-inode my-cfg))
 
