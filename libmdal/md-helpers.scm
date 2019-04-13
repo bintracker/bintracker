@@ -4,7 +4,8 @@
 
 (module md-helpers *
 
-  (import scheme (chicken base) srfi-69)
+  (import scheme (chicken base) (chicken condition)
+	  srfi-1 srfi-69 simple-exceptions)
 
   ;; ---------------------------------------------------------------------------
   ;; MDAL: UTILITIES
@@ -61,5 +62,14 @@
 	       (+ elem val)
 	       (md:add-to-list elem val)))
 	 lst))
+
+  ;;; create a new exception from the given {{exn}}, prefixing exn message
+  ;;; with {{msg-prefix}} and adding {{kind-key}} to the existing kind-keys
+  (define (md:compose-exn exn msg-prefix kind-key)
+    (make-exn (string-append msg-prefix (message exn))
+	      kind-key (apply values (map car
+					  (filter (lambda (co)
+						    (not (eq? 'exn (car co))))
+						  (condition->list exn))))))
 
   ) ;; end module md-helpers
