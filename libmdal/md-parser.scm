@@ -300,7 +300,7 @@
 	(cond ((or ((exn-of? 'md:unsupported-mdal-version) exn)
 		   ((exn-of? 'md:no-config) exn)
 		   ((exn-of? 'md:syntax-error) exn))
-	       (raise ((md:compose-exn exn "Invalid module: " 'md:parse-fail)
+	       (raise ((md:amend-exn exn "Invalid module: " 'md:parse-fail)
 		       (string-append "In " filepath ""))))
 	      (else (abort exn)))
 	(let ((mod-sexp (md:file->sexp filepath)))

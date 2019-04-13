@@ -65,7 +65,7 @@
 
   ;;; create a new exception from the given {{exn}}, prefixing exn message
   ;;; with {{msg-prefix}} and adding {{kind-key}} to the existing kind-keys
-  (define (md:compose-exn exn msg-prefix kind-key)
+  (define (md:amend-exn exn msg-prefix kind-key)
     (make-exn (string-append msg-prefix (message exn))
 	      kind-key (apply values (map car
 					  (filter (lambda (co)
