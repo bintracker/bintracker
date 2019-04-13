@@ -68,8 +68,8 @@
   (define (md:amend-exn exn msg-prefix kind-key)
     (make-exn (string-append msg-prefix (message exn))
 	      kind-key (apply values (map car
-					  (filter (lambda (co)
-						    (not (eq? 'exn (car co))))
+					  (remove (lambda (co)
+						    (eq? 'exn (car co)))
 						  (condition->list exn))))))
 
   ) ;; end module md-helpers
