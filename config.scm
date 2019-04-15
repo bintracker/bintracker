@@ -8,3 +8,6 @@
 
 (setconf! 'color-row-hl "light-grey")
 (setconf! 'color-row-hl "dark-grey")
+
+(setconf! 'color-console-bg "#222222")
+(setconf! 'color-console-fg "#00ee00")
