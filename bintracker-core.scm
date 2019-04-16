@@ -5,50 +5,26 @@
 ;; See LICENSE for license details.
 
 (module bintracker-core
-    (app-settings-keymap
-     app-settings-keymap-set!
-     app-settings-color-row-hl
-     app-settings-color-row-hl-set!
-     app-settings-color-row-hl2
-     app-settings-color-row-hl2-set!
-     app-settings-color-console-bg
-     app-settings-color-console-bg-set!
-     app-settings-color-console-fg
-     app-settings-color-console-fg-set!
-     app-state-current-mdmod
-     app-state-current-mdmod-set!
-     app-state-selection
-     app-state-selection-set!
-     state
+    (state
      settings
      setconf!
      setstate!)
 
   (import scheme (chicken base) (chicken platform) (chicken string)
-	  (chicken module) srfi-1 pstk defstruct simple-exceptions
-	  mdal)
-  (reexport mdal)
+	  (chicken module) (chicken io) (chicken bitwise)
+	  srfi-1 srfi-13 srfi-69 pstk defstruct
+	  simple-exceptions mdal bt-types)
+  ;; all symbols that are required in generated code (mdal compiler generator)
+  ;; must be re-exported
+  (reexport mdal pstk bt-types (chicken bitwise))
 
 
   ;; ---------------------------------------------------------------------------
   ;;; GLOBAL STATE AND SETTINGS
   ;; ---------------------------------------------------------------------------
 
-  ;;; Record type that wraps application state variables
-  (defstruct app-state
-    current-mdmod selection)
-
-  ;;; Record type that wraps application settings
-  (defstruct app-settings
-    keymap color-row-hl color-row-hl2 color-console-bg color-console-fg)
-
-  (define *bintracker-state* (make-app-state current-mdmod: #f selection: #f))
-  (define *bintracker-settings*
-    (make-app-settings keymap: "EN"
-		       color-row-hl: #f
-		       color-row-hl2: #f
-		       color-console-bg: "#000000"
-		       color-console-fg: "#ffffff"))
+  (define *bintracker-state* (make-default-state))
+  (define *bintracker-settings* (make-default-settings))
 
   ;;; Get the global application state, or a specific {{param}}eter of that
   ;;; state.
@@ -95,28 +71,68 @@
   (tk-start)
   (ttk-map-widgets 'all)
   (tk/wm 'title tk "Bintracker NG")
-  (tk 'configure 'height: 640 'width: 800)
   (tk-eval "option add *tearOff 0")
 
-  (tk/bind tk '<Control-q> (lambda () (tk-end)))
+  (tk/bind tk '<Control-q> tk-end)
 
-  (let ((menubar (tk 'create-widget 'menu))
-	(file-menu (tk 'create-widget 'menu))
-	(help-menu (tk 'create-widget 'menu)))
-    (menubar 'add 'cascade 'menu: file-menu 'label: "File" 'underline: 0)
-    (menubar 'add 'cascade 'menu: help-menu 'label: "Help" 'underline: 0)
+  (define (about-message)
+    (tk/message-box 'title: "About" 'message: "Bintracker NG\nversion 0.1"
+		    'type: 'ok))
 
-    (file-menu 'add 'command 'label: "Exit" 'underline: 1 'command: tk-end
-	       'accelerator: "Ctrl+Q")
+  (define (load-file)
+    (let ((filename (tk/get-open-file
+		     'filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
+      (unless (string-null? filename)
+	(begin (console-output 'insert 'end
+			       (string-append "Loading file: " filename "\n"))
+	       (handle-exceptions
+		   exn
+		   (console-output 'insert 'end
+				   (string-append "Error: " (->string exn)
+						  "\n"
+						  (message exn)
+						  "\n"))
+		 (setstate! 'current-mdmod
+			    (md:file->module filename
+					     (app-settings-mdal-config-dir
+					      *bintracker-settings*)
+					     "libmdal/")))))))
 
-    (help-menu 'add 'command 'label: "About" 'underline: 0
-	       'command:
-	       (lambda ()
-		 (tk/message-box 'title: "About"
-				 'message: "Bintracker NG\nversion 0.1"
-				 'type: 'ok)))
+  (tk/bind tk '<Control-o> load-file)
 
-    (tk 'configure 'menu: menubar))
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Main Menu
+  ;; ---------------------------------------------------------------------------
+
+  (define main-menu (tk 'create-widget 'menu))
+  (define file-menu (tk 'create-widget 'menu))
+  (define help-menu (tk 'create-widget 'menu))
+
+  (main-menu 'add 'cascade 'menu: file-menu 'label: "File" 'underline: 0)
+  (main-menu 'add 'cascade 'menu: help-menu 'label: "Help" 'underline: 0)
+
+  (file-menu 'add 'command 'label: "New..." 'underline: 0
+	     'command: (lambda () #f)
+	     'accelerator: "Ctrl+N")
+  (file-menu 'add 'command 'label: "Open..." 'underline: 0
+	     'command: load-file 'accelerator: "Ctrl+O")
+  (file-menu 'add 'command 'label: "Save" 'underline: 0
+	     'accelerator: "Ctrl+S")
+  (file-menu 'add 'command 'label: "Save As..." 'underline: 5
+	     'command: (lambda () #f)
+	     'accelerator: "Ctrl+Shift+S")
+  (file-menu 'add 'command 'label: "Close" 'underline: 0
+	     'command: (lambda () #f)
+	     'accelerator: "Ctrl+W")
+  (file-menu 'add 'separator)
+  (file-menu 'add 'command 'label: "Exit" 'underline: 1 'command: tk-end
+	     'accelerator: "Ctrl+Q")
+
+  (help-menu 'add 'command 'label: "About" 'underline: 0
+	     'command: about-message)
+
+  (when (app-settings-show-menu *bintracker-settings*)
+    (tk 'configure 'menu: main-menu))
 
   (define (tk/icon filename)
     (tk/image 'create 'photo 'format: "PNG"
@@ -124,45 +140,38 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Console
+  ;;; ## Top Level Layout
   ;; ---------------------------------------------------------------------------
 
-  (define console-output (tk 'create-widget 'text
-			     'bg: (app-settings-color-console-bg
-				   *bintracker-settings*)
-			     'fg: (app-settings-color-console-fg
-				   *bintracker-settings*)))
-  ;; entry is a ttk widget, so styling via -bg/-fg won't work here
-  (define console-input (tk 'create-widget 'entry))
+  (define top-frame (tk 'create-widget 'frame 'padding: "4 0 4 0"))
+  (tk/grid top-frame 'column: 0 'row: 0 'sticky: 'nwes)
+  (tk/grid 'columnconfigure tk 0 weight: 1)
+  (tk/grid 'rowconfigure tk 0 weight: 0)
+  (tk/grid 'rowconfigure tk 1 weight: 2)
+  (tk/grid 'rowconfigure tk 2 weight: 1)
 
-  (define (eval-console)
-    (handle-exceptions
-	exn
-	(console-output 'insert 'end
-			(string-append "Error: " (->string exn)
-				       "\n"))
-      (let ((input-str (->string (console-input 'get))))
-	(console-output 'insert 'end
-			(string-append
-			 (->string (eval (read (open-input-string input-str))))
-			 "\n")))))
+  (define taskbar-frame (top-frame 'create-widget 'frame))
+  (tk/grid taskbar-frame 'column: 0 'row: 0 'sticky: 'nwe)
 
-  (console-output 'insert 'end
-		  "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
+  (define main-frame (top-frame 'create-widget 'frame))
+  (tk/grid main-frame 'column: 0 'row: 1 'sticky: 'nwes)
+  (tk/grid 'columnconfigure main-frame 0 weight: 1)
+  (tk/grid 'rowconfigure main-frame 0 weight: 1)
 
-  (tk/bind console-input '<Return> eval-console)
+  (define console-frame (top-frame 'create-widget 'frame))
+  (tk/grid console-frame 'column: 0 'row: 2 'sticky: 'swe)
+  (tk/grid 'columnconfigure console-frame 0 weight: 1)
+  (tk/grid 'rowconfigure console-frame 0 weight: 1)
 
-  (tk/grid console-output 'column: 1 'row: 2 'columnspan: 22)
-  (tk/grid console-input 'column: 1 'row: 3 'columnspan: 22)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Taskbar
   ;; ---------------------------------------------------------------------------
 
   (define (taskbar-button icon command #!optional (init-state 'disabled))
-    (tk 'create-widget 'button 'image: (tk/icon icon)
-	'state: init-state
-	'command: command))
+    (taskbar-frame 'create-widget 'button 'image: (tk/icon icon)
+		   'state: init-state
+		   'command: command))
 
   (define button-new (taskbar-button "new.png" (lambda () #t) 'enabled))
   (define button-load (taskbar-button "load.png" (lambda () #t) 'enabled))
@@ -186,9 +195,10 @@
 
   (define (make-taskbar)
     (let ((make-separator (lambda ()
-		       (tk 'create-widget 'separator 'orient: 'vertical))))
+			    (taskbar-frame 'create-widget 'separator
+					   'orient: 'vertical))))
       (map (lambda (elem column sticky padx)
-	     (tk/grid elem 'column: column 'row: 1 'sticky: sticky 'padx: padx
+	     (tk/grid elem 'column: column 'row: 0 'sticky: sticky 'padx: padx
 		      'pady: 4))
 	   (list button-new button-load button-save (make-separator)
 		 button-undo button-redo (make-separator)
@@ -197,11 +207,49 @@
 		 button-stop button-play button-play-from-start
 		 button-play-ptn (make-separator)
 		 button-settings button-prompt)
-	   (iota 22 1 1)
+	   (iota 22)
 	   '(we we we sn we we sn we we we we we we sn we we we we sn we we)
-	   (circular-list 4 0))))
+	   (circular-list 0 4))))
 
-  (make-taskbar)
+  (when (app-settings-show-taskbar *bintracker-settings*) (make-taskbar))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Console
+  ;; ---------------------------------------------------------------------------
+
+  (define console-output (console-frame 'create-widget 'text
+					'bg: (app-settings-color-console-bg
+					      *bintracker-settings*)
+					'fg: (app-settings-color-console-fg
+					      *bintracker-settings*)))
+  ;; entry is a ttk widget, so styling via -bg/-fg won't work here
+  (define console-input (console-frame 'create-widget 'entry))
+
+  (define (eval-console)
+    (handle-exceptions
+	exn
+	(console-output 'insert 'end
+			(string-append "Error: " (->string exn)
+				       "\n"))
+      (let ((input-str (->string (console-input 'get))))
+	(console-output 'insert 'end
+			(string-append
+			 (->string (eval (read (open-input-string input-str))))
+			 "\n")))))
+
+  (console-output 'insert 'end
+		  "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
+
+  (tk/bind console-input '<Return> eval-console)
+
+  (tk/grid console-output 'column: 0 'row: 0)
+  (tk/grid console-input 'column: 0 'row: 1)
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Main Loop
+  ;; ---------------------------------------------------------------------------
 
   (tk-event-loop)
 
