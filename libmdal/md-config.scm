@@ -887,19 +887,32 @@
   (define (md:config-inode-ref id cfg)
     (md:config-x-ref md:config-inodes id cfg))
 
+  ;;; create an md:target from a target config file
+  (define (md:target-generator target-name path-prefix)
+    (let* ((eval-file (o eval car read-list open-input-file))
+	   (parameters
+	    (eval-file (string-append path-prefix "targets/" target-name
+				      ".scm"))))
+      (md:make-target (car parameters)
+		      (eval-file (string-append path-prefix "targets/cpu/"
+						(second parameters) ".scm"))
+		      (third parameters)
+		      (map (lambda (target)
+			     (eval-file
+			      (string-append path-prefix "targets/export/"
+					     target ".scm")))
+			   (fourth parameters)))))
+
   ;;; create an md:target from an mdconf root node
-  (define (md:config-node->target node)
-    (eval (car (read-list (open-input-file
-			   (string-append
-			    "targets/"
-			    (sxml:attr (car (sxml:content node)) 'target)
-			    ".scm"))))))
+  (define (md:config-node->target node path-prefix)
+    (md:target-generator (sxml:attr (car (sxml:content node)) 'target)
+			 path-prefix))
 
   ;;; generate an md:config from a given .mdconf file
-  (define (md:mdconf->config filepath)
+  (define (md:mdconf->config filepath path-prefix)
     (let ((cfg (call-with-input-file filepath
 		 (lambda (x) (ssax:xml->sxml x '())))))
-      (let* ((target (md:config-node->target cfg))
+      (let* ((target (md:config-node->target cfg path-prefix))
 	     (itree (md:parse-inode-tree cfg))
 	     (proto-config
 	      (md:make-config

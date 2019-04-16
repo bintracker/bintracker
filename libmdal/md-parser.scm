@@ -294,7 +294,8 @@
 	  (last (car cfg-assignments)))))
 
   ;;; construct an md:module from a given .mdal file
-  (define (md:file->module filepath config-dir-path)
+  (define (md:file->module filepath config-dir-path
+			   #!optional (path-prefix ""))
     (handle-exceptions
 	exn
 	(cond ((or ((exn-of? 'md:unsupported-mdal-version) exn)
@@ -308,7 +309,8 @@
 		 (let* ((cfg-name (md:mod-get-config-name mod-sexp))
 			(config (md:mdconf->config
 				 (string-append config-dir-path cfg-name "/"
-						cfg-name ".mdconf"))))
+						cfg-name ".mdconf")
+				 path-prefix)))
 		   (md:make-module
 		    cfg-name config
 		    (md:make-inode

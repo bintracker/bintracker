@@ -9,7 +9,7 @@
 			      (open-input-file "targets/spectrum48.scm")))))
 (define my-cfg-data (call-with-input-file "unittests/config/Huby/Huby.mdconf"
 		      (lambda (x) (ssax:xml->sxml x '()))))
-(define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf"))
+(define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf" ""))
 (define my-mod (md:file->module "unittests/modules/huby-test.mdal"
 				my-config-path))
 (define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
