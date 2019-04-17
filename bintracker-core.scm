@@ -71,6 +71,7 @@
   (tk-start)
   (ttk-map-widgets 'all)
   (tk/wm 'title tk "Bintracker NG")
+  ;; (tk/wm 'minsize tk 760 600)
   (tk-eval "option add *tearOff 0")
 
   (tk/bind tk '<Control-q> tk-end)
@@ -92,11 +93,15 @@
 						  "\n"
 						  (message exn)
 						  "\n"))
-		 (setstate! 'current-mdmod
-			    (md:file->module filename
-					     (app-settings-mdal-config-dir
-					      *bintracker-settings*)
-					     "libmdal/")))))))
+		 (begin
+		   (setstate! 'current-mdmod
+			      (md:file->module filename
+					       (app-settings-mdal-config-dir
+						*bintracker-settings*)
+					       "libmdal/"))
+		   (make-module-view)
+		   (enable-play-buttons)
+		   (update-status-text)))))))
 
   (tk/bind tk '<Control-o> load-file)
 
@@ -106,10 +111,15 @@
 
   (define main-menu (tk 'create-widget 'menu))
   (define file-menu (tk 'create-widget 'menu))
+  (define edit-menu (tk 'create-widget 'menu))
+  (define generate-menu (tk 'create-widget 'menu))
+  (define modify-menu (tk 'create-widget 'menu))
   (define help-menu (tk 'create-widget 'menu))
 
-  (main-menu 'add 'cascade 'menu: file-menu 'label: "File" 'underline: 0)
-  (main-menu 'add 'cascade 'menu: help-menu 'label: "Help" 'underline: 0)
+  (map (lambda (submenu title)
+	 (main-menu 'add 'cascade 'menu: submenu 'label: title 'underline: 0))
+       (list file-menu edit-menu generate-menu modify-menu help-menu)
+       '("File" "Edit" "Generate" "Modify" "Help"))
 
   (file-menu 'add 'command 'label: "New..." 'underline: 0
 	     'command: (lambda () #f)
@@ -143,88 +153,125 @@
   ;;; ## Top Level Layout
   ;; ---------------------------------------------------------------------------
 
-  (define top-frame (tk 'create-widget 'frame 'padding: "4 0 4 0"))
-  (tk/grid top-frame 'column: 0 'row: 0 'sticky: 'nwes)
-  (tk/grid 'columnconfigure tk 0 weight: 1)
-  (tk/grid 'rowconfigure tk 0 weight: 0)
-  (tk/grid 'rowconfigure tk 1 weight: 2)
-  (tk/grid 'rowconfigure tk 2 weight: 1)
+  (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
+  (tk/pack top-frame 'expand: 1 'fill: 'both)
 
-  (define taskbar-frame (top-frame 'create-widget 'frame))
-  (tk/grid taskbar-frame 'column: 0 'row: 0 'sticky: 'nwe)
+  (define toolbar-frame (top-frame 'create-widget 'frame 'padding: "0 1 0 1"))
+  (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
 
   (define main-frame (top-frame 'create-widget 'frame))
-  (tk/grid main-frame 'column: 0 'row: 1 'sticky: 'nwes)
-  (tk/grid 'columnconfigure main-frame 0 weight: 1)
-  (tk/grid 'rowconfigure main-frame 0 weight: 1)
+  (tk/pack main-frame 'expand: 1 'fill: 'both)
+
+  (define module-global-fields-frame (main-frame 'create-widget 'frame))
+  (define module-content-frame (main-frame 'create-widget 'frame))
 
   (define console-frame (top-frame 'create-widget 'frame))
-  (tk/grid console-frame 'column: 0 'row: 2 'sticky: 'swe)
-  (tk/grid 'columnconfigure console-frame 0 weight: 1)
-  (tk/grid 'rowconfigure console-frame 0 weight: 1)
+  (tk/pack console-frame 'expand: 0 'fill: 'both)
+
+  (define status-frame (top-frame 'create-widget 'frame))
+  (tk/pack status-frame 'fill: 'x)
+
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Taskbar
+  ;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
 
-  (define (taskbar-button icon command #!optional (init-state 'disabled))
-    (taskbar-frame 'create-widget 'button 'image: (tk/icon icon)
+  (define status-text (status-frame 'create-widget 'label))
+  (tk/pack status-text 'fill: 'x 'side: 'left)
+  (tk/pack (status-frame 'create-widget 'sizegrip) 'side: 'right)
+
+  (define (update-status-text)
+    (let* ((current-mod (app-state-current-mdmod *bintracker-state*))
+	   (status-msg (if current-mod
+			   (string-append
+			    (md:target-id
+			     (md:config-target (md:mod-cfg current-mod)))
+			    " | "
+			    (md:mod-cfg-id current-mod))
+			   "No module loaded.")))
+      (status-text 'configure 'text: status-msg)))
+
+  (update-status-text)
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Toolbar
+  ;; ---------------------------------------------------------------------------
+
+  (define (toolbar-button icon command #!optional (init-state 'disabled))
+    (toolbar-frame 'create-widget 'button 'image: (tk/icon icon)
 		   'state: init-state
-		   'command: command))
+		   'command: command
+		   'style: "Toolbutton"))
 
-  (define button-new (taskbar-button "new.png" (lambda () #t) 'enabled))
-  (define button-load (taskbar-button "load.png" (lambda () #t) 'enabled))
-  (define button-save (taskbar-button "save.png" (lambda () #t)))
-  (define button-undo (taskbar-button "undo.png" (lambda () #t)))
-  (define button-redo (taskbar-button "redo.png" (lambda () #t)))
-  (define button-copy (taskbar-button "copy.png" (lambda () #t)))
-  (define button-cut (taskbar-button "cut.png" (lambda () #t)))
-  (define button-clear (taskbar-button "clear.png" (lambda () #t)))
-  (define button-paste (taskbar-button "paste.png" (lambda () #t)))
-  (define button-insert (taskbar-button "insert.png" (lambda () #t)))
-  (define button-swap (taskbar-button "swap.png" (lambda () #t)))
-  (define button-stop (taskbar-button "stop.png" (lambda () #t)))
-  (define button-play (taskbar-button "play.png" (lambda () #t)))
-  (define button-play-from-start (taskbar-button "play-from-start.png"
+  (define button-new (toolbar-button "new.png" (lambda () #t) 'enabled))
+  (define button-load (toolbar-button "load.png" (lambda () #t) 'enabled))
+  (define button-save (toolbar-button "save.png" (lambda () #t)))
+  (define button-undo (toolbar-button "undo.png" (lambda () #t)))
+  (define button-redo (toolbar-button "redo.png" (lambda () #t)))
+  (define button-copy (toolbar-button "copy.png" (lambda () #t)))
+  (define button-cut (toolbar-button "cut.png" (lambda () #t)))
+  (define button-clear (toolbar-button "clear.png" (lambda () #t)))
+  (define button-paste (toolbar-button "paste.png" (lambda () #t)))
+  (define button-insert (toolbar-button "insert.png" (lambda () #t)))
+  (define button-swap (toolbar-button "swap.png" (lambda () #t)))
+  (define button-stop (toolbar-button "stop.png" (lambda () #t)))
+  (define button-play (toolbar-button "play.png" (lambda () #t)))
+  (define button-play-from-start (toolbar-button "play-from-start.png"
 						 (lambda () #t)))
-  (define button-play-ptn (taskbar-button "play-ptn.png" (lambda () #t)))
-  (define button-prompt (taskbar-button "prompt.png" (lambda () #t) 'enabled))
-  (define button-settings (taskbar-button "settings.png" (lambda () #t)
+  (define button-play-ptn (toolbar-button "play-ptn.png" (lambda () #t)))
+  (define button-prompt (toolbar-button "prompt.png" (lambda () #t) 'enabled))
+  (define button-settings (toolbar-button "settings.png" (lambda () #t)
 					  'enabled))
 
-  (define (make-taskbar)
+  (define (make-toolbar)
     (let ((make-separator (lambda ()
-			    (taskbar-frame 'create-widget 'separator
+			    (toolbar-frame 'create-widget 'separator
 					   'orient: 'vertical))))
-      (map (lambda (elem column sticky padx)
-	     (tk/grid elem 'column: column 'row: 0 'sticky: sticky 'padx: padx
-		      'pady: 4))
+      (map (lambda (elem)
+	     ;; TODO pad seperators, but nothing else
+	     (tk/pack elem 'side: 'left 'padx: 0 'fill: 'y))
 	   (list button-new button-load button-save (make-separator)
 		 button-undo button-redo (make-separator)
 		 button-copy button-cut button-clear button-paste
 		 button-insert button-swap (make-separator)
 		 button-stop button-play button-play-from-start
 		 button-play-ptn (make-separator)
-		 button-settings button-prompt)
-	   (iota 22)
-	   '(we we we sn we we sn we we we we we we sn we we we we sn we we)
-	   (circular-list 0 4))))
+		 button-settings button-prompt))))
 
-  (when (app-settings-show-taskbar *bintracker-settings*) (make-taskbar))
+  (when (app-settings-show-toolbar *bintracker-settings*) (make-toolbar))
 
+  (define (enable-play-buttons)
+    (map (lambda (button)
+	   (button 'configure 'state: 'enabled))
+	 (list button-stop button-play button-play-from-start
+	       button-play-ptn)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Console
   ;; ---------------------------------------------------------------------------
 
-  (define console-output (console-frame 'create-widget 'text
-					'bg: (app-settings-color-console-bg
-					      *bintracker-settings*)
-					'fg: (app-settings-color-console-fg
-					      *bintracker-settings*)))
+  (define console-wrapper (console-frame 'create-widget 'frame))
+  (tk/pack console-wrapper 'expand: 1 'fill: 'both)
+
+  (define console-output (console-wrapper 'create-widget 'text
+					  'bg: (app-settings-color-console-bg
+						*bintracker-settings*)
+					  'fg: (app-settings-color-console-fg
+						*bintracker-settings*)))
+
+  (define console-yscroll (console-wrapper 'create-widget 'scrollbar
+					   'orient: 'vertical))
+
   ;; entry is a ttk widget, so styling via -bg/-fg won't work here
   (define console-input (console-frame 'create-widget 'entry))
+
+  (tk/pack console-output 'expand: 1 'fill: 'both 'side: 'left)
+  (tk/pack console-yscroll 'side: 'right 'fill: 'y)
+  (tk/pack console-input 'fill: 'x)
+  (console-yscroll 'configure 'command: (list console-output 'yview))
+  (console-output 'configure 'yscrollcommand: (list console-yscroll 'set))
 
   (define (eval-console)
     (handle-exceptions
@@ -233,19 +280,71 @@
 			(string-append "Error: " (->string exn)
 				       "\n"))
       (let ((input-str (->string (console-input 'get))))
-	(console-output 'insert 'end
-			(string-append
-			 (->string (eval (read (open-input-string input-str))))
-			 "\n")))))
+	(begin
+	  (console-output 'configure 'state: 'normal)
+	  (console-output 'insert 'end
+			  (string-append
+			   (->string (eval (read (open-input-string input-str))))
+			   "\n"))
+	  (console-output 'configure 'state: 'disabled)))))
 
   (console-output 'insert 'end
 		  "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
+  (console-output 'configure 'state: 'disabled)
 
   (tk/bind console-input '<Return> eval-console)
 
-  (tk/grid console-output 'column: 0 'row: 0)
-  (tk/grid console-input 'column: 0 'row: 1)
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Module Specific GUI
+  ;; ---------------------------------------------------------------------------
+
+  (define (make-group-field-view node-id parent-widget)
+    (parent-widget
+     'create-widget 'label
+     'text: (string-append
+	     node-id ": "
+	     (->string
+	      (md:inode-instance-val
+	       ((md:node-instance-path (string-append "0/" node-id "/0"))
+		(md:mod-global-node
+		 (app-state-current-mdmod *bintracker-state*))))))))
+
+  (define (make-global-fields-view)
+    (let* ((node-ids
+	    (md:config-get-subnode-type-ids
+	     "GLOBAL"
+	     (md:mod-cfg (app-state-current-mdmod *bintracker-state*))
+	     'field))
+	   (node-labels (map (lambda (id)
+			       (make-group-field-view
+				id module-global-fields-frame))
+			     node-ids)))
+      (begin
+	;; (tk/grid module-global-fields-frame 'column: 0 'row: 0 'sticky: 'we)
+	(tk/pack module-global-fields-frame 'fill: 'x)
+	(map (lambda (label column)
+	       (tk/grid label 'column: column 'row: 0 'padx: 4))
+	     node-labels (iota (length node-ids))))))
+
+  ;; actually make-global-subgroups-view
+  (define (make-group-view)
+    (let* ((node-ids (md:config-get-subnode-type-ids
+		      "GLOBAL"
+		      (md:mod-cfg (app-state-current-mdmod *bintracker-state*))
+		      'group))
+	   (group-notebook (module-content-frame 'create-widget 'notebook)))
+      (begin ;; (tk/grid module-content-frame 'column: 0 'row: 1 'sticky: 'nswe)
+	     (tk/pack module-content-frame 'expand: 1 'fill: 'both)
+	     (tk/pack group-notebook 'expand: 1 'fill: 'both)
+	     (map (lambda (id)
+		    (group-notebook 'add (group-notebook 'create-widget 'frame)
+				    'text: id))
+		  node-ids))))
+
+  (define (make-module-view)
+    (make-global-fields-view)
+    (make-group-view))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Main Loop

@@ -16,7 +16,7 @@
   (defstruct app-settings
     keymap
     mdal-config-dir
-    show-menu show-taskbar
+    show-menu show-toolbar
     color-row-hl color-row-hl2 color-console-bg color-console-fg)
 
   (define (make-default-state)
@@ -26,7 +26,7 @@
     (make-app-settings keymap: "EN"
 		       mdal-config-dir: "libmdal/unittests/config/"
 		       show-menu: #t
-		       show-taskbar: #t
+		       show-toolbar: #t
 		       color-row-hl: #f
 		       color-row-hl2: #f
 		       color-console-bg: "#000000"

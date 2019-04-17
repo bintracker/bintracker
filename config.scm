@@ -13,4 +13,4 @@
 (setconf! 'color-console-fg "#00ee00")
 
 ;; (setconf! 'show-menu #f)
-;; (setconf! 'show-taskbar #f)
+;; (setconf! 'show-toolbar #f)
