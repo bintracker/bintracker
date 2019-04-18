@@ -20,7 +20,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; GLOBAL STATE AND SETTINGS
+  ;;; # Initialize Global State and Settings
   ;; ---------------------------------------------------------------------------
 
   (define *bintracker-state* (make-default-state))
@@ -63,18 +63,15 @@
       #f ;; TODO: ignoring config errors is fine, but actually report errors
     (load "config.scm"))
 
+  ;; init pstk and fire up Tcl/Tk runtime.
+  ;; This must be done prior to defining anything that depends on Tk.
+  (tk-start)
+  (ttk-map-widgets 'all)
+
 
   ;; ---------------------------------------------------------------------------
   ;;; # GUI
   ;; ---------------------------------------------------------------------------
-
-  (tk-start)
-  (ttk-map-widgets 'all)
-  (tk/wm 'title tk "Bintracker NG")
-  ;; (tk/wm 'minsize tk 760 600)
-  (tk-eval "option add *tearOff 0")
-
-  (tk/bind tk '<Control-q> tk-end)
 
   (define (about-message)
     (tk/message-box 'title: "About" 'message: "Bintracker NG\nversion 0.1"
@@ -114,8 +111,10 @@
 		      (windows "[list {*}[auto_execok start] {}] "))))
       (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
 
-  (tk/bind tk '<Control-o> load-file)
-  (tk/bind tk '<F1> launch-help)
+  (define (tk/icon filename)
+    (tk/image 'create 'photo 'format: "PNG"
+	      'file: (string-append "resources/icons/" filename)))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu
@@ -128,39 +127,39 @@
   (define modify-menu (tk 'create-widget 'menu))
   (define help-menu (tk 'create-widget 'menu))
 
-  (map (lambda (submenu title)
-	 (main-menu 'add 'cascade 'menu: submenu 'label: title 'underline: 0))
-       (list file-menu edit-menu generate-menu modify-menu help-menu)
-       '("File" "Edit" "Generate" "Modify" "Help"))
+  (define (init-menu)
+    (begin
 
-  (file-menu 'add 'command 'label: "New..." 'underline: 0
-	     'command: (lambda () #f)
-	     'accelerator: "Ctrl+N")
-  (file-menu 'add 'command 'label: "Open..." 'underline: 0
-	     'command: load-file 'accelerator: "Ctrl+O")
-  (file-menu 'add 'command 'label: "Save" 'underline: 0
-	     'accelerator: "Ctrl+S")
-  (file-menu 'add 'command 'label: "Save As..." 'underline: 5
-	     'command: (lambda () #f)
-	     'accelerator: "Ctrl+Shift+S")
-  (file-menu 'add 'command 'label: "Close" 'underline: 0
-	     'command: (lambda () #f)
-	     'accelerator: "Ctrl+W")
-  (file-menu 'add 'separator)
-  (file-menu 'add 'command 'label: "Exit" 'underline: 1 'command: tk-end
-	     'accelerator: "Ctrl+Q")
+      (map (lambda (submenu title)
+	     (main-menu 'add 'cascade 'menu: submenu 'label: title
+			'underline: 0))
+	   (list file-menu edit-menu generate-menu modify-menu help-menu)
+	   '("File" "Edit" "Generate" "Modify" "Help"))
 
-  (help-menu 'add 'command 'label: "Help" 'underline: 0
-	     'command: launch-help 'accelerator: "F1")
-  (help-menu 'add 'command 'label: "About" 'underline: 0
-	     'command: about-message)
+      (file-menu 'add 'command 'label: "New..." 'underline: 0
+		 'command: (lambda () #f)
+		 'accelerator: "Ctrl+N")
+      (file-menu 'add 'command 'label: "Open..." 'underline: 0
+		 'command: load-file 'accelerator: "Ctrl+O")
+      (file-menu 'add 'command 'label: "Save" 'underline: 0
+		 'accelerator: "Ctrl+S")
+      (file-menu 'add 'command 'label: "Save As..." 'underline: 5
+		 'command: (lambda () #f)
+		 'accelerator: "Ctrl+Shift+S")
+      (file-menu 'add 'command 'label: "Close" 'underline: 0
+		 'command: (lambda () #f)
+		 'accelerator: "Ctrl+W")
+      (file-menu 'add 'separator)
+      (file-menu 'add 'command 'label: "Exit" 'underline: 1 'command: tk-end
+		 'accelerator: "Ctrl+Q")
 
-  (when (app-settings-show-menu *bintracker-settings*)
-    (tk 'configure 'menu: main-menu))
+      (help-menu 'add 'command 'label: "Help" 'underline: 0
+		 'command: launch-help 'accelerator: "F1")
+      (help-menu 'add 'command 'label: "About" 'underline: 0
+		 'command: about-message)
 
-  (define (tk/icon filename)
-    (tk/image 'create 'photo 'format: "PNG"
-	      'file: (string-append "resources/icons/" filename)))
+      (when (app-settings-show-menu *bintracker-settings*)
+	(tk 'configure 'menu: main-menu))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -168,23 +167,25 @@
   ;; ---------------------------------------------------------------------------
 
   (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
-  (tk/pack top-frame 'expand: 1 'fill: 'both)
 
   (define toolbar-frame (top-frame 'create-widget 'frame 'padding: "0 1 0 1"))
-  (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
 
   (define main-frame (top-frame 'create-widget 'frame))
-  (tk/pack main-frame 'expand: 1 'fill: 'both)
 
   (define module-global-fields-frame (main-frame 'create-widget 'frame))
   (define module-content-frame (main-frame 'create-widget 'frame))
 
   (define console-frame (top-frame 'create-widget 'frame))
-  (tk/pack console-frame 'expand: 0 'fill: 'both)
 
   (define status-frame (top-frame 'create-widget 'frame))
-  (tk/pack status-frame 'fill: 'x)
 
+  (define (init-top-level-layout)
+    (begin
+      (tk/pack top-frame 'expand: 1 'fill: 'both)
+      (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
+      (tk/pack main-frame 'expand: 1 'fill: 'both)
+      (tk/pack console-frame 'expand: 0 'fill: 'both)
+      (tk/pack status-frame 'fill: 'x)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -192,8 +193,6 @@
   ;; ---------------------------------------------------------------------------
 
   (define status-text (status-frame 'create-widget 'label))
-  (tk/pack status-text 'fill: 'x 'side: 'left)
-  (tk/pack (status-frame 'create-widget 'sizegrip) 'side: 'right)
 
   (define (update-status-text)
     (let* ((current-mod (app-state-current-mdmod *bintracker-state*))
@@ -206,7 +205,10 @@
 			   "No module loaded.")))
       (status-text 'configure 'text: status-msg)))
 
-  (update-status-text)
+  (define (init-status-bar)
+    (begin (tk/pack status-text 'fill: 'x 'side: 'left)
+	   (tk/pack (status-frame 'create-widget 'sizegrip) 'side: 'right)
+	   (update-status-text)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -220,7 +222,7 @@
 		   'style: "Toolbutton"))
 
   (define button-new (toolbar-button "new.png" (lambda () #t) 'enabled))
-  (define button-load (toolbar-button "load.png" (lambda () #t) 'enabled))
+  (define button-load (toolbar-button "load.png" load-file 'enabled))
   (define button-save (toolbar-button "save.png" (lambda () #t)))
   (define button-undo (toolbar-button "undo.png" (lambda () #t)))
   (define button-redo (toolbar-button "redo.png" (lambda () #t)))
@@ -254,8 +256,6 @@
 		 button-play-ptn (make-separator)
 		 button-settings button-prompt))))
 
-  (when (app-settings-show-toolbar *bintracker-settings*) (make-toolbar))
-
   (define (enable-play-buttons)
     (map (lambda (button)
 	   (button 'configure 'state: 'enabled))
@@ -267,7 +267,6 @@
   ;; ---------------------------------------------------------------------------
 
   (define console-wrapper (console-frame 'create-widget 'frame))
-  (tk/pack console-wrapper 'expand: 1 'fill: 'both)
 
   (define console-output (console-wrapper 'create-widget 'text
 					  'bg: (app-settings-color-console-bg
@@ -281,12 +280,6 @@
   ;; entry is a ttk widget, so styling via -bg/-fg won't work here
   (define console-input (console-frame 'create-widget 'entry))
 
-  (tk/pack console-output 'expand: 1 'fill: 'both 'side: 'left)
-  (tk/pack console-yscroll 'side: 'right 'fill: 'y)
-  (tk/pack console-input 'fill: 'x)
-  (console-yscroll 'configure 'command: (list console-output 'yview))
-  (console-output 'configure 'yscrollcommand: (list console-yscroll 'set))
-
   (define (eval-console)
     (handle-exceptions
 	exn
@@ -298,15 +291,22 @@
 	  (console-output 'configure 'state: 'normal)
 	  (console-output 'insert 'end
 			  (string-append
-			   (->string (eval (read (open-input-string input-str))))
+			   (->string
+			    (eval (read (open-input-string input-str))))
 			   "\n"))
 	  (console-output 'configure 'state: 'disabled)))))
 
-  (console-output 'insert 'end
-		  "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
-  (console-output 'configure 'state: 'disabled)
-
-  (tk/bind console-input '<Return> eval-console)
+  (define (init-console)
+    (begin
+      (tk/pack console-wrapper 'expand: 1 'fill: 'both)
+      (tk/pack console-output 'expand: 1 'fill: 'both 'side: 'left)
+      (tk/pack console-yscroll 'side: 'right 'fill: 'y)
+      (tk/pack console-input 'fill: 'x)
+      (console-yscroll 'configure 'command: (list console-output 'yview))
+      (console-output 'configure 'yscrollcommand: (list console-yscroll 'set))
+      (console-output 'insert 'end
+		      "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
+      (console-output 'configure 'state: 'disabled)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -360,8 +360,41 @@
     (make-global-fields-view)
     (make-group-view))
 
+
   ;; ---------------------------------------------------------------------------
-  ;;; ## Main Loop
+  ;;; ## Key Bindings
+  ;; ---------------------------------------------------------------------------
+
+  (define (init-key-bindings)
+    (begin
+      (tk/bind tk '<Control-q> tk-end)
+      (tk/bind tk '<Control-o> load-file)
+      (tk/bind tk '<F1> launch-help)
+      (tk/bind console-input '<Return> eval-console)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; # Startup Procedure
+  ;; ---------------------------------------------------------------------------
+
+  ;;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
+
+  (tk/wm 'title tk "Bintracker NG")
+  ;; (tk/wm 'minsize tk 760 600)
+  (tk-eval "option add *tearOff 0")
+
+  ;; (tk-eval "source \"config/themes/awthemes.tcl\"")
+  ;; (tk-eval "ttk::style theme use awdark")
+
+  (init-menu)
+  (init-top-level-layout)
+  (when (app-settings-show-toolbar *bintracker-settings*) (make-toolbar))
+  (init-console)
+  (init-status-bar)
+  (init-key-bindings)
+
+  ;; ---------------------------------------------------------------------------
+  ;;; # Main Loop
   ;; ---------------------------------------------------------------------------
 
   (tk-event-loop)
