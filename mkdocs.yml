@@ -1,0 +1,16 @@
+site_name: "Bintracker NG"
+
+theme:
+  name: 'material'
+  hljs_languages:
+    - scheme
+    - xml
+
+site_dir: 'documentation'
+
+nav:
+  - Home: index.md
+  - "Bintracker API": 'generated/bintracker-core.md'
+
+markdown_extensions:
+  - codehilite

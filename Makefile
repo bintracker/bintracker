@@ -19,6 +19,14 @@ bt-types.so: bt-types.scm
 bt-types.import.so: bt-types.so
 	$(CSC) $(IMPORTFLAGS) bt-types.import.scm
 
+%.md: %.scm
+	$(DOCGEN) -i $< -o docs/generated/$@ -m
+
+bintracker-core.md: bintracker-core.scm
+
+docs: $(DOCS)
+	mkdocs build
+
 .PHONY: mdal
 mdal:
 	$(MAKE) -C libmdal

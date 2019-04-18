@@ -103,7 +103,19 @@
 		   (enable-play-buttons)
 		   (update-status-text)))))))
 
+  (define (launch-help)
+    ;; TODO windows untested
+    (let ((uri (cond-expand
+		 (unix "\"documentation/index.html\"")
+		 (windows "\"documentation\\index.html\"")))
+	  (open-cmd (cond-expand
+		      ((or linux freebsd netbsd openbsd) "xdg-open ")
+		      (macosx "open ")
+		      (windows "[list {*}[auto_execok start] {}] "))))
+      (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
+
   (tk/bind tk '<Control-o> load-file)
+  (tk/bind tk '<F1> launch-help)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu
@@ -138,6 +150,8 @@
   (file-menu 'add 'command 'label: "Exit" 'underline: 1 'command: tk-end
 	     'accelerator: "Ctrl+Q")
 
+  (help-menu 'add 'command 'label: "Help" 'underline: 0
+	     'command: launch-help 'accelerator: "F1")
   (help-menu 'add 'command 'label: "About" 'underline: 0
 	     'command: about-message)
 
