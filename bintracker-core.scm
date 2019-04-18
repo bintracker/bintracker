@@ -18,7 +18,8 @@
 	  simple-exceptions mdal bt-types)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
-  (reexport mdal pstk bt-types (chicken bitwise))
+  (reexport mdal pstk bt-types (chicken bitwise)
+	    srfi-1 srfi-13 simple-exceptions)
 
 
   ;; ---------------------------------------------------------------------------
@@ -356,7 +357,6 @@
 				id module-global-fields-frame))
 			     node-ids)))
       (begin
-	;; (tk/grid module-global-fields-frame 'column: 0 'row: 0 'sticky: 'we)
 	(tk/pack module-global-fields-frame 'fill: 'x)
 	(map (lambda (label column)
 	       (tk/grid label 'column: column 'row: 0 'padx: 4))
@@ -369,8 +369,7 @@
 		      (md:mod-cfg (app-state-current-mdmod *bintracker-state*))
 		      'group))
 	   (group-notebook (module-content-frame 'create-widget 'notebook)))
-      (begin ;; (tk/grid module-content-frame 'column: 0 'row: 1 'sticky: 'nswe)
-	     (tk/pack module-content-frame 'expand: 1 'fill: 'both)
+      (begin (tk/pack module-content-frame 'expand: 1 'fill: 'both)
 	     (tk/pack group-notebook 'expand: 1 'fill: 'both)
 	     (map (lambda (id)
 		    (group-notebook 'add (group-notebook 'create-widget 'frame)
