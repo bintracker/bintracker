@@ -8,7 +8,9 @@
     (state
      settings
      setconf!
-     setstate!)
+     setstate!
+     install-theme!
+     set-theme!)
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise)
@@ -22,6 +24,11 @@
   ;; ---------------------------------------------------------------------------
   ;;; # Initialize Global State and Settings
   ;; ---------------------------------------------------------------------------
+
+  ;; init pstk and fire up Tcl/Tk runtime.
+  ;; This must be done prior to defining anything that depends on Tk.
+  (tk-start)
+  (ttk-map-widgets 'all)
 
   (define *bintracker-state* (make-default-state))
   (define *bintracker-settings* (make-default-settings))
@@ -57,16 +64,29 @@
 					  "-set!")))
      *bintracker-state* val))
 
+  ;;; Install additional themes.
+  (define (install-theme! name implementation-filepath)
+    (setconf! 'themes-map (cons (list name implementation-filepath)
+				 (settings 'themes-map))))
+
+  ;;; Set the Tk widget theme.
+  (define (set-theme! name)
+    (begin
+      (unless (string-contains (tk-eval "ttk::style theme names")
+			       (->string name))
+	(let ((impl-file (alist-ref name (settings 'themes-map))))
+	  (if impl-file
+	      (tk-eval (string-append "source \"" (car impl-file) "\""))
+	      (raise
+	       (make-exn (string-append "No implementation file found for theme"
+					(->string name)))))))
+      (tk-eval (string-append "ttk::style theme use " (->string name)))))
+
   ;; Load config file
   (handle-exceptions
       exn
       #f ;; TODO: ignoring config errors is fine, but actually report errors
     (load "config.scm"))
-
-  ;; init pstk and fire up Tcl/Tk runtime.
-  ;; This must be done prior to defining anything that depends on Tk.
-  (tk-start)
-  (ttk-map-widgets 'all)
 
 
   ;; ---------------------------------------------------------------------------
@@ -285,6 +305,7 @@
 	exn
 	(console-output 'insert 'end
 			(string-append "Error: " (->string exn)
+				       (->string (arguments exn))
 				       "\n"))
       (let ((input-str (->string (console-input 'get))))
 	(begin
@@ -382,9 +403,6 @@
   (tk/wm 'title tk "Bintracker NG")
   ;; (tk/wm 'minsize tk 760 600)
   (tk-eval "option add *tearOff 0")
-
-  ;; (tk-eval "source \"config/themes/awthemes.tcl\"")
-  ;; (tk-eval "ttk::style theme use awdark")
 
   (init-menu)
   (init-top-level-layout)

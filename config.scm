@@ -14,3 +14,6 @@
 
 ;; (setconf! 'show-menu #f)
 ;; (setconf! 'show-toolbar #f)
+
+;; (install-theme! 'awdark "themes/awthemes.tcl")
+;; (set-theme! 'awdark)

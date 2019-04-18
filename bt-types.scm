@@ -14,6 +14,7 @@
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
+    themes-map
     keymap
     mdal-config-dir
     show-menu show-toolbar
@@ -23,7 +24,9 @@
     (make-app-state current-mdmod: #f selection: #f))
 
   (define (make-default-settings)
-    (make-app-settings keymap: "EN"
+    (make-app-settings themes-map: '((awdark "themes/awthemes.tcl")
+				     (awlight "themes/awthemes.tcl"))
+		       keymap: "EN"
 		       mdal-config-dir: "libmdal/unittests/config/"
 		       show-menu: #t
 		       show-toolbar: #t
