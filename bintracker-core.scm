@@ -369,8 +369,8 @@
 	       (tk/grid label 'column: column 'row: 0 'padx: 4))
 	     node-labels (iota (length node-ids))))))
 
-  (define (make-blocks-view parent)
-    (let* ((canvas-frame (parent 'create-widget 'frame))
+  (define (make-blocks-view parent-widget)
+    (let* ((canvas-frame (parent-widget 'create-widget 'frame))
 	   (block-canvas (canvas-frame 'create-widget 'canvas))
 	   (canvas-yscroll (canvas-frame 'create-widget 'scrollbar
 					 'orient: 'vertical)))
@@ -383,12 +383,12 @@
 	(tk/pack canvas-yscroll 'fill: 'y 'side: 'right)
 	(block-canvas 'configure 'scrollregion: (block-canvas 'bbox 'all)))))
 
-  ;; actually make-global-subgroups-view
-  (define (make-group-view)
-    (let* ((node-ids (md:config-get-subnode-type-ids "GLOBAL" (current-config)
+  ;;; Create GUI for {{inode-id}} and display in {{parent-widget}}.
+  (define (make-group-view inode-id parent-widget)
+    (let* ((node-ids (md:config-get-subnode-type-ids inode-id (current-config)
 		      				     'group))
-	   (group-notebook (module-content-frame 'create-widget 'notebook)))
-      (begin (tk/pack module-content-frame 'expand: 1 'fill: 'both)
+	   (group-notebook (parent-widget 'create-widget 'notebook)))
+      (begin (tk/pack parent-widget 'expand: 1 'fill: 'both)
 	     (tk/pack group-notebook 'expand: 1 'fill: 'both)
 	     (map (lambda (id)
 		    (let ((block-frame (group-notebook 'create-widget 'frame)))
@@ -400,7 +400,7 @@
   (define (make-module-view)
     (begin
       (make-global-fields-view)
-      (make-group-view)))
+      (make-group-view "GLOBAL" module-content-frame)))
 
 
   ;; ---------------------------------------------------------------------------
