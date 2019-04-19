@@ -10,7 +10,9 @@
      setconf!
      setstate!
      install-theme!
-     set-theme!)
+     set-theme!
+     current-module
+     current-config)
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise)
@@ -82,6 +84,15 @@
 	       (make-exn (string-append "No implementation file found for theme"
 					(->string name)))))))
       (tk-eval (string-append "ttk::style theme use " (->string name)))))
+
+  ;;; Returns the current module, or #f if no module is loaded.
+  (define (current-mod)
+    (app-state-current-mdmod *bintracker-state*))
+
+  ;;; Returns the current module configuration (mdconf). It is an error to call
+  ;;; this procedure if no module is currently loaded.
+  (define (current-config)
+    (md:mod-cfg (current-mod)))
 
   ;; Load config file
   (handle-exceptions
@@ -216,14 +227,13 @@
   (define status-text (status-frame 'create-widget 'label))
 
   (define (update-status-text)
-    (let* ((current-mod (app-state-current-mdmod *bintracker-state*))
-	   (status-msg (if current-mod
-			   (string-append
-			    (md:target-id
-			     (md:config-target (md:mod-cfg current-mod)))
-			    " | "
-			    (md:mod-cfg-id current-mod))
-			   "No module loaded.")))
+    (let ((status-msg (if (current-mod)
+			  (string-append
+			   (md:target-id
+			    (md:config-target (current-config)))
+			   " | "
+			   (md:mod-cfg-id (current-mod)))
+			  "No module loaded.")))
       (status-text 'configure 'text: status-msg)))
 
   (define (init-status-bar)
@@ -343,15 +353,12 @@
 	     (->string
 	      (md:inode-instance-val
 	       ((md:node-instance-path (string-append "0/" node-id "/0"))
-		(md:mod-global-node
-		 (app-state-current-mdmod *bintracker-state*))))))))
+		(md:mod-global-node (current-mod))))))))
 
   (define (make-global-fields-view)
     (let* ((node-ids
-	    (md:config-get-subnode-type-ids
-	     "GLOBAL"
-	     (md:mod-cfg (app-state-current-mdmod *bintracker-state*))
-	     'field))
+	    (md:config-get-subnode-type-ids "GLOBAL" (current-config)
+					    'field))
 	   (node-labels (map (lambda (id)
 			       (make-group-field-view
 				id module-global-fields-frame))
@@ -362,23 +369,38 @@
 	       (tk/grid label 'column: column 'row: 0 'padx: 4))
 	     node-labels (iota (length node-ids))))))
 
+  (define (make-blocks-view parent)
+    (let* ((canvas-frame (parent 'create-widget 'frame))
+	   (block-canvas (canvas-frame 'create-widget 'canvas))
+	   (canvas-yscroll (canvas-frame 'create-widget 'scrollbar
+					 'orient: 'vertical)))
+      (begin
+	(canvas-yscroll 'configure 'command: (list block-canvas 'yview))
+	(block-canvas 'configure 'yscrollcommand: (list canvas-yscroll 'set))
+	(block-canvas 'create 'rectangle 10 10 800 800 'fill: 'red 'outline: "")
+	(tk/pack canvas-frame 'expand: 1 'fill: 'both)
+	(tk/pack block-canvas 'expand: 1 'fill: 'both 'side: 'left)
+	(tk/pack canvas-yscroll 'fill: 'y 'side: 'right)
+	(block-canvas 'configure 'scrollregion: (block-canvas 'bbox 'all)))))
+
   ;; actually make-global-subgroups-view
   (define (make-group-view)
-    (let* ((node-ids (md:config-get-subnode-type-ids
-		      "GLOBAL"
-		      (md:mod-cfg (app-state-current-mdmod *bintracker-state*))
-		      'group))
+    (let* ((node-ids (md:config-get-subnode-type-ids "GLOBAL" (current-config)
+		      				     'group))
 	   (group-notebook (module-content-frame 'create-widget 'notebook)))
       (begin (tk/pack module-content-frame 'expand: 1 'fill: 'both)
 	     (tk/pack group-notebook 'expand: 1 'fill: 'both)
 	     (map (lambda (id)
-		    (group-notebook 'add (group-notebook 'create-widget 'frame)
-				    'text: id))
+		    (let ((block-frame (group-notebook 'create-widget 'frame)))
+		      (begin
+			(group-notebook 'add block-frame 'text: id)
+			(make-blocks-view block-frame))))
 		  node-ids))))
 
   (define (make-module-view)
-    (make-global-fields-view)
-    (make-group-view))
+    (begin
+      (make-global-fields-view)
+      (make-group-view)))
 
 
   ;; ---------------------------------------------------------------------------
