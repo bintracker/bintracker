@@ -14,6 +14,8 @@
 ;; (install-theme! 'awdark "themes/awthemes.tcl")
 ;; (set-theme! 'awdark)
 
+(setconf! 'font-mono "Roboto Mono for Powerline")
+
 (set-color! 'row "#222222")
 (set-color! 'row-highlight-major "#777777")
 (set-color! 'row-highlight-minor "#444444")

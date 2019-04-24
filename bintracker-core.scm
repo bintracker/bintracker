@@ -604,7 +604,8 @@
   (ttk/style 'configure 'Treeview 'background: (colors 'row)
 	     'fieldbackground: (colors 'row)
 	     'foreground: (colors 'text)
-	     'font: '(family: Courier))
+	     'font: (list 'family: (settings 'font-mono)
+			  'size: (settings 'font-size)))
 
   (init-menu)
   (init-top-level-layout)

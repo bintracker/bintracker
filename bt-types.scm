@@ -23,6 +23,7 @@
     number-base
     mdal-config-dir
     show-menu show-toolbar
+    font-mono font-size
     color-scheme)
 
   (define (make-default-state)
@@ -47,6 +48,8 @@
 		       mdal-config-dir: "libmdal/unittests/config/"
 		       show-menu: #t
 		       show-toolbar: #t
+		       font-mono: 'Courier
+		       font-size: 10
 		       color-scheme: (make-default-colors)))
 
   ) ;; end module bt-types
