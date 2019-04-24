@@ -7,7 +7,9 @@
 (module bintracker-core
     (state
      settings
+     colors
      setconf!
+     set-color!
      setstate!
      install-theme!
      set-theme!
@@ -57,19 +59,31 @@
 	 *bintracker-settings*)
 	*bintracker-settings*))
 
+  (define (colors param)
+    ((eval (string->symbol (string-append "app-colors-" (->string param))))
+     (app-settings-color-scheme *bintracker-settings*)))
+
+
+  ;;; All-purpose shorthand setter, used to implement setconf!, set-color, etc
+  (define (set-global! prefix obj param val)
+    ((eval (string->symbol (string-append prefix (->string param)
+					  "-set!")))
+     obj val))
+
   ;;; Change Bintracker's global settings. Mainly an interface to config.scm.
   ;;; setconf! does not immediately affect the current state of the application.
   ;;; You may need to call (reconfigure!) for the changes to take effect.
   (define (setconf! param val)
-    ((eval (string->symbol (string-append "app-settings-" (->string param)
-					  "-set!")))
-     *bintracker-settings* val))
+    (set-global! "app-settings-" *bintracker-settings* param val))
+
+  ;;; Change Bintracker's color scheme
+  (define (set-color! param val)
+    (set-global! "app-colors-" (app-settings-color-scheme *bintracker-settings*)
+		 param val))
 
   ;;; Change Bintracker's internal state variables.
   (define (setstate! param val)
-    ((eval (string->symbol (string-append "app-state-" (->string param)
-					  "-set!")))
-     *bintracker-state* val))
+    (set-global! "app-state-" *bintracker-state* param val))
 
   ;;; Install additional themes.
   (define (install-theme! name implementation-filepath)
@@ -307,10 +321,8 @@
   (define console-wrapper (console-frame 'create-widget 'frame))
 
   (define console-output (console-wrapper 'create-widget 'text
-					  'bg: (app-settings-color-console-bg
-						*bintracker-settings*)
-					  'fg: (app-settings-color-console-fg
-						*bintracker-settings*)))
+					  'bg: (colors 'console-bg)
+					  'fg: (colors 'console-fg)))
 
   (define console-yscroll (console-wrapper 'create-widget 'scrollbar
 					   'orient: 'vertical))
@@ -428,10 +440,11 @@
 
   (define (init-blocks-tree blocks-tree group-instance block-instance-ids)
     (let ((block-values (md:mod-get-block-values group-instance
-						 block-instance-ids)))
+						 block-instance-ids))
+	  (radix (app-settings-number-base *bintracker-settings*)))
       (map (lambda (row rownum)
 	     (blocks-tree 'insert '{} 'end
-			  'text: (string-pad (number->string rownum 16)
+			  'text: (string-pad (number->string rownum radix)
 					     4 #\0)
 			  'values: (map ->string row)))
 	   block-values (iota (length block-values)))))
