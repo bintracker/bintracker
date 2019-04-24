@@ -186,4 +186,30 @@
       (eval (append '(lambda (subnode ancestor-node))
 		    (list setter)))))
 
+  ;;; Returns the values of all field node instances of the given {{row}} of the
+  ;;; given non-order block-instances in the given {{group-instance}} as a
+  ;;; flat list.
+  ;;; {{block-instance-ids}} must be a list containing the requested numerical
+  ;;; block instance IDs for each non-order block in the group.
+  ;;; Empty (unset) instance values will be returned as #f.
+  (define (md:mod-get-row-values group-instance block-instance-ids row)
+    (flatten (map (lambda (block-instance)
+		    (map (lambda (field-node)
+			   (let ((instance-val
+				  (md:inode-instance-val
+				   (car (alist-ref
+					 row (md:inode-instances
+					      field-node))))))
+			     (if (null? instance-val)
+				 #f instance-val)))
+			 (md:inode-instance-val block-instance)))
+		  (map (lambda (blk-inst-id blk-node)
+			 (car (alist-ref blk-inst-id
+					 (md:inode-instances blk-node))))
+		       block-instance-ids
+		       (remove (lambda (block-node)
+				 (string-contains (md:inode-cfg-id block-node)
+						  "_ORDER"))
+			       (md:inode-instance-val group-instance))))))
+
   ) ;; end module md-types

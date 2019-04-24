@@ -937,7 +937,14 @@
 		       (zip (iota 16)
 			    (make-list 16 (md:make-inode-instance '()))))
 	((md:node-path "0/PATTERNS/0/CH2")
-	 (md:mod-global-node my-mod)))))
+	 (md:mod-global-node my-mod))))
+
+ (test "md:mod-get-row-values"
+       '("on" "c4" #f)
+       (md:mod-get-row-values ((md:node-instance-path "0/PATTERNS/0")
+			       (md:mod-global-node my-mod))
+			      '(0 0 0)
+			      4)))
 
 (test-group
  "MD-Module/Compilation"
