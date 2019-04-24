@@ -14,7 +14,7 @@
 
   ;;; Recort type that wraps gui element colors
   (defstruct app-colors
-    row row-highlight-major row-highlight-minor console-bg console-fg)
+    text row row-highlight-major row-highlight-minor console-bg console-fg)
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
@@ -32,6 +32,7 @@
 
   (define (make-default-colors)
     (make-app-colors
+     text: "#00ee00"
      row: "#222222"
      row-highlight-major: "#777777"
      row-highlight-minor: "#444444"

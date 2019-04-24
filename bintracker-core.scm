@@ -459,7 +459,9 @@
 	(tk/pack (bt-blocks-tree-xscroll-frame t)
 		 'fill: 'x)
 	(map (lambda (id)
-	       (blocks-tree 'heading id 'text: id))
+	       (begin
+		 (blocks-tree 'column id 'anchor: 'center)
+		 (blocks-tree 'heading id 'text: id)))
 	     (bt-blocks-tree-field-ids t))
 	(init-blocks-tree blocks-tree ((md:node-instance-path "0/PATTERNS/0")
 				       (md:mod-global-node (current-mod)))
@@ -598,6 +600,11 @@
   (tk/wm 'title tk "Bintracker NG")
   ;; (tk/wm 'minsize tk 760 600)
   (tk-eval "option add *tearOff 0")
+
+  (ttk/style 'configure 'Treeview 'background: (colors 'row)
+	     'fieldbackground: (colors 'row)
+	     'foreground: (colors 'text)
+	     'font: '(family: Courier))
 
   (init-menu)
   (init-top-level-layout)
