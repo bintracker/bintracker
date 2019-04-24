@@ -10,7 +10,7 @@
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
-    current-mdmod selection)
+    current-mdmod module-widget selection)
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
@@ -21,7 +21,9 @@
     color-row-hl color-row-hl2 color-console-bg color-console-fg)
 
   (define (make-default-state)
-    (make-app-state current-mdmod: #f selection: #f))
+    (make-app-state current-mdmod: #f
+		    module-widget: #f
+		    selection: #f))
 
   (define (make-default-settings)
     (make-app-settings themes-map: '((awdark "themes/awthemes.tcl")

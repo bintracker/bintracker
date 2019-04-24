@@ -11,11 +11,12 @@
      setstate!
      install-theme!
      set-theme!
-     current-module
-     current-config)
+     current-mod
+     current-config
+     make-module-widget)
 
   (import scheme (chicken base) (chicken platform) (chicken string)
-	  (chicken module) (chicken io) (chicken bitwise)
+	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  srfi-1 srfi-13 srfi-69 pstk defstruct
 	  simple-exceptions mdal bt-types)
   ;; all symbols that are required in generated code (mdal compiler generator)
@@ -31,7 +32,10 @@
   ;; init pstk and fire up Tcl/Tk runtime.
   ;; This must be done prior to defining anything that depends on Tk.
   (tk-start)
-  (ttk-map-widgets 'all)
+  (ttk-map-widgets '(button checkbutton radiobutton menubutton label entry frame
+			    labelframe scrollbar notebook panedwindow
+			    progressbar combobox separator scale sizegrip
+			    treeview))
 
   (define *bintracker-state* (make-default-state))
   (define *bintracker-settings* (make-default-settings))
@@ -128,7 +132,9 @@
 					       (app-settings-mdal-config-dir
 						*bintracker-settings*)
 					       "libmdal/"))
-		   (make-module-view)
+		   ;; (make-module-view)
+		   (setstate! 'module-widget (make-module-widget))
+		   (show-module)
 		   (enable-play-buttons)
 		   (update-status-text)))))))
 
@@ -156,7 +162,7 @@
   (define file-menu (tk 'create-widget 'menu))
   (define edit-menu (tk 'create-widget 'menu))
   (define generate-menu (tk 'create-widget 'menu))
-  (define modify-menu (tk 'create-widget 'menu))
+  (define transform-menu (tk 'create-widget 'menu))
   (define help-menu (tk 'create-widget 'menu))
 
   (define (init-menu)
@@ -165,8 +171,8 @@
       (map (lambda (submenu title)
 	     (main-menu 'add 'cascade 'menu: submenu 'label: title
 			'underline: 0))
-	   (list file-menu edit-menu generate-menu modify-menu help-menu)
-	   '("File" "Edit" "Generate" "Modify" "Help"))
+	   (list file-menu edit-menu generate-menu transform-menu help-menu)
+	   '("File" "Edit" "Generate" "Transform" "Help"))
 
       (file-menu 'add 'command 'label: "New..." 'underline: 0
 		 'command: (lambda () #f)
@@ -204,8 +210,8 @@
 
   (define main-frame (top-frame 'create-widget 'frame))
 
-  (define module-global-fields-frame (main-frame 'create-widget 'frame))
-  (define module-content-frame (main-frame 'create-widget 'frame))
+  ;; (define module-global-fields-frame (main-frame 'create-widget 'frame))
+  ;; (define module-content-frame (main-frame 'create-widget 'frame))
 
   (define console-frame (top-frame 'create-widget 'frame))
 
@@ -217,6 +223,7 @@
       (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
       (tk/pack main-frame 'expand: 1 'fill: 'both)
       (tk/pack console-frame 'expand: 0 'fill: 'both)
+      ;; TODO: ensure sizegrip doesn't disappear when resizing to min.
       (tk/pack status-frame 'fill: 'x)))
 
 
@@ -345,62 +352,279 @@
   ;;; ## Module Specific GUI
   ;; ---------------------------------------------------------------------------
 
-  (define (make-group-field-view node-id parent-widget)
-    (parent-widget
-     'create-widget 'label
-     'text: (string-append
-	     node-id ": "
-	     (->string
-	      (md:inode-instance-val
-	       ((md:node-instance-path (string-append "0/" node-id "/0"))
-		(md:mod-global-node (current-mod))))))))
+  (defstruct bt-field-widget toplevel-frame id-label val-label)
 
-  (define (make-global-fields-view)
-    (let* ((node-ids
-	    (md:config-get-subnode-type-ids "GLOBAL" (current-config)
-					    'field))
-	   (node-labels (map (lambda (id)
-			       (make-group-field-view
-				id module-global-fields-frame))
-			     node-ids)))
-      (begin
-	(tk/pack module-global-fields-frame 'fill: 'x)
-	(map (lambda (label column)
-	       (tk/grid label 'column: column 'row: 0 'padx: 4))
-	     node-labels (iota (length node-ids))))))
+  (define (make-field-widget node-id instance-path parent-widget)
+    (let ((tl-frame (parent-widget 'create-widget 'frame)))
+      (make-bt-field-widget
+       toplevel-frame: tl-frame
+       id-label: (tl-frame 'create-widget 'label 'text: node-id)
+       val-label: (tl-frame 'create-widget 'label
+			    'text: (->string
+				    (md:inode-instance-val
+				     ((md:node-instance-path instance-path)
+				      (md:mod-global-node (current-mod)))))))))
 
-  (define (make-blocks-view parent-widget)
-    (let* ((canvas-frame (parent-widget 'create-widget 'frame))
-	   (block-canvas (canvas-frame 'create-widget 'canvas))
-	   (canvas-yscroll (canvas-frame 'create-widget 'scrollbar
-					 'orient: 'vertical)))
-      (begin
-	(canvas-yscroll 'configure 'command: (list block-canvas 'yview))
-	(block-canvas 'configure 'yscrollcommand: (list canvas-yscroll 'set))
-	(block-canvas 'create 'rectangle 10 10 800 800 'fill: 'red 'outline: "")
-	(tk/pack canvas-frame 'expand: 1 'fill: 'both)
-	(tk/pack block-canvas 'expand: 1 'fill: 'both 'side: 'left)
-	(tk/pack canvas-yscroll 'fill: 'y 'side: 'right)
-	(block-canvas 'configure 'scrollregion: (block-canvas 'bbox 'all)))))
-
-  ;;; Create GUI for {{inode-id}} and display in {{parent-widget}}.
-  (define (make-group-view inode-id parent-widget)
-    (let* ((node-ids (md:config-get-subnode-type-ids inode-id (current-config)
-		      				     'group))
-	   (group-notebook (parent-widget 'create-widget 'notebook)))
-      (begin (tk/pack parent-widget 'expand: 1 'fill: 'both)
-	     (tk/pack group-notebook 'expand: 1 'fill: 'both)
-	     (map (lambda (id)
-		    (let ((block-frame (group-notebook 'create-widget 'frame)))
-		      (begin
-			(group-notebook 'add block-frame 'text: id)
-			(make-blocks-view block-frame))))
-		  node-ids))))
-
-  (define (make-module-view)
+  (define (show-field-widget w)
     (begin
-      (make-global-fields-view)
-      (make-group-view "GLOBAL" module-content-frame)))
+      (tk/pack (bt-field-widget-toplevel-frame w)
+	       'side: 'left)
+      (tk/pack (bt-field-widget-id-label w)
+	       (bt-field-widget-val-label w)
+	       'side: 'left 'padx: 4)))
+
+  ;; Not exported.
+  (defstruct bt-fields-widget toplevel-frame fields)
+
+  ;; make group fields gui widget
+  (define (make-fields-widget parent-node-id parent-path parent-widget)
+    (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
+						       (current-config)
+						       'field)))
+      (if (null? subnode-ids)
+	  #f
+	  (let ((tl-frame (parent-widget 'create-widget 'frame)))
+	    (make-bt-fields-widget
+	     toplevel-frame: tl-frame
+	     fields: (map (lambda (id)
+			    (make-field-widget
+			     id (string-append parent-path id "/0/")
+			     tl-frame))
+			  subnode-ids))))))
+
+  (define (show-fields-widget w)
+    (begin
+      (tk/pack (bt-fields-widget-toplevel-frame w)
+	       'fill: 'x)
+      (map show-field-widget (bt-fields-widget-fields w))))
+
+  (defstruct bt-blocks-tree
+    topframe xscroll-frame tree xscroll yscroll block-ids field-ids)
+
+  (define (make-blocks-tree parent-node-id parent-path parent-widget)
+    (let* ((.block-ids (remove (lambda (id)
+	   			 (string-contains id "_ORDER"))
+	   		       (md:config-get-subnode-type-ids parent-node-id
+	   						       (current-config)
+	   						       'block)))
+	   (.field-ids (flatten (map (lambda (id)
+	   			       (md:config-get-subnode-ids
+	   				id (md:config-itree (current-config))))
+	   			     .block-ids)))
+	   (.topframe (parent-widget 'create-widget 'frame))
+	   (.xscroll-frame (parent-widget 'create-widget 'frame))
+	   (.tree (.topframe 'create-widget 'treeview
+	   		     'columns: (string-intersperse .field-ids " "))))
+      (make-bt-blocks-tree
+       topframe: .topframe
+       xscroll-frame: .xscroll-frame
+       tree: .tree
+       xscroll: (.xscroll-frame 'create-widget 'scrollbar 'orient: 'horizontal
+	 			'command: (list .tree 'xview))
+       yscroll: (.topframe 'create-widget 'scrollbar 'orient: 'vertical
+	 		   'command: (list .tree 'yview))
+       block-ids: .block-ids
+       field-ids: .field-ids)))
+
+  (define (show-blocks-tree t)
+    (let ((blocks-tree (bt-blocks-tree-tree t))
+	  (xscroll (bt-blocks-tree-xscroll t))
+	  (yscroll (bt-blocks-tree-yscroll t)))
+      (begin
+	(tk/pack (bt-blocks-tree-topframe t)
+		 'expand: 1 'fill: 'both)
+	(tk/pack (bt-blocks-tree-xscroll-frame t)
+		 'fill: 'x)
+	(map (lambda (id)
+	       (blocks-tree 'heading id 'text: id))
+	     (bt-blocks-tree-field-ids t))
+	(blocks-tree 'insert '{} 'end 'text: (string-pad (number->string 0 16)
+							 4 #\0)
+		     'values: (list "1" "2" "3"))
+	(blocks-tree 'insert '{} 'end 'text: (string-pad (number->string 1 16)
+							 4 #\0)
+		     'values: (list "1" "2" "3"))
+	(tk/pack blocks-tree 'expand: 1 'fill: 'both 'side: 'left)
+	(tk/pack yscroll 'fill: 'y 'side: 'left)
+	(tk/pack xscroll 'fill: 'x)
+	(blocks-tree 'configure 'xscrollcommand: (list xscroll 'set)
+		     'yscrollcommand: (list yscroll 'set)))))
+
+  (defstruct bt-blocks-widget
+    tl-panedwindow blocks-pane order-pane blocks-tree order-tree)
+
+  (define (make-blocks-widget parent-node-id parent-path parent-widget)
+    (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
+						     (current-config)
+						     'block)))
+      (if (null? block-ids)
+	  #f
+	  (let* ((.tl (parent-widget 'create-widget 'panedwindow
+				     'orient: 'horizontal))
+		 (.blocks-pane (.tl 'create-widget 'frame))
+		 (.order-pane (.tl 'create-widget 'frame)))
+	    (make-bt-blocks-widget
+	     tl-panedwindow: .tl
+	     blocks-pane: .blocks-pane
+	     order-pane: .order-pane
+	     blocks-tree: (make-blocks-tree parent-node-id parent-path
+	     				    .blocks-pane)
+	     order-tree: #f)))))
+
+  (define (show-blocks-widget w)
+    (let ((top (bt-blocks-widget-tl-panedwindow w)))
+      (begin
+	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 3)
+	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
+	(tk/pack top 'expand: 1 'fill: 'both)
+	(show-blocks-tree (bt-blocks-widget-blocks-tree w)))))
+
+  ;; (defstruct bt-blocks-widget
+  ;;   tl-panedwindow blocks-pane order-pane blocks-header-cv order-header-cv
+  ;;   blocks-rownum-cv order-rownum-cv blocks-content-cv order-content-cv
+  ;;   blocks-xscroll blocks-yscroll order-xscroll order-yscroll)
+
+  ;; (define (make-blocks-widget parent-node-id parent-path parent-widget)
+  ;;   (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
+  ;; 						     (current-config)
+  ;; 						     'block)))
+  ;;     (if (null? block-ids)
+  ;; 	  #f
+  ;; 	  (let* ((toplevel (parent-widget 'create-widget 'panedwindow
+  ;; 					  'orient: 'horizontal))
+  ;; 		 (.blocks-pane (toplevel 'create-widget 'frame))
+  ;; 		 (.order-pane (toplevel 'create-widget 'frame))
+  ;; 		 (.blocks-header-cv (.blocks-pane 'create-widget 'canvas
+  ;; 						  'bg: "#ff0000"))
+  ;; 		 (.blocks-rownum-cv (.blocks-pane 'create-widget 'canvas
+  ;; 						  'bg: "#00ff00"))
+  ;; 		 (.blocks-content-cv (.blocks-pane 'create-widget 'canvas
+  ;; 						   'bg: "#0000ff"))
+  ;; 		 (.blocks-xscroll (.blocks-pane 'create-widget 'scrollbar
+  ;; 						'orient: 'horizontal
+  ;; 						'command: (list .blocks-content-cv 'xview)
+  ;; 						))
+  ;; 		 (.blocks-yscroll (.blocks-pane 'create-widget 'scrollbar
+  ;; 						'orient: 'vertical
+  ;; 						'command: (list .blocks-content-cv 'yview)
+  ;; 						)))
+  ;; 	    (make-bt-blocks-widget
+  ;; 	     tl-panedwindow: toplevel
+  ;; 	     blocks-pane: .blocks-pane
+  ;; 	     order-pane: .order-pane
+  ;; 	     blocks-header-cv: .blocks-header-cv
+  ;; 	     order-header-cv: #f
+  ;; 	     blocks-rownum-cv: .blocks-rownum-cv
+  ;; 	     order-rownum-cv: #f
+  ;; 	     blocks-content-cv: .blocks-content-cv
+  ;; 	     order-content-cv: #f
+  ;; 	     blocks-xscroll: .blocks-xscroll
+  ;; 	     blocks-yscroll: .blocks-yscroll
+  ;; 	     order-xscroll: #f
+  ;; 	     order-yscroll: #f)))))
+
+  ;; (define (show-blocks-widget w)
+  ;;   (let ((toplevel (bt-blocks-widget-tl-panedwindow w))
+  ;; 	  (content-cv (bt-blocks-widget-blocks-content-cv w))
+  ;; 	  (blocks-yscroll (bt-blocks-widget-blocks-yscroll w))
+  ;; 	  (blocks-xscroll (bt-blocks-widget-blocks-xscroll w)))
+  ;;     (begin
+  ;; 	(tk/pack toplevel 'expand: 1 'fill: 'both)
+  ;; 	(toplevel 'add (bt-blocks-widget-blocks-pane w))
+  ;; 	(toplevel 'add (bt-blocks-widget-order-pane w))
+  ;; 	(tk/grid (bt-blocks-widget-blocks-header-cv w) 'column: 1 'row: 0
+  ;; 		 'sticky: 'we)
+  ;; 	(tk/grid (bt-blocks-widget-blocks-rownum-cv w) 'column: 0 'row: 1)
+  ;; 	(tk/grid content-cv 'column: 1 'row: 1 'sticky: 'nswe)
+  ;; 	(tk/grid blocks-yscroll 'column: 2 'row: 1 'sticky: 'ns)
+  ;; 	(tk/grid blocks-xscroll 'column: 1 'row: 2 'sticky: 'we)
+  ;; 	;; (tk/grid 'rowconfigure (bt-blocks-widget-blocks-pane w) 1 'weight: 1)
+  ;; 	(content-cv 'configure
+  ;; 		    'xscrollcommand: (list blocks-xscroll 'set)
+  ;; 		    'yscrollcommand: (list blocks-yscroll 'set)
+  ;; 		    )
+  ;; 	(content-cv 'create 'rectangle 10 10 400 400 'fill: 'yellow)
+  ;; 	;; BUG: (elem 'bbox 'all) returns values as doubly-quoted string when xscrollcmd is set
+  ;; 	;; (printf "scrollregion: ~S\n" (content-cv 'bbox 'all))
+  ;; 	;; workaround: call (string-delete #\" ...) on result
+  ;; 	(content-cv 'configure 'scrollregion: (string-delete #\" (content-cv 'bbox 'all))))))
+
+  (defstruct bt-subgroups-widget
+    toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
+
+  (define (make-subgroups-widget parent-node-id parent-path parent-widget)
+    (let ((sg-ids (md:config-get-subnode-type-ids parent-node-id
+						  (current-config)
+						  'group)))
+      (if (null? sg-ids)
+	  #f
+	  (let* ((tl-frame (parent-widget 'create-widget 'frame))
+		 (notebook (tl-frame 'create-widget 'notebook))
+		 (subgroup-frames (map (lambda (id)
+					 (notebook 'create-widget 'frame))
+				       sg-ids)))
+	    (make-bt-subgroups-widget
+	     toplevel-frame: tl-frame
+	     subgroup-ids: sg-ids
+	     tl-notebook: notebook
+	     notebook-frames: subgroup-frames
+	     subgroups: (map (lambda (id frame)
+			       (make-group-widget
+				id (string-append parent-path id "/0/")
+				frame))
+			     sg-ids subgroup-frames))))))
+
+  (define (show-subgroups-widget w)
+    (begin
+      (tk/pack (bt-subgroups-widget-toplevel-frame w)
+	       'expand: 1 'fill: 'both)
+      (tk/pack (bt-subgroups-widget-tl-notebook w)
+	       'expand: 1 'fill: 'both)
+      (map (lambda (sg-id sg-frame)
+	     ((bt-subgroups-widget-tl-notebook w)
+	      'add sg-frame 'text: sg-id))
+	   (bt-subgroups-widget-subgroup-ids w)
+	   (bt-subgroups-widget-notebook-frames w))
+      (map show-group-widget (bt-subgroups-widget-subgroups w))))
+
+  ;; Not exported.
+  (defstruct bt-group-widget
+    toplevel-frame fields-widget blocks-widget subgroups-widget)
+
+  ;; TODO handle groups with multiple instances
+  ;; parent-path is misleading, it should be the igroup path itself
+  (define (make-group-widget node-id parent-path parent-widget)
+    (let ((tl-frame (parent-widget 'create-widget 'frame))
+	  (instance-path (string-append parent-path "0/")))
+      (make-bt-group-widget
+       toplevel-frame: tl-frame
+       fields-widget: (make-fields-widget node-id instance-path tl-frame)
+       blocks-widget: (make-blocks-widget node-id instance-path tl-frame)
+       subgroups-widget: (make-subgroups-widget node-id instance-path
+						tl-frame))))
+
+  ;; Display the group widget (using pack geometry manager).
+  (define (show-group-widget w)
+    (begin
+      (tk/pack (bt-group-widget-toplevel-frame w)
+	       'expand: 1 'fill: 'both)
+      (when (bt-group-widget-fields-widget w)
+	(show-fields-widget (bt-group-widget-fields-widget w)))
+      (when (bt-group-widget-blocks-widget w)
+	(show-blocks-widget (bt-group-widget-blocks-widget w)))
+      (when (bt-group-widget-subgroups-widget w)
+	(show-subgroups-widget (bt-group-widget-subgroups-widget w)))
+      (when (not (or (bt-group-widget-blocks-widget w)
+		     (bt-group-widget-subgroups-widget w)))
+	(tk/pack ((bt-group-widget-toplevel-frame w)
+		  'create-widget 'frame)
+		 'expand: 1 'fill: 'both))))
+
+  (define (make-module-widget)
+    (make-group-widget "GLOBAL" "" main-frame))
+
+  (define (show-module)
+    (show-group-widget (app-state-module-widget *bintracker-state*)))
 
 
   ;; ---------------------------------------------------------------------------
