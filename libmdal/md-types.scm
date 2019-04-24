@@ -212,4 +212,19 @@
 						  "_ORDER"))
 			       (md:inode-instance-val group-instance))))))
 
+  ;;; Returns the values of all field node instances of the non-order block
+  ;;; instances in the given {{group-instance}}, as a list of row value sets.
+  ;;; Effectively calls md-mod-get-row-values on each row of the relevant
+  ;;; blocks.
+  ;;; TODO: will break if order node is the first in group instance subnodes.
+  (define (md:mod-get-block-values group-instance block-instance-ids)
+    (map (lambda (row)
+	   (md:mod-get-row-values group-instance block-instance-ids row))
+	 (iota (md:inode-count-instances
+		(car (md:inode-instance-val
+		      (car (alist-ref (car block-instance-ids)
+				      (md:inode-instances
+				       (car (md:inode-instance-val
+					     group-instance)))))))))))
+
   ) ;; end module md-types

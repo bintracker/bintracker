@@ -944,7 +944,28 @@
        (md:mod-get-row-values ((md:node-instance-path "0/PATTERNS/0")
 			       (md:mod-global-node my-mod))
 			      '(0 0 0)
-			      4)))
+			      4))
+
+ (test "md:mod-get-block-values"
+       '(("on" "a3" "a2")
+	 (#f #f #f)
+	 (#f "rest" #f)
+	 (#f #f #f)
+	 ("on" "c4" #f)
+	 (#f #f #f)
+	 (#f "rest" #f)
+	 (#f #f #f)
+	 ("on" "e4" #f)
+	 (#f #f #f)
+	 (#f "rest" #f)
+	 (#f #f #f)
+	 ("on" "g4" #f)
+	 (#f #f #f)
+	 (#f "rest" #f)
+	 (#f #f #f))
+       (md:mod-get-block-values ((md:node-instance-path "0/PATTERNS/0")
+				 (md:mod-global-node my-mod))
+				'(0 0 0))))
 
 (test-group
  "MD-Module/Compilation"
