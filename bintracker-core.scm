@@ -426,6 +426,16 @@
        block-ids: .block-ids
        field-ids: .field-ids)))
 
+  (define (init-blocks-tree blocks-tree group-instance block-instance-ids)
+    (let ((block-values (md:mod-get-block-values group-instance
+						 block-instance-ids)))
+      (map (lambda (row rownum)
+	     (blocks-tree 'insert '{} 'end
+			  'text: (string-pad (number->string rownum 16)
+					     4 #\0)
+			  'values: (map ->string row)))
+	   block-values (iota (length block-values)))))
+
   (define (show-blocks-tree t)
     (let ((blocks-tree (bt-blocks-tree-tree t))
 	  (xscroll (bt-blocks-tree-xscroll t))
@@ -438,12 +448,9 @@
 	(map (lambda (id)
 	       (blocks-tree 'heading id 'text: id))
 	     (bt-blocks-tree-field-ids t))
-	(blocks-tree 'insert '{} 'end 'text: (string-pad (number->string 0 16)
-							 4 #\0)
-		     'values: (list "1" "2" "3"))
-	(blocks-tree 'insert '{} 'end 'text: (string-pad (number->string 1 16)
-							 4 #\0)
-		     'values: (list "1" "2" "3"))
+	(init-blocks-tree blocks-tree ((md:node-instance-path "0/PATTERNS/0")
+				       (md:mod-global-node (current-mod)))
+			  '(0 0 0))
 	(tk/pack blocks-tree 'expand: 1 'fill: 'both 'side: 'left)
 	(tk/pack yscroll 'fill: 'y 'side: 'left)
 	(tk/pack xscroll 'fill: 'x)
@@ -478,76 +485,6 @@
 	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
 	(tk/pack top 'expand: 1 'fill: 'both)
 	(show-blocks-tree (bt-blocks-widget-blocks-tree w)))))
-
-  ;; (defstruct bt-blocks-widget
-  ;;   tl-panedwindow blocks-pane order-pane blocks-header-cv order-header-cv
-  ;;   blocks-rownum-cv order-rownum-cv blocks-content-cv order-content-cv
-  ;;   blocks-xscroll blocks-yscroll order-xscroll order-yscroll)
-
-  ;; (define (make-blocks-widget parent-node-id parent-path parent-widget)
-  ;;   (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
-  ;; 						     (current-config)
-  ;; 						     'block)))
-  ;;     (if (null? block-ids)
-  ;; 	  #f
-  ;; 	  (let* ((toplevel (parent-widget 'create-widget 'panedwindow
-  ;; 					  'orient: 'horizontal))
-  ;; 		 (.blocks-pane (toplevel 'create-widget 'frame))
-  ;; 		 (.order-pane (toplevel 'create-widget 'frame))
-  ;; 		 (.blocks-header-cv (.blocks-pane 'create-widget 'canvas
-  ;; 						  'bg: "#ff0000"))
-  ;; 		 (.blocks-rownum-cv (.blocks-pane 'create-widget 'canvas
-  ;; 						  'bg: "#00ff00"))
-  ;; 		 (.blocks-content-cv (.blocks-pane 'create-widget 'canvas
-  ;; 						   'bg: "#0000ff"))
-  ;; 		 (.blocks-xscroll (.blocks-pane 'create-widget 'scrollbar
-  ;; 						'orient: 'horizontal
-  ;; 						'command: (list .blocks-content-cv 'xview)
-  ;; 						))
-  ;; 		 (.blocks-yscroll (.blocks-pane 'create-widget 'scrollbar
-  ;; 						'orient: 'vertical
-  ;; 						'command: (list .blocks-content-cv 'yview)
-  ;; 						)))
-  ;; 	    (make-bt-blocks-widget
-  ;; 	     tl-panedwindow: toplevel
-  ;; 	     blocks-pane: .blocks-pane
-  ;; 	     order-pane: .order-pane
-  ;; 	     blocks-header-cv: .blocks-header-cv
-  ;; 	     order-header-cv: #f
-  ;; 	     blocks-rownum-cv: .blocks-rownum-cv
-  ;; 	     order-rownum-cv: #f
-  ;; 	     blocks-content-cv: .blocks-content-cv
-  ;; 	     order-content-cv: #f
-  ;; 	     blocks-xscroll: .blocks-xscroll
-  ;; 	     blocks-yscroll: .blocks-yscroll
-  ;; 	     order-xscroll: #f
-  ;; 	     order-yscroll: #f)))))
-
-  ;; (define (show-blocks-widget w)
-  ;;   (let ((toplevel (bt-blocks-widget-tl-panedwindow w))
-  ;; 	  (content-cv (bt-blocks-widget-blocks-content-cv w))
-  ;; 	  (blocks-yscroll (bt-blocks-widget-blocks-yscroll w))
-  ;; 	  (blocks-xscroll (bt-blocks-widget-blocks-xscroll w)))
-  ;;     (begin
-  ;; 	(tk/pack toplevel 'expand: 1 'fill: 'both)
-  ;; 	(toplevel 'add (bt-blocks-widget-blocks-pane w))
-  ;; 	(toplevel 'add (bt-blocks-widget-order-pane w))
-  ;; 	(tk/grid (bt-blocks-widget-blocks-header-cv w) 'column: 1 'row: 0
-  ;; 		 'sticky: 'we)
-  ;; 	(tk/grid (bt-blocks-widget-blocks-rownum-cv w) 'column: 0 'row: 1)
-  ;; 	(tk/grid content-cv 'column: 1 'row: 1 'sticky: 'nswe)
-  ;; 	(tk/grid blocks-yscroll 'column: 2 'row: 1 'sticky: 'ns)
-  ;; 	(tk/grid blocks-xscroll 'column: 1 'row: 2 'sticky: 'we)
-  ;; 	;; (tk/grid 'rowconfigure (bt-blocks-widget-blocks-pane w) 1 'weight: 1)
-  ;; 	(content-cv 'configure
-  ;; 		    'xscrollcommand: (list blocks-xscroll 'set)
-  ;; 		    'yscrollcommand: (list blocks-yscroll 'set)
-  ;; 		    )
-  ;; 	(content-cv 'create 'rectangle 10 10 400 400 'fill: 'yellow)
-  ;; 	;; BUG: (elem 'bbox 'all) returns values as doubly-quoted string when xscrollcmd is set
-  ;; 	;; (printf "scrollregion: ~S\n" (content-cv 'bbox 'all))
-  ;; 	;; workaround: call (string-delete #\" ...) on result
-  ;; 	(content-cv 'configure 'scrollregion: (string-delete #\" (content-cv 'bbox 'all))))))
 
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
