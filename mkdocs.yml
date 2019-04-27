@@ -10,9 +10,18 @@ site_dir: 'documentation'
 
 nav:
   - Home: index.md
-  - Configuration: configuration.md
-  - "Using The Console": console.md
-  - "Bintracker API": 'generated/bintracker-core.md'
+  - User Manual:
+      - Setup: setup.md
+      - "Getting Started": getting-started.md
+      - Configuration: configuration.md
+      - "Using The Console": console.md
+  - "Hacking Bintracker":
+      - "Getting Started": hacking.md
+      - "Bintracker API": 'generated/bintracker-core.md'
+  - MDAL:
+      - Introduction: '../libmdal/docs/index.md'
+      - MDMOD: '../libmdal/docs/MDMOD_SPECIFICATION.md'
+      - MDCONF: '../libmdal/docs/MDCONF_SPECIFICATION.md'
 
 markdown_extensions:
   - codehilite
