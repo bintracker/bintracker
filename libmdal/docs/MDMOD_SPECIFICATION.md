@@ -5,8 +5,8 @@ This specification draft outlines the **upcoming** MDAL Module (MDMOD) standard 
 Notable changes from Version 1 include:
 
 - Blocks are addressed through numerical identifiers instead of named strings.
-- Automatic scope resolution is dropped, and replaced by explicit [Scope Qualifiers](#scope-qualifiers).
-- The [Group element](#groups) is introduced.
+- Automatic scope resolution is dropped, and replaced by explicit [Assignments](#assignments).
+- The Group element is introduced.
 - Blocks and Groups are delimited by curly brackets.
 - Order lists (sequences) no longer have special syntax, and instead are treated as ordinary Blocks. Order Lists are now entirely virtual and always use a matrix style like in Famitracker or LSDJ, as opposed to glob style used by XM.
 
@@ -27,9 +27,9 @@ Notable changes from Version 1 include:
 
 **Horizontal white-space**  is meaningless, and is ignored. **Vertical white-space** is also ignored except within the context of Blocks (see next section), where a line break denotes the start of a new Step.
 
-**Numbers** can be given either in decimal or hexadecimal notation. Hexadecimal numbers are prefixed with the dollar sign (`$`).
+**Numbers** can be given either in decimal or hexadecimal notation. Hexadecimal numbers are prefixed with the dollar sign `$`.
 
-**Strings** are delimited with double quotes (`"`).
+**Strings** are delimited with double quotes `"`.
 
 
 ### Elements
@@ -55,40 +55,59 @@ There are nine different types of Fields. Types are specified by the MDCONFigura
 - REFERENCE: a reference to a group or block instance, or a LABEL within that group or block.
 
 INT, UINT, and NOTE Fields may use **Modifiers**, if enabled by the configuration. Modifiers modify a given Field value, using a simple arithmetic operation. Modifiers are appended to the Field value. The available modifiers are + (addition), - (subtraction), \* (multiplication), / (division), % (module), | (logical or), ^ (logical exclusive or), and & (logical and). For example, the declaration `NOTE = a4 + 1` will add an offset of 1 to whatever the note `a4` evaluates to in the context of the given MDCONFiguration.
- 
-
-#### Special Fields
-
-The special global Fields **CONFIG**, **AUTHOR**, **TITLE**, and the special fields **INCLUDE**, are available in every MDCONFiguration. Additionally, some configurations allow the use of the **INCBIN** command.
-
-The **CONFIG** global fields specifies the MDCONFiguration to use for the module. Every MD Module must set the CONFIG field.
-
-The **AUTHOR** and **TITLE** global fields are optional, and may be used to specify the author and title of a module.
-
-The **INCLUDE** field can be used to include an external plaintext resource. This field will be replaced as if the contents of the external resource where written in its place.
-
-The **INCBIN** field works similar to the INCLUDE command, but includes a binary resource instead. It is only available for Blocks that use only a single Field. This is usually the case when samples are used.
 
 
-### Scope Qualifiers
+#### Default Elements
 
-Group and Block instances must be identified by a Scope Qualifier. Scope Qualifiers start with a colon (`:`), followed by the Group or Block identifier, followed by a numerical instance identifier enclosed in brackets (`()`). The instance identifier may be omitted if the underlying MDCONF allows for only one instance of the given element. Instance identifiers must be unique for the given element.
+The special global Fields `CONFIG`, `AUTHOR`, `TITLE`, `LICENSE`, and `COMMENT` are available in every MDCONFiguration.
 
-The contents of the given element follow after the Scope Qualifier, and are enclosed in curly brackets (`{}`). A unit consisting of a Scope Qualifier and the associated contents is called a Scope. Scope Qualifiers within a Scope automatically inherit the parent Scope Qualifier.
+The `CONFIG` global field specifies the name of MDCONFiguration to use for the module. Every MD Module must set the CONFIG field.
 
-Group and Block instances can be named. Names are strictly optional, and carry no additional semantic function. Names are appended to the scope qualifier, using square brackets.
+The `AUTHOR`, `TITLE`, `COMMENT`, and `LICENSE` global fields are optional, and may be used to specify the author, title, license, and additional information for a module.
 
-The following example
+
+### Assignments
+
+The elemental syntax construct in MDAL is the assignment. Values are assigned to element **instances** with the following syntax:
 
 ```
-:PATTERNS {
-  :CH1(0)[intro] {
-    /* contents */
+ELEMENT(instance) "name" = value
+```
+
+where `ELEMENT` is an element identifier (ie. its name), `instance` is a numerical instance identifier, `name` is an optional name for the instance, and `value` is either a plain field value, or a group/block value enclosed in curly braces `{}`. If the `instance` identifier is omitted, it is assumed to be 0.
+
+For block assignments, a number of special syntax rules are used.
+
+- A linebreak signifies the start of a new step (equivalent to a new row in tracker patterns).
+- Multiple field assignments on a given step are seperated with a comma `,`.
+- Instance identifiers are ignored, and identifiers are assigned based on the current step instead.
+- A dot `.` signifies an empty step, ie. a step with no changes. A number *n* may be appended to the dot to signal *n* consecutive empty steps.
+- If all of the block's field elements are assigned to in the correct order, anything except the `value`s can be omitted.
+- If the block contains only one field element, linebreaks can be omitted. That means you can specify the contents of such a block instance as a simple list of comma separated values.
+
+For the following example, assume that `FOO` is a group element, `BAR` is a block element, and `BAZ` and `BOZ` are field elements.
+
+```
+FOO = {                // assign to group FOO, instance 0
+  BAR(0) "intro" = {   // assign to block BAR, instance 0, name the instance "intro"
+    BAZ = 1, BOZ = 0   // step 0: assign 1 to field BAZ, instance 0; assign 0 to field BOZ, instance 0
+	.                  // no new assignments on step 1
+	.2                 // no assignments on step 2 and 3
+	2,1                // assign 2 to field BAZ, instance 4; assign 1 to field BOZ, instance 4
   }
 }
 ```
 
-defines instance 0 of the block `CH1` in the group `PATTERNS` and assigns the name `intro` to it. 
+
+### Including External Resources
+
+You can assign to an external resource in plain text format with the `INCLUDE` directive. Some configurations may also allow assignment to binary files, using the `INCBIN` directive. These directives must be followed by a file path , and the whole directive must be delimited by square brackets `[]`.
+
+The following example assigns instance 0 of the `SAMPLE` element to an external binary file:
+
+```
+SAMPLE = [INCBIN "my_sample.raw"]
+```
 
 
 ### Comments
@@ -113,58 +132,54 @@ The following example assumes an underlying MDCONFiguration that specifies
 /* This is
    a multi-line comment. */
 
-CONFIG = "MyConfig"          // use "MyConfig". Every MDMOD must set the CONFIG field.
+CONFIG = "MyConfig"                        // use "MyConfig". Every MDMOD must set the CONFIG field.
 
-AUTHOR = "Great Artist"      // This is "My Great Song" by "Great Artist"
-TITLE = "My Great Song"      // AUTHOR and TITLE are available for all configurations.
-BPM = 120                    // BPM is an additional global field defined by the configuration.
+AUTHOR = "Great Artist"                    // This is "My Great Song" by "Great Artist"
+TITLE = "My Great Song"                    // AUTHOR and TITLE are available for all configurations.
+BPM = 120                                  // BPM is an additional global field defined by the configuration.
 
-:PATTERNS {                  // Begin of group PATTERNS. The configuration specifies that only
-                             // one instance of this group can exist, so the instance qualifier
-                             // can be omitted.
-                             
-  :ORDER {                   // Defines an order (sequence) block for the blocks in group         
-                             // PATTERNS. Orders blocks follow the same syntax rules as ordinary
-                             // blocks.
-                             
-    CH1 = $00, CH2 = $00     // First step, setting field CH1 to 0 and field CH2 to 1.
-                             // In this case, CH1 and CH2 are assumed to be references to
-                             // instances of the the Blocks by the same name.
-    0,0                      // Same as above. Since all fields are specified, field qualifiers
-                             // can be omitted.
-    .                        // Repeat the above line.
-    CH2 = 1                  // Set CH2 to 1. CH1 is still set to $00.
-  }
-    
-  :CH1(0)[intro] {           // Define instance 0 of block CH1 and name it "intro". 
-    NOTE = a3, SAMPLE = 0    // First step, setting field NOTE to "a3", and field SAMPLE to 0.
-    .                        // No change from previous step.
-    NOTE = c4                // Set field NOTE to "c4". SAMPLE is still set to 0.
-    e4, 1                    // Field qualifiers can be omitted if all fields are set.
-    .4                       // No change from the previous step for 4 more steps.
-  }
-    
-  :CH2(0)[intro] {
-    .8                       // Do nothing for 8 rows. Note that block lengths for CH1 and CH2    
-                             // need not match. If necessary, blocks will be padded with blank
-                             // lines.
-  }
-    
-  :CH2(1) {                  // instance names are optional.
-    INCLUDE = "ptn1.txt"     // load the contents of the block from an external file.
+PATTERNS = {                               // Begin of group PATTERNS. The configuration specifies that only
+                                           // one instance of this group can exist, so the instance qualifier
+                                           // can be omitted.
+
+  ORDER = {                                // Defines an order (sequence) block for the blocks in group
+                                           // PATTERNS. Orders blocks follow the same syntax rules as ordinary
+                                           // blocks.
+
+    CH1 = $00, CH2 = $00                   // First step, setting field CH1 to 0 and field CH2 to 1.
+                                           // In this case, CH1 and CH2 are assumed to be references to
+                                           // instances of the the Blocks by the same name.
+    0,0                                    // Same as above. Since all fields are specified, field qualifiers
+                                           // can be omitted.
+    .                                      // Repeat the above line.
+    CH2 = 1                                // Set CH2 to 1. CH1 is still set to $00.
   }
 
-}                            // End of group PATTERNS.
-
-:SAMPLES {                   // Begin of group SAMPLES.
-  :SAMPLE(0)[kick] {
-    INCBIN = "kick.raw"      // Load the contents of the block from an external binary.
-  }
-  
-  :SAMPLE(1)[tone] {
-    0,8,14,22,3,16,9         // Since the block contains only one field, both the field
-                             // qualifier and line breaks can be omitted.
+  CH1(0) "intro" = {                       // Define instance 0 of block CH1 and name it "intro".
+    NOTE = a3, SAMPLE = 0                  // First step, setting field NOTE to "a3", and field SAMPLE to 0.
+    .                                      // No change from previous step.
+    NOTE = c4                              // Set field NOTE to "c4". SAMPLE is still set to 0.
+    e4, 1                                  // Field qualifiers can be omitted if all fields are set.
+    .4                                     // No change from the previous step for 4 more steps.
   }
 
-}                            // End of group SAMPLES.
+  CH2(0) = {                               // Instance names are optional.
+    .8                                     // Do nothing for 8 rows. Note that block lengths for CH1 and CH2
+                                           // need not match. If necessary, blocks will be padded with blank
+                                           // lines.
+  }
+
+  CH2(1) = [INCLUDE "ptn1.txt"]            // load the contents of the block from an external file.
+
+}                                          // End of group PATTERNS.
+
+SAMPLES = {                                // Begin of group SAMPLES.
+  SAMPLE(0) "kick" = [INCBIN "kick.raw"]   // Load the contents of the block from an external binary.
+
+  SAMPLE(1) = {
+    0,8,14,22,3,16,9                       // Since the block contains only one field, both the field
+                                           // qualifier and line breaks can be omitted.
+  }
+
+}                                          // End of group SAMPLES.
 ```
