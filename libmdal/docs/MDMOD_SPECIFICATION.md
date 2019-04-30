@@ -37,15 +37,13 @@ Notable changes from Version 1 include:
 
 MDAL modules are constructed from four basic elements: **Groups**, **Blocks**, **Steps**, and **Fields**. The underlying MDCONF configuration defines which Groups, Blocks, and Fields are available.
 
-**Groups** are the highest order structure in MDMOD. Groups can contain other Groups, Blocks, and Fields, the details of which are specified by the underlying MDCONFiguration. A Group is enclosed in brackets, and is preceded by a [Scope Qualifier](#scope-qualifiers). An unlimited number of instances of each Group can exist in a module, unless specified otherwise by the underlying MDCONF.
+**Groups** are the highest order structure in MDMOD. Groups can contain other Groups, Blocks, and Fields, the details of which are specified by the underlying MDCONFiguration. An unlimited number of instances of each Group can exist in a module, unless specified otherwise by the underlying MDCONF.
 
 **Blocks** are units containing an unlimited number of **Steps** (unless specified otherwise in the underlying MDCONF), which are in turn constructed from one or more **Fields**. In traditional terms, a Block can represent any logical unit such as a pattern, an order list, or a sample. Blocks are specified in the same manner as Groups. An unlimited number of block instances can exist in a module, unless specified otherwise by the underlying MDCONF.
 
 A **Step** is a unit containing one or more **Fields**, as specified by the underlying MDCONF. Steps are delimited by a line break. A line containing only white-space or comments is not taken into account. The dot (`.`) qualifier denotes a step that is identical to the step before it. A number can be appended to the dot qualifier to denote no change for the given number of steps.
 
-**Fields** are the lowest order unit, containing a single value. Fields are specified by giving the field qualifier (name), followed by an equals sign (`=`), followed by the value to be set for the Field. Within a Block, the qualifier and equals sign may be omitted if all fields are set in the correct order on the given step. If a Field is not part of a Block, it also is not part of a Step. In this case it can only be assigned once for the given parent element instance. Such an assignment must be done on a separate line.
-
-There are nine different types of Fields. Types are specified by the MDCONFiguration. The available types are:
+**Fields** are the lowest order unit, containing a single value. There are nine different types of Fields. Types are specified by the MDCONFiguration. The available types are:
 
 - INT/UINT: a signed resp. unsigned integer with a given range.
 - KEY/UKEY: a list of named parameters, which evaluates to a signed resp. unsigned integer.
