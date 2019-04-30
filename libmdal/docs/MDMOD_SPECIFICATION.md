@@ -16,7 +16,7 @@ Notable changes from Version 1 include:
 - [Syntax](#syntax)
   - [General Rules](#general-rules)
   - [Elements](#elements)
-  - [Assignments](#scope-qualifiers)
+  - [Assignments](#assignments)
   - [Comments](#comments)
   - [Including External Resources](#including-external-resources)
 - [Example](#example)
