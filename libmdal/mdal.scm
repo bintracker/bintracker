@@ -77,7 +77,7 @@
 	     ", "))
 	  rows)))
 
-  ;;;
+  ;;; write an md:inode-instance to {{port}} as MDAL text
   (define (md:write-node-instance node-instance instance-id node-id
 				  indent-level config port)
     (let* ((indent (md:indent-level->string indent-level))
@@ -126,18 +126,22 @@
 					  indent-level config port))
 		(md:inode-instances node))))
 
-  ;;; Write the MDAL text of {{mod}} to {{port}}.
-  (define (md:write-mod mod port)
-    (begin
-      (fprintf port "MDAL_VERSION=~s\n" md:mdal-version)
-      (fprintf port "CONFIG=\"~A\"\n\n" (md:mod-cfg-id mod))
-      (for-each (lambda (subnode)
-		  (begin
-		    (md:write-node subnode 0 (md:mod-cfg mod)
-				   port)
-		    (newline port)))
-		(md:inode-instance-val ((md:mod-get-node-instance 0)
-					(md:mod-global-node mod))))))
+  ;;; Write the MDAL text of {{mod}} to {{port}}. {{port}} defaults to
+  ;;; (current-output-port) if omitted.
+  (define (md:write-mod mod . port)
+    (let ((out (if (null? port)
+		   (current-output-port)
+		   (car port))))
+      (begin
+	(fprintf out "MDAL_VERSION=~s\n" md:mdal-version)
+	(fprintf out "CONFIG=\"~A\"\n\n" (md:mod-cfg-id mod))
+	(for-each (lambda (subnode)
+		    (begin
+		      (md:write-node subnode 0 (md:mod-cfg mod)
+				     out)
+		      (newline out)))
+		  (md:inode-instance-val ((md:mod-get-node-instance 0)
+					  (md:mod-global-node mod)))))))
 
   ;;; write {{module}} to an .mdal file.
   (define (md:module->file mod filename)
