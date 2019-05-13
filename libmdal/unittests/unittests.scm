@@ -970,6 +970,12 @@
 (test-group
  "MD-Module/Compilation"
 
+ (test "md:module->file"
+       "7dd4bb0253471ef2030a671a936d43ab"
+       (begin
+	 (md:module->file my-mod "test.mdal")
+	 (file-md5sum "test.mdal")))
+
  (test "md:mod->bin"
        (list #xef #x39
 	     #x05 #x80

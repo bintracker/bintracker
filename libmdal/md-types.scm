@@ -186,6 +186,19 @@
       (eval (append '(lambda (subnode ancestor-node))
 		    (list setter)))))
 
+  ;;; Returns the values of the block instance's fields, sorted per row
+  (define (md:mod-get-block-instance-rows iblock-instance)
+    (letrec ((get-rows
+	      (lambda (field-instances)
+		(if (null? (car field-instances))
+		    '()
+		    (cons (map (lambda (field-instance)
+				 (md:inode-instance-val (cadr field-instance)))
+			       (map car field-instances))
+			  (get-rows (map cdr field-instances)))))))
+      (get-rows (map md:inode-instances
+		     (md:inode-instance-val iblock-instance)))))
+
   ;;; Returns the values of all field node instances of the given {{row}} of the
   ;;; given non-order block-instances in the given {{group-instance}} as a
   ;;; flat list.

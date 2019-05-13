@@ -70,7 +70,7 @@ docs: $(DOCS)
 .PHONY: run-tests
 run-tests: mdal
 	cp -t ./ unittests/unittests.scm && csi unittests.scm -e
-	rm unittests.scm
+	-rm unittests.scm test.mdal
 
 .PHONY: clean
 clean:

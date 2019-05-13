@@ -118,6 +118,12 @@
                   (md:inode-config-subnodes cfg)))
       (fprintf out ">")))
 
+  ;;; Returns #t if the given {{inode-config}} specifies that only one instance
+  ;;; of this inode may exist.
+  (define (md:single-instance-node? inode-config)
+    (equal? (md:make-single-instance)
+	    (md:inode-config-instance-range inode-config)))
+
   ;;; determine ID of a mdconf inode config node.
   ;;; ID is derived from the 'id' attribute, or from the 'from' attribute if 'id'
   ;;; is not found.
