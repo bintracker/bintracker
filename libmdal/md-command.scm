@@ -157,7 +157,9 @@
   (define (md:make-default-commands)
     (list
      (list "AUTHOR" (md:make-command 'string 0 "unknown" #f #f '() #f #f))
-     (list "TITLE" (md:make-command 'string 0 "untitled" #f #f '() #f #f))))
+     (list "TITLE" (md:make-command 'string 0 "untitled" #f #f '() #f #f))
+     (list "LICENSE" (md:make-command 'string 0 "All Rights Reserved" #f #f '()
+				      #f #f))))
 
   ;;; generate a hash-table of md:commands from a given list of mdconf 'command'
   ;;; nodes and a given target. Also generates AUTHOR/TITLE commands if not

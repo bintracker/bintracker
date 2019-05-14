@@ -190,7 +190,7 @@
   ;;; extract the inode tree from a given MDCONF root node
   (define (md:parse-inode-tree cfg-node)
     (list (list "GLOBAL"
-		(append '(("AUTHOR") ("TITLE"))
+		(append '(("AUTHOR") ("TITLE") ("LICENSE"))
 			(map (lambda (x) (list (md:parse-inode-config-id x)))
 			     ((sxpath "mdalconfig/ifield") cfg-node))
 			(md:xml-nodes->inode-tree
@@ -312,7 +312,10 @@
 				   #f))
 		   (list "TITLE" (md:make-inode-config
 				  'field (md:make-single-instance) #f "TITLE"
-				  #f)))
+				  #f))
+		   (list "LICENSE" (md:make-inode-config
+				    'field (md:make-single-instance) #f
+				    "LICENSE" #f)))
 	     (map (lambda (node)
 		    (let ((id (md:parse-inode-config-id node)))
 		      (list id

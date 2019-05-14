@@ -12,7 +12,7 @@
 (define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf" ""))
 (define my-mod (md:file->module "unittests/modules/huby-test.mdal"
 				my-config-path))
-(define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\""))
+(define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\"" "LICENSE=\"pd\""))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
 (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
@@ -102,6 +102,7 @@
 			my-target my-config-path)))
      (and (hash-table-exists? my-commands "AUTHOR")
 	  (hash-table-exists? my-commands "TITLE")
+	  (hash-table-exists? my-commands "LICENSE")
 	  (hash-table-exists? my-commands "BPM")
 	  (hash-table-exists? my-commands "DRUM")
 	  (hash-table-exists? my-commands "NOTE")))))
@@ -148,7 +149,7 @@
        (md:clone-inode-tree '(("FOO" (("BAR") ("BAZ"))) ("TOO")) 2))
 
  (define my-itree
-   '(("GLOBAL" (("AUTHOR") ("TITLE") ("BPM")
+   '(("GLOBAL" (("AUTHOR") ("TITLE") ("LICENSE") ("BPM")
 		("PATTERNS" (("DRUMS" (("DRUM"))) ("CH1" (("NOTE1")))
 			     ("CH2" (("NOTE2")))
 			     ("PATTERNS_ORDER" (("R_DRUMS") ("R_CH1")
@@ -222,6 +223,8 @@
 			 'field (md:make-single-instance) #f "AUTHOR" #f))
 	 (list "TITLE" (md:make-inode-config
 			'field (md:make-single-instance) #f "TITLE" #f))
+	 (list "LICENSE" (md:make-inode-config
+			  'field (md:make-single-instance) #f "LICENSE" #f))
 	 (list "BPM" (md:make-inode-config 'field (md:make-single-instance)
 					   #f "BPM" #f))))
 
@@ -409,14 +412,15 @@
 
  (test-assert "default commands created"
    (and (hash-table-exists? (md:config-commands my-cfg) "AUTHOR")
-	(hash-table-exists? (md:config-commands my-cfg) "TITLE")))
+	(hash-table-exists? (md:config-commands my-cfg) "TITLE")
+	(hash-table-exists? (md:config-commands my-cfg) "LICENSE")))
 
  (test-assert "order commands created"
    (and (hash-table-exists? (md:config-commands my-cfg) "R_DRUMS")
 	(hash-table-exists? (md:config-commands my-cfg) "R_CH1")
 	(hash-table-exists? (md:config-commands my-cfg) "R_CH2")))
 
- (test "all commands created" 8
+ (test "all commands created" 9
        (hash-table-size (md:config-commands my-cfg))))
 
 
@@ -446,7 +450,7 @@
  (test "md:config-get-subnode-ids" '("DRUMS" "CH1" "CH2" "PATTERNS_ORDER")
        (md:config-get-subnode-ids "PATTERNS" my-itree))
 
- (test "md-config-get-subnode-type-ids" '("AUTHOR" "TITLE" "BPM")
+ (test "md-config-get-subnode-type-ids" '("AUTHOR" "TITLE" "LICENSE" "BPM")
        (md:config-get-subnode-type-ids "GLOBAL" my-cfg 'field))
 
  (test "md:config-get-inode-source-command"
@@ -612,6 +616,8 @@
 					       "utz"))))
 	(md:make-inode "TITLE" (list (list 0 (md:make-inode-instance
 					      "Huby Test"))))
+	(md:make-inode "LICENSE" (list (list 0 (md:make-inode-instance
+						"Creative Commons CC0"))))
 	(md:make-inode "BPM" (list (list 0 (md:make-inode-instance 120)))))
        (md:mod-parse-group-fields my-mod-expr "GLOBAL" my-cfg))
 
@@ -971,7 +977,7 @@
  "MD-Module/Compilation"
 
  (test "md:module->file"
-       "7dd4bb0253471ef2030a671a936d43ab"
+       "00faea58672c888f872750c13c1daf1c"
        (begin
 	 (md:module->file my-mod "test.mdal")
 	 (file-md5sum "test.mdal")))

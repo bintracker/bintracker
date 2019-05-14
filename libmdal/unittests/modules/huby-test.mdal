@@ -3,6 +3,7 @@ CONFIG="Huby"       //comment
 
 AUTHOR="utz"
 TITLE="Huby Test"
+LICENSE="Creative Commons CC0"
 BPM=120
 
 PATTERNS={
