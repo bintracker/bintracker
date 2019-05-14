@@ -12,7 +12,6 @@
 (define my-cfg (md:mdconf->config "unittests/config/Huby/Huby.mdconf" ""))
 (define my-mod (md:file->module "unittests/modules/huby-test.mdal"
 				my-config-path))
-(define my-global-node '("AUTHOR=\"foo\"" "TITLE=\"baz\"" "LICENSE=\"pd\""))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
 (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
@@ -100,12 +99,12 @@
    (let ((my-commands (md:xml-command-nodes->commands
 			((sxpath "mdalconfig/command") my-cfg-data)
 			my-target my-config-path)))
-     (and (hash-table-exists? my-commands "AUTHOR")
-	  (hash-table-exists? my-commands "TITLE")
-	  (hash-table-exists? my-commands "LICENSE")
-	  (hash-table-exists? my-commands "BPM")
-	  (hash-table-exists? my-commands "DRUM")
-	  (hash-table-exists? my-commands "NOTE")))))
+     (and (hash-table-exists? my-commands 'AUTHOR)
+	  (hash-table-exists? my-commands 'TITLE)
+	  (hash-table-exists? my-commands 'LICENSE)
+	  (hash-table-exists? my-commands 'BPM)
+	  (hash-table-exists? my-commands 'DRUM)
+	  (hash-table-exists? my-commands 'NOTE)))))
 
 
 (test-group
@@ -158,23 +157,23 @@
  (test "md:parse-inode-tree" my-itree (md:parse-inode-tree my-cfg-data))
 
  (test "md:create-order-commands" '()
-       (lset-difference string=? '("R_DRUMS" "R_CH1" "R_CH2")
+       (lset-difference eq? '(R_DRUMS R_CH1 R_CH2)
 			(map car (hash-table->alist
 				  (md:create-order-commands my-itree)))))
 
  (define my-iorder-configs
    (list (list "PATTERNS_ORDER"
-		    (md:make-inode-config 'block (md:make-single-instance)
-					  #f #f #f))
-	      (list "R_DRUMS"
-		    (md:make-inode-config 'field (md:make-instance-range 1 #f)
-					  #f "R_DRUMS" #f))
-	      (list "R_CH1"
-		    (md:make-inode-config 'field (md:make-instance-range 1 #f)
-					  #f "R_CH1" #f))
-	      (list "R_CH2"
-		    (md:make-inode-config 'field (md:make-instance-range 1 #f)
-					  #f "R_CH2" #f))))
+	       (md:make-inode-config 'block (md:make-single-instance)
+				     #f #f #f))
+	 (list "R_DRUMS"
+	       (md:make-inode-config 'field (md:make-instance-range 1 #f)
+				     #f 'R_DRUMS #f))
+	 (list "R_CH1"
+	       (md:make-inode-config 'field (md:make-instance-range 1 #f)
+				     #f 'R_CH1 #f))
+	 (list "R_CH2"
+	       (md:make-inode-config 'field (md:make-instance-range 1 #f)
+				     #f 'R_CH2 #f))))
 
  (test "md:create-order-inodes" '()
        (lset-difference
@@ -184,7 +183,7 @@
 
  (test "md:parse-ifield-config"
        (list "FOO" (md:make-inode-config 'field (md:make-single-instance)
-					 #f "BAR" #f))
+					 #f 'BAR #f))
        (md:parse-ifield-config
 	(string->sxml-node "<ifield id=\"FOO\" from=\"BAR\"/>")
 	(md:make-single-instance)))
@@ -195,7 +194,7 @@
 				     #f #f #f))
 	 (list "DRUM"
 	       (md:make-inode-config 'field (md:make-instance-range 1 #f)
-				     #f "DRUM" #f))))
+				     #f 'DRUM #f))))
 
  (define my-cloned-iblock-configs
    (list (list "CH1"
@@ -203,13 +202,13 @@
 				     #f #f #f))
 	 (list "NOTE1"
 	       (md:make-inode-config 'field (md:make-instance-range 1 #f)
-				     #f "NOTE" #f))
+				     #f 'NOTE #f))
 	 (list "CH2"
 	       (md:make-inode-config 'block (md:make-instance-range 1 #f)
 				     #f #f #f))
 	 (list "NOTE2"
 	       (md:make-inode-config 'field (md:make-instance-range 1 #f)
-				     #f "NOTE" #f))))
+				     #f 'NOTE #f))))
 
  (define my-igroup-configs
    (list (list "PATTERNS"
@@ -220,13 +219,13 @@
    (list (list "GLOBAL" (md:make-inode-config
 			 'group (md:make-single-instance) #f #f #f))
 	 (list "AUTHOR" (md:make-inode-config
-			 'field (md:make-single-instance) #f "AUTHOR" #f))
+			 'field (md:make-single-instance) #f 'AUTHOR #f))
 	 (list "TITLE" (md:make-inode-config
-			'field (md:make-single-instance) #f "TITLE" #f))
+			'field (md:make-single-instance) #f 'TITLE #f))
 	 (list "LICENSE" (md:make-inode-config
-			  'field (md:make-single-instance) #f "LICENSE" #f))
+			  'field (md:make-single-instance) #f 'LICENSE #f))
 	 (list "BPM" (md:make-inode-config 'field (md:make-single-instance)
-					   #f "BPM" #f))))
+					   #f 'BPM #f))))
 
  (test "md:parse-iblock-config"
        ;; TODO Why does this not actually set subnodes in main node?
@@ -411,14 +410,14 @@
        (string->md5sum (md:config-description my-cfg)))
 
  (test-assert "default commands created"
-   (and (hash-table-exists? (md:config-commands my-cfg) "AUTHOR")
-	(hash-table-exists? (md:config-commands my-cfg) "TITLE")
-	(hash-table-exists? (md:config-commands my-cfg) "LICENSE")))
+   (and (hash-table-exists? (md:config-commands my-cfg) 'AUTHOR)
+	(hash-table-exists? (md:config-commands my-cfg) 'TITLE)
+	(hash-table-exists? (md:config-commands my-cfg) 'LICENSE)))
 
  (test-assert "order commands created"
-   (and (hash-table-exists? (md:config-commands my-cfg) "R_DRUMS")
-	(hash-table-exists? (md:config-commands my-cfg) "R_CH1")
-	(hash-table-exists? (md:config-commands my-cfg) "R_CH2")))
+   (and (hash-table-exists? (md:config-commands my-cfg) 'R_DRUMS)
+	(hash-table-exists? (md:config-commands my-cfg) 'R_CH1)
+	(hash-table-exists? (md:config-commands my-cfg) 'R_CH2)))
 
  (test "all commands created" 9
        (hash-table-size (md:config-commands my-cfg))))
@@ -430,10 +429,10 @@
  (define my-itree (md:config-itree my-cfg))
 
  (test "md:config-command-ref"
-       (list (car (hash-table-ref (md:config-commands my-cfg) "AUTHOR"))
+       (list (car (hash-table-ref (md:config-commands my-cfg) 'AUTHOR))
 	     #f)
-       (list (md:config-command-ref "AUTHOR" my-cfg)
-	     (md:config-command-ref "INVALID" my-cfg)))
+       (list (md:config-command-ref 'AUTHOR my-cfg)
+	     (md:config-command-ref 'INVALID my-cfg)))
 
  (test "md:config-inode-ref"
        (list (car (hash-table-ref (md:config-inodes my-cfg) "AUTHOR"))
@@ -454,7 +453,7 @@
        (md:config-get-subnode-type-ids "GLOBAL" my-cfg 'field))
 
  (test "md:config-get-inode-source-command"
-       (car (hash-table-ref (md:config-commands my-cfg) "DRUM"))
+       (car (hash-table-ref (md:config-commands my-cfg) 'DRUM))
        (md:config-get-inode-source-command "DRUM" my-cfg))
 
  (test "md:config-get-node-default" "false"
@@ -493,7 +492,7 @@
     "NOTE1"))
 
  (test "md:get-node-command-cfg"
-       (car (hash-table-ref (md:config-commands my-cfg) "NOTE"))
+       (car (hash-table-ref (md:config-commands my-cfg) 'NOTE))
        (md:get-node-command-cfg my-note1-inode my-cfg))
 
  (test "md:eval-field-last-set" "c4"

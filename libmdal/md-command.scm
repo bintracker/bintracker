@@ -156,9 +156,9 @@
   ;;; construct an alist containing the default commands AUTHOR and TITLE
   (define (md:make-default-commands)
     (list
-     (list "AUTHOR" (md:make-command 'string 0 "unknown" #f #f '() #f #f))
-     (list "TITLE" (md:make-command 'string 0 "untitled" #f #f '() #f #f))
-     (list "LICENSE" (md:make-command 'string 0 "All Rights Reserved" #f #f '()
+     (list 'AUTHOR (md:make-command 'string 0 "unknown" #f #f '() #f #f))
+     (list 'TITLE (md:make-command 'string 0 "untitled" #f #f '() #f #f))
+     (list 'LICENSE (md:make-command 'string 0 "All Rights Reserved" #f #f '()
 				      #f #f))))
 
   ;;; generate a hash-table of md:commands from a given list of mdconf 'command'
@@ -171,7 +171,7 @@
 		(lambda (lst trgt)
                   (if (null? lst)
                       '()
-                      (cons (list (sxml:attr (car lst) 'id)
+                      (cons (list (string->symbol (sxml:attr (car lst) 'id))
                                   (md:xml-node->command
                                    (car lst) trgt configpath))
                             (make-commands (cdr lst) trgt))))))

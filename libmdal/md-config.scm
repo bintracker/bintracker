@@ -203,8 +203,10 @@
   (define (md:create-order-commands itree)
     (alist->hash-table
      (map (lambda (x)
-	    (list x (md:make-command 'reference 16 "0" (substring/shared x 2)
-				     #f '(use_last_set) #f #f)))
+	    (list (string->symbol x)
+		  (md:make-command 'reference 16 "0"
+				   (string->symbol (substring/shared x 2))
+				   #f '(use_last_set) #f #f)))
 	  (filter (lambda (x) (string-prefix? "R_" x)) (flatten itree)))))
 
   ;;; generate a hash list of inodes required by auto-generated order inodes
@@ -220,7 +222,7 @@
       (map (lambda (id)
 	     (list id
 		   (md:make-inode-config 'field (md:make-instance-range 1 #f)
-					 #f id #f)))
+					 #f (string->symbol id) #f)))
 	   (filter (lambda (id) (string-contains id "R_"))
 		   (flatten itree))))))
 
@@ -229,7 +231,7 @@
   (define (md:parse-ifield-config node instance-range)
     (list (md:parse-inode-config-id node)
 	  (md:make-inode-config 'field instance-range #f
-				(sxml:attr node 'from) #f)))
+				(string->symbol (sxml:attr node 'from)) #f)))
 
   ;;; From a given mdconf iblock node, construct a list containing the given
   ;;; inode definition and all subnodes
@@ -308,19 +310,20 @@
      (append (list (list "GLOBAL" (md:make-inode-config
 				   'group (md:make-single-instance) #f #f #f))
 		   (list "AUTHOR" (md:make-inode-config
-				   'field (md:make-single-instance) #f "AUTHOR"
+				   'field (md:make-single-instance) #f 'AUTHOR
 				   #f))
 		   (list "TITLE" (md:make-inode-config
-				  'field (md:make-single-instance) #f "TITLE"
+				  'field (md:make-single-instance) #f 'TITLE
 				  #f))
 		   (list "LICENSE" (md:make-inode-config
 				    'field (md:make-single-instance) #f
-				    "LICENSE" #f)))
+				    'LICENSE #f)))
 	     (map (lambda (node)
 		    (let ((id (md:parse-inode-config-id node)))
 		      (list id
 			    (md:make-inode-config
-			     'field (md:make-single-instance) #f id #f))))
+			     'field (md:make-single-instance) #f
+			     (string->symbol id) #f))))
 		  ((sxpath "mdalconfig/ifield") cfg-node)))))
 
   ;;; returns a hash table containing all inode configs defined in the given
