@@ -128,9 +128,9 @@
   ;;; ID is derived from the 'id' attribute, or from the 'from' attribute if 'id'
   ;;; is not found.
   (define (md:parse-inode-config-id node)
-    (cond ((sxml:attr node 'id) (sxml:attr node 'id))
-	  ((sxml:attr node 'from) (sxml:attr node 'from))
-	  (else (error "Cannot determine inode config id"))))
+    (string->symbol (cond ((sxml:attr node 'id) (sxml:attr node 'id))
+			  ((sxml:attr node 'from) (sxml:attr node 'from))
+			  (else (error "Cannot determine inode config id")))))
 
   ;;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID
   ;;; names
@@ -140,7 +140,7 @@
       		       (map (lambda (x)
       			      (if (pair? x)
       				  (rename-lst x postfix)
-      				  (string-append x (number->string postfix))))
+      				  (md:symbol-append x postfix)))
       			    lst)))
 	 (create-id-list-copies
 	  (lambda (beg end l)
@@ -152,8 +152,8 @@
 
   ;;; generate the inode tree of an auto-generated igroup order
   (define (md:generate-inode-order-tree inode-id subnodes)
-    (cons (string-append inode-id "_ORDER")
-	  (list (map (lambda (x) (list (string-append "R_" (car x))))
+    (cons (md:symbol-append inode-id "_ORDER")
+	  (list (map (lambda (x) (list (md:symbol-append "R_" (car x))))
 		     subnodes))))
 
   ;;; helper function, generates the inode tree for a given node and its
@@ -182,15 +182,15 @@
 	      (append (md:clone-inode-tree
 		       (md:xml-nodes->inode-tree
 			((sxpath "node()") (car nodes)))
-		       (string->number (sxml:attr (car nodes) 'count)))
+		       (sxml:num-attr (car nodes) 'count))
 		      (md:xml-nodes->inode-tree (cdr nodes)))
 	      (cons (get-tree (car nodes))
 		    (md:xml-nodes->inode-tree (cdr nodes)))))))
 
   ;;; extract the inode tree from a given MDCONF root node
   (define (md:parse-inode-tree cfg-node)
-    (list (list "GLOBAL"
-		(append '(("AUTHOR") ("TITLE") ("LICENSE"))
+    (list (list 'GLOBAL
+		(append '((AUTHOR) (TITLE) (LICENSE))
 			(map (lambda (x) (list (md:parse-inode-config-id x)))
 			     ((sxpath "mdalconfig/ifield") cfg-node))
 			(md:xml-nodes->inode-tree
@@ -203,11 +203,14 @@
   (define (md:create-order-commands itree)
     (alist->hash-table
      (map (lambda (x)
-	    (list (string->symbol x)
+	    (list x
 		  (md:make-command 'reference 16 "0"
-				   (string->symbol (substring/shared x 2))
+				   (string->symbol (substring/shared
+						    (symbol->string x) 2))
 				   #f '(use_last_set) #f #f)))
-	  (filter (lambda (x) (string-prefix? "R_" x)) (flatten itree)))))
+	  (filter (lambda (x)
+		    (string-prefix? "R_" (symbol->string x)))
+		  (flatten itree)))))
 
   ;;; generate a hash list of inodes required by auto-generated order inodes
   (define (md:create-iorder-inodes itree)
@@ -217,13 +220,13 @@
 	     (list id
 		   (md:make-inode-config 'block (md:make-single-instance)
 					 #f #f #f)))
-	   (filter (lambda (id) (string-contains id "_ORDER"))
+	   (filter (lambda (id) (md:symbol-contains id "_ORDER"))
 		   (flatten itree)))
       (map (lambda (id)
 	     (list id
 		   (md:make-inode-config 'field (md:make-instance-range 1 #f)
-					 #f (string->symbol id) #f)))
-	   (filter (lambda (id) (string-contains id "R_"))
+					 #f id #f)))
+	   (filter (lambda (id) (md:symbol-contains id "R_"))
 		   (flatten itree))))))
 
   ;;; From a given mdconf ifield node, construct a list containing the
@@ -257,7 +260,7 @@
 			       (if (sxml:attr node 'flags)
 				   (if (string= "ordered"
 						(sxml:attr node 'flags))
-				       (string-append inode-id "_ORDER")
+				       (md:symbol-append inode-id "_ORDER")
 				       #f)
 				   #f))
 	 (map (lambda (x)
@@ -277,7 +280,7 @@
 			      ((sxpath "node()") node)))))
 	 (rename-configs (lambda (postfix)
 			   (map (lambda (x)
-				  (cons (string-append (car x) postfix)
+				  (cons (md:symbol-append (car x) postfix)
 					(cdr x)))
 				subs)))
 	 (make-copies (lambda (beg end)
@@ -307,23 +310,22 @@
   ;;; inode config and it's sub-inodes
   (define (md:make-global-group-inodes cfg-node)
     (alist->hash-table
-     (append (list (list "GLOBAL" (md:make-inode-config
-				   'group (md:make-single-instance) #f #f #f))
-		   (list "AUTHOR" (md:make-inode-config
-				   'field (md:make-single-instance) #f 'AUTHOR
-				   #f))
-		   (list "TITLE" (md:make-inode-config
-				  'field (md:make-single-instance) #f 'TITLE
+     (append (list (list 'GLOBAL (md:make-inode-config
+				  'group (md:make-single-instance) #f #f #f))
+		   (list 'AUTHOR (md:make-inode-config
+				  'field (md:make-single-instance) #f 'AUTHOR
 				  #f))
-		   (list "LICENSE" (md:make-inode-config
-				    'field (md:make-single-instance) #f
-				    'LICENSE #f)))
+		   (list 'TITLE (md:make-inode-config
+				 'field (md:make-single-instance) #f 'TITLE
+				 #f))
+		   (list 'LICENSE (md:make-inode-config
+				   'field (md:make-single-instance) #f
+				   'LICENSE #f)))
 	     (map (lambda (node)
 		    (let ((id (md:parse-inode-config-id node)))
 		      (list id
 			    (md:make-inode-config
-			     'field (md:make-single-instance) #f
-			     (string->symbol id) #f))))
+			     'field (md:make-single-instance) #f id #f))))
 		  ((sxpath "mdalconfig/ifield") cfg-node)))))
 
   ;;; returns a hash table containing all inode configs defined in the given
@@ -372,7 +374,9 @@
 	       instance-id
 	       ((md:node-path (string-append ,path-prefix parent-path ,argname))
 		(md:mod-global-node mod))
-	       (md:config-get-inode-source-command ,argname (md:mod-cfg mod))))
+	       (md:config-get-inode-source-command
+		(quote ,(string->symbol argname))
+		(md:mod-cfg mod))))
 	("$" `(car (hash-table-ref symbols
 				   (read (open-input-string ,argname)))))
 	("!" `(car (hash-table-ref symbols
@@ -967,7 +971,7 @@
   ;;; inode tree
   (define (md:config-get-subnode-ids inode-id itree)
     (let ((get-nodes (lambda (tree)
-		       (let ((nodes (alist-ref inode-id tree string=)))
+		       (let ((nodes (alist-ref inode-id tree eq?)))
 			 (if (null? nodes)
 			     '()
 			     (map car (car nodes)))))))
@@ -1138,7 +1142,7 @@
 	(append (map cadr (md:inode-instances
 			   ((md:node-path
 			     (string-append (->string (car order-lst))
-					    "/" field-id))
+					    "/" (symbol->string field-id)))
 			    blk-node)))
 		(md:mod-merge-fields blk-node field-id (cdr order-lst)))))
 
@@ -1204,7 +1208,8 @@
   (define (md:mod-split-block-instances block-size node order config)
     (let* ((block-id (md:inode-cfg-id node))
 	   (block-order
-	    (md:mod-block-fields->values order (string-append "R_" block-id)))
+	    (md:mod-block-fields->values order
+					 (md:symbol-append "R_" block-id)))
 	   (field-ids
 	    (md:config-get-subnode-ids block-id (md:config-itree config)))
 	   (chunks
@@ -1260,7 +1265,7 @@
   (define (md:mod-get-group-instance-blocks igroup-instance igroup-id config)
     (let ((subnode-ids
 	   (filter (lambda (id)
-		     (not (string-contains id "_ORDER")))
+		     (not (md:symbol-contains id "_ORDER")))
 		   (md:config-get-subnode-type-ids igroup-id config 'block))))
       (map (lambda (id)
 	     (md:get-subnode igroup-instance id))
@@ -1269,12 +1274,12 @@
   ;;; returns the group instance's order node (instance 0)
   (define (md:mod-get-group-instance-order igroup-instance igroup-id)
     ((md:mod-get-node-instance 0)
-     (md:get-subnode igroup-instance (string-append igroup-id "_ORDER"))))
+     (md:get-subnode igroup-instance (md:symbol-append igroup-id "_ORDER"))))
 
   ;;; helper, create a "default" order with single field instances all set to 0
   ;;; TODO expand so it takes a numeric arg and produces n field node instances
   (define (md:mod-make-default-order len igroup-id config)
-    (letrec* ((order-id (string-append igroup-id "_ORDER"))
+    (letrec* ((order-id (md:symbol-append igroup-id "_ORDER"))
 	      (subnode-ids
 	       (md:config-get-subnode-ids order-id (md:config-itree config)))
 	      (make-generic-instances

@@ -22,8 +22,9 @@
   (define md:identifier-chars (char-set-adjoin char-set:letter+digit #\_))
 
   (define md:identifier
-    ;;(md:string-parser md:identifier-chars (o string->symbol string-upcase))
-    (md:string-parser md:identifier-chars string-upcase))
+    (md:string-parser md:identifier-chars (o string->symbol string-upcase))
+    ;; (md:string-parser md:identifier-chars string-upcase)
+    )
 
   (define md:decimal (md:string-parser char-set:digit string->number))
 
@@ -84,9 +85,9 @@
   (define (md:normalize-order-ids assignments parent-id)
     (map (lambda (a)
 	   (if (and (eq? 'assign (car a))
-		    (string=? "ORDER" (cadr a)))
+		    (eq? 'ORDER (cadr a)))
 	       (cons 'assign
-		     (cons (string-append parent-id "_ORDER")
+		     (cons (md:symbol-append parent-id "_ORDER")
 			   (drop a 2)))
 	       a))
 	 assignments))
@@ -178,7 +179,7 @@
   (define (md:get-assignments exprs identifier)
     (filter (lambda (e)
 	      (and (eq? 'assign (car e))
-		   (string=? identifier (cadr e))))
+		   (eq? identifier (cadr e))))
 	    exprs))
 
 
@@ -202,7 +203,7 @@
   (define (md:exprs->node-instances exprs block-id node-id config)
     (let* ((node-index
 	    (list-index (lambda (id)
-			  (string=? id node-id))
+			  (eq? id node-id))
 			(md:config-get-subnode-type-ids block-id config
 							'field)))
 	   (instances
@@ -277,7 +278,7 @@
 
   ;;; check if mdmod s-expression specifies a supported MDAL version
   (define (md:check-module-version mod-sexp)
-    (let ((version-assignments (md:get-assignments mod-sexp "MDAL_VERSION")))
+    (let ((version-assignments (md:get-assignments mod-sexp 'MDAL_VERSION)))
       (if (null? version-assignments)
 	  (raise ((make-exn "No MDAL version specified" 'no-mdal-version) ""))
 	  (let ((version (last (car version-assignments))))
@@ -288,7 +289,7 @@
 				  'md:unsupported-mdal-version) "")))))))
 
   (define (md:mod-get-config-name mod-sexp)
-    (let ((cfg-assignments (md:get-assignments mod-sexp "CONFIG")))
+    (let ((cfg-assignments (md:get-assignments mod-sexp 'CONFIG)))
       (if (null? cfg-assignments)
 	  (raise ((make-exn "No CONFIG specified" 'md:no-config) ""))
 	  (last (car cfg-assignments)))))
@@ -314,9 +315,9 @@
 		   (md:make-module
 		    cfg-name config
 		    (md:make-inode
-		     "GLOBAL"
+		     'GLOBAL
 		     (list (list 0 (md:make-inode-instance
 				    (md:mod-parse-group
-				     mod-sexp "GLOBAL" config)))))))))))
+				     mod-sexp 'GLOBAL config)))))))))))
 
   ) ;; end module md-parser

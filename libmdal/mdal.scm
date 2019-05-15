@@ -25,9 +25,9 @@
   (define (md:write-node-instance-header indent node-id instance-id
 					 omit-instance-id instance-name port)
     (begin
-      (fprintf port "~A~A" indent
-	       (if (string-contains node-id "_ORDER")
-		   "ORDER" node-id))
+      (fprintf port "~A~s" indent
+	       (if (md:symbol-contains node-id "_ORDER")
+		   'ORDER node-id))
       (when (not omit-instance-id)
 	(fprintf port "(~s)" instance-id))
       (when (not (string-null? instance-name))

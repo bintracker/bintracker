@@ -35,7 +35,7 @@
   ;;; return the subnode of the given id
   (define (md:get-subnode inode-instance subnode-id)
     (find (lambda (node)
-	    (string=? (md:inode-cfg-id node) subnode-id))
+	    (eq? (md:inode-cfg-id node) subnode-id))
 	  (md:inode-instance-val inode-instance)))
 
   ;;; it might be desirable to have 'instances' be a hash map, and only turn it
@@ -49,7 +49,7 @@
 
   (define-record-printer (md:inode node out)
     (begin
-      (fprintf out "#<md:inode: ~A>\n" (md:inode-cfg-id node))
+      (fprintf out "#<md:inode: ~s>\n" (md:inode-cfg-id node))
       (for-each (lambda (x) (fprintf out "instance ~S: ~S\n" (car x) (cdr x)))
 		(md:inode-instances node))))
 
@@ -88,8 +88,8 @@
     (if (= 2 (length pathlist))
 	(lambda (node)
 	  (find (lambda (subnode-id)
-		  (string=? (md:inode-cfg-id subnode-id)
-			    (cadr pathlist)))
+		  (eq? (md:inode-cfg-id subnode-id)
+		       (string->symbol (cadr pathlist))))
 		(md:inode-instance-val
 		 ((md:mod-get-node-instance (string->number (car pathlist)))
 		  node))))
@@ -123,7 +123,7 @@
   ;;; second list will be the tail, including the node at split point.
   (define (md:mod-split-node-list-at node-id nodes)
     (receive (break (lambda (node)
-		      (string=? node-id (md:inode-cfg-id node)))
+		      (eq? node-id (md:inode-cfg-id node)))
 		    nodes)))
 
   ;;; split a list of inode instances into two seperate lists at the given node
@@ -221,8 +221,9 @@
 					 (md:inode-instances blk-node))))
 		       block-instance-ids
 		       (remove (lambda (block-node)
-				 (string-contains (md:inode-cfg-id block-node)
-						  "_ORDER"))
+				 (md:symbol-contains
+				  (md:inode-cfg-id block-node)
+				  "_ORDER"))
 			       (md:inode-instance-val group-instance))))))
 
   ;;; Returns the values of all field node instances of the non-order block

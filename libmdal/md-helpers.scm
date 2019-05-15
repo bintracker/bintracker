@@ -4,8 +4,8 @@
 
 (module md-helpers *
 
-  (import scheme (chicken base) (chicken condition)
-	  srfi-1 srfi-69 simple-exceptions)
+  (import scheme (chicken base) (chicken condition) (chicken string)
+	  srfi-1 srfi-13 srfi-69 simple-exceptions)
 
   ;; ---------------------------------------------------------------------------
   ;; MDAL: UTILITIES
@@ -62,6 +62,14 @@
 	       (+ elem val)
 	       (md:add-to-list elem val)))
 	 lst))
+
+  ;;; Append {{y}} to {{x}} and turn the result into a symbol.
+  (define (md:symbol-append x y)
+    (string->symbol (string-append (->string x) (->string y))))
+
+  ;;; Check if the symbol name {{sym}} contains the string {{str}}.
+  (define (md:symbol-contains sym str)
+    (string-contains (symbol->string sym) str))
 
   ;;; create a new exception from the given {{exn}}, prefixing exn message
   ;;; with {{msg-prefix}} and adding {{kind-key}} to the existing kind-keys
