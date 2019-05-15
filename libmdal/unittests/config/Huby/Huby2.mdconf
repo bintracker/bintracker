@@ -1,0 +1,39 @@
+(mdalconfig
+ version: 2 target: 'spectrum48
+ description: "A simple 2 channel pin pulse (PFM) engine in less than 100 bytes.
+ By Shiru 2011, 2013."
+
+ commands: (list (command id: 'BPM bits: 16 type: 'uint default: 140)
+		 (command id: 'NOTE bits: 0 type: 'ukey
+			  tags: '(enable_modifiers use_last_set is_note)
+			  map: (make-dividers 118 8 0 -4)
+			  default: "rest")
+		 (command id: 'DRUM type: 'trigger 'default: #f description:
+			  "Trigger a click drum. Replaces note on channel 1."))
+
+ input: (list (ifield from: 'BPM)
+	      (igroup id: 'PATTERNS flags: '(ordered)
+		      nodes: ((iblock id: 'DRUMS
+				      nodes: (list (ifield from: 'DRUM)))
+			      (clone 2
+				     (block id: 'CH
+					    nodes: (list (ifield from:
+								 'NOTE)))))))
+
+ output: (list (comment "sequence")
+	       (field bytes: 2 compose: (/ 1779661 (? 'BPM)))
+	       (field bytes: 2 compose: (- (sym sequence_end) 8))
+	       (order from: (out 'PATTERNS)
+		      layout: 'matrix base-index: 1)
+	       (group id: 'PATTERNS 'from: '(PATTERNS) resize: 8
+		      flags: '(numeric_order)
+		      nodes:
+		      (list (block from: '(CH1, DRUMS)
+				   nodes:
+				   (list (field bytes: 1
+						compose: (if (is-set? 'DRUM)
+							     #x2c (? 'NOTE1)))))
+			    (block from: '(CH2)
+				   nodes:
+				   (list (field bytes: 1
+						compose: (? 'NOTE2))))))))

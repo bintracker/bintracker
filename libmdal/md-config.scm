@@ -10,7 +10,7 @@
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
-	  ssax sxpath sxpath-lolevel
+	  ssax sxpath sxpath-lolevel simple-exceptions
 	  md-helpers md-types md-command md-note-table)
   (reexport md-command md-note-table)
 
@@ -1294,5 +1294,67 @@
 		      (map (lambda (id)
 			     (md:make-inode id (make-generic-instances 0)))
 			   subnode-ids)))))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## New CONFIG
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Evaluate the given {{mdconf}} s-expression, and return a md:config record.
+  (define (md:read-config mdconf path-prefix)
+    (let*
+
+	((command
+	  (lambda (#!key id type bits default reference-to keys tags
+			 range description)
+	    ;; TODO bits arg is optional if type is 'trigger or 'string
+	    (when (not (and id type bits default))
+	      (raise (make-exn (string-append
+				"Specification for command "
+				(->string id)
+				" missing one or more specifier(s) for"
+				" id, type, bits, or default"))
+		     ""))
+	    (when (not (member type '(int uint key ukey reference trigger
+					  string)))
+	      (raise (make-exn (string-append "Unknown command type "
+					      (->string type)))
+		     ""))
+	    (when (and (member type '(key ukey))
+		       (not keys))
+	      (raise (make-exn "No keys specified for key/ukey command")
+		     ""))
+	    (when (and (eq? type 'reference)
+		       (not reference-to))
+	      (raise (make-exn
+		      "No reference-to specified for reference command")
+		     ""))
+	    (list id (md:make-command type bits default reference-to keys
+				      tags range description))))
+
+	 (mdalconfig
+	  (lambda (#!key version target commands input output
+			 (description ""))
+	    (when (not (and version target commands input output))
+	      (raise ((make-exn "Incomplete mdalconfig specification"
+				'md:incomplete-config))
+		     ""))
+	    (when (not (md:in-range? version *supported-config-versions*))
+	      (raise ((make-exn (string-append "Unsupported MDCONF version: "
+					       (->string version))))
+		     ""))
+	    (let* ((_target (md:target-generator (->string target)
+						 path-prefix))
+		   (itree '())
+		   (proto-config '()))
+	      (md:make-config _target description commands itree input
+			      output)))))
+
+      (eval mdconf)))
+
+  (define (md:file->config filepath #!optional (path-prefix ""))
+    (call-with-input-file filepath (lambda (port)
+				     (md:read-config (read port)
+						     path-prefix))))
 
   )  ;; end module md-config
