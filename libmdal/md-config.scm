@@ -2,8 +2,8 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; # Module MDAL-CORE
-;;; main libmdal cluster
+;;; # Module MD-CONFIG
+;;; handle MDCONF configurations
 
 (module md-config *
 
