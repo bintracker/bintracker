@@ -288,6 +288,7 @@
 						 (->string version))
 				  'md:unsupported-mdal-version) "")))))))
 
+  ;;; get the name of the config used by the module
   (define (md:mod-get-config-name mod-sexp)
     (let ((cfg-assignments (md:get-assignments mod-sexp 'CONFIG)))
       (if (null? cfg-assignments)
@@ -299,25 +300,24 @@
 			   #!optional (path-prefix ""))
     (handle-exceptions
 	exn
-	(cond ((or ((exn-of? 'md:unsupported-mdal-version) exn)
-		   ((exn-of? 'md:no-config) exn)
-		   ((exn-of? 'md:syntax-error) exn))
+	(cond ((exn-any-of exn '(md:unsupported-mdal-version md:no-config
+							     md:syntax-error))
 	       (raise ((md:amend-exn exn "Invalid module: " 'md:parse-fail)
-		       (string-append "In " filepath ""))))
+		       (string-append "In " filepath " "))))
 	      (else (abort exn)))
-	(let ((mod-sexp (md:file->sexp filepath)))
-	  (begin (md:check-module-version mod-sexp)
-		 (let* ((cfg-name (md:mod-get-config-name mod-sexp))
-			(config (md:mdconf->config
-				 (string-append config-dir-path cfg-name "/"
-						cfg-name ".mdconf")
-				 path-prefix)))
-		   (md:make-module
-		    cfg-name config
-		    (md:make-inode
-		     'GLOBAL
-		     (list (list 0 (md:make-inode-instance
-				    (md:mod-parse-group
-				     mod-sexp 'GLOBAL config)))))))))))
+      (let ((mod-sexp (md:file->sexp filepath)))
+	(begin (md:check-module-version mod-sexp)
+	       (let* ((cfg-name (md:mod-get-config-name mod-sexp))
+		      (config (md:mdconf->config
+			       (string-append config-dir-path cfg-name "/"
+					      cfg-name ".mdconf")
+			       path-prefix)))
+		 (md:make-module
+		  cfg-name config
+		  (md:make-inode
+		   'GLOBAL
+		   (list (list 0 (md:make-inode-instance
+				  (md:mod-parse-group
+				   mod-sexp 'GLOBAL config)))))))))))
 
   ) ;; end module md-parser
