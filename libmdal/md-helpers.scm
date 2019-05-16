@@ -107,7 +107,12 @@
 	       ('md:unsupported-mdconf-version
 		(string-append "unsupported MDCONF version "
 			       (->string (car args))))
-	       ('md:not-mdconf "Not an MDCONF specification."))
+	       ('md:not-mdconf "Not an MDCONF specification.")
+	       ('md:no-config "No CONFIG specified")
+	       ('md:no-mdal-version "No MDAL version specified")
+	       ('md:unsupported-mdal-version
+		(string-append "Unsupported MDAL version: "
+			       (->string (car args)))))
 	     exn-type)
 	    "")))
 

@@ -280,19 +280,17 @@
   (define (md:check-module-version mod-sexp)
     (let ((version-assignments (md:get-assignments mod-sexp 'MDAL_VERSION)))
       (if (null? version-assignments)
-	  (raise ((make-exn "No MDAL version specified" 'no-mdal-version) ""))
+	  (raise-local 'md:no-mdal-version)
 	  (let ((version (last (car version-assignments))))
 	    (if (md:in-range? version *supported-module-versions*)
 		version
-		(raise ((make-exn (string-append "Unsupported MDAL version: "
-						 (->string version))
-				  'md:unsupported-mdal-version) "")))))))
+		(raise-local 'md:unsupported-mdal-version version))))))
 
   ;;; get the name of the config used by the module
   (define (md:mod-get-config-name mod-sexp)
     (let ((cfg-assignments (md:get-assignments mod-sexp 'CONFIG)))
       (if (null? cfg-assignments)
-	  (raise ((make-exn "No CONFIG specified" 'md:no-config) ""))
+	  (raise-local 'md:no-config)
 	  (last (car cfg-assignments)))))
 
   ;;; construct an md:module from a given .mdal file
@@ -300,8 +298,9 @@
 			   #!optional (path-prefix ""))
     (handle-exceptions
 	exn
-	(cond ((exn-any-of exn '(md:unsupported-mdal-version md:no-config
-							     md:syntax-error))
+	(cond ((exn-any-of? exn '(md:unsupported-mdal-version
+				  md:no-config md:syntax-error
+				  md:no-mdal-version))
 	       (raise ((md:amend-exn exn "Invalid module: " 'md:parse-fail)
 		       (string-append "In " filepath " "))))
 	      (else (abort exn)))
