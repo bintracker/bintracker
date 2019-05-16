@@ -9,6 +9,7 @@
 
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
+	  (chicken condition)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
 	  ssax sxpath sxpath-lolevel simple-exceptions
 	  md-helpers md-types md-command md-note-table)
@@ -1300,61 +1301,77 @@
   ;;; ## New CONFIG
   ;; ---------------------------------------------------------------------------
 
+  ;;;
+  (define (md:get-itree nodes)
+    (let ((get-subnodes (lambda (node)
+			  (apply (lambda (#!key nodes) nodes)
+				 (cdr node))))
+	  (get-id (lambda (node)
+		    (apply (lambda (#!key id from)
+			     (if id id from))
+			   (cdr node))))
+	  (filter-nodes (lambda (type)
+			 (filter (lambda (node)
+				   (eqv? type (car node)))
+				 nodes))))
+      (append (map (o list get-id) (filter-nodes 'field))
+	      (map (o list get-id) (filter-nodes 'block))
+	      (map (o list get-id) (filter-nodes 'group)))))
+
+  ;;;
+  (define (md:eval-inode-tree global-nodes)
+    (list (list 'GLOBAL
+		(append '((AUTHOR) (TITLE) (LICENSE))
+			(md:get-itree global-nodes)))))
+
+  ;;; Main mdalconfig s-expression evaluator. You probably want to call this
+  ;;; through `md:read-config`.
+  (define (md:eval-mdalconfig path-prefix #!key version target commands input
+			      output (description ""))
+    (unless (and version target commands input output)
+      (raise-local 'md:incomplete-config))
+    (unless (md:in-range? version *supported-config-versions*)
+      (raise-local 'md:unsupported-mdconf-version version))
+    (let* ((_target (md:target-generator (->string target)
+					 path-prefix))
+	   (itree (md:eval-inode-tree input))
+	   (proto-config '()))
+      (md:make-config _target description
+		      (alist->hash-table
+		       (append (md:make-default-commands)
+			       (map (lambda (cmd)
+				      ;; TODO check if 'command
+				      (apply md:eval-command
+					     (cons path-prefix (cdr cmd))))
+				    commands)))
+		      itree input output)))
+
   ;;; Evaluate the given {{mdconf}} s-expression, and return a md:config record.
   (define (md:read-config mdconf path-prefix)
-    (let*
+    ;; TODO unify tags/flags (should be called tags for all elems)
+    (if (and (pair? mdconf)
+	     (eqv? (car mdconf) 'mdalconfig))
+	(apply md:eval-mdalconfig (cons path-prefix (cdr mdconf)))
+	(raise-local 'md:not-mdconf)))
 
-	((command
-	  (lambda (#!key id type bits default reference-to keys tags
-			 range description)
-	    ;; TODO bits arg is optional if type is 'trigger or 'string
-	    (when (not (and id type bits default))
-	      (raise (make-exn (string-append
-				"Specification for command "
-				(->string id)
-				" missing one or more specifier(s) for"
-				" id, type, bits, or default"))
-		     ""))
-	    (when (not (member type '(int uint key ukey reference trigger
-					  string)))
-	      (raise (make-exn (string-append "Unknown command type "
-					      (->string type)))
-		     ""))
-	    (when (and (member type '(key ukey))
-		       (not keys))
-	      (raise (make-exn "No keys specified for key/ukey command")
-		     ""))
-	    (when (and (eq? type 'reference)
-		       (not reference-to))
-	      (raise (make-exn
-		      "No reference-to specified for reference command")
-		     ""))
-	    (list id (md:make-command type bits default reference-to keys
-				      tags range description))))
-
-	 (mdalconfig
-	  (lambda (#!key version target commands input output
-			 (description ""))
-	    (when (not (and version target commands input output))
-	      (raise ((make-exn "Incomplete mdalconfig specification"
-				'md:incomplete-config))
-		     ""))
-	    (when (not (md:in-range? version *supported-config-versions*))
-	      (raise ((make-exn (string-append "Unsupported MDCONF version: "
-					       (->string version))))
-		     ""))
-	    (let* ((_target (md:target-generator (->string target)
-						 path-prefix))
-		   (itree '())
-		   (proto-config '()))
-	      (md:make-config _target description commands itree input
-			      output)))))
-
-      (eval mdconf)))
-
+  ;;; Generate an md:config record from an .mdconf configuration file.
   (define (md:file->config filepath #!optional (path-prefix ""))
-    (call-with-input-file filepath (lambda (port)
-				     (md:read-config (read port)
-						     path-prefix))))
+    (handle-exceptions
+	exn
+	(cond ((exn-any-of? exn '(md:not-mdconf md:unsupported-mdconf-version
+						md:incomplete-config
+						md:invalid-command))
+	       (let ((exn-loc (string-append "In " filepath
+					     (if (string-null? (location exn))
+						 "" (string-append
+						     ", " (location exn))))))
+		 (raise ((md:amend-exn exn (string-append exn-loc
+							  "\nInvalid config: ")
+				       'md:invalid-config)
+			 exn-loc))))
+	      (else (abort exn)))
+      (call-with-input-file filepath (lambda (port)
+				       (md:read-config (read port)
+						       path-prefix)))))
 
   )  ;; end module md-config

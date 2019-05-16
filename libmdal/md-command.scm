@@ -12,7 +12,9 @@
 (module md-command *
 
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
-	  srfi-1 srfi-13 srfi-14 srfi-69 sxpath sxpath-lolevel md-helpers)
+	  (chicken condition)
+	  srfi-1 srfi-13 srfi-14 srfi-69 sxpath sxpath-lolevel
+	  simple-exceptions matchable md-helpers)
 
   ;;; **[RECORD]** MD:COMMAND
   ;;; command config record type
@@ -177,5 +179,55 @@
                             (make-commands (cdr lst) trgt))))))
 	(make-commands node-list target))
       (md:make-default-commands))))
+
+
+  ;; new config parser
+
+  ;;; basic error checks for mdalconfig command specification
+  (define (md:check-command-spec id type bits default reference-to keys range)
+    (unless (and id type (or default (eqv? type 'trigger)))
+      (raise-local 'md:missing-command-specifier))
+    (when (and (memv type '(int uint key ukey reference))
+	       (not bits))
+      (raise-local 'md:missing-command-bits))
+    (unless (memv type '(int uint key ukey reference trigger string))
+      (raise-local 'md:unknown-command-type type))
+    (when (and (memv type '(key ukey))
+	       (not keys))
+      (raise-local 'md:missing-command-keys))
+    (when (and (eqv? type 'reference)
+	       (not reference-to))
+      (raise-local 'md:missing-command-reference-to))
+    (when (and range (not (memv type '(int uint))))
+      (raise-local 'md:nonnumeric-command-range)))
+
+  ;; TODO pass in target-cpu-speed
+  (define (md:eval-command path-prefix #!key id type bits default reference-to
+			   keys (tags '()) range description)
+    (handle-exceptions
+	exn
+	(cond ((exn-any-of? exn '(md:missing-command-specifier
+				  md:missing-command-bits
+				  md:unknown-command-type
+				  md:missing-command-keys
+				  md:missing-command-reference-to
+				  md:nonnumeric-command-range))
+	       (raise ((md:amend-exn
+			exn "Invalid command specification: "
+			'md:invalid-command)
+		       (string-append "command "
+				      (if id (->string id) "???")))))
+	      (else (abort exn)))
+      (md:check-command-spec id type bits default reference-to keys range)
+      ;; TODO implement ranges, keymap files
+      (list id (md:make-command type
+				(match type
+				  ('string 0)
+				  ('trigger 1)
+				  (else bits))
+				default reference-to
+				(eval `(let ((make-dividers md:make-dividers))
+					 ,keys))
+				tags range description))))
 
   )  ;; end module md-command
