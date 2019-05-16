@@ -5,7 +5,7 @@
 (module md-helpers *
 
   (import scheme (chicken base) (chicken condition) (chicken string)
-	  srfi-1 srfi-13 srfi-69 simple-exceptions)
+	  srfi-1 srfi-13 srfi-69 simple-exceptions matchable)
 
   ;; ---------------------------------------------------------------------------
   ;; MDAL: UTILITIES
@@ -79,5 +79,36 @@
 					  (remove (lambda (co)
 						    (eq? 'exn (car co)))
 						  (condition->list exn))))))
+
+  ;;; check if any of the given error keys match the key of the given exception.
+  (define (exn-any-of? exn exn-keys)
+    (any (lambda (exn-key)
+	   ((exn-of? exn-key) exn))
+	 exn-keys))
+
+  ;; TODO noexport
+  ;; simplified exception generator for common libmdal errors
+  (define (raise-local exn-type . args)
+    (raise ((make-exn
+	     (match exn-type
+	       ('md:missing-command-specifier
+		"missing id, type, and/or default specifier")
+	       ('md:missing-command-bits "missing bits specifier")
+	       ('md:unknown-command-type
+		(string-append "unknown command type "
+			       (->string (car args))))
+	       ('md:missing-command-keys "missing keys specifier")
+	       ('md:missing-command-reference-to
+		"missing reference-to specifier")
+	       ('md:nonnumeric-command-range
+		"range used on command not of type int/uint")
+	       ('md:incomplete-config
+		"incomplete mdalconfig specification")
+	       ('md:unsupported-mdconf-version
+		(string-append "unsupported MDCONF version "
+			       (->string (car args))))
+	       ('md:not-mdconf "Not an MDCONF specification."))
+	     exn-type)
+	    "")))
 
   ) ;; end module md-helpers
