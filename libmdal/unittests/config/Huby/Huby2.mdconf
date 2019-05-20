@@ -6,31 +6,26 @@
  commands: ((command id: BPM bits: 16 type: uint default: 140)
 	    (command id: NOTE bits: 8 type: ukey
 		     tags: (enable_modifiers use_last_set is_note)
-		     keys: (md:make-dividers 118 8 0 -4)
+		     keys: (make-dividers 118 8 0 -4)
 		     default: "rest")
 	    (command id: DRUM type: trigger default: #f description:
 		     "Trigger a click drum. Replaces note on channel 1."))
 
  input: ((field from: BPM)
 	 (group id: PATTERNS flags: (ordered)
-		nodes: ((block id: DRUMS
-			       nodes: ((field from: DRUM)))
+		nodes: ((block id: DRUMS nodes: ((field from: DRUM)))
 			(clone 2 (block id: CH
 					nodes: ((field from: NOTE)))))))
 
  output: ((comment "sequence")
-	  (field bytes: 2 compose: (/ 1779661 (in BPM)))
-	  (field bytes: 2 compose: (- (sym sequence_end) 8))
-	  (order from: (out PATTERNS)
-		 layout: matrix base-index: 1)
-	  (group id: PATTERNS from: (PATTERNS) resize: 8
-		 flags: (numeric_order)
-		 nodes:
-		 (list (oblock from: (CH1, DRUMS)
-			       nodes:
-			       ((ofield bytes: 1
-					compose: (if (is-set? DRUM)
-						     #x2c (in NOTE1)))))
-		       (block from: (CH2)
-			      nodes: ((ofield bytes: 1
-					      compose: (in NOTE2))))))))
+	  (code src: (file "player.asm") bin: (file "player.bin"))
+	  (field bytes: 2 compose: (/ 1779661 ?BPM))
+	  (field bytes: 2 compose: (- $sequence_end 8))
+	  (order from: PATTERNS layout: matrix base-index: 1)
+	  (group id: PATTERNS from: (PATTERNS) resize: 8 flags: (numeric_order)
+		 nodes: ((block from: (CH1, DRUMS)
+				nodes: ((field bytes: 1
+					       compose: (if (is-set? ?DRUM)
+							    #x2c ?NOTE1))))
+			 (block from: (CH2)
+				nodes: ((field bytes: 1 compose: ?NOTE2)))))))
