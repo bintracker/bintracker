@@ -1302,27 +1302,58 @@
   ;; ---------------------------------------------------------------------------
 
   ;;;
-  (define (md:get-itree nodes)
-    (let ((get-subnodes (lambda (node)
-			  (apply (lambda (#!key nodes) nodes)
-				 (cdr node))))
-	  (get-id (lambda (node)
-		    (apply (lambda (#!key id from)
-			     (if id id from))
-			   (cdr node))))
-	  (filter-nodes (lambda (type)
-			 (filter (lambda (node)
-				   (eqv? type (car node)))
-				 nodes))))
-      (append (map (o list get-id) (filter-nodes 'field))
-	      (map (o list get-id) (filter-nodes 'block))
-	      (map (o list get-id) (filter-nodes 'group)))))
+  (define (md:get-subnodes-itree nodes)
+    (let ((clone-itree (lambda (amount node)
+			 (md:clone-inode-tree (list (apply md:get-itree node))
+					      amount))))
+      (if (null? nodes)
+	  '()
+	  (if (eqv? 'clone (caar nodes))
+	      (append (apply clone-itree (cdar nodes))
+		      (md:get-subnodes-itree (cdr nodes)))
+	      (cons (apply md:get-itree (car nodes))
+		    (md:get-subnodes-itree (cdr nodes)))))))
+
+  ;;;
+  (define (md:generate-order-tree id subnodes)
+    (let ((filter-by-type (lambda (type nodes)
+			    (filter (lambda (node) (eqv? type (car node)))
+				    nodes))))
+      (list (md:symbol-append id "_ORDER")
+	    (append
+	     (map (lambda (node)
+		    (list (md:symbol-append "R_" (apply (lambda (#!key id) id)
+							(cdr node)))))
+		  (filter-by-type 'block subnodes))
+	     (map (lambda (node)
+		    (map (lambda (sym)
+			   (list (string->symbol (string-append "R_" sym))))
+			 (map string-concatenate
+			      (zip (make-list (second node)
+					      (apply (lambda (#!key id)
+						       (->string id))
+						     (cdr (third node))))
+				   (map number->string
+					(iota (second node) 1 1))))))
+		  ;; TODO only block node clones should be considered
+		  (filter-by-type 'clone subnodes))))))
+
+  ;;;
+  (define (md:get-itree node-type #!key id from nodes flags)
+    (match node-type
+      ('field (list from))
+      ('block (list id (md:get-subnodes-itree nodes)))
+      ('group (list id (append (md:get-subnodes-itree nodes)
+			       (if (and flags (memv 'ordered flags))
+				   (list (md:generate-order-tree id nodes))
+				   '()))))
+      (else (raise-local "unknown input node type " node-type))))
 
   ;;;
   (define (md:eval-inode-tree global-nodes)
     (list (list 'GLOBAL
 		(append '((AUTHOR) (TITLE) (LICENSE))
-			(md:get-itree global-nodes)))))
+			(md:get-subnodes-itree global-nodes)))))
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `md:read-config`.
@@ -1361,13 +1392,13 @@
 	(cond ((exn-any-of? exn '(md:not-mdconf md:unsupported-mdconf-version
 						md:incomplete-config
 						md:invalid-command))
-	       (let ((exn-loc (string-append "In " filepath
-					     (if (string-null? (location exn))
-						 "" (string-append
-						     ", " (location exn))))))
-		 (raise ((md:amend-exn exn (string-append exn-loc
-							  "\nInvalid config: ")
-				       'md:invalid-config)
+	       (let ((exn-loc (string-append
+			       "In " filepath
+			       (if (string-null? (location exn))
+				   "" (string-append ", " (location exn))))))
+		 (raise ((md:amend-exn
+			  exn (string-append exn-loc "\nInvalid config: ")
+			  'md:invalid-config)
 			 exn-loc))))
 	      (else (abort exn)))
       (call-with-input-file filepath (lambda (port)
