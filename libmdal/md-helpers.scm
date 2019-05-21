@@ -108,11 +108,25 @@
 		(string-append "unsupported MDCONF version "
 			       (->string (car args))))
 	       ('md:not-mdconf "Not an MDCONF specification.")
+	       ('md:not-command
+		(string-append "Not an MDAL command specification."
+			       (->string (car args))))
+	       ('md:missing-inode-type "missing inode config type")
+	       ('md:unknown-inode-type
+		(string-append "unknown inode config type "
+			       (->string (car args))))
+	       ('md:missing-ifield-source "missing source command id specifier")
+	       ('md:missing-inode-id "missing id specifier")
+	       ('md:missing-inode-subnodes "inode contains no subnodes")
+	       ('md:illegal-block-child
+		(string-append "inode of type " (->string (car args))
+			       " may not be a child of a block inode"))
 	       ('md:no-config "No CONFIG specified")
 	       ('md:no-mdal-version "No MDAL version specified")
 	       ('md:unsupported-mdal-version
 		(string-append "Unsupported MDAL version: "
-			       (->string (car args)))))
+			       (->string (car args))))
+	       ('md:compiler-failed "Failed to compile module."))
 	     exn-type)
 	    "")))
 

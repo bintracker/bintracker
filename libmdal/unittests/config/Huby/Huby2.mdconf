@@ -22,6 +22,8 @@
 	  (field bytes: 2 compose: (/ 1779661 ?BPM))
 	  (field bytes: 2 compose: (- $sequence_end 8))
 	  (order from: PATTERNS layout: matrix base-index: 1)
+	  (field bytes: 1 compose: 0)
+	  (symbol id: sequence_end)
 	  (group id: PATTERNS from: (PATTERNS) resize: 8 flags: (numeric_order)
 		 nodes: ((block from: (CH1, DRUMS)
 				nodes: ((field bytes: 1
