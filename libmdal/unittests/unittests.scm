@@ -149,10 +149,10 @@
 
  (define my-itree
    '((GLOBAL ((AUTHOR) (TITLE) (LICENSE) (BPM)
-		(PATTERNS ((DRUMS ((DRUM))) (CH1 ((NOTE1)))
-			     (CH2 ((NOTE2)))
-			     (PATTERNS_ORDER ((R_DRUMS) (R_CH1)
-						(R_CH2)))))))))
+	      (PATTERNS ((DRUMS ((DRUM))) (CH1 ((NOTE1)))
+			 (CH2 ((NOTE2)))
+			 (PATTERNS_ORDER ((R_DRUMS) (R_CH1)
+					  (R_CH2)))))))))
 
  (test "md:parse-inode-tree" my-itree (md:parse-inode-tree my-cfg-data))
 
