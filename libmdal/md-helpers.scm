@@ -121,6 +121,7 @@
 	       ('md:illegal-block-child
 		(string-append "inode of type " (->string (car args))
 			       " may not be a child of a block inode"))
+	       ('md:missing-onode-id "missing id specifier")
 	       ('md:no-config "No CONFIG specified")
 	       ('md:no-mdal-version "No MDAL version specified")
 	       ('md:unsupported-mdal-version
