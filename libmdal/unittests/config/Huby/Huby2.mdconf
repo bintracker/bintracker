@@ -17,17 +17,15 @@
 			(clone 2 (block id: CH
 					nodes: ((field from: NOTE)))))))
 
- output: ((comment "sequence")
-	  (code src: (file "player.asm") bin: (file "player.bin"))
+ output: ((asm file: "huby.asm")
+	  (comment "sequence")
 	  (field bytes: 2 compose: (/ 1779661 ?BPM))
 	  (field bytes: 2 compose: (- $sequence_end 8))
-	  (order from: PATTERNS layout: matrix base-index: 1)
+	  (order from: (CH1, CH2) layout: shared-numeric-matrix base-index: 1)
 	  (field bytes: 1 compose: 0)
 	  (symbol id: sequence_end)
-	  (group id: PATTERNS from: (PATTERNS) resize: 8 flags: (numeric_order)
-		 nodes: ((block from: (CH1, DRUMS)
-				nodes: ((field bytes: 1
-					       compose: (if (is-set? ?DRUM)
-							    #x2c ?NOTE1))))
-			 (block from: (CH2)
-				nodes: ((field bytes: 1 compose: ?NOTE2)))))))
+	  (block id: CH1 from: (CH1, DRUMS) resize: 8 list: order
+		 nodes: ((field bytes: 1 compose: (if (is-set? ?DRUM)
+						      #x2c ?NOTE1))))
+	  (block id: CH2 from: (CH2) resize: 8 list: order
+		 nodes: ((field bytes: 1 compose: ?NOTE2)))))
