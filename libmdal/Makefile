@@ -10,7 +10,7 @@ IMPORTFLAGS = -s -d0
 BASEDEPS = md-helpers.import.so md-types.import.so
 
 # build libmdal
-mdal: mdal.scm $(BASEDEPS) md-config.import.so md-parser.import.so
+mdal: mdal.scm $(BASEDEPS) md-config.import.so md-parser.import.so schemta.so
 	$(CSC) $(LIBFLAGS) mdal.scm -j mdal
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
 
@@ -40,7 +40,7 @@ md-command.import.so: md-command.so
 	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
 md-config.so: md-config.scm $(BASEDEPS) md-command.import.so\
- md-note-table.import.so
+ md-note-table.import.so schemta.import.so
 	$(CSC) $(LIBFLAGS) md-config.scm -j md-config
 
 md-config.import.so: md-config.so
@@ -51,6 +51,12 @@ md-parser.so: md-parser.scm $(BASEDEPS) md-config.import.so
 
 md-parser.import.so: md-parser.so
 	$(CSC) $(IMPORTFLAGS) md-parser.import.scm
+
+schemta.so: schemta.scm
+	$(CSC) $(LIBFLAGS) schemta.scm -j schemta
+
+schemta.import.so: schemta.so
+	$(CSC) $(IMPORTFLAGS) schemta.import.scm
 
 # generate documentation
 %.md: %.scm

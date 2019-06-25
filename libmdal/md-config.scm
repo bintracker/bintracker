@@ -12,8 +12,8 @@
 	  (chicken condition)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
 	  ssax sxpath sxpath-lolevel simple-exceptions
-	  md-helpers md-types md-command md-note-table)
-  (reexport md-command md-note-table)
+	  md-helpers md-types md-command md-note-table schemta)
+  (reexport md-command md-note-table schemta)
 
 
   ;; ---------------------------------------------------------------------------
