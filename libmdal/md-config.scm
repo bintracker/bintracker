@@ -905,6 +905,9 @@
   (define (md:config-inode-ref id cfg)
     (md:config-x-ref md:config-inodes id cfg))
 
+  (define (md:config-get-target-endianness cfg)
+    ((o md:cpu-endianness md:target-cpu md:config-target) cfg))
+
   ;;; create an md:target from a target config file
   (define (md:target-generator target-name path-prefix)
     (let* ((eval-file (o eval car read-list open-input-file))
