@@ -1496,6 +1496,196 @@
 	(+ (alist-ref '_mdal_origin symbols)
 	   (apply + (map md:onode-size preceding-otree)))))
 
+
+  ;;----------------------------------------------------------------------------
+  ;;; ### The Compiler Generator
+  ;;;
+  ;;; Libmdal does not come with a default compiler for transforming MDAL
+  ;;; modules into the desired binary or asm output. Instead, a dedicated
+  ;;; compiler procedure is generated for each MDAL configuration. This
+  ;;; procedure takes as input an `md:module` structure and the current origin
+  ;;; (assembly start address) and produces a list of resolved output nodes
+  ;;; (onodes), which can be further processed into binary or assembly output.
+  ;;; The compiler procedure is stored in the md:config-compiler field of the
+  ;;; relevant md:config structure.
+  ;;;
+  ;;; The compiler function itself is generated as follows:
+  ;;; For each element in the list of output elements specified in the MDCONF
+  ;;; configuration, an output node (onode, `md:onode` structure) is generated.
+  ;;; Onodes are initially in an "unresolved" state, unless their output can be
+  ;;; evaluated at the time the compiler is generated.
+  ;;;
+  ;;; An onode consist of
+  ;;; - a type specifier (see below for available types)
+  ;;; - a size field, which holds the size of the output in bytes, and may be
+  ;;;   initally #f until the node is resolved
+  ;;; - a value field, which is #f for unresolved nodes, and holds the list
+  ;;;   of output bytes once the onode is resolved
+  ;;; - an onode-fn field, which for **resolved** nodes is set to #f, and
+  ;;;   otherwise holds a procedure that, when applied to the onode, will
+  ;;;   attempt to resolve it.
+  ;;;
+  ;;; The main compiler repeatedly iterates over the list of onodes, applying
+  ;;; the onode-fn procedures, until all onodes are resolved, or a preset pass
+  ;;; limit is exceeded, in which case the compiler fails with an exception of
+  ;;; type `md:compiler-failed`.
+  ;;;
+  ;;; The following onode types are permitted:
+  ;;; - `asm`: Takes some asm code as input and returns the assembled output.
+  ;;;          The compiler generator will attempt to resolve asm onodes
+  ;;;          immediately and cache the results.
+  ;;; - `comment`: An assembly level comment. Ignored in binary output.
+  ;;; - `field`: A single value, usually generated from a constant or an igroup
+  ;;;            ifield. Field specifications hold a "compose" expression, which
+  ;;;            is transformed into a procedure that generates the output.
+  ;;; - `block`: TODO
+  ;;; - `order`: TODO
+  ;;; - `symbol`: Produces an assembly level symbol, set to the current origin.
+  ;;;
+  ;;; Onode-fn procedures have the signature
+  ;;; `(proc onode parent-node path-prefix config current-org symbols)`
+  ;;; where `onode` is the onode itself, `parent-inode` is the relevant portion
+  ;;; of the input node tree, `path-prefix` is ... TODO
+  ;;; `config` is the md:module's `md:config` structure, `current-org` is the
+  ;;; current asm origin address, and `symbols` is a list of additional asm
+  ;;; symbols generated.
+  ;;; Onode-fns output a list containing the processed onode, the next origin
+  ;;; address (if it can be deduced, otherwise #f), and the updated list of
+  ;;; symbols.
+
+
+  ;;; Transform an output field config expression into an actual resolver
+  ;;; procedure body.
+  ;; TODO could in theory retrieve inode-source-command ahead of time
+  (define (md:transform-compose-expr expr)
+    (let ((transform-element
+	   (lambda (elem)
+	     (cond
+	      ((symbol? elem)
+	       (let* ((symbol-name (symbol->string elem))
+		      (transformed-symbol (string->symbol
+					   (string-drop symbol-name 1))))
+		 (cond
+		  ((string-prefix? "?" symbol-name)
+		   `(,md:eval-field
+		     instance-id
+		     (,md:get-subnode parent-node (quote ,transformed-symbol))
+		     (,md:config-get-inode-source-command
+		      (quote ,transformed-symbol)
+		      config)))
+		  ((string-prefix? "$" symbol-name)
+		   `(let ((sym-val (,alist-ref (quote ,transformed-symbol)
+					       md-symbols)))
+		      (if sym-val (,car sym-val) #f)))
+		  (else elem))))
+	      ((pair? elem)
+	       (if (eq? 'is-set? (car elem))
+		   `(,md:is-set?
+		     ((,md:mod-get-node-instance instance-id)
+		      (,alist-ref ,(string->symbol
+				    (string-drop (symbol->string (cadr elem))
+						 1))
+				  parent-node)))
+		   (md:transform-compose-expr elem)))
+	      (else elem)))))
+      (eval (append (list 'lambda '(instance-id parent-node md-symbols config)
+			  (if (pair? expr)
+			      (map transform-element expr)
+			      (transform-element expr)))))))
+
+  ;; TODO should go elsewhere
+  (define (md:int->bytes val number-of-bytes endian)
+    (letrec* ((make-bytes (lambda (restval remaining-bytes)
+			    (if (= 0 remaining-bytes)
+			       '()
+			       (cons (bitwise-and #xff restval)
+				     (make-bytes (quotient restval #x100)
+						 (sub1 remaining-bytes))))))
+	      (byte-list (make-bytes val number-of-bytes)))
+      (if (eq? 'md:little-endian endian)
+	  byte-list
+	  (reverse byte-list))))
+
+  ;;; Generate an onode config of type 'symbol. Call this procedure by
+  ;;; `apply`ing it to an onode config expression.
+  (define (md:make-osymbol proto-config #!key id)
+    (unless id (raise-local 'md:missing-onode-id))
+    (md:make-onode 'symbol 0 #f
+		   (lambda (onode parent-inode config current-org md-symbols)
+		     (if current-org
+			 (list (md:make-onode 'symbol 0 #t #f)
+			       current-org
+			       (cons (list id current-org)
+				     md-symbols))
+			 (list onode current-org md-symbols)))))
+
+  ;; TODO
+  ;; 1. pass in current-org
+  ;; 2. resolve source filepath
+  ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
+  ;;    oasm node
+  ;; 4. store asm text somehow for retrieval on asm output generation?
+  (define (md:make-oasm proto-config #!key file code)
+    (let ((output (asm-file->bytes "unittests/config/Huby/huby.asm"
+				   "z80" 3 org: #x8000)))
+      (md:make-onode 'asm (length output) output #f)))
+
+
+  ;; TODO
+  ;; - check if direct-resolvable
+  ;; result value -> bytes
+  (define (md:make-ofield proto-config #!key bytes compose)
+    (let ((compose-proc (md:transform-compose-expr compose))
+	  (endianness (md:config-get-target-endianness proto-config)))
+      (md:make-onode
+       'field bytes #f
+       (lambda (onode parent-inode config current-org md-symbols)
+	 (list (md:make-onode 'field bytes
+			      (md:int->bytes (compose-proc 0 parent-inode
+							   md-symbols config)
+					     bytes endianness)
+			      #f)
+	       (+ current-org bytes)
+	       md-symbols)))))
+
+  ;; TODO
+  (define (md:make-oorder proto-config #!key from layout base-index)
+    (md:make-onode 'order #f #f
+		   (lambda (onode parent-inode config current-org md-symbols)
+		     (let* ((output (list 1 5 2 6 3 7 4 8))
+			    (output-length (length (flatten output))))
+		       (list (md:make-onode 'order output-length output #f)
+			     (+ current-org output-length)
+			     md-symbols)))))
+
+  ;; TODO
+  ;; multiple sources? should merge all relevant sources in a pseudo parent
+  ;; when passing to field compose proc
+  (define (md:make-oblock proto-config #!key id from resize list nodes)
+    (md:make-onode 'block #f #f
+		   (lambda (onode parent-inode config current-org md-symbols)
+		     (map (lambda (field)
+			    '())
+			  nodes))))
+
+  ;; TODO
+  (define (md:make-ogroup proto-config #!key id from)
+    '())
+
+  ;;; dispatch output note config expressions to the appropriate onode
+  ;;; generators
+  (define (md:dispatch-onode-expr expr proto-config)
+    (apply (match (car expr)
+	     ('comment (lambda (proto-cfg c) (md:make-onode 'comment 0 c #f)))
+	     ('asm md:make-oasm)
+	     ('symbol md:make-osymbol)
+	     ('field md:make-ofield)
+	     ('block md:make-oblock)
+	     ('group md:make-ogroup)
+	     ('order md:make-oorder)
+	     (else (error "unsupported output node type")))
+	   (cons proto-config (cdr expr))))
+
   ;;; Generate a compiler from the given output config expression.
   ;;; {{proto-config}} must be a md:config struct with all fields resolved
   ;;; except the md:config-comiler itself.
@@ -1504,31 +1694,25 @@
   ;;; nodes, which can be further processed by `md:write-bin` or `md:write-asm`.
   ;;; The compiler will throw an exception of type 'md:compiler-failed
   ;;; if it cannot resolve all output nodes after 3 passes.
+  ;; TODO haven't thought about optional fields at all yet (how about "only-if")
+  ;;      also, more conditions, eg. required-if begin etc...
   (define (md:make-compiler output-expr proto-config)
     (letrec* ((done? (lambda (onodes)
 		       ;; TODO: can we short-circuit as
 		       ;; (not (any md:onode-fn onodes)) ?
 		       (not (any (lambda (node) (md:onode-fn node))
 				 onodes))))
-	      (make-otree
-	       (lambda (config-exprs)
-		 (map (lambda (expr)
-			(match (car expr)
-			  ('comment (md:make-onode 'comment 0 (cdr expr) #f))
-			  ;; TODO ignoring code nodes for now
-			  ('code (md:make-onode 'comment 0 "" #f))
-			  ('symbol '())
-			  ('field '())
-			  ('block '())
-			  ('group '())
-			  ('order '())))
-		      config-exprs)))
-	      (otree (make-otree output-expr))
+	      (ofield-fn-args '(source-nodes instance-id preceding-nodes
+					     symbols mod-config))
+	      (otree (map (lambda (expr)
+			    (md:dispatch-onode-expr expr proto-config))
+			  output-expr))
 	      (run-compiler
 	       (lambda (mod output-tree symbols passes)
 		 (when (> 3 passes) (raise-local 'md:compiler-failed))
 		 ;; result = (list new-otree new-symbols)
 		 ;; pass in to node resolver:
+		 ;;    the onode itself
 		 ;;    relevant source nodes (in this case, global-node)
 		 ;;      or paths + mod <- better, because allows arbitrary acc.
 		 ;;      NO, because path would require knowing parent instances.
@@ -1536,11 +1720,12 @@
 		 ;;    previous passed nodes
 		 ;;    symbols
 		 ;;    mod-config
-		 (letrec* ((resolve-node (lambda (node source-nodes instance-id
+		 ;; TODO this is not up to date, and missing current-org
+		 (letrec* ((resolve-node (lambda (onode parent-inode instance-id
 						       passed-tree symbols)
-					   (if (md:onode-fn node)
-					       ((md:onode-fn node) node)
-					       (list node symbols))))
+					   (if (md:onode-fn onode)
+					       ((md:onode-fn onode) onode)
+					       (list onode symbols))))
 			   (resolve-otree
 			    (lambda (tree passed-tree syms)
 			      (if (null-list? tree)

@@ -999,4 +999,39 @@
 	     #x0b #x0b #x0b #x0b #x0b #x0b #x0b #x0b)
        (md:mod->bin my-mod #x8000)))
 
+(test-group
+ "New Config Compiler Generator"
+
+ (define my-parent-node ((md:node-instance-path "0")
+			 (md:mod-global-node my-mod)))
+
+ (test "md:int->bytes"
+       (list 0 0 0 8)
+       (md:int->bytes 8 4 'md:big-endian))
+
+ ;; TODO new Huby.mdconf uses 140 bpm as default
+ (test "md:transform-compose-expr"
+       (quotient 1779661 120)
+       ((md:transform-compose-expr '(quotient 1779661 ?BPM))
+	0 my-parent-node '() my-cfg))
+
+ (test "md:make-ofield"
+       (list (md:int->bytes (quotient 1779661 120) 2 'md:little-endian)
+	     (list 0 0))
+       (let ((my-onode1 (md:make-ofield my-cfg bytes: 2
+					compose: '(quotient 1779661 ?BPM)))
+	     (my-onode2 (md:make-ofield my-cfg bytes: 2
+					compose: '(- $my-sym 8))))
+	 (list (md:onode-val (car ((md:onode-fn my-onode1) my-onode1
+				   my-parent-node my-cfg 0 '())))
+	       (md:onode-val (car ((md:onode-fn my-onode2) my-onode2
+				   my-parent-node my-cfg 0 '((my-sym 8))))))))
+
+ (test "md:make-osymbol"
+       8
+       (let ((my-onode (md:make-osymbol my-cfg id: 'my-sym)))
+	 (car (alist-ref 'my-sym
+			 (third ((md:onode-fn my-onode) my-onode my-parent-node
+				 my-cfg 8 '())))))))
+
 (test-exit)
