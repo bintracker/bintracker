@@ -19,7 +19,7 @@
 
  output: ((asm file: "huby.asm")
 	  (comment "sequence")
-	  (field bytes: 2 compose: (/ 1779661 ?BPM))
+	  (field bytes: 2 compose: (quotient 1779661 ?BPM))
 	  (field bytes: 2 compose: (- $sequence_end 8))
 	  (order from: (CH1, CH2) layout: shared-numeric-matrix base-index: 1)
 	  (field bytes: 1 compose: 0)
