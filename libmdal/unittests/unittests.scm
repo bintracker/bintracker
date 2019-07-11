@@ -1015,6 +1015,11 @@
        ((md:transform-compose-expr '(quotient 1779661 ?BPM))
 	0 my-parent-node '() my-cfg))
 
+ (test "md:make-order-transformer"
+       '(1 5 2 6 3 7 4 8)
+       ((md:make-order-transformer 'shared-numeric-matrix 1)
+	'((0 0) (1 1) (2 2) (3 3))))
+
  (test "md:make-ofield"
        (list (md:int->bytes (quotient 1779661 120) 2 'md:little-endian)
 	     (list 0 0))

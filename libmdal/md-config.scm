@@ -9,7 +9,7 @@
 
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
-	  (chicken condition)
+	  (chicken condition) (chicken sort)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
 	  ssax sxpath sxpath-lolevel simple-exceptions
 	  md-helpers md-types md-command md-note-table schemta)
@@ -1053,7 +1053,7 @@
 			    (md:command-default command-config))
 			current-val))
 	   (cmd-type (md:command-type command-config)))
-      (cond ((memq cmd-type '(int uint)) raw-val)
+      (cond ((memq cmd-type '(int uint reference)) raw-val)
 	    ((memq cmd-type '(key ukey))
 	     (car (hash-table-ref (md:command-keys command-config) raw-val)))
 	    (else "cmd type not implemented"))))
@@ -1542,12 +1542,16 @@
   ;;; - `order`: TODO
   ;;; - `symbol`: Produces an assembly level symbol, set to the current origin.
   ;;;
+  ;;; Onodes may have an ID (which must be unique). Identified onodes may be
+  ;;; referenced by other onodes. This is almost always required for groups
+  ;;; and blocks.
+  ;;;
   ;;; Onode-fn procedures have the signature
-  ;;; `(proc onode parent-node path-prefix config current-org symbols)`
-  ;;; where `onode` is the onode itself, `parent-inode` is the relevant portion
-  ;;; of the input node tree, `path-prefix` is ... TODO
+  ;;; `(proc onode parent-inode config current-org md-symbols)`
+  ;;; where `onode` is the onode itself, `parent-inode` is FIXME a misnomer,
+  ;;; it is the parent inode instance,
   ;;; `config` is the md:module's `md:config` structure, `current-org` is the
-  ;;; current asm origin address, and `symbols` is a list of additional asm
+  ;;; current asm origin address, and `md-symbols` is a list of additional mdal
   ;;; symbols generated.
   ;;; Onode-fns output a list containing the processed onode, the next origin
   ;;; address (if it can be deduced, otherwise #f), and the updated list of
@@ -1582,10 +1586,11 @@
 	       (if (eq? 'is-set? (car elem))
 		   `(,md:is-set?
 		     ((,md:mod-get-node-instance instance-id)
-		      (,alist-ref ,(string->symbol
-				    (string-drop (symbol->string (cadr elem))
-						 1))
-				  parent-node)))
+		      (,md:get-subnode
+		       parent-node
+		       (quote ,(string->symbol
+				(string-drop (symbol->string (cadr elem))
+					     1))))))
 		   (md:transform-compose-expr elem)))
 	      (else elem)))))
       (eval (append (list 'lambda '(instance-id parent-node md-symbols config)
@@ -1617,7 +1622,7 @@
 			       current-org
 			       (cons (list id current-org)
 				     md-symbols))
-			 (list onode current-org md-symbols)))))
+			 (list onode #f md-symbols)))))
 
   ;; TODO
   ;; 1. pass in current-org
@@ -1626,51 +1631,413 @@
   ;;    oasm node
   ;; 4. store asm text somehow for retrieval on asm output generation?
   (define (md:make-oasm proto-config #!key file code)
-    (let ((output (asm-file->bytes "unittests/config/Huby/huby.asm"
-				   "z80" 3 org: #x8000)))
-      (md:make-onode 'asm (length output) output #f)))
+    (let* ((output (asm-file->bytes "unittests/config/Huby/huby.asm"
+				    "z80" 3 org: #x8000))
+	   (output-length (length output)))
+      (md:make-onode 'asm output-length output #f)))
 
+  ;;; Extract required md-symbols from a compose expression
+  (define (md:get-required-symbols compose-expr)
+    (if (atom? compose-expr)
+	(if (symbol? compose-expr)
+	    (let ((symbol-str (symbol->string compose-expr)))
+	      (if (string-prefix? "$" symbol-str)
+		  (list (string->symbol (string-drop symbol-str 1)))
+		  '()))
+	    '())
+	(remove null? (flatten (map md:get-required-symbols compose-expr)))))
+
+  ;;; Check if all md-symbols required by an onode compose expression have been
+  ;;; resolved.
+  (define (md:have-required-symbols required-symbols available-symbols)
+    (not (any (lambda (sym) (not (alist-ref sym available-symbols)))
+	      required-symbols)))
 
   ;; TODO
   ;; - check if direct-resolvable
-  ;; result value -> bytes
   (define (md:make-ofield proto-config #!key bytes compose)
+    (let ((compose-proc (md:transform-compose-expr compose))
+	  (endianness (md:config-get-target-endianness proto-config))
+	  (required-symbols (md:get-required-symbols compose)))
+      (md:make-onode
+       'field bytes #f
+       (lambda (onode parent-inode config current-org md-symbols)
+	 (list (if (md:have-required-symbols required-symbols md-symbols)
+		   (md:make-onode
+		    'field bytes (md:int->bytes
+				  (compose-proc 0 parent-inode md-symbols
+						config)
+				  bytes endianness)
+		    #f)
+		   onode)
+	       (if current-org
+		   (+ current-org bytes)
+		   #f)
+	       md-symbols)))))
+
+  ;;; Returns a procedure that will transform a raw ref-matrix order (as
+  ;;; emitted by group onodes) into the desired {{layout}}.
+  ;; TODO loop points? Also, currently groups emit numeric refs,  but they
+  ;;      should emit pointers.
+  (define (md:make-order-transformer layout base-index)
+    (letrec ((transform-index
+	      (lambda (order-pos order-length column)
+		(if (null? order-pos)
+		    '()
+		    (cons (+ base-index (* order-length column)
+			     (car order-pos))
+			  (transform-index (cdr order-pos) order-length
+					   (+ 1 column)))))))
+      (match layout
+	(shared-numeric-matrix
+	 (lambda (raw-order)
+	   (flatten (map (lambda (order-pos)
+			   (transform-index order-pos (length raw-order) 0))
+			 raw-order))))
+	(pointer-matrix (lambda (raw-order) raw-order))
+	(else (error "unsupported order type")))))
+
+  ;; TODO
+  (define (md:make-oorder proto-config #!key from layout element-size
+			  (base-index 0))
+    (let ((transformer-proc (md:make-order-transformer layout base-index))
+	  (order-symbol (symbol-append '_mdal_order_ from)))
+      (md:make-onode
+       'order #f #f
+       (lambda (onode parent-inode config current-org md-symbols)
+	 (if (alist-ref order-symbol md-symbols)
+	     (let* ((output
+		     (flatten
+		      (map (lambda (elem)
+			     (md:int->bytes elem element-size
+					    (md:config-get-target-endianness
+					     config)))
+			   (transformer-proc
+			    (car (alist-ref (symbol-append '_mdal_order_
+							   from)
+					    md-symbols))))))
+		    (output-length (length output)))
+	       (if (alist-ref order-symbol md-symbols)
+		   (list (md:make-onode 'order output-length output #f)
+			 (if current-org
+			     (+ current-org output-length)
+			     #f)
+			 md-symbols)
+		   (list onode #f md-symbols)))
+	     (list onode #f md-symbols))))))
+
+  ;;; Helper for md:resize-block-instances
+  (define (md:make-instance-chunks inode-instances chunk-size)
+    (if (null-list? inode-instances)
+	'()
+	(let* ((next-chunk (if (< (length inode-instances) chunk-size)
+			       inode-instances
+			       (take inode-instances chunk-size)))
+	       (actual-chunk-size (length next-chunk)))
+	  (cons (zip (iota chunk-size)
+		     (append next-chunk
+			     (make-list (- chunk-size actual-chunk-size)
+					(md:make-inode-instance '()))))
+		(md:make-instance-chunks
+		 (drop inode-instances (length next-chunk))
+		 chunk-size)))))
+
+  ;;; Resize instances of the given {{iblock}} to {{size}} by merging all
+  ;;; instances according to {{order}}, then splitting into chunks. {{order}}
+  ;;; must be a simple list of instance IDs.
+  (define (md:resize-block-instances iblock size order config)
+    (let* ((field-ids (md:config-get-subnode-ids (md:inode-cfg-id iblock)
+						 (md:config-itree config)))
+	   (sorted-instances (map (lambda (pos)
+				    ((md:mod-get-node-instance pos) iblock))
+				  order))
+	   (merged-fields
+	    (map (lambda (field-id)
+		   (list field-id
+			 (concatenate
+			  (map (lambda (block-instance)
+				 (map cadr (md:inode-instances
+					    (md:get-subnode block-instance
+							    field-id))))
+			       sorted-instances))))
+		 field-ids))
+	   (split-fields (map (lambda (field)
+				(list (car field)
+				      (md:make-instance-chunks (cadr field)
+							       size)))
+			      merged-fields)))
+      (md:make-inode (md:inode-cfg-id iblock)
+		     (map (lambda (pos)
+			    (list pos (md:make-inode-instance
+				       (map (lambda (id)
+					      (md:make-inode
+					       id
+					       (list-ref (car (alist-ref
+							       id split-fields))
+							 pos)))
+					    field-ids))))
+			  (iota (length (cadar split-fields)))))))
+
+  ;;; Generate an order inode corresponding to a resized igroup.
+  (define (md:generate-order node-id length config)
+    (md:make-inode
+     node-id
+     (list (list 0 (md:make-inode-instance
+		    (map (lambda (id)
+			   (md:make-inode
+			    id
+			    (map (lambda (id)
+				   (list id (md:make-inode-instance id)))
+				 (iota length))))
+			 (md:config-get-subnode-ids
+			  node-id (md:config-itree config))))))))
+
+  ;;; Get all values of a block field node. This uses eval-field and transforms
+  ;;; results accordingly.
+  (define (md:get-column-values inode config)
+    (let ((command-cfg (md:config-get-inode-source-command
+			(md:inode-cfg-id inode) config)))
+      (map (lambda (instance-id)
+	     (md:eval-field instance-id inode command-cfg))
+	   (map car (md:inode-instances inode)))))
+
+  ;;; Resize all non-order blocks in the given igroup instance to
+  ;;; {{size}}, and emit a new igroup instance with a new order.
+  ;; TODO works, but missing test
+  ;; TODO must work for unordered groups as well
+  (define (md:resize-blocks parent-inode-instance parent-inode-id size config)
+    (let* ((order-id (symbol-append parent-inode-id '_ORDER))
+	   (block-subnode-ids (md:config-get-subnode-type-ids
+			       parent-inode-id config 'block))
+	   (original-fields+groups
+	    (filter (lambda (subnode)
+		      (not (memq (md:inode-cfg-id subnode)
+				 block-subnode-ids)))
+		    (md:inode-instance-val parent-inode-instance)))
+	   (original-blocks
+	    (filter (lambda (subnode)
+		      (and (memq (md:inode-cfg-id subnode)
+				 block-subnode-ids)
+			   (not (eq? order-id (md:inode-cfg-id subnode)))))
+		    (md:inode-instance-val parent-inode-instance)))
+	   (original-order ((md:mod-get-node-instance 0)
+			    (md:get-subnode parent-inode-instance order-id)))
+	   (resized-blocks
+	    (map (lambda (block)
+		   (md:resize-block-instances
+		    block size
+		    (md:get-column-values
+		     (md:get-subnode original-order
+				     (symbol-append 'R_
+						    (md:inode-cfg-id block)))
+		     config)
+		    config))
+		 original-blocks))
+	   (new-order (list (md:generate-order order-id
+					       (length (md:inode-instances
+							(car resized-blocks)))
+					       config))))
+      (md:make-inode-instance (append original-fields+groups resized-blocks
+				      new-order))))
+
+  ;;; Helper function for md:make-oblock.
+  ;; TODO should be merged with md:make-ofield. It's exactly the same code
+  ;;      except for the variable instance-id.
+  ;; TODO in theory we do not need to emit md-symbols (see md:resolve-oblock)
+  (define (md:make-oblock-field proto-config #!key bytes compose)
     (let ((compose-proc (md:transform-compose-expr compose))
 	  (endianness (md:config-get-target-endianness proto-config)))
       (md:make-onode
        'field bytes #f
-       (lambda (onode parent-inode config current-org md-symbols)
-	 (list (md:make-onode 'field bytes
-			      (md:int->bytes (compose-proc 0 parent-inode
-							   md-symbols config)
-					     bytes endianness)
-			      #f)
-	       (+ current-org bytes)
+       (lambda (onode parent-inode instance-id config current-org md-symbols)
+	 (list (md:make-onode
+		'field bytes
+		(md:int->bytes (compose-proc instance-id parent-inode
+					     md-symbols config)
+			       bytes endianness)
+		#f)
+	       (if current-org
+		   (+ current-org bytes)
+		   #f)
 	       md-symbols)))))
 
-  ;; TODO
-  (define (md:make-oorder proto-config #!key from layout base-index)
-    (md:make-onode 'order #f #f
-		   (lambda (onode parent-inode config current-org md-symbols)
-		     (let* ((output (list 1 5 2 6 3 7 4 8))
-			    (output-length (length (flatten output))))
-		       (list (md:make-onode 'order output-length output #f)
-			     (+ current-org output-length)
-			     md-symbols)))))
+  ;;; Helper function for md:make-oblock.
+  ;;; Generate an alist where the keys represent the oblock's output order, and
+  ;;; the values represent the associated input order rows. Rows are sorted
+  ;;; according to how the required-fields are specified.
+  (define (md:make-order-alist order required-fields config)
+    (let* ((order-instance (cadar (md:inode-instances order)))
+	   (order-length ((o length md:inode-instances car
+			     md:inode-instance-val)
+			  order-instance))
+	   (raw-order
+	    (map (lambda (order-pos)
+		   (map (lambda (field-id)
+			  (md:eval-field order-pos
+					 (md:get-subnode order-instance
+							 field-id)
+					 (md:config-get-inode-source-command
+					  field-id config)))
+			(map (lambda (sym)
+			       (symbol-append 'R_ sym))
+			     required-fields)))
+		 (iota order-length)))
+	   (unique-combinations '()))
+      (map reverse
+	   (map (lambda (order-pos)
+		  (let ((key+val (alist-ref order-pos unique-combinations)))
+		    (if key+val
+			key+val
+			(let ((newkey+val (list order-pos
+						(length unique-combinations))))
+			  (set! unique-combinations
+			    (cons newkey+val unique-combinations))
+			  newkey+val))))
+		raw-order))))
+
+  ;;; Helper for md:make-oblock
+  ;;; Constructs pseudo iblock instances that contain all the subnodes required
+  ;;; by an oblock field.
+  (define (md:make-pseudo-block-instances parent sources
+					  unique-order-combinations)
+    (letrec
+	((make-subnode-list
+	  (lambda (sources order-pos)
+	    (if (null-list? order-pos)
+		'()
+		(append (md:inode-instance-val
+			 (car (alist-ref (car order-pos)
+					 (md:inode-instances
+					  (md:get-subnode parent
+							  (car sources))))))
+			(make-subnode-list (cdr sources) (cdr order-pos)))))))
+      (map (lambda (order-pos)
+	     (md:make-inode-instance (make-subnode-list sources order-pos)))
+	   (map cadr unique-order-combinations))))
+
+  ;;; Helper for md:make-oblock. Resolve the oblock node value.
+  ;;; Returns a list containing the oblock in car and updated origin in cadr.
+  ;; Do not need to track symbols because oblock fields will not emit any. This
+  ;; may change in the future though. TODO
+  ;; TODO currently just returns the onode val
+  (define (md:resolve-oblock iblock-instances field-prototypes
+			     config current-org md-symbols)
+    (let* ((origin current-org)
+	   (final-result
+	    (map-in-order
+	     (lambda (block-instance)
+	       (map-in-order
+		(lambda (row-pos)
+		  (map-in-order
+		   (lambda (field-prototype)
+		     (let ((result ((md:onode-fn field-prototype)
+				    field-prototype block-instance row-pos
+				    config origin md-symbols)))
+		       (set! origin (cadr result))
+		       (md:onode-val (car result))))
+		   field-prototypes))
+		(iota ((o length md:inode-instances car md:inode-instance-val)
+		       block-instance))))
+	     iblock-instances)))
+      (list final-result origin)))
 
   ;; TODO
-  ;; multiple sources? should merge all relevant sources in a pseudo parent
-  ;; when passing to field compose proc
-  (define (md:make-oblock proto-config #!key id from resize list nodes)
-    (md:make-onode 'block #f #f
-		   (lambda (onode parent-inode config current-org md-symbols)
-		     (map (lambda (field)
-			    '())
-			  nodes))))
+  ;; each oblock needs to emit an order symbol which is _mdal_order_*id*
+  ;;; Oblock compilation works as follows:
+  ;;; 1. The parent inode instance contents are resized if necessary, and a new
+  ;;;    order is generated.
+  ;;; 2. An alist is created from the order, which assigns a key to each unique
+  ;;;    combination of required source iblocks.
+  ;;; 3. From the above alist, the output order is created, which is emitted as
+  ;;;    an md-symbol, with the key being '_mdal_order_ + the oblock id.
+  ;;; 4. From the order alist, an alist is derived with only unique key/value
+  ;;;    pairs.
+  ;;; 5. From the above alist, pseudo block instances are created, whose
+  ;;;    instance-val includes the combined field nodes of the required source
+  ;;;    iblock instances.
+  ;;; 6. The pseudo block instances are passed to the field evaluators.
+  (define (md:make-oblock proto-config #!key id from resize nodes)
+    (let* ((parent-inode-id (car (md:config-get-node-ancestors-ids
+				  (car from) (md:config-itree proto-config))))
+	   (order-id (symbol-append parent-inode-id '_ORDER))
+	   (field-prototypes (map (lambda (node)
+				    (apply md:make-oblock-field
+					   (cons proto-config (cdr node))))
+				  nodes)))
+      (md:make-onode
+       'block #f #f
+       (lambda (onode parent-inode config current-org md-symbols)
+	 (let* ((parent (if resize
+			    (md:resize-blocks parent-inode parent-inode-id
+					      resize config)
+			    parent-inode))
+		(order-alist
+		 (md:make-order-alist (md:get-subnode parent order-id)
+				      from config))
+		(unique-order-combinations (delete-duplicates order-alist))
+		(result
+		 (md:resolve-oblock (md:make-pseudo-block-instances
+				     parent from unique-order-combinations)
+				    field-prototypes config current-org
+				    md-symbols)))
+	   (list (md:make-onode 'block (length (flatten (car result)))
+				(car result) #f)
+		 (cadr result)
+		 (cons (list (symbol-append '_mdal_order_ id)
+			     (map car order-alist))
+			 md-symbols)))))))
+
+  ;;; Determine the order symbol names that will be emitted by an ogroup's
+  ;;; oblock members
+  (define (md:get-oblock-order-ids group-nodes)
+    (map (lambda (oid)
+	   (symbol-append '_mdal_order_ oid))
+	 (map (lambda (node)
+		(apply (lambda (#!key id) id)
+		       (cdr node)))
+	      (filter (lambda (node) (eq? 'block (car node)))
+		      group-nodes))))
 
   ;; TODO
-  (define (md:make-ogroup proto-config #!key id from)
-    '())
+  ;; - groups must always emit a pointer matrix order as symbol
+  ;;   -> must use "virtual" pointers if current-org is not available
+  ;;      -> always use "virtual" pointers and only replace them later?
+  ;;         -> or use something like force/delay
+  ;;            -> or generally use virtual pointers for everything and only
+  ;;               resolve on final output -> most flexible solution
+  (define (md:make-ogroup proto-config #!key id from nodes)
+    (let* ((otree (map (lambda (expr)
+			 (md:dispatch-onode-expr expr proto-config))
+		       nodes))
+	   (generate-order
+	    (lambda (syms)
+	      (list (symbol-append '_mdal_order_ id)
+		    (apply zip (map (lambda (id)
+				      (car (alist-ref id syms)))
+				    (md:get-oblock-order-ids nodes)))))))
+      (md:make-onode
+       'group #f #f
+       (lambda (onode parent-inode config current-org md-symbols)
+	 (let* ((subtree-result
+		 (md:compile-otree
+		  otree
+		  ;; TODO currently assuming there's only one instance, but
+		  ;;      actually must be done for every instance
+		  (car (alist-ref 0 (md:inode-instances
+				     (md:get-subnode parent-inode from))))
+		  config
+		  current-org md-symbols))
+		(subtree-size (apply + (map md:onode-size
+					    (car subtree-result))))
+		(new-symbols (third subtree-result)))
+	   (list (md:make-onode 'group subtree-size
+				(map md:onode-val (car subtree-result))
+				#f)
+		 (if current-org
+		     (+ current-org subtree-size)
+		     #f)
+		 (cons (generate-order new-symbols)
+		       md-symbols)))))))
 
   ;;; dispatch output note config expressions to the appropriate onode
   ;;; generators
@@ -1686,6 +2053,60 @@
 	     (else (error "unsupported output node type")))
 	   (cons proto-config (cdr expr))))
 
+  ;;; Do a single compiler pass run over the given otree.
+  ;;; Returns a list containing the updated otree in the 1st slot, the updated
+  ;;; origin in the 2nd slot, and the updated list of symbols in the 3rd slot.
+  (define (md:do-compiler-pass otree parent-inode config origin md-symbols)
+    (let* ((org origin)
+	   (syms md-symbols)
+	   (resolve-node
+	    (lambda (onode)
+	      (if (md:onode-fn onode)
+		  (let ((result ((md:onode-fn onode) onode
+				 parent-inode config org
+				 syms)))
+		    (set! org (cadr result))
+		    (set! syms (caddr result))
+		    (car result)) ;; was <result>
+		  (begin (when org (set! org (+ org (md:onode-size onode))))
+			 onode
+			 ;; (list onode org syms)
+			 ))))
+	   (new-tree (map-in-order resolve-node otree)))
+      (list new-tree org syms)
+      ;; TODO simplify
+      ;; new-tree
+      ))
+
+  ;;; Compile a local onode tree. Returns a list containing the resolved tree
+  ;;; in the first slot, the updated origin in the 2nd slot, and the updated
+  ;;; list of md-symbols in the 3rd slot.
+  ;;; Will throw an exception of type 'md:compiler-failed if the otree cannot
+  ;;; be resolved after 3 passes.
+  (define (md:compile-otree otree parent-inode config origin md-symbols)
+    (letrec
+	((run-compiler
+	  (lambda (current-otree current-symbols passes)
+	    (when (> passes 2) (raise-local 'md:compiler-failed))
+	    (let ((tree-result (md:do-compiler-pass otree parent-inode config
+						    origin current-symbols)))
+	      ;; if done resolving nodes
+	      (display "pass ")
+	      (display passes)
+	      (display " tree-result")
+	      (newline)
+	      (display tree-result)
+	      (newline)
+	      (if (not (any md:onode-fn (car tree-result)))
+		  tree-result
+		  (run-compiler (car tree-result) (caddr tree-result)
+				(+ passes 1)))))))
+      (display "otree")
+      (newline)
+      (display otree)
+      (newline)
+      (run-compiler otree md-symbols 0)))
+
   ;;; Generate a compiler from the given output config expression.
   ;;; {{proto-config}} must be a md:config struct with all fields resolved
   ;;; except the md:config-comiler itself.
@@ -1697,56 +2118,14 @@
   ;; TODO haven't thought about optional fields at all yet (how about "only-if")
   ;;      also, more conditions, eg. required-if begin etc...
   (define (md:make-compiler output-expr proto-config)
-    (letrec* ((done? (lambda (onodes)
-		       ;; TODO: can we short-circuit as
-		       ;; (not (any md:onode-fn onodes)) ?
-		       (not (any (lambda (node) (md:onode-fn node))
-				 onodes))))
-	      (ofield-fn-args '(source-nodes instance-id preceding-nodes
-					     symbols mod-config))
-	      (otree (map (lambda (expr)
-			    (md:dispatch-onode-expr expr proto-config))
-			  output-expr))
-	      (run-compiler
-	       (lambda (mod output-tree symbols passes)
-		 (when (> 3 passes) (raise-local 'md:compiler-failed))
-		 ;; result = (list new-otree new-symbols)
-		 ;; pass in to node resolver:
-		 ;;    the onode itself
-		 ;;    relevant source nodes (in this case, global-node)
-		 ;;      or paths + mod <- better, because allows arbitrary acc.
-		 ;;      NO, because path would require knowing parent instances.
-		 ;;    instance id
-		 ;;    previous passed nodes
-		 ;;    symbols
-		 ;;    mod-config
-		 ;; TODO this is not up to date, and missing current-org
-		 (letrec* ((resolve-node (lambda (onode parent-inode instance-id
-						       passed-tree symbols)
-					   (if (md:onode-fn onode)
-					       ((md:onode-fn onode) onode)
-					       (list onode symbols))))
-			   (resolve-otree
-			    (lambda (tree passed-tree syms)
-			      (if (null-list? tree)
-				  (list passed-tree syms)
-				  ;; res = (list new-onode new-symbols)
-				  (let ((res (resolve-node (car tree)
-							   '() 0
-							   passed-tree syms)))
-				    (cons (car res)
-					  (resolve-otree (cdr tree)
-							 (cons (car res)
-							       (cdr passed-tree))
-							 (cadr res)))))))
-			   (result (resolve-otree output-tree '() symbols)))
-		   (if (done? (car result))
-		       (car result)
-		       (run-compiler mod (car result) (cadr result)
-				     (+ 1 passes)))))))
+    (let ((otree (map (lambda (expr)
+			(md:dispatch-onode-expr expr proto-config))
+		      output-expr)))
       (lambda (mod origin)
-	(run-compiler mod otree `((_mdal_origin ,origin))
-		      0))))
+	(md:compile-otree otree ((md:mod-get-node-instance 0)
+				 (md:mod-global-node mod))
+			  (md:mod-cfg mod)
+			  origin '()))))
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `md:read-config`.
@@ -1771,7 +2150,7 @@
 
   ;;; Evaluate the given {{mdconf}} s-expression, and return a md:config record.
   (define (md:read-config mdconf path-prefix)
-    ;; TODO unify tags/flags (should be called tags for all elems)
+    ;; TODO unify tags/flags (should be called use for all elems)
     (if (and (pair? mdconf)
 	     (eqv? 'mdalconfig (car mdconf)))
 	(apply md:eval-mdalconfig (cons path-prefix (cdr mdconf)))
