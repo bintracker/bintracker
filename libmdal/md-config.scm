@@ -2138,10 +2138,10 @@
 			(md:dispatch-onode-expr expr proto-config))
 		      output-expr)))
       (lambda (mod origin)
-	(md:compile-otree otree ((md:mod-get-node-instance 0)
-				 (md:mod-global-node mod))
-			  (md:mod-cfg mod)
-			  origin '()))))
+	(car (md:compile-otree otree ((md:mod-get-node-instance 0)
+				      (md:mod-global-node mod))
+			       (md:mod-cfg mod)
+			       origin '())))))
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `md:read-config`.
