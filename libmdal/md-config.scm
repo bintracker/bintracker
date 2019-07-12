@@ -1602,10 +1602,10 @@
   (define (md:int->bytes val number-of-bytes endian)
     (letrec* ((make-bytes (lambda (restval remaining-bytes)
 			    (if (= 0 remaining-bytes)
-			       '()
-			       (cons (bitwise-and #xff restval)
-				     (make-bytes (quotient restval #x100)
-						 (sub1 remaining-bytes))))))
+				'()
+				(cons (bitwise-and #xff restval)
+				      (make-bytes (quotient restval #x100)
+						  (sub1 remaining-bytes))))))
 	      (byte-list (make-bytes val number-of-bytes)))
       (if (eq? 'md:little-endian endian)
 	  byte-list
@@ -1727,20 +1727,38 @@
 	     (list onode #f md-symbols))))))
 
   ;;; Helper for md:resize-block-instances
-  (define (md:make-instance-chunks inode-instances chunk-size)
-    (if (null-list? inode-instances)
-	'()
-	(let* ((next-chunk (if (< (length inode-instances) chunk-size)
-			       inode-instances
-			       (take inode-instances chunk-size)))
-	       (actual-chunk-size (length next-chunk)))
-	  (cons (zip (iota chunk-size)
-		     (append next-chunk
-			     (make-list (- chunk-size actual-chunk-size)
-					(md:make-inode-instance '()))))
-		(md:make-instance-chunks
-		 (drop inode-instances (length next-chunk))
-		 chunk-size)))))
+  ;;; Takes a list of ifield instances and splits it into chunks of
+  ;;; {{chunk-size}}
+  (define (md:make-instance-chunks inode-cmd-config inode-instances chunk-size)
+    (letrec*
+	((use-last-set? (memq 'use_last_set
+			      (md:command-flags inode-cmd-config)))
+	 (get-last-set
+	  (lambda (instances previous-last-set)
+	    (let ((last-set
+		   (find (lambda (instance)
+			   (not (null? (md:inode-instance-val instance))))
+			 (reverse instances))))
+	      (if last-set last-set previous-last-set))))
+	 (make-chunks
+	  (lambda (instances last-set)
+	    (if (null-list? instances)
+		'()
+		(let* ((next-chunk (if (< (length instances) chunk-size)
+				       instances
+				       (take instances chunk-size)))
+		       (actual-chunk-size (length next-chunk)))
+		  (cons (zip (iota chunk-size)
+			     (append (if (and use-last-set?
+					      (null? (md:inode-instance-val
+						      (car next-chunk))))
+					 (cons last-set (cdr next-chunk))
+					 next-chunk)
+				     (make-list (- chunk-size actual-chunk-size)
+						(md:make-inode-instance '()))))
+			(make-chunks (drop instances (length next-chunk))
+				     (get-last-set next-chunk last-set))))))))
+      (make-chunks inode-instances (md:make-inode-instance '()))))
 
   ;;; Resize instances of the given {{iblock}} to {{size}} by merging all
   ;;; instances according to {{order}}, then splitting into chunks. {{order}}
@@ -1761,22 +1779,25 @@
 							    field-id))))
 			       sorted-instances))))
 		 field-ids))
-	   (split-fields (map (lambda (field)
-				(list (car field)
-				      (md:make-instance-chunks (cadr field)
-							       size)))
-			      merged-fields)))
-      (md:make-inode (md:inode-cfg-id iblock)
-		     (map (lambda (pos)
-			    (list pos (md:make-inode-instance
-				       (map (lambda (id)
-					      (md:make-inode
-					       id
-					       (list-ref (car (alist-ref
-							       id split-fields))
-							 pos)))
-					    field-ids))))
-			  (iota (length (cadar split-fields)))))))
+	   (split-fields
+	    (map (lambda (field)
+		   (list (car field)
+			 (md:make-instance-chunks
+			  (md:config-get-inode-source-command (car field)
+							      config)
+			  (cadr field)
+			  size)))
+		 merged-fields)))
+      (md:make-inode
+       (md:inode-cfg-id iblock)
+       (map (lambda (pos)
+	      (list pos (md:make-inode-instance
+			 (map (lambda (id)
+				(md:make-inode
+				 id (list-ref (car (alist-ref id split-fields))
+					      pos)))
+			      field-ids))))
+	    (iota (length (cadar split-fields)))))))
 
   ;;; Generate an order inode corresponding to a resized igroup.
   (define (md:generate-order node-id length config)
@@ -1985,7 +2006,7 @@
 		 (cadr result)
 		 (cons (list (symbol-append '_mdal_order_ id)
 			     (map car order-alist))
-			 md-symbols)))))))
+		       md-symbols)))))))
 
   ;;; Determine the order symbol names that will be emitted by an ogroup's
   ;;; oblock members
