@@ -2037,7 +2037,7 @@
 		     (+ current-org subtree-size)
 		     #f)
 		 (cons (generate-order new-symbols)
-		       md-symbols)))))))
+		       new-symbols)))))))
 
   ;;; dispatch output note config expressions to the appropriate onode
   ;;; generators
@@ -2062,21 +2062,15 @@
 	   (resolve-node
 	    (lambda (onode)
 	      (if (md:onode-fn onode)
-		  (let ((result ((md:onode-fn onode) onode
-				 parent-inode config org
-				 syms)))
+		  (let ((result ((md:onode-fn onode) onode parent-inode config
+				 org syms)))
 		    (set! org (cadr result))
 		    (set! syms (caddr result))
-		    (car result)) ;; was <result>
+		    (car result))
 		  (begin (when org (set! org (+ org (md:onode-size onode))))
-			 onode
-			 ;; (list onode org syms)
-			 ))))
+			 onode))))
 	   (new-tree (map-in-order resolve-node otree)))
-      (list new-tree org syms)
-      ;; TODO simplify
-      ;; new-tree
-      ))
+      (list new-tree org syms)))
 
   ;;; Compile a local onode tree. Returns a list containing the resolved tree
   ;;; in the first slot, the updated origin in the 2nd slot, and the updated
@@ -2088,8 +2082,9 @@
 	((run-compiler
 	  (lambda (current-otree current-symbols passes)
 	    (when (> passes 2) (raise-local 'md:compiler-failed))
-	    (let ((tree-result (md:do-compiler-pass otree parent-inode config
-						    origin current-symbols)))
+	    (let ((tree-result
+		   (md:do-compiler-pass current-otree parent-inode config
+					origin current-symbols)))
 	      ;; if done resolving nodes
 	      (display "pass ")
 	      (display passes)
