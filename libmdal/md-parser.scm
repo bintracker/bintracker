@@ -307,7 +307,7 @@
       (let ((mod-sexp (md:file->sexp filepath)))
 	(begin (md:check-module-version mod-sexp)
 	       (let* ((cfg-name (md:mod-get-config-name mod-sexp))
-		      (config (md:mdconf->config
+		      (config (md:file->config
 			       (string-append config-dir-path cfg-name "/"
 					      cfg-name ".mdconf")
 			       path-prefix)))

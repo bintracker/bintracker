@@ -154,9 +154,13 @@
   (define (md:mod-compile mod origin)
     ((md:config-compiler (md:mod-cfg mod)) mod origin))
 
-  ;;; compile an md:module into a bytevec
+  ;; TODO
   (define (md:mod->bin mod origin)
-    (md:otree->bin (md:mod-compile mod origin)))
+    (flatten (map md:onode-val
+		  (remove (lambda (onode)
+			    (memq (md:onode-type onode)
+				  '(comment symbol)))
+			  (md:mod-compile mod origin)))))
 
   ;;; compile an md:module into an assembly source
   (define (md:mod->asm mod origin)
@@ -169,5 +173,49 @@
       (lambda (port)
 	(write-u8vector (list->u8vector (md:mod->bin mod origin))
 			port))))
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### additional accessors
+  ;; TODO currently unused, but should be useful in the future
+  ;; ---------------------------------------------------------------------------
+
+  ;;; returns the group instance's block nodes, except the order node, which can
+  ;;; be retrieved with md:mod-get-group-instance-order instead
+  ;; TODO currently dead code, but should be useful
+  (define (md:mod-get-group-instance-blocks igroup-instance igroup-id config)
+    (let ((subnode-ids
+  	   (filter (lambda (id)
+  		     (not (md:symbol-contains id "_ORDER")))
+  		   (md:config-get-subnode-type-ids igroup-id config 'block))))
+      (map (lambda (id)
+  	     (md:get-subnode igroup-instance id))
+  	   subnode-ids)))
+
+  ;;; returns the group instance's order node (instance 0)
+  ;; TODO currently dead code, but should be useful
+  (define (md:mod-get-group-instance-order igroup-instance igroup-id)
+    ((md:mod-get-node-instance 0)
+     (md:get-subnode igroup-instance (md:symbol-append igroup-id "_ORDER"))))
+
+  ;;; helper, create a "default" order with single field instances all set to 0
+  ;; TODO expand so it takes a numeric arg and produces n field node instances
+  ;; TODO currently dead code, but should be useful
+  (define (md:mod-make-default-order len igroup-id config)
+    (letrec* ((order-id (md:symbol-append igroup-id "_ORDER"))
+  	      (subnode-ids
+  	       (md:config-get-subnode-ids order-id (md:config-itree config)))
+  	      (make-generic-instances
+  	       (lambda (start-id)
+  		 (if (= start-id len)
+  		     '()
+  		     (cons (list start-id (md:make-inode-instance start-id))
+  			   (make-generic-instances (+ start-id 1)))))))
+      (md:make-inode
+       order-id
+       (list (list 0 (md:make-inode-instance
+  		      (map (lambda (id)
+  			     (md:make-inode id (make-generic-instances 0)))
+  			   subnode-ids)))))))
+
 
   ) ;; end module mdal

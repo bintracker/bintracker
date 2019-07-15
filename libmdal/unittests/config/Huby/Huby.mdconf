@@ -1,51 +1,33 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<mdalconfig version="2" target="spectrum48">
+(mdalconfig
+ version: 2 target: spectrum48
+ description: "A simple 2 channel pin pulse (PFM) engine in less than 100 bytes.
+ By Shiru 2011, 2013."
 
-  <description>A simple 2 channel pin pulse (PFM) engine in less than 100 bytes. By Shiru 2011, 2013.</description>
+ commands: ((command id: BPM bits: 16 type: uint default: 140)
+	    (command id: NOTE bits: 8 type: ukey
+		     tags: (enable_modifiers use_last_set is_note)
+		     keys: (make-inverse-dividers 118 8 0 -1)
+		     default: "rest")
+	    (command id: DRUM type: trigger default: #f description:
+		     "Trigger a click drum. Replaces note on channel 1."))
 
-  <command id="BPM" bits="16" type="uint" default="140">
-    <description>Set the speed of the tune.</description>
-    <range min="1" />
-  </command>
-  <command id="NOTE" bits="8" type="ukey" tags="Note"
-           flags="enable_modifiers, use_last_set, is_note"
-           map="func(md:make-dividers 118 8 0 -4)" default="rest">
-    <description>Set the note for the given channel.</description>
-  </command>
-  <command id="DRUM" type="trigger" default="false">
-    <description>Trigger a click drum. Replaces note on channel 1.</description>
-  </command>
+ input: ((field from: BPM)
+	 (group id: PATTERNS flags: (ordered)
+		nodes: ((block id: DRUMS nodes: ((field from: DRUM)))
+			(clone 2 (block id: CH
+					nodes: ((field from: NOTE)))))))
 
-  <ifield from="BPM" />
-  <igroup id="PATTERNS" flags="ordered">
-    <iblock id="DRUMS">
-      <ifield from="DRUM" />
-    </iblock>
-    <clone count="2">
-      <iblock id="CH">
-    	<ifield from="NOTE" />
-      </iblock>
-    </clone>
-  </igroup>
-
-  <output>
-    <comment>sequence</comment>
-    <field bytes="2">(/ 1779661 ?BPM)</field><!--cpufreq*60/cyclecount*BPM)-->
-    <field bytes="2">(- $sequence_end 8)</field>
-    <order from="!PATTERNS" layout="matrix" base_index="1"/>
-    <!--ok, but how to handle transpose/jumps? Probably better to define fields.-->
-    <field bytes="1">0</field>
-    <symbol id="sequence_end" />
-    <group id="PATTERNS" from="?PATTERNS" resize="8" flags="numeric_order">
-      <block from="?CH1, ?DRUMS">
-	<!-- could wrap fields in a row tag, this would allow for additional single fields (eg. size etc)-->
-	<!--TODO: <field bytes="1">(if (md:is-set? ?DRUM) #x2c ?NOTE1)</field>-->
-	<field bytes="1">?NOTE1</field>
-      </block>
-      <block from="?CH2">
-	<field bytes="1">?NOTE2</field>
-      </block>
-    </group>
-  </output>
-
-</mdalconfig>
+ output: ((asm file: "huby.asm")
+	  (comment "sequence")
+	  (field bytes: 2 compose: (quotient 1779661 ?BPM))
+	  (field bytes: 2 compose: (- $sequence_end 8))
+	  (order from: PATTERNS layout: shared-numeric-matrix
+		 element-size: 1 base-index: 1)
+	  (field bytes: 1 compose: 0)
+	  (symbol id: sequence_end)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CH1 from: (CH1 DRUMS) resize: 8
+			  nodes: ((field bytes: 1 compose: (if (is-set? ?DRUM)
+							       #x2c ?NOTE1))))
+		  (block id: CH2 from: (CH2) resize: 8
+			 nodes: ((field bytes: 1 compose: ?NOTE2)))))))
