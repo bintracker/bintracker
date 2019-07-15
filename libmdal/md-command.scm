@@ -110,8 +110,8 @@
       (raise-local 'md:nonnumeric-command-range)))
 
   ;; TODO pass in target-cpu-speed
-  (define (md:eval-command path-prefix #!key id type bits default reference-to
-			   keys (tags '()) range (description ""))
+  (define (md:eval-command path-prefix cpu-speed #!key id type bits default
+			   reference-to keys (tags '()) range (description ""))
     (handle-exceptions
 	exn
 	(cond ((exn-any-of? exn '(md:missing-command-specifier
@@ -128,16 +128,25 @@
 	      (else (abort exn)))
       (md:check-command-spec id type bits default reference-to keys range)
       ;; TODO implement ranges, keymap files
-      (list id (md:make-command type
-				(match type
-				  ('string 0)
-				  ('trigger 1)
-				  (else bits))
-				default reference-to
-				(eval `(let ((make-dividers md:make-dividers)
-					     (make-inverse-dividers
-					      md:make-inverse-dividers))
-					 ,keys))
-				tags range description))))
+      (list id (md:make-command
+		type
+		(match type
+		  ('string 0)
+		  ('trigger 1)
+		  (else bits))
+		default reference-to
+		(eval `(let ((make-dividers
+			      (lambda (cycles bits rest . shift)
+				(md:make-dividers ,cpu-speed cycles bits rest
+						  (if (null? shift)
+						      1 (car shift)))))
+			     (make-inverse-dividers
+			      (lambda (cycles bits rest . shift)
+				(md:make-inverse-dividers
+				 ,cpu-speed cycles bits rest
+				 (if (null? shift)
+				     1 (car shift))))))
+			 ,keys))
+		tags range description))))
 
   )  ;; end module md-command

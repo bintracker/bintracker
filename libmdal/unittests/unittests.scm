@@ -57,7 +57,7 @@
 	  (= 13 (car (hash-table-ref my-note-table "c2"))))))
 
  (test-assert "md:make-dividers"
-   (let ((my-note-table (md:make-dividers 118 8 0 -4)))
+   (let ((my-note-table (md:make-dividers 3500000 118 8 0 -4)))
      (and (= 56 (hash-table-size my-note-table))
 	  (string= "e2" (md:lowest-note my-note-table))
 	  (string= "a#6" (md:highest-note my-note-table))))))

@@ -420,14 +420,17 @@
   ;;; hash table of md:commands also contains the required auto-generated order
   ;;; and default commands. An itree (nested list of inode IDs) must be passed
   ;;; in for this purpose.
-  (define (md:get-config-commands commands itree path-prefix)
+  (define (md:get-config-commands commands itree path-prefix target)
     (hash-table-merge
      (alist->hash-table
       (append (md:make-default-commands)
 	      (map (lambda (cmd)
 		     (if (and (pair? cmd)
 			      (eqv? 'command (car cmd)))
-			 (apply md:eval-command (cons path-prefix (cdr cmd)))
+			 (apply md:eval-command
+				(append (list path-prefix
+					      (md:target-clock-speed target))
+					(cdr cmd)))
 			 (raise-local 'md:not-command cmd)))
 		   commands)))
      (md:create-order-commands itree)))
@@ -1212,7 +1215,8 @@
 			    (md:make-default-inode-configs))))
 	   (proto-config
 	    (md:make-config
-	     _target "" (md:get-config-commands commands itree path-prefix)
+	     _target "" (md:get-config-commands commands itree path-prefix
+						_target)
 	     itree _input #f)))
       (md:make-config _target description (md:config-commands proto-config)
 		      itree _input (md:make-compiler output proto-config))))

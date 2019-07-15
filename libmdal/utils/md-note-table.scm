@@ -26,66 +26,61 @@
     (* 8372.018 (expt (expt 2 (/ 1 12))
                       (- (- 108 offset)))))
 
-  ;; TODO: temporarily hardcode **cpu-speed** until we can pass it down through
-  ;; fn call
-
-  (define **cpu-speed** 3500000)
-
-  (define (md:freq->divider freq cycles bits)
-    (inexact->exact (round (* (/ (* freq cycles) **cpu-speed**)
+  (define (md:freq->divider freq cycles bits cpu-speed)
+    (inexact->exact (round (* (/ (* freq cycles) cpu-speed)
                               (expt 2 bits)))))
 
-  (define (md:freq->inverse-divider freq cycles)
-    (inexact->exact (round (/ (/ **cpu-speed** cycles)
+  (define (md:freq->inverse-divider freq cycles cpu-speed)
+    (inexact->exact (round (/ (/ cpu-speed cycles)
 			      freq))))
 
-  (define (md:offset->divider offset cycles bits)
-    (md:freq->divider (md:offset->freq offset) cycles bits))
+  (define (md:offset->divider offset cycles bits cpu-speed)
+    (md:freq->divider (md:offset->freq offset) cycles bits cpu-speed))
 
-  (define (md:offset->inverse-divider offset cycles)
-    (md:freq->inverse-divider (md:offset->freq offset) cycles))
+  (define (md:offset->inverse-divider offset cycles cpu-speed)
+    (md:freq->inverse-divider (md:offset->freq offset) cycles cpu-speed))
 
   (define (md:offset->octave offset) (quotient offset 12))
 
   ;; lower bound defined as: the offset in half-tones from C-0 that will
   ;; produce a divider value that is 1) > 0, and 2) distinct from the divider
   ;; value produced by (+ offset 1)
-  (define (md:get-lower-bound cycles bits)
+  (define (md:get-lower-bound cycles bits cpu-speed)
     (do ((offs 0 (+ offs 1)))
-	((and (> (md:offset->divider offs cycles bits) 0)
-              (not (= (md:offset->divider offs cycles bits)
-                      (md:offset->divider (+ offs 1) cycles bits)))
-	      (not (= (md:offset->divider (+ offs 1) cycles bits)
-		      (md:offset->divider (+ offs 2) cycles bits))))
+	((and (> (md:offset->divider offs cycles bits cpu-speed) 0)
+              (not (= (md:offset->divider offs cycles bits cpu-speed)
+                      (md:offset->divider (+ offs 1) cycles bits cpu-speed)))
+	      (not (= (md:offset->divider (+ offs 1) cycles bits cpu-speed)
+		      (md:offset->divider (+ offs 2) cycles bits cpu-speed))))
 	 offs)))
 
   ;; upper bound defined as: the offset in half-tones from C-0 that will
   ;; produce a divider value that is 1) > 0, and 2) distinct from the divider
   ;; value produced by (+ offset 1)
-  (define (md:get-upper-bound-inverse cycles bits)
-    (do ((offs (md:get-lower-bound-inverse cycles bits) (+ offs 1)))
-	((or (<= (md:offset->inverse-divider offs cycles) 0)
-             (= (md:offset->inverse-divider offs cycles)
-                (md:offset->inverse-divider (+ offs 1) cycles))
-	     (= (md:offset->inverse-divider (+ offs 1) cycles)
-		(md:offset->inverse-divider (+ offs 2) cycles)))
+  (define (md:get-upper-bound-inverse cycles bits cpu-speed)
+    (do ((offs (md:get-lower-bound-inverse cycles bits cpu-speed) (+ offs 1)))
+	((or (<= (md:offset->inverse-divider offs cycles cpu-speed) 0)
+             (= (md:offset->inverse-divider offs cycles cpu-speed)
+                (md:offset->inverse-divider (+ offs 1) cycles cpu-speed))
+	     (= (md:offset->inverse-divider (+ offs 1) cycles cpu-speed)
+		(md:offset->inverse-divider (+ offs 2) cycles cpu-speed)))
 	 offs)))
 
   ;; lower bound defined as: the offset in half-tones from C-0 that will
   ;; produce a divider value that is larger than the max integer value
   ;; representable in <bits>
-  (define (md:get-lower-bound-inverse cycles bits)
+  (define (md:get-lower-bound-inverse cycles bits cpu-speed)
     (do ((offs 0 (+ offs 1)))
-	((< (md:offset->inverse-divider offs cycles)
+	((< (md:offset->inverse-divider offs cycles cpu-speed)
             (expt 2 bits))
 	 offs)))
 
   ;; upper bound defined as: the offset in half-tones from C-0 that will
   ;; produce a divider value that is larger than the max integer value
   ;; representable in <bits>
-  (define (md:get-upper-bound cycles bits)
+  (define (md:get-upper-bound cycles bits cpu-speed)
     (do ((offs 0 (+ offs 1)))
-	((>= (md:offset->divider offs cycles bits)
+	((>= (md:offset->divider offs cycles bits cpu-speed)
              (expt 2 bits))
 	 offs)))
 
@@ -94,20 +89,22 @@
                    (number->string (md:offset->octave offset))))
 
   ;;;
-  (define (md:make-dividers-range cycles beg end rest bits)
+  (define (md:make-dividers-range cycles beg end rest bits cpu-speed)
     (if (> beg end)
         (list (list "rest" rest))
         (cons (list (md:offset->note-name beg)
-                    (md:offset->divider beg cycles bits))
-              (md:make-dividers-range cycles (+ 1 beg) end rest bits))))
+                    (md:offset->divider beg cycles bits cpu-speed))
+              (md:make-dividers-range cycles (+ 1 beg) end rest bits
+				      cpu-speed))))
 
   ;;;
-  (define (md:make-inverse-dividers-range cycles beg end rest)
+  (define (md:make-inverse-dividers-range cycles beg end rest cpu-speed)
     (if (> beg end)
 	(list (list "rest" rest))
 	(cons (list (md:offset->note-name beg)
-                    (md:offset->inverse-divider beg cycles))
-              (md:make-inverse-dividers-range cycles (+ 1 beg) end rest))))
+                    (md:offset->inverse-divider beg cycles cpu-speed))
+              (md:make-inverse-dividers-range cycles (+ 1 beg) end rest
+					      cpu-speed))))
 
   ;;; generate a note table with divider->note-name mappings
   ;;; wrapper func for make-dividers-range that will auto-deduce optimal range
@@ -115,21 +112,22 @@
   ;;;             bits - size of the dividers, as number of bits
   ;;;             rest - the value that represents a rest/note-off
   ;;;             [shift] - number of octaves to shift the table
-  (define (md:make-dividers cycles bits rest . shift)
+  (define (md:make-dividers cpu-speed cycles bits rest . shift)
     (let* ((prescaler (if (null? shift)
 			  1
 			  (expt 2 (- (car shift)))))
 	   (prescaled-cycles (* cycles prescaler)))
       (alist->hash-table
-       (md:make-dividers-range prescaled-cycles
-                               (md:get-lower-bound prescaled-cycles bits)
-                               (md:get-upper-bound prescaled-cycles bits)
-                               rest bits))))
+       (md:make-dividers-range
+	prescaled-cycles
+        (md:get-lower-bound prescaled-cycles bits cpu-speed)
+        (md:get-upper-bound prescaled-cycles bits cpu-speed)
+        rest bits cpu-speed))))
 
   ;;; generate a note table with inverse divider->node-name mappings
   ;;; ie. dividers are countdown values
   ;;; see `md:make-dividers` for further documentation
-  (define (md:make-inverse-dividers cycles bits rest . shift)
+  (define (md:make-inverse-dividers cpu-speed cycles bits rest . shift)
     (let* ((prescaler (if (null? shift)
 			  1
 			  (expt 2 (- (car shift)))))
@@ -137,9 +135,9 @@
       (alist->hash-table
        (md:make-inverse-dividers-range
 	prescaled-cycles
-        (md:get-lower-bound-inverse prescaled-cycles bits)
-        (md:get-upper-bound-inverse prescaled-cycles bits)
-        rest))))
+        (md:get-lower-bound-inverse prescaled-cycles bits cpu-speed)
+        (md:get-upper-bound-inverse prescaled-cycles bits cpu-speed)
+        rest cpu-speed))))
 
   ;;; generate a note table with simple note-name->index mappings
   ;;; beg   lowest note, as offset from c-0
