@@ -111,7 +111,7 @@
 
   ;; TODO pass in target-cpu-speed
   (define (md:eval-command path-prefix #!key id type bits default reference-to
-			   keys (tags '()) range description)
+			   keys (tags '()) range (description ""))
     (handle-exceptions
 	exn
 	(cond ((exn-any-of? exn '(md:missing-command-specifier
