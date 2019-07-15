@@ -5,7 +5,7 @@
 (module mdal *
 
   (import scheme (chicken base) (chicken module) (chicken format)
-	  (chicken.string) (chicken bitwise)
+	  (chicken string) (chicken bitwise)
 	  srfi-1 srfi-4 srfi-13 srfi-69
 	  matchable md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
