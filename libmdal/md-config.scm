@@ -1329,20 +1329,21 @@
 		(filter (lambda (node)
 			  (eq? 'block (car node)))
 			subnodes))
-	   (map (lambda (node)
-		  (map (lambda (sym)
-			 (list (string->symbol (string-append "R_" sym))))
-		       (map string-concatenate
-			    (zip (make-list (second node)
-					    (apply (lambda (#!key id)
-						     (->string id))
-						   (cdr (third node))))
-				 (map number->string
-				      (iota (second node) 1 1))))))
-		(filter (lambda (node)
-			  (and (eq? 'clone (car node))
-			       (eq? 'block (car (third node)))))
-			subnodes)))))
+	   (concatenate
+	    (map (lambda (node)
+		   (map (lambda (sym)
+			  (list (string->symbol (string-append "R_" sym))))
+			(map string-concatenate
+			     (zip (make-list (second node)
+					     (apply (lambda (#!key id)
+						      (->string id))
+						    (cdr (third node))))
+				  (map number->string
+				       (iota (second node) 1 1))))))
+		 (filter (lambda (node)
+			   (and (eq? 'clone (car node))
+				(eq? 'block (car (third node)))))
+			 subnodes))))))
 
   ;;; Generate the local itree for an inode. This procedure should be called by
   ;;; `apply`ing it to an inode config expression.
