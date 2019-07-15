@@ -10,7 +10,7 @@
 	  matchable md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
 
-  (define md:mdal-version 2)
+  (define-constant md:mdal-version 2)
 
   ;;----------------------------------------------------------------------------
   ;;; ### output generation
