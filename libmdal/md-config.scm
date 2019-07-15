@@ -669,7 +669,7 @@
 
   ;;; Generate an onode config of type 'symbol. Call this procedure by
   ;;; `apply`ing it to an onode config expression.
-  (define (md:make-osymbol proto-config #!key id)
+  (define (md:make-osymbol proto-config path-prefix #!key id)
     (unless id (raise-local 'md:missing-onode-id))
     (md:make-onode 'symbol 0 #f
 		   (lambda (onode parent-inode config current-org md-symbols)
@@ -686,9 +686,11 @@
   ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
   ;;    oasm node
   ;; 4. store asm text somehow for retrieval on asm output generation?
-  (define (md:make-oasm proto-config #!key file code)
-    (let* ((output (asm-file->bytes "unittests/config/Huby/huby.asm"
-				    "z80" 3 org: #x8000))
+  (define (md:make-oasm proto-config path-prefix #!key file code)
+    (let* ((output (asm-file->bytes
+		    (string-append path-prefix
+				   "unittests/config/Huby/huby.asm")
+		    "z80" 3 org: #x8000 path-prefix: path-prefix))
 	   (output-length (length output)))
       (md:make-onode 'asm output-length output #f)))
 
@@ -711,7 +713,7 @@
 
   ;; TODO
   ;; - check if direct-resolvable
-  (define (md:make-ofield proto-config #!key bytes compose)
+  (define (md:make-ofield proto-config path-prefix #!key bytes compose)
     (let ((compose-proc (md:transform-compose-expr compose))
 	  (endianness (md:config-get-target-endianness proto-config))
 	  (required-symbols (md:get-required-symbols compose)))
@@ -754,8 +756,8 @@
 	(else (error "unsupported order type")))))
 
   ;; TODO
-  (define (md:make-oorder proto-config #!key from layout element-size
-			  (base-index 0))
+  (define (md:make-oorder proto-config path-prefix #!key from layout
+			  element-size (base-index 0))
     (let ((transformer-proc (md:make-order-transformer layout base-index))
 	  (order-symbol (symbol-append '_mdal_order_ from)))
       (md:make-onode
@@ -1033,7 +1035,7 @@
   ;;;    instance-val includes the combined field nodes of the required source
   ;;;    iblock instances.
   ;;; 6. The pseudo block instances are passed to the field evaluators.
-  (define (md:make-oblock proto-config #!key id from resize nodes)
+  (define (md:make-oblock proto-config path-prefix #!key id from resize nodes)
     (let* ((parent-inode-id (car (md:config-get-node-ancestors-ids
 				  (car from) (md:config-itree proto-config))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
@@ -1082,9 +1084,10 @@
   ;;         -> or use something like force/delay
   ;;            -> or generally use virtual pointers for everything and only
   ;;               resolve on final output -> most flexible solution
-  (define (md:make-ogroup proto-config #!key id from nodes)
+  (define (md:make-ogroup proto-config path-prefix #!key id from nodes)
     (let* ((otree (map (lambda (expr)
-			 (md:dispatch-onode-expr expr proto-config))
+			 (md:dispatch-onode-expr expr proto-config
+						 path-prefix))
 		       nodes))
 	   (generate-order
 	    (lambda (syms)
@@ -1118,9 +1121,9 @@
 
   ;;; dispatch output note config expressions to the appropriate onode
   ;;; generators
-  (define (md:dispatch-onode-expr expr proto-config)
+  (define (md:dispatch-onode-expr expr proto-config path-prefix)
     (apply (match (car expr)
-	     ('comment (lambda (proto-cfg c) (md:make-onode 'comment 0 c #f)))
+	     ('comment (lambda (proto-cfg c p) (md:make-onode 'comment 0 c #f)))
 	     ('asm md:make-oasm)
 	     ('symbol md:make-osymbol)
 	     ('field md:make-ofield)
@@ -1128,7 +1131,7 @@
 	     ('group md:make-ogroup)
 	     ('order md:make-oorder)
 	     (else (error "unsupported output node type")))
-	   (cons proto-config (cdr expr))))
+	   (append (list proto-config path-prefix) (cdr expr))))
 
   ;;; Do a single compiler pass run over the given otree.
   ;;; Returns a list containing the updated otree in the 1st slot, the updated
@@ -1189,9 +1192,9 @@
   ;;; if it cannot resolve all output nodes after 3 passes.
   ;; TODO haven't thought about optional fields at all yet (how about "only-if")
   ;;      also, more conditions, eg. required-if begin etc...
-  (define (md:make-compiler output-expr proto-config)
+  (define (md:make-compiler output-expr proto-config path-prefix)
     (let ((otree (map (lambda (expr)
-			(md:dispatch-onode-expr expr proto-config))
+			(md:dispatch-onode-expr expr proto-config path-prefix))
 		      output-expr)))
       (lambda (mod origin)
 	(car (md:compile-otree otree ((md:mod-get-node-instance 0)
@@ -1219,7 +1222,8 @@
 						_target)
 	     itree _input #f)))
       (md:make-config _target description (md:config-commands proto-config)
-		      itree _input (md:make-compiler output proto-config))))
+		      itree _input (md:make-compiler output proto-config
+						     path-prefix))))
 
   ;;; Evaluate the given {{mdconf}} s-expression, and return a md:config record.
   (define (md:read-config mdconf path-prefix)

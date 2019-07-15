@@ -839,8 +839,11 @@
       (do-asm-passes 0)))
 
   (define (asm-file->bytes filename target-cpu max-passes
-			   #!key org (extra-symbols '()))
+			   #!key org path-prefix (extra-symbols '()))
     (reset-asm-state!)
+    ;; TODO this is bound to break
+    (when path-prefix (set! *target-config-path*
+			(string-append path-prefix *target-config-path*)))
     (assemble (string-intersperse (read-lines
 				   (open-input-file filename))
 				  "\n")

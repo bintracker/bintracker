@@ -516,9 +516,9 @@
  (test "md:make-ofield"
        (list (md:int->bytes (quotient 1779661 120) 2 'md:little-endian)
 	     (list 0 0))
-       (let ((my-onode1 (md:make-ofield my-cfg bytes: 2
+       (let ((my-onode1 (md:make-ofield my-cfg "" bytes: 2
 					compose: '(quotient 1779661 ?BPM)))
-	     (my-onode2 (md:make-ofield my-cfg bytes: 2
+	     (my-onode2 (md:make-ofield my-cfg "" bytes: 2
 					compose: '(- $my-sym 8))))
 	 (list (md:onode-val (car ((md:onode-fn my-onode1) my-onode1
 				   my-parent-node my-cfg 0 '())))
@@ -527,7 +527,7 @@
 
  (test "md:make-osymbol"
        8
-       (let ((my-onode (md:make-osymbol my-cfg id: 'my-sym)))
+       (let ((my-onode (md:make-osymbol my-cfg "" id: 'my-sym)))
 	 (car (alist-ref 'my-sym
 			 (third ((md:onode-fn my-onode) my-onode my-parent-node
 				 my-cfg 8 '())))))))
