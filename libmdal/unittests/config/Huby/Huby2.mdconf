@@ -6,7 +6,7 @@
  commands: ((command id: BPM bits: 16 type: uint default: 140)
 	    (command id: NOTE bits: 8 type: ukey
 		     tags: (enable_modifiers use_last_set is_note)
-		     keys: (make-dividers 118 8 0 -4)
+		     keys: (make-inverse-dividers 118 8 0 -1)
 		     default: "rest")
 	    (command id: DRUM type: trigger default: #f description:
 		     "Trigger a click drum. Replaces note on channel 1."))

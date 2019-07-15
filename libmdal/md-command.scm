@@ -226,7 +226,9 @@
 				  ('trigger 1)
 				  (else bits))
 				default reference-to
-				(eval `(let ((make-dividers md:make-dividers))
+				(eval `(let ((make-dividers md:make-dividers)
+					     (make-inverse-dividers
+					      md:make-inverse-dividers))
 					 ,keys))
 				tags range description))))
 
