@@ -370,7 +370,8 @@
     (let ((tl-frame (parent-widget 'create-widget 'frame)))
       (make-bt-field-widget
        toplevel-frame: tl-frame
-       id-label: (tl-frame 'create-widget 'label 'text: node-id)
+       id-label: (tl-frame 'create-widget 'label
+			   'text: (symbol->string node-id))
        val-label: (tl-frame 'create-widget 'label
 			    'text: (->string
 				    (md:inode-instance-val
@@ -400,7 +401,8 @@
 	     toplevel-frame: tl-frame
 	     fields: (map (lambda (id)
 			    (make-field-widget
-			     id (string-append parent-path id "/0/")
+			     id (string-append parent-path (symbol->string id)
+					       "/0/")
 			     tl-frame))
 			  subnode-ids))))))
 
@@ -415,7 +417,8 @@
 
   (define (make-blocks-tree parent-node-id parent-path parent-widget)
     (let* ((.block-ids (remove (lambda (id)
-	   			 (string-contains id "_ORDER"))
+	   			 (string-contains (symbol->string id)
+						  "_ORDER"))
 	   		       (md:config-get-subnode-type-ids parent-node-id
 	   						       (current-config)
 	   						       'block)))
@@ -426,7 +429,8 @@
 	   (.topframe (parent-widget 'create-widget 'frame))
 	   (.xscroll-frame (parent-widget 'create-widget 'frame))
 	   (.tree (.topframe 'create-widget 'treeview
-	   		     'columns: (string-intersperse .field-ids " "))))
+	   		     'columns: (string-intersperse
+					(map symbol->string .field-ids) " "))))
       (make-bt-blocks-tree
        topframe: .topframe
        xscroll-frame: .xscroll-frame
@@ -460,8 +464,9 @@
 		 'fill: 'x)
 	(map (lambda (id)
 	       (begin
-		 (blocks-tree 'column id 'anchor: 'center)
-		 (blocks-tree 'heading id 'text: id)))
+		 (blocks-tree 'column (symbol->string id) 'anchor: 'center)
+		 (blocks-tree 'heading (symbol->string id)
+			      'text: (symbol->string id))))
 	     (bt-blocks-tree-field-ids t))
 	(init-blocks-tree blocks-tree ((md:node-instance-path "0/PATTERNS/0")
 				       (md:mod-global-node (current-mod)))
@@ -522,7 +527,8 @@
 	     notebook-frames: subgroup-frames
 	     subgroups: (map (lambda (id frame)
 			       (make-group-widget
-				id (string-append parent-path id "/0/")
+				id (string-append parent-path
+						  (symbol->string id) "/0/")
 				frame))
 			     sg-ids subgroup-frames))))))
 
@@ -534,7 +540,7 @@
 	       'expand: 1 'fill: 'both)
       (map (lambda (sg-id sg-frame)
 	     ((bt-subgroups-widget-tl-notebook w)
-	      'add sg-frame 'text: sg-id))
+	      'add sg-frame 'text: (symbol->string sg-id)))
 	   (bt-subgroups-widget-subgroup-ids w)
 	   (bt-subgroups-widget-notebook-frames w))
       (map show-group-widget (bt-subgroups-widget-subgroups w))))
@@ -573,7 +579,7 @@
 		 'expand: 1 'fill: 'both))))
 
   (define (make-module-widget)
-    (make-group-widget "GLOBAL" "" main-frame))
+    (make-group-widget 'GLOBAL "" main-frame))
 
   (define (show-module)
     (show-group-widget (app-state-module-widget *bintracker-state*)))
