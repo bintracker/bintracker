@@ -19,7 +19,7 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
-	  srfi-1 srfi-13 srfi-69 pstk defstruct
+	  srfi-1 srfi-13 srfi-69 pstk defstruct matchable
 	  simple-exceptions mdal bt-types)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
@@ -364,8 +364,57 @@
   ;;; ## Module Specific GUI
   ;; ---------------------------------------------------------------------------
 
+  ;;; Determine how many characters are needed to print values of a given
+  ;;; command.
+  ;; TODO results should be cached
+  (define (value-display-size command-config)
+    (match (md:command-type command-config)
+      ;; FIXME this is incorrect for negative numbers
+      ((or 'int 'uint) (inexact->exact
+			(ceiling
+			 (/ (log (expt 2 (md:command-bits command-config)))
+			    (log (settings 'number-base))))))
+      ((or 'key 'ukey) (if (memq 'is_note (md:command-flags command-config))
+			   3 (apply max
+				    (map (o string-length car)
+					 (hash-table-keys
+					  (md:command-keys command-config))))))
+      ('reference (if (>= 16 (settings 'number-base))
+		      2 3))
+      ('trigger 1)
+      ('string 1)))
+
+  (define (normalize-note-name name)
+    (if (string=? "rest" name)
+	"==="
+	(if (string-contains "#" name)
+	    name
+	    (let ((name-string-list (string->list name)))
+	      (list->string (append (list (car name-string-list) #\-)
+				    (cdr name-string-list)))))))
+
+  ;;; Transform an ifield value from MDAL format to tracker display format.
+  ;;; Replaces empty values with dots, changes numbers depending on number
+  ;;; format setting, and turns everything into a string.
+  (define (normalize-field-value val field-id)
+    (let* ((command-config (md:config-get-inode-source-command
+  			    field-id (current-config))))
+      (if val
+  	  (match (md:command-type command-config)
+	    ((or 'int 'uint 'reference)
+	     (number->string val (settings 'number-base)))
+	    ((or 'key 'ukey) (if (memq 'is_note
+				       (md:command-flags command-config))
+				 (normalize-note-name val)
+				 val))
+	    ('trigger "x")
+	    ('string val))
+  	  (list->string (make-list (value-display-size command-config)
+  	  			   #\.)))))
+
   (defstruct bt-field-widget toplevel-frame id-label val-label)
 
+  ;;; Create a group ifield widget.
   (define (make-field-widget node-id instance-path parent-widget)
     (let ((tl-frame (parent-widget 'create-widget 'frame)))
       (make-bt-field-widget
@@ -373,11 +422,13 @@
        id-label: (tl-frame 'create-widget 'label
 			   'text: (symbol->string node-id))
        val-label: (tl-frame 'create-widget 'label
-			    'text: (->string
+			    'text: (normalize-field-value
 				    (md:inode-instance-val
 				     ((md:node-instance-path instance-path)
-				      (md:mod-global-node (current-mod)))))))))
+				      (md:mod-global-node (current-mod))))
+				    node-id)))))
 
+  ;;; Show a group ifield widget.
   (define (show-field-widget w)
     (begin
       (tk/pack (bt-field-widget-toplevel-frame w)
@@ -389,7 +440,7 @@
   ;; Not exported.
   (defstruct bt-fields-widget toplevel-frame fields)
 
-  ;; make group fields gui widget
+  ;;; Create a widget for the group's ifields.
   (define (make-fields-widget parent-node-id parent-path parent-widget)
     (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
 						       (current-config)
@@ -406,15 +457,18 @@
 			     tl-frame))
 			  subnode-ids))))))
 
+  ;;; Show a group fields widget.
   (define (show-fields-widget w)
     (begin
       (tk/pack (bt-fields-widget-toplevel-frame w)
 	       'fill: 'x)
       (map show-field-widget (bt-fields-widget-fields w))))
 
+  ;; FIXME ummyeah great naming "bt-blocks-tree-tree"
   (defstruct bt-blocks-tree
     topframe xscroll-frame tree xscroll yscroll block-ids field-ids)
 
+  ;;; Create
   (define (make-blocks-tree parent-node-id parent-path parent-widget)
     (let* ((.block-ids (remove (lambda (id)
 	   			 (string-contains (symbol->string id)
@@ -445,12 +499,16 @@
   (define (init-blocks-tree blocks-tree group-instance block-instance-ids)
     (let ((block-values (md:mod-get-block-values group-instance
 						 block-instance-ids))
-	  (radix (app-settings-number-base *bintracker-settings*)))
+	  (radix (app-settings-number-base *bintracker-settings*))
+	  (tree-widget (bt-blocks-tree-tree blocks-tree)))
       (map (lambda (row rownum)
-	     (blocks-tree 'insert '{} 'end
+	     (tree-widget 'insert '{} 'end
 			  'text: (string-pad (number->string rownum radix)
 					     4 #\0)
-			  'values: (map ->string row)))
+			  'values: (map (lambda (pos field-id)
+					  (normalize-field-value pos field-id))
+					row (bt-blocks-tree-field-ids
+					     blocks-tree))))
 	   block-values (iota (length block-values)))))
 
   (define (show-blocks-tree t)
@@ -468,8 +526,8 @@
 		 (blocks-tree 'heading (symbol->string id)
 			      'text: (symbol->string id))))
 	     (bt-blocks-tree-field-ids t))
-	(init-blocks-tree blocks-tree ((md:node-instance-path "0/PATTERNS/0")
-				       (md:mod-global-node (current-mod)))
+	(init-blocks-tree t ((md:node-instance-path "0/PATTERNS/0")
+			     (md:mod-global-node (current-mod)))
 			  '(0 0 0))
 	(tk/pack blocks-tree 'expand: 1 'fill: 'both 'side: 'left)
 	(tk/pack yscroll 'fill: 'y 'side: 'left)
