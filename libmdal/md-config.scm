@@ -923,7 +923,7 @@
   ;; TODO should be merged with md:make-ofield. It's exactly the same code
   ;;      except for the variable instance-id.
   ;; TODO in theory we do not need to emit md-symbols (see md:resolve-oblock)
-  (define (md:make-oblock-field proto-config #!key bytes compose)
+  (define (md:make-oblock-rowfield proto-config #!key bytes compose)
     (let ((compose-proc (md:transform-compose-expr compose))
 	  (endianness (md:config-get-target-endianness proto-config)))
       (md:make-onode
@@ -1039,8 +1039,9 @@
     (let* ((parent-inode-id (car (md:config-get-node-ancestors-ids
 				  (car from) (md:config-itree proto-config))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
+	   ;; TODO repeat vs static
 	   (field-prototypes (map (lambda (node)
-				    (apply md:make-oblock-field
+				    (apply md:make-oblock-rowfield
 					   (cons proto-config (cdr node))))
 				  nodes)))
       (md:make-onode
