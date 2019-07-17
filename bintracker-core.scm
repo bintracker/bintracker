@@ -225,9 +225,11 @@
 
   (define toolbar-frame (top-frame 'create-widget 'frame 'padding: "0 1 0 1"))
 
-  (define main-frame (top-frame 'create-widget 'frame))
+  (define main-panes (top-frame 'create-widget 'panedwindow))
 
-  (define console-frame (top-frame 'create-widget 'frame))
+  (define main-frame (main-panes 'create-widget 'frame))
+
+  (define console-frame (main-panes 'create-widget 'frame))
 
   (define status-frame (top-frame 'create-widget 'frame))
 
@@ -236,8 +238,11 @@
       (tk/pack status-frame 'fill: 'x 'side: 'bottom)
       (tk/pack top-frame 'expand: 1 'fill: 'both)
       (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
-      (tk/pack main-frame 'expand: 1 'fill: 'both)
-      (tk/pack console-frame 'expand: 0 'fill: 'both)))
+      ;; (tk/pack main-frame 'expand: 1 'fill: 'both)
+      ;; (tk/pack console-frame 'expand: 0 'fill: 'both)
+      (tk/pack main-panes 'expand: 1 'fill: 'both)
+      (main-panes 'add main-frame 'weight: 3)
+      (main-panes 'add console-frame 'weight: 1)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -348,10 +353,10 @@
 
   (define (init-console)
     (begin
+      (tk/pack console-input 'fill: 'x 'side: 'bottom)
       (tk/pack console-wrapper 'expand: 1 'fill: 'both)
       (tk/pack console-output 'expand: 1 'fill: 'both 'side: 'left)
       (tk/pack console-yscroll 'side: 'right 'fill: 'y)
-      (tk/pack console-input 'fill: 'x)
       (console-yscroll 'configure 'command: (list console-output 'yview))
       (console-output 'configure 'yscrollcommand: (list console-yscroll 'set))
       (console-output 'insert 'end
