@@ -107,6 +107,14 @@
   (define (current-mod)
     (app-state-current-mdmod *bintracker-state*))
 
+  ;;; Set the current module. Does not update GUI.
+  (define (set-current-mod! filename)
+    (setstate! 'current-mdmod
+	       (md:file->module filename
+				(app-settings-mdal-config-dir
+				 *bintracker-settings*)
+				"libmdal/")))
+
   ;;; Returns the current module configuration (mdconf). It is an error to call
   ;;; this procedure if no module is currently loaded.
   (define (current-config)
@@ -141,12 +149,7 @@
 						  (message exn)
 						  "\n"))
 		 (begin
-		   (setstate! 'current-mdmod
-			      (md:file->module filename
-					       (app-settings-mdal-config-dir
-						*bintracker-settings*)
-					       "libmdal/"))
-		   ;; (make-module-view)
+		   (set-current-mod! filename)
 		   (setstate! 'module-widget (make-module-widget))
 		   (show-module)
 		   (enable-play-buttons)
