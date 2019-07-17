@@ -227,9 +227,6 @@
 
   (define main-frame (top-frame 'create-widget 'frame))
 
-  ;; (define module-global-fields-frame (main-frame 'create-widget 'frame))
-  ;; (define module-content-frame (main-frame 'create-widget 'frame))
-
   (define console-frame (top-frame 'create-widget 'frame))
 
   (define status-frame (top-frame 'create-widget 'frame))
