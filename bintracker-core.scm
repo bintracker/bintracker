@@ -422,6 +422,7 @@
        id-label: (tl-frame 'create-widget 'label
 			   'text: (symbol->string node-id))
        val-label: (tl-frame 'create-widget 'label
+			    'relief: 'solid 'padding: '(2 2)
 			    'text: (normalize-field-value
 				    (md:inode-instance-val
 				     ((md:node-instance-path instance-path)
@@ -435,7 +436,7 @@
 	       'side: 'left)
       (tk/pack (bt-field-widget-id-label w)
 	       (bt-field-widget-val-label w)
-	       'side: 'left 'padx: 4)))
+	       'side: 'left 'padx: 4 'pady: 4)))
 
   ;; Not exported.
   (defstruct bt-fields-widget toplevel-frame fields)
