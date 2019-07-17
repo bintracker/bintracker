@@ -233,12 +233,11 @@
 
   (define (init-top-level-layout)
     (begin
+      (tk/pack status-frame 'fill: 'x 'side: 'bottom)
       (tk/pack top-frame 'expand: 1 'fill: 'both)
       (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
       (tk/pack main-frame 'expand: 1 'fill: 'both)
-      (tk/pack console-frame 'expand: 0 'fill: 'both)
-      ;; TODO: ensure sizegrip doesn't disappear when resizing to min.
-      (tk/pack status-frame 'fill: 'x)))
+      (tk/pack console-frame 'expand: 0 'fill: 'both)))
 
 
   ;; ---------------------------------------------------------------------------
