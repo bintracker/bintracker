@@ -469,12 +469,11 @@
 	       'fill: 'x)
       (map show-field-widget (bt-fields-widget-fields w))))
 
-  ;; FIXME ummyeah great naming "bt-blocks-tree-tree"
-  (defstruct bt-blocks-tree
+  (defstruct bt-blocks-view
     topframe xscroll-frame tree xscroll yscroll block-ids field-ids)
 
   ;;; Create
-  (define (make-blocks-tree parent-node-id parent-path parent-widget)
+  (define (make-blocks-view parent-node-id parent-path parent-widget)
     (let* ((.block-ids (remove (lambda (id)
 	   			 (string-contains (symbol->string id)
 						  "_ORDER"))
@@ -490,7 +489,7 @@
 	   (.tree (.topframe 'create-widget 'treeview
 	   		     'columns: (string-intersperse
 					(map symbol->string .field-ids) " "))))
-      (make-bt-blocks-tree
+      (make-bt-blocks-view
        topframe: .topframe
        xscroll-frame: .xscroll-frame
        tree: .tree
@@ -501,43 +500,42 @@
        block-ids: .block-ids
        field-ids: .field-ids)))
 
-  (define (init-blocks-tree blocks-tree group-instance block-instance-ids)
+  (define (init-blocks-view blocks-view group-instance block-instance-ids)
     (let ((block-values (md:mod-get-block-values group-instance
 						 block-instance-ids))
 	  (radix (app-settings-number-base *bintracker-settings*))
-	  (tree-widget (bt-blocks-tree-tree blocks-tree)))
+	  (tree (bt-blocks-view-tree blocks-view)))
       (map (lambda (row rownum)
-	     (tree-widget 'insert '{} 'end
-			  'text: (string-pad (number->string rownum radix)
-					     4 #\0)
-			  'values: (map normalize-field-value
-					row (bt-blocks-tree-field-ids
-					     blocks-tree))))
+	     (tree 'insert '{} 'end
+		   'text: (string-pad (number->string rownum radix)
+				      4 #\0)
+		   'values: (map normalize-field-value
+				 row (bt-blocks-view-field-ids blocks-view))))
 	   block-values (iota (length block-values)))))
 
-  (define (show-blocks-tree t)
-    (let ((blocks-tree (bt-blocks-tree-tree t))
-	  (xscroll (bt-blocks-tree-xscroll t))
-	  (yscroll (bt-blocks-tree-yscroll t)))
+  (define (show-blocks-view t)
+    (let ((tree (bt-blocks-view-tree t))
+	  (xscroll (bt-blocks-view-xscroll t))
+	  (yscroll (bt-blocks-view-yscroll t)))
       (begin
-	(tk/pack (bt-blocks-tree-topframe t)
+	(tk/pack (bt-blocks-view-topframe t)
 		 'expand: 1 'fill: 'both)
-	(tk/pack (bt-blocks-tree-xscroll-frame t)
+	(tk/pack (bt-blocks-view-xscroll-frame t)
 		 'fill: 'x)
 	(map (lambda (id)
 	       (begin
-		 (blocks-tree 'column (symbol->string id) 'anchor: 'center)
-		 (blocks-tree 'heading (symbol->string id)
-			      'text: (symbol->string id))))
-	     (bt-blocks-tree-field-ids t))
-	(init-blocks-tree t ((md:node-instance-path "0/PATTERNS/0")
+		 (tree 'column (symbol->string id) 'anchor: 'center)
+		 (tree 'heading (symbol->string id)
+		       'text: (symbol->string id))))
+	     (bt-blocks-view-field-ids t))
+	(init-blocks-view t ((md:node-instance-path "0/PATTERNS/0")
 			     (md:mod-global-node (current-mod)))
 			  '(0 0 0))
 	(tk/pack yscroll 'fill: 'y 'side: 'right)
-	(tk/pack blocks-tree 'expand: 1 'fill: 'both 'side: 'right)
+	(tk/pack tree 'expand: 1 'fill: 'both 'side: 'right)
 	(tk/pack xscroll 'fill: 'x)
-	(blocks-tree 'configure 'xscrollcommand: (list xscroll 'set)
-		     'yscrollcommand: (list yscroll 'set)))))
+	(tree 'configure 'xscrollcommand: (list xscroll 'set)
+	      'yscrollcommand: (list yscroll 'set)))))
 
   ;;; Toplevel order (sequence) view structure
   ;;; mode = 'virtual, 'real, or 'auto
@@ -603,7 +601,7 @@
 		    'yscrollcommand: (list yscroll 'set)))))
 
   (defstruct bt-blocks-widget
-    tl-panedwindow blocks-pane order-pane blocks-tree order-tree)
+    tl-panedwindow blocks-pane order-pane blocks-view order-view)
 
   (define (make-blocks-widget parent-node-id parent-path parent-widget)
     (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
@@ -619,9 +617,9 @@
 	     tl-panedwindow: .tl
 	     blocks-pane: .blocks-pane
 	     order-pane: .order-pane
-	     blocks-tree: (make-blocks-tree parent-node-id parent-path
+	     blocks-view: (make-blocks-view parent-node-id parent-path
 	     				    .blocks-pane)
-	     order-tree: (make-order-view parent-node-id parent-path
+	     order-view: (make-order-view parent-node-id parent-path
 	     				  .order-pane))))))
 
   (define (show-blocks-widget w)
@@ -630,8 +628,8 @@
 	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 3)
 	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
 	(tk/pack top 'expand: 1 'fill: 'both)
-	(show-blocks-tree (bt-blocks-widget-blocks-tree w))
-	(show-order-view (bt-blocks-widget-order-tree w)))))
+	(show-blocks-view (bt-blocks-widget-blocks-view w))
+	(show-order-view (bt-blocks-widget-order-view w)))))
 
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
