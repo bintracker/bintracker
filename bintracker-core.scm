@@ -563,9 +563,9 @@
        field-ids: .field-ids
        mode: 'real)))
 
-  (define (init-order-view order-view group-instance)
-    (let ((order-values '((0 0 0)
-			  (0 0 1)))
+  (define (init-order-view order-view group-instance group-id)
+    (let ((order-values (md:mod-get-order-values group-id group-instance
+						 (current-config)))
 	  (radix (app-settings-number-base *bintracker-settings*))
 	  (tree-widget (bt-order-view-tree order-view)))
       (map (lambda (row rownum)
@@ -592,8 +592,10 @@
 		 (order-tree 'heading (symbol->string id)
 			     'text: (symbol->string id))))
 	     (bt-order-view-field-ids t))
+	;;; TODO remove hardcoded crap
 	(init-order-view t ((md:node-instance-path "0/PATTERNS/0")
-			    (md:mod-global-node (current-mod))))
+			    (md:mod-global-node (current-mod)))
+			 'PATTERNS)
 	(tk/pack yscroll 'fill: 'y 'side: 'right)
 	(tk/pack order-tree 'expand: 1 'fill: 'both 'side: 'right)
 	(tk/pack xscroll 'fill: 'x)
