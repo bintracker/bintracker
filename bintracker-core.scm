@@ -510,8 +510,7 @@
 	     (tree-widget 'insert '{} 'end
 			  'text: (string-pad (number->string rownum radix)
 					     4 #\0)
-			  'values: (map (lambda (pos field-id)
-					  (normalize-field-value pos field-id))
+			  'values: (map normalize-field-value
 					row (bt-blocks-tree-field-ids
 					     blocks-tree))))
 	   block-values (iota (length block-values)))))
