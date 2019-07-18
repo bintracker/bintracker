@@ -510,7 +510,10 @@
 		   'text: (string-pad (number->string rownum radix)
 				      4 #\0)
 		   'values: (map normalize-field-value
-				 row (bt-blocks-view-field-ids blocks-view))))
+				 row (bt-blocks-view-field-ids blocks-view))
+		   'tags: (cond ((= 0 (modulo rownum 8)) "rowhl-major")
+				((= 0 (modulo rownum 4)) "rowhl-minor")
+				(else ""))))
 	   block-values (iota (length block-values)))))
 
   (define (show-blocks-view t)
@@ -524,7 +527,8 @@
 		 'fill: 'x)
 	(map (lambda (id)
 	       (begin
-		 (tree 'column (symbol->string id) 'anchor: 'center)
+		 (tree 'column (symbol->string id) 'anchor: 'center
+		       'width: 50)
 		 (tree 'heading (symbol->string id)
 		       'text: (symbol->string id))))
 	     (bt-blocks-view-field-ids t))
@@ -535,7 +539,13 @@
 	(tk/pack tree 'expand: 1 'fill: 'both 'side: 'right)
 	(tk/pack xscroll 'fill: 'x)
 	(tree 'configure 'xscrollcommand: (list xscroll 'set)
-	      'yscrollcommand: (list yscroll 'set)))))
+	      'yscrollcommand: (list yscroll 'set)
+	      'selectmode: 'browse)
+	(tree 'column "#0" 'width: 70)
+	(tree 'tag 'configure 'rowhl-minor
+	      'background: (colors 'row-highlight-minor))
+	(tree 'tag 'configure 'rowhl-major
+	      'background: (colors 'row-highlight-major)))))
 
   ;;; Toplevel order (sequence) view structure
   ;;; mode = 'virtual, 'real, or 'auto
@@ -550,7 +560,8 @@
 	   (.xscroll-frame (parent-widget 'create-widget 'frame))
 	   (.tree (.topframe 'create-widget 'treeview
 	   		     columns: (string-intersperse
-	   			       (map symbol->string .field-ids) " "))))
+	   			       (map symbol->string .field-ids)
+				       " "))))
       (make-bt-order-view
        topframe: .topframe
        xscroll-frame: .xscroll-frame
@@ -588,9 +599,10 @@
 		 'fill: 'x)
 	(map (lambda (id)
 	       (begin
-		 (order-tree 'column (symbol->string id) 'anchor: 'center)
+		 (order-tree 'column (symbol->string id) 'anchor: 'center
+			     'width: 40)
 		 (order-tree 'heading (symbol->string id)
-			     'text: (symbol->string id))))
+			     'text: (string-drop (symbol->string id) 2))))
 	     (bt-order-view-field-ids t))
 	;;; TODO remove hardcoded crap
 	(init-order-view t ((md:node-instance-path "0/PATTERNS/0")
@@ -600,7 +612,9 @@
 	(tk/pack order-tree 'expand: 1 'fill: 'both 'side: 'right)
 	(tk/pack xscroll 'fill: 'x)
 	(order-tree 'configure 'xscrollcommand: (list xscroll 'set)
-		    'yscrollcommand: (list yscroll 'set)))))
+		    'yscrollcommand: (list yscroll 'set))
+	;; set width for tree column
+	(order-tree 'column "#0" 'width: 50))))
 
   (defstruct bt-blocks-widget
     tl-panedwindow blocks-pane order-pane blocks-view order-view)
