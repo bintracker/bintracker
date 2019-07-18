@@ -241,4 +241,28 @@
 				       (car (md:inode-instance-val
 					     group-instance)))))))))))
 
+  ;;; Returns the values of all order fields as a list of row value sets.
+  (define (md:mod-get-order-values group-id group-instance config)
+    (letrec ((repeat-values
+	      (lambda (rows previous-row)
+		(if (null-list? rows)
+		    '()
+		    (cons (map (lambda (pos previous-pos)
+				 (if (null? pos)
+				     previous-pos pos))
+			       (car rows) previous-row)
+			  (repeat-values (cdr rows) (car rows)))))))
+      (repeat-values
+       (apply map list
+	      (map (lambda (subnode)
+		     (map (o md:inode-instance-val cadr)
+			  (md:inode-instances subnode)))
+		   (md:inode-instance-val
+		    (car (alist-ref 0 (md:inode-instances
+				       (md:get-subnode
+					group-instance
+					(symbol-append group-id '_ORDER))))))))
+       ;;; dummy values for first run
+       '(0 0 0))))
+
   ) ;; end module md-types
