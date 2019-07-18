@@ -540,6 +540,69 @@
 	(blocks-tree 'configure 'xscrollcommand: (list xscroll 'set)
 		     'yscrollcommand: (list yscroll 'set)))))
 
+  ;;; Toplevel order (sequence) view structure
+  ;;; mode = 'virtual, 'real, or 'auto
+  (defstruct bt-order-view
+    topframe xscroll-frame tree xscroll yscroll order-id field-ids mode)
+
+  (define (make-order-view parent-node-id parent-path parent-widget)
+    (let* ((.order-id (symbol-append parent-node-id '_ORDER))
+	   (.field-ids (md:config-get-subnode-ids
+	   		.order-id (md:config-itree (current-config))))
+	   (.topframe (parent-widget 'create-widget 'frame))
+	   (.xscroll-frame (parent-widget 'create-widget 'frame))
+	   (.tree (.topframe 'create-widget 'treeview
+	   		     columns: (string-intersperse
+	   			       (map symbol->string .field-ids) " "))))
+      (make-bt-order-view
+       topframe: .topframe
+       xscroll-frame: .xscroll-frame
+       tree: .tree
+       xscroll: (.xscroll-frame 'create-widget 'scrollbar 'orient: 'horizontal
+       	 			'command: (list .tree 'xview))
+       yscroll: (.topframe 'create-widget 'scrollbar 'orient: 'vertical
+       	 		   'command: (list .tree 'yview))
+       order-id: .order-id
+       field-ids: .field-ids
+       mode: 'real)))
+
+  (define (init-order-view order-view group-instance)
+    (let ((order-values '((0 0 0)
+			  (0 0 1)))
+	  (radix (app-settings-number-base *bintracker-settings*))
+	  (tree-widget (bt-order-view-tree order-view)))
+      (map (lambda (row rownum)
+	     (tree-widget 'insert '{} 'end
+			  'text: (string-pad (number->string rownum radix)
+					     3 #\0)
+			  'values: (map normalize-field-value
+					row (bt-order-view-field-ids
+					     order-view))))
+	   order-values (iota (length order-values)))))
+
+  (define (show-order-view t)
+    (let ((order-tree (bt-order-view-tree t))
+	  (xscroll (bt-order-view-xscroll t))
+	  (yscroll (bt-order-view-yscroll t)))
+      (begin
+	(tk/pack (bt-order-view-topframe t)
+		 'expand: 1 'fill: 'both)
+	(tk/pack (bt-order-view-xscroll-frame t)
+		 'fill: 'x)
+	(map (lambda (id)
+	       (begin
+		 (order-tree 'column (symbol->string id) 'anchor: 'center)
+		 (order-tree 'heading (symbol->string id)
+			     'text: (symbol->string id))))
+	     (bt-order-view-field-ids t))
+	(init-order-view t ((md:node-instance-path "0/PATTERNS/0")
+			    (md:mod-global-node (current-mod))))
+	(tk/pack yscroll 'fill: 'y 'side: 'right)
+	(tk/pack order-tree 'expand: 1 'fill: 'both 'side: 'right)
+	(tk/pack xscroll 'fill: 'x)
+	(order-tree 'configure 'xscrollcommand: (list xscroll 'set)
+		    'yscrollcommand: (list yscroll 'set)))))
+
   (defstruct bt-blocks-widget
     tl-panedwindow blocks-pane order-pane blocks-tree order-tree)
 
@@ -559,7 +622,8 @@
 	     order-pane: .order-pane
 	     blocks-tree: (make-blocks-tree parent-node-id parent-path
 	     				    .blocks-pane)
-	     order-tree: #f)))))
+	     order-tree: (make-order-view parent-node-id parent-path
+	     				  .order-pane))))))
 
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
@@ -567,7 +631,8 @@
 	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 3)
 	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
 	(tk/pack top 'expand: 1 'fill: 'both)
-	(show-blocks-tree (bt-blocks-widget-blocks-tree w)))))
+	(show-blocks-tree (bt-blocks-widget-blocks-tree w))
+	(show-order-view (bt-blocks-widget-order-tree w)))))
 
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
