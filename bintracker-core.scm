@@ -241,8 +241,8 @@
       ;; (tk/pack main-frame 'expand: 1 'fill: 'both)
       ;; (tk/pack console-frame 'expand: 0 'fill: 'both)
       (tk/pack main-panes 'expand: 1 'fill: 'both)
-      (main-panes 'add main-frame 'weight: 3)
-      (main-panes 'add console-frame 'weight: 1)))
+      (main-panes 'add main-frame 'weight: 5)
+      (main-panes 'add console-frame 'weight: 2)))
 
 
   ;; ---------------------------------------------------------------------------
