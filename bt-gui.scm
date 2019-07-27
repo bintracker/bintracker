@@ -172,10 +172,12 @@
 			   (md:config-get-subnode-ids
 			    (symbol-append group-id '_ORDER)
 			    (md:config-itree (current-config)))))
-	   (rownums (packframe 'create-widget 'treeview selectmode: 'none))
+	   (rownums (packframe 'create-widget 'treeview selectmode: 'none
+			       style: 'Metatree.Treeview))
 	   (columns (map (lambda (id)
 			   (let ((tree (canvas 'create-widget 'treeview
-					       selectmode: 'none)))
+					       selectmode: 'none
+					       style: 'Metatree.Treeview)))
 			     (tree 'heading "#0"
 				   text: (if (eq? type 'block)
 					     (symbol->string id)

@@ -303,15 +303,15 @@
   ;; (tk/wm 'minsize tk 760 600)
   (tk-eval "option add *tearOff 0")
 
-  (ttk/style 'configure 'Treeview background: (colors 'row)
+  (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
 	     fieldbackground: (colors 'row)
 	     foreground: (colors 'text)
 	     font: (list family: (settings 'font-mono)
 			 size: (settings 'font-size))
 	     rowheight: (get-treeview-rowheight))
   ;; hide treeview borders
-  (ttk/style 'layout 'Treeview '(Treeview.treearea sticky: nswe))
-  (ttk/style 'configure 'Treeview '(Treeview.Item indicatorsize: 0))
+  (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
+  (ttk/style 'configure 'Metatree.Treeview '(Treeview.Item indicatorsize: 0))
 
   (init-menu)
   (init-top-level-layout)
