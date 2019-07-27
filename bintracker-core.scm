@@ -340,162 +340,15 @@
 	       'fill: 'x)
       (map show-field-widget (bt-fields-widget-fields w))))
 
-  (defstruct bt-blocks-view
-    topframe xscroll-frame tree xscroll yscroll block-ids field-ids)
-
-  ;;; Create
-  (define (make-blocks-view parent-node-id parent-path parent-widget)
-    (let* ((.block-ids (remove (lambda (id)
-	   			 (string-contains (symbol->string id)
-						  "_ORDER"))
-	   		       (md:config-get-subnode-type-ids parent-node-id
-	   						       (current-config)
-	   						       'block)))
-	   (.field-ids (flatten (map (lambda (id)
-	   			       (md:config-get-subnode-ids
-	   				id (md:config-itree (current-config))))
-	   			     .block-ids)))
-	   (.topframe (parent-widget 'create-widget 'frame))
-	   (.xscroll-frame (parent-widget 'create-widget 'frame))
-	   (.tree (.topframe 'create-widget 'treeview
-	   		     'columns: (string-intersperse
-					(map symbol->string .field-ids) " "))))
-      (make-bt-blocks-view
-       topframe: .topframe
-       xscroll-frame: .xscroll-frame
-       tree: .tree
-       xscroll: (.xscroll-frame 'create-widget 'scrollbar 'orient: 'horizontal
-	 			'command: (list .tree 'xview))
-       yscroll: (.topframe 'create-widget 'scrollbar 'orient: 'vertical
-	 		   'command: (list .tree 'yview))
-       block-ids: .block-ids
-       field-ids: .field-ids)))
-
-  (define (init-blocks-view blocks-view group-instance block-instance-ids)
-    (let ((block-values (md:mod-get-block-values group-instance
-						 block-instance-ids))
-	  (radix (app-settings-number-base *bintracker-settings*))
-	  (tree (bt-blocks-view-tree blocks-view)))
-      (map (lambda (row rownum)
-	     (tree 'insert '{} 'end
-		   'text: (string-pad (number->string rownum radix)
-				      4 #\0)
-		   'values: (map normalize-field-value
-				 row (bt-blocks-view-field-ids blocks-view))
-		   'tags: (cond ((= 0 (modulo rownum 8)) "rowhl-major")
-				((= 0 (modulo rownum 4)) "rowhl-minor")
-				(else ""))))
-	   block-values (iota (length block-values)))))
-
   (define (show-blocks-view top)
     (let ((mt (init-metatree top 'block 'PATTERNS)))
       (show-metatree mt)
       (update-blocks-view mt "0/PATTERNS/0" 0)))
 
-  ;; (define (show-blocks-view t)
-  ;;   (let ((tree (bt-blocks-view-tree t))
-  ;; 	  (xscroll (bt-blocks-view-xscroll t))
-  ;; 	  (yscroll (bt-blocks-view-yscroll t)))
-  ;;     (begin
-  ;; 	(tk/pack (bt-blocks-view-topframe t)
-  ;; 		 'expand: 1 'fill: 'both)
-  ;; 	(tk/pack (bt-blocks-view-xscroll-frame t)
-  ;; 		 'fill: 'x)
-  ;; 	(map (lambda (id)
-  ;; 	       (begin
-  ;; 		 (tree 'column (symbol->string id) 'anchor: 'center
-  ;; 		       'width: 50)
-  ;; 		 (tree 'heading (symbol->string id)
-  ;; 		       'text: (symbol->string id))))
-  ;; 	     (bt-blocks-view-field-ids t))
-  ;; 	(init-blocks-view t ((md:node-instance-path "0/PATTERNS/0")
-  ;; 			     (md:mod-global-node (current-mod)))
-  ;; 			  '(0 0 0))
-  ;; 	(tk/pack yscroll 'fill: 'y 'side: 'right)
-  ;; 	(tk/pack tree 'expand: 1 'fill: 'both 'side: 'right)
-  ;; 	(tk/pack xscroll 'fill: 'x)
-  ;; 	(tree 'configure 'xscrollcommand: (list xscroll 'set)
-  ;; 	      'yscrollcommand: (list yscroll 'set)
-  ;; 	      'selectmode: 'browse)
-  ;; 	(tree 'column "#0" 'width: 70)
-  ;; 	(tree 'tag 'configure 'rowhl-minor
-  ;; 	      'background: (colors 'row-highlight-minor))
-  ;; 	(tree 'tag 'configure 'rowhl-major
-  ;; 	      'background: (colors 'row-highlight-major)))))
-
-  ;;; Toplevel order (sequence) view structure
-  ;;; mode = 'virtual, 'real, or 'auto
-  (defstruct bt-order-view
-    topframe xscroll-frame tree xscroll yscroll order-id field-ids mode)
-
-  (define (make-order-view parent-node-id parent-path parent-widget)
-    (let* ((.order-id (symbol-append parent-node-id '_ORDER))
-	   (.field-ids (md:config-get-subnode-ids
-	   		.order-id (md:config-itree (current-config))))
-	   (.topframe (parent-widget 'create-widget 'frame))
-	   (.xscroll-frame (parent-widget 'create-widget 'frame))
-	   (.tree (.topframe 'create-widget 'treeview
-	   		     columns: (string-intersperse
-	   			       (map symbol->string .field-ids)
-				       " "))))
-      (make-bt-order-view
-       topframe: .topframe
-       xscroll-frame: .xscroll-frame
-       tree: .tree
-       xscroll: (.xscroll-frame 'create-widget 'scrollbar 'orient: 'horizontal
-       	 			'command: (list .tree 'xview))
-       yscroll: (.topframe 'create-widget 'scrollbar 'orient: 'vertical
-       	 		   'command: (list .tree 'yview))
-       order-id: .order-id
-       field-ids: .field-ids
-       mode: 'real)))
-
-  (define (init-order-view order-view group-instance group-id)
-    (let ((order-values (md:mod-get-order-values group-id group-instance
-						 (current-config)))
-	  (radix (app-settings-number-base *bintracker-settings*))
-	  (tree-widget (bt-order-view-tree order-view)))
-      (map (lambda (row rownum)
-	     (tree-widget 'insert '{} 'end
-			  'text: (string-pad (number->string rownum radix)
-					     3 #\0)
-			  'values: (map normalize-field-value
-					row (bt-order-view-field-ids
-					     order-view))))
-	   order-values (iota (length order-values)))))
-
   (define (show-order-view top)
     (let ((mt (init-metatree top 'order 'PATTERNS)))
       (show-metatree mt)
       (update-order-view mt "0/PATTERNS/0")))
-
-  ;; (define (show-order-view t)
-  ;;   (let ((order-tree (bt-order-view-tree t))
-  ;; 	  (xscroll (bt-order-view-xscroll t))
-  ;; 	  (yscroll (bt-order-view-yscroll t)))
-  ;;     (begin
-  ;; 	(tk/pack (bt-order-view-topframe t)
-  ;; 		 'expand: 1 'fill: 'both)
-  ;; 	(tk/pack (bt-order-view-xscroll-frame t)
-  ;; 		 'fill: 'x)
-  ;; 	(map (lambda (id)
-  ;; 	       (begin
-  ;; 		 (order-tree 'column (symbol->string id) 'anchor: 'center
-  ;; 			     'width: 40)
-  ;; 		 (order-tree 'heading (symbol->string id)
-  ;; 			     'text: (string-drop (symbol->string id) 2))))
-  ;; 	     (bt-order-view-field-ids t))
-  ;; 	;;; TODO remove hardcoded crap
-  ;; 	(init-order-view t ((md:node-instance-path "0/PATTERNS/0")
-  ;; 			    (md:mod-global-node (current-mod)))
-  ;; 			 'PATTERNS)
-  ;; 	(tk/pack yscroll 'fill: 'y 'side: 'right)
-  ;; 	(tk/pack order-tree 'expand: 1 'fill: 'both 'side: 'right)
-  ;; 	(tk/pack xscroll 'fill: 'x)
-  ;; 	(order-tree 'configure 'xscrollcommand: (list xscroll 'set)
-  ;; 		    'yscrollcommand: (list yscroll 'set))
-  ;; 	;; set width for tree column
-  ;; 	(order-tree 'column "#0" 'width: 50))))
 
   (defstruct bt-blocks-widget
     tl-panedwindow blocks-pane order-pane blocks-view order-view)
@@ -514,10 +367,11 @@
 	     tl-panedwindow: .tl
 	     blocks-pane: .blocks-pane
 	     order-pane: .order-pane
-	     blocks-view: (make-blocks-view parent-node-id parent-path
-	     				    .blocks-pane)
-	     order-view: (make-order-view parent-node-id parent-path
-	     				  .order-pane))))))
+	     ;; blocks-view: (make-blocks-view parent-node-id parent-path
+	     ;; 				    .blocks-pane)
+	     ;; order-view: (make-order-view parent-node-id parent-path
+	     ;; 				  .order-pane)
+	     )))))
 
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
@@ -525,12 +379,8 @@
 	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 2)
 	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
 	(tk/pack top 'expand: 1 'fill: 'both)
-	;; (show-blocks-view (bt-blocks-widget-blocks-view w))
 	(show-blocks-view (bt-blocks-widget-blocks-pane w))
-	;; TODO temp canvas test
-	(show-order-view (bt-blocks-widget-order-pane w))
-	;; (show-order-view (bt-blocks-widget-order-view w))
-	)))
+	(show-order-view (bt-blocks-widget-order-pane w)))))
 
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
