@@ -30,7 +30,7 @@ MDCONF is a domain-specific data description and translation language. Together 
 With MDCONF, authors of hardware-level music players implementations can configure
 
 1. The structure of the MDMOD implementation to be used as input for the player.
-2. The structur2e and composition of the binary data used by the music player.
+2. The structure and composition of the binary data used by the music player.
 
 It is the task of an MDAL compiler to figure out how to transform MDMOD input into the desired binary output format.
 
