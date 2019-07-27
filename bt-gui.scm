@@ -25,23 +25,23 @@
       (make-bt-field-widget
        toplevel-frame: tl-frame
        id-label: (tl-frame 'create-widget 'label
-			   'text: (symbol->string node-id))
+			   text: (symbol->string node-id))
        val-label: (tl-frame 'create-widget 'label
-			    'relief: 'solid 'padding: '(2 2)
-			    'text: (normalize-field-value
-				    (md:inode-instance-val
-				     ((md:node-instance-path instance-path)
-				      (md:mod-global-node (current-mod))))
-				    node-id)))))
+			    relief: 'solid padding: '(2 2)
+			    text: (normalize-field-value
+				   (md:inode-instance-val
+				    ((md:node-instance-path instance-path)
+				     (md:mod-global-node (current-mod))))
+				   node-id)))))
 
   ;;; Show a group ifield widget.
   (define (show-field-widget w)
     (begin
       (tk/pack (bt-field-widget-toplevel-frame w)
-	       'side: 'left)
+	       side: 'left)
       (tk/pack (bt-field-widget-id-label w)
 	       (bt-field-widget-val-label w)
-	       'side: 'left 'padx: 4 'pady: 4)))
+	       side: 'left padx: 4 pady: 4)))
 
   ;; Not exported.
   (defstruct bt-fields-widget toplevel-frame fields)
@@ -67,7 +67,7 @@
   (define (show-fields-widget w)
     (begin
       (tk/pack (bt-fields-widget-toplevel-frame w)
-	       'fill: 'x)
+	       fill: 'x)
       (map show-field-widget (bt-fields-widget-fields w))))
 
   ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
@@ -174,18 +174,18 @@
 			    (md:config-itree (current-config)))))
 	   (rownums (packframe 'create-widget 'treeview selectmode: 'none))
 	   (columns (map (lambda (id)
-		       (let ((tree (canvas 'create-widget 'treeview
-					   selectmode: 'none)))
-			 (tree 'heading "#0"
-			       text: (if (eq? type 'block)
-					  (symbol->string id)
-					  (string-drop (symbol->string id) 2)))
-			 (tree 'column "#0" width: 80)
-			 ;; FIXME this is ignored - maybe only works for col 1ff
-			 (tree 'column "#0" anchor: 'center)
-			 (metatree-column-set-tags tree)
-			 tree))
-		     column-ids)))
+			   (let ((tree (canvas 'create-widget 'treeview
+					       selectmode: 'none)))
+			     (tree 'heading "#0"
+				   text: (if (eq? type 'block)
+					     (symbol->string id)
+					     (string-drop (symbol->string id) 2)))
+			     (tree 'column "#0" width: 80)
+			     ;; FIXME this is ignored - maybe only works for col 1ff
+			     (tree 'column "#0" anchor: 'center)
+			     (metatree-column-set-tags tree)
+			     tree))
+			 column-ids)))
       (metatree-column-set-tags rownums)
       (make-metatree
        parent: parent group-id: group-id type: type packframe: packframe
@@ -284,7 +284,7 @@
 		  (tree 'tag method "cursor-x" (tree-item-list tree))
 		  (tree 'tag method "active-cell"
 			(nth-tree-item tree (metatree-state-cursor-y
-					   (metatree-mtstate mt)))))
+					     (metatree-mtstate mt)))))
 		(tree 'tag method "cursor-y"
 		      (nth-tree-item tree (metatree-state-cursor-y
 					   (metatree-mtstate mt)))))
@@ -417,7 +417,7 @@
       (if (null? block-ids)
 	  #f
 	  (let* ((.tl (parent-widget 'create-widget 'panedwindow
-				     'orient: 'horizontal))
+				     orient: 'horizontal))
 		 (.blocks-pane (.tl 'create-widget 'frame))
 		 (.order-pane (.tl 'create-widget 'frame)))
 	    (make-bt-blocks-widget
@@ -433,9 +433,9 @@
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (begin
-	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 2)
-	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
-	(tk/pack top 'expand: 1 'fill: 'both)
+	(top 'add (bt-blocks-widget-blocks-pane w) weight: 2)
+	(top 'add (bt-blocks-widget-order-pane w) weight: 1)
+	(tk/pack top expand: 1 fill: 'both)
 	(show-blocks-view (bt-blocks-widget-blocks-pane w))
 	(show-order-view (bt-blocks-widget-order-pane w)))))
 
@@ -468,12 +468,12 @@
   (define (show-subgroups-widget w)
     (begin
       (tk/pack (bt-subgroups-widget-toplevel-frame w)
-	       'expand: 1 'fill: 'both)
+	       expand: 1 fill: 'both)
       (tk/pack (bt-subgroups-widget-tl-notebook w)
-	       'expand: 1 'fill: 'both)
+	       expand: 1 fill: 'both)
       (map (lambda (sg-id sg-frame)
 	     ((bt-subgroups-widget-tl-notebook w)
-	      'add sg-frame 'text: (symbol->string sg-id)))
+	      'add sg-frame text: (symbol->string sg-id)))
 	   (bt-subgroups-widget-subgroup-ids w)
 	   (bt-subgroups-widget-notebook-frames w))
       (map show-group-widget (bt-subgroups-widget-subgroups w))))
@@ -498,7 +498,7 @@
   (define (show-group-widget w)
     (begin
       (tk/pack (bt-group-widget-toplevel-frame w)
-	       'expand: 1 'fill: 'both)
+	       expand: 1 fill: 'both)
       (when (bt-group-widget-fields-widget w)
 	(show-fields-widget (bt-group-widget-fields-widget w)))
       (when (bt-group-widget-blocks-widget w)
@@ -509,7 +509,7 @@
 		     (bt-group-widget-subgroups-widget w)))
 	(tk/pack ((bt-group-widget-toplevel-frame w)
 		  'create-widget 'frame)
-		 'expand: 1 'fill: 'both))))
+		 expand: 1 fill: 'both))))
 
   (define (make-module-widget parent)
     (make-group-widget 'GLOBAL "" parent))

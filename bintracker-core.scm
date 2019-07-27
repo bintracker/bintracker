@@ -51,12 +51,12 @@
   ;; ---------------------------------------------------------------------------
 
   (define (about-message)
-    (tk/message-box 'title: "About" 'message: "Bintracker NG\nversion 0.1"
-		    'type: 'ok))
+    (tk/message-box title: "About" message: "Bintracker NG\nversion 0.1"
+		    type: 'ok))
 
   (define (load-file)
     (let ((filename (tk/get-open-file
-		     'filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
+		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
 	(begin (console-output 'insert 'end
 			       (string-append "Loading file: " filename "\n"))
@@ -86,8 +86,8 @@
       (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
 
   (define (tk/icon filename)
-    (tk/image 'create 'photo 'format: "PNG"
-	      'file: (string-append "resources/icons/" filename)))
+    (tk/image 'create 'photo format: "PNG"
+	      file: (string-append "resources/icons/" filename)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -105,32 +105,32 @@
     (begin
 
       (map (lambda (submenu title)
-	     (main-menu 'add 'cascade 'menu: submenu 'label: title
-			'underline: 0))
+	     (main-menu 'add 'cascade menu: submenu label: title
+			underline: 0))
 	   (list file-menu edit-menu generate-menu transform-menu help-menu)
 	   '("File" "Edit" "Generate" "Transform" "Help"))
 
-      (file-menu 'add 'command 'label: "New..." 'underline: 0
-		 'command: (lambda () #f)
-		 'accelerator: "Ctrl+N")
-      (file-menu 'add 'command 'label: "Open..." 'underline: 0
-		 'command: load-file 'accelerator: "Ctrl+O")
-      (file-menu 'add 'command 'label: "Save" 'underline: 0
-		 'accelerator: "Ctrl+S")
-      (file-menu 'add 'command 'label: "Save As..." 'underline: 5
-		 'command: (lambda () #f)
-		 'accelerator: "Ctrl+Shift+S")
-      (file-menu 'add 'command 'label: "Close" 'underline: 0
-		 'command: (lambda () #f)
-		 'accelerator: "Ctrl+W")
+      (file-menu 'add 'command label: "New..." underline: 0
+		 command: (lambda () #f)
+		 accelerator: "Ctrl+N")
+      (file-menu 'add 'command label: "Open..." underline: 0
+		 command: load-file accelerator: "Ctrl+O")
+      (file-menu 'add 'command label: "Save" underline: 0
+		 accelerator: "Ctrl+S")
+      (file-menu 'add 'command label: "Save As..." underline: 5
+		 command: (lambda () #f)
+		 accelerator: "Ctrl+Shift+S")
+      (file-menu 'add 'command label: "Close" underline: 0
+		 command: (lambda () #f)
+		 accelerator: "Ctrl+W")
       (file-menu 'add 'separator)
-      (file-menu 'add 'command 'label: "Exit" 'underline: 1 'command: tk-end
-		 'accelerator: "Ctrl+Q")
+      (file-menu 'add 'command label: "Exit" underline: 1 command: tk-end
+		 accelerator: "Ctrl+Q")
 
-      (help-menu 'add 'command 'label: "Help" 'underline: 0
-		 'command: launch-help 'accelerator: "F1")
-      (help-menu 'add 'command 'label: "About" 'underline: 0
-		 'command: about-message)
+      (help-menu 'add 'command label: "Help" underline: 0
+		 command: launch-help accelerator: "F1")
+      (help-menu 'add 'command label: "About" underline: 0
+		 command: about-message)
 
       (when (app-settings-show-menu *bintracker-settings*)
 	(tk 'configure 'menu: main-menu))))
@@ -154,12 +154,12 @@
 
   (define (init-top-level-layout)
     (begin
-      (tk/pack status-frame 'fill: 'x 'side: 'bottom)
-      (tk/pack top-frame 'expand: 1 'fill: 'both)
-      (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
-      (tk/pack main-panes 'expand: 1 'fill: 'both)
-      (main-panes 'add main-frame 'weight: 5)
-      (main-panes 'add console-frame 'weight: 2)))
+      (tk/pack status-frame fill: 'x side: 'bottom)
+      (tk/pack top-frame expand: 1 fill: 'both)
+      (tk/pack toolbar-frame expand: 0 fill: 'x)
+      (tk/pack main-panes expand: 1 fill: 'both)
+      (main-panes 'add main-frame weight: 5)
+      (main-panes 'add console-frame weight: 2)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -179,8 +179,8 @@
       (status-text 'configure 'text: status-msg)))
 
   (define (init-status-bar)
-    (begin (tk/pack status-text 'fill: 'x 'side: 'left)
-	   (tk/pack (status-frame 'create-widget 'sizegrip) 'side: 'right)
+    (begin (tk/pack status-text fill: 'x side: 'left)
+	   (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)
 	   (update-status-text)))
 
 
@@ -189,10 +189,10 @@
   ;; ---------------------------------------------------------------------------
 
   (define (toolbar-button icon command #!optional (init-state 'disabled))
-    (toolbar-frame 'create-widget 'button 'image: (tk/icon icon)
-		   'state: init-state
-		   'command: command
-		   'style: "Toolbutton"))
+    (toolbar-frame 'create-widget 'button image: (tk/icon icon)
+		   state: init-state
+		   command: command
+		   style: "Toolbutton"))
 
   (define button-new (toolbar-button "new.png" (lambda () #t) 'enabled))
   (define button-load (toolbar-button "load.png" load-file 'enabled))
@@ -217,10 +217,10 @@
   (define (make-toolbar)
     (let ((make-separator (lambda ()
 			    (toolbar-frame 'create-widget 'separator
-					   'orient: 'vertical))))
+					   orient: 'vertical))))
       (map (lambda (elem)
 	     ;; TODO pad seperators, but nothing else
-	     (tk/pack elem 'side: 'left 'padx: 0 'fill: 'y))
+	     (tk/pack elem side: 'left padx: 0 fill: 'y))
 	   (list button-new button-load button-save (make-separator)
 		 button-undo button-redo (make-separator)
 		 button-copy button-cut button-clear button-paste
@@ -231,7 +231,7 @@
 
   (define (enable-play-buttons)
     (map (lambda (button)
-	   (button 'configure 'state: 'enabled))
+	   (button 'configure state: 'enabled))
 	 (list button-stop button-play button-play-from-start
 	       button-play-ptn)))
 
@@ -242,11 +242,11 @@
   (define console-wrapper (console-frame 'create-widget 'frame))
 
   (define console-output (console-wrapper 'create-widget 'text
-					  'bg: (colors 'console-bg)
-					  'fg: (colors 'console-fg)))
+					  bg: (colors 'console-bg)
+					  fg: (colors 'console-fg)))
 
   (define console-yscroll (console-wrapper 'create-widget 'scrollbar
-					   'orient: 'vertical))
+					   orient: 'vertical))
 
   ;; entry is a ttk widget, so styling via -bg/-fg won't work here
   (define console-input (console-frame 'create-widget 'entry))
@@ -260,25 +260,25 @@
 				       "\n"))
       (let ((input-str (->string (console-input 'get))))
 	(begin
-	  (console-output 'configure 'state: 'normal)
+	  (console-output 'configure state: 'normal)
 	  (console-output 'insert 'end
 			  (string-append
 			   (->string
 			    (eval (read (open-input-string input-str))))
 			   "\n"))
-	  (console-output 'configure 'state: 'disabled)))))
+	  (console-output 'configure state: 'disabled)))))
 
   (define (init-console)
     (begin
-      (tk/pack console-input 'fill: 'x 'side: 'bottom)
-      (tk/pack console-wrapper 'expand: 1 'fill: 'both)
-      (tk/pack console-output 'expand: 1 'fill: 'both 'side: 'left)
-      (tk/pack console-yscroll 'side: 'right 'fill: 'y)
-      (console-yscroll 'configure 'command: (list console-output 'yview))
-      (console-output 'configure 'yscrollcommand: (list console-yscroll 'set))
+      (tk/pack console-input fill: 'x side: 'bottom)
+      (tk/pack console-wrapper expand: 1 fill: 'both)
+      (tk/pack console-output expand: 1 fill: 'both side: 'left)
+      (tk/pack console-yscroll side: 'right fill: 'y)
+      (console-yscroll 'configure command: `(,console-output yview))
+      (console-output 'configure 'yscrollcommand: `(,console-yscroll set))
       (console-output 'insert 'end
 		      "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
-      (console-output 'configure 'state: 'disabled)))
+      (console-output 'configure state: 'disabled)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -303,12 +303,12 @@
   ;; (tk/wm 'minsize tk 760 600)
   (tk-eval "option add *tearOff 0")
 
-  (ttk/style 'configure 'Treeview 'background: (colors 'row)
-	     'fieldbackground: (colors 'row)
-	     'foreground: (colors 'text)
-	     'font: (list 'family: (settings 'font-mono)
-			  'size: (settings 'font-size))
-	     'rowheight: (get-treeview-rowheight))
+  (ttk/style 'configure 'Treeview background: (colors 'row)
+	     fieldbackground: (colors 'row)
+	     foreground: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+			 size: (settings 'font-size))
+	     rowheight: (get-treeview-rowheight))
   ;; hide treeview borders
   (ttk/style 'layout 'Treeview '(Treeview.treearea sticky: nswe))
   (ttk/style 'configure 'Treeview '(Treeview.Item indicatorsize: 0))
