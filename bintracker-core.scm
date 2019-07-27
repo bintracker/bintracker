@@ -69,7 +69,7 @@
 						  "\n"))
 		 (begin
 		   (set-current-mod! filename)
-		   (setstate! 'module-widget (make-module-widget))
+		   (setstate! 'module-widget (make-module-widget main-frame))
 		   (show-module)
 		   (enable-play-buttons)
 		   (update-status-text)))))))
@@ -157,8 +157,6 @@
       (tk/pack status-frame 'fill: 'x 'side: 'bottom)
       (tk/pack top-frame 'expand: 1 'fill: 'both)
       (tk/pack toolbar-frame 'expand: 0 'fill: 'x)
-      ;; (tk/pack main-frame 'expand: 1 'fill: 'both)
-      ;; (tk/pack console-frame 'expand: 0 'fill: 'both)
       (tk/pack main-panes 'expand: 1 'fill: 'both)
       (main-panes 'add main-frame 'weight: 5)
       (main-panes 'add console-frame 'weight: 2)))
@@ -281,184 +279,6 @@
       (console-output 'insert 'end
 		      "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
       (console-output 'configure 'state: 'disabled)))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Module Specific GUI
-  ;; ---------------------------------------------------------------------------
-
-  (defstruct bt-field-widget toplevel-frame id-label val-label)
-
-  ;;; Create a group ifield widget.
-  (define (make-field-widget node-id instance-path parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame)))
-      (make-bt-field-widget
-       toplevel-frame: tl-frame
-       id-label: (tl-frame 'create-widget 'label
-			   'text: (symbol->string node-id))
-       val-label: (tl-frame 'create-widget 'label
-			    'relief: 'solid 'padding: '(2 2)
-			    'text: (normalize-field-value
-				    (md:inode-instance-val
-				     ((md:node-instance-path instance-path)
-				      (md:mod-global-node (current-mod))))
-				    node-id)))))
-
-  ;;; Show a group ifield widget.
-  (define (show-field-widget w)
-    (begin
-      (tk/pack (bt-field-widget-toplevel-frame w)
-	       'side: 'left)
-      (tk/pack (bt-field-widget-id-label w)
-	       (bt-field-widget-val-label w)
-	       'side: 'left 'padx: 4 'pady: 4)))
-
-  ;; Not exported.
-  (defstruct bt-fields-widget toplevel-frame fields)
-
-  ;;; Create a widget for the group's ifields.
-  (define (make-fields-widget parent-node-id parent-path parent-widget)
-    (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
-						       (current-config)
-						       'field)))
-      (if (null? subnode-ids)
-	  #f
-	  (let ((tl-frame (parent-widget 'create-widget 'frame)))
-	    (make-bt-fields-widget
-	     toplevel-frame: tl-frame
-	     fields: (map (lambda (id)
-			    (make-field-widget
-			     id (string-append parent-path (symbol->string id)
-					       "/0/")
-			     tl-frame))
-			  subnode-ids))))))
-
-  ;;; Show a group fields widget.
-  (define (show-fields-widget w)
-    (begin
-      (tk/pack (bt-fields-widget-toplevel-frame w)
-	       'fill: 'x)
-      (map show-field-widget (bt-fields-widget-fields w))))
-
-  (define (show-blocks-view top)
-    (let ((mt (init-metatree top 'block 'PATTERNS)))
-      (show-metatree mt)
-      (update-blocks-view mt "0/PATTERNS/0" 0)))
-
-  (define (show-order-view top)
-    (let ((mt (init-metatree top 'order 'PATTERNS)))
-      (show-metatree mt)
-      (update-order-view mt "0/PATTERNS/0")))
-
-  (defstruct bt-blocks-widget
-    tl-panedwindow blocks-pane order-pane blocks-view order-view)
-
-  (define (make-blocks-widget parent-node-id parent-path parent-widget)
-    (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
-						     (current-config)
-						     'block)))
-      (if (null? block-ids)
-	  #f
-	  (let* ((.tl (parent-widget 'create-widget 'panedwindow
-				     'orient: 'horizontal))
-		 (.blocks-pane (.tl 'create-widget 'frame))
-		 (.order-pane (.tl 'create-widget 'frame)))
-	    (make-bt-blocks-widget
-	     tl-panedwindow: .tl
-	     blocks-pane: .blocks-pane
-	     order-pane: .order-pane
-	     ;; blocks-view: (make-blocks-view parent-node-id parent-path
-	     ;; 				    .blocks-pane)
-	     ;; order-view: (make-order-view parent-node-id parent-path
-	     ;; 				  .order-pane)
-	     )))))
-
-  (define (show-blocks-widget w)
-    (let ((top (bt-blocks-widget-tl-panedwindow w)))
-      (begin
-	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 2)
-	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
-	(tk/pack top 'expand: 1 'fill: 'both)
-	(show-blocks-view (bt-blocks-widget-blocks-pane w))
-	(show-order-view (bt-blocks-widget-order-pane w)))))
-
-  (defstruct bt-subgroups-widget
-    toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
-
-  (define (make-subgroups-widget parent-node-id parent-path parent-widget)
-    (let ((sg-ids (md:config-get-subnode-type-ids parent-node-id
-						  (current-config)
-						  'group)))
-      (if (null? sg-ids)
-	  #f
-	  (let* ((tl-frame (parent-widget 'create-widget 'frame))
-		 (notebook (tl-frame 'create-widget 'notebook))
-		 (subgroup-frames (map (lambda (id)
-					 (notebook 'create-widget 'frame))
-				       sg-ids)))
-	    (make-bt-subgroups-widget
-	     toplevel-frame: tl-frame
-	     subgroup-ids: sg-ids
-	     tl-notebook: notebook
-	     notebook-frames: subgroup-frames
-	     subgroups: (map (lambda (id frame)
-			       (make-group-widget
-				id (string-append parent-path
-						  (symbol->string id) "/0/")
-				frame))
-			     sg-ids subgroup-frames))))))
-
-  (define (show-subgroups-widget w)
-    (begin
-      (tk/pack (bt-subgroups-widget-toplevel-frame w)
-	       'expand: 1 'fill: 'both)
-      (tk/pack (bt-subgroups-widget-tl-notebook w)
-	       'expand: 1 'fill: 'both)
-      (map (lambda (sg-id sg-frame)
-	     ((bt-subgroups-widget-tl-notebook w)
-	      'add sg-frame 'text: (symbol->string sg-id)))
-	   (bt-subgroups-widget-subgroup-ids w)
-	   (bt-subgroups-widget-notebook-frames w))
-      (map show-group-widget (bt-subgroups-widget-subgroups w))))
-
-  ;; Not exported.
-  (defstruct bt-group-widget
-    toplevel-frame fields-widget blocks-widget subgroups-widget)
-
-  ;; TODO handle groups with multiple instances
-  ;; parent-path is misleading, it should be the igroup path itself
-  (define (make-group-widget node-id parent-path parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame))
-	  (instance-path (string-append parent-path "0/")))
-      (make-bt-group-widget
-       toplevel-frame: tl-frame
-       fields-widget: (make-fields-widget node-id instance-path tl-frame)
-       blocks-widget: (make-blocks-widget node-id instance-path tl-frame)
-       subgroups-widget: (make-subgroups-widget node-id instance-path
-						tl-frame))))
-
-  ;; Display the group widget (using pack geometry manager).
-  (define (show-group-widget w)
-    (begin
-      (tk/pack (bt-group-widget-toplevel-frame w)
-	       'expand: 1 'fill: 'both)
-      (when (bt-group-widget-fields-widget w)
-	(show-fields-widget (bt-group-widget-fields-widget w)))
-      (when (bt-group-widget-blocks-widget w)
-	(show-blocks-widget (bt-group-widget-blocks-widget w)))
-      (when (bt-group-widget-subgroups-widget w)
-	(show-subgroups-widget (bt-group-widget-subgroups-widget w)))
-      (when (not (or (bt-group-widget-blocks-widget w)
-		     (bt-group-widget-subgroups-widget w)))
-	(tk/pack ((bt-group-widget-toplevel-frame w)
-		  'create-widget 'frame)
-		 'expand: 1 'fill: 'both))))
-
-  (define (make-module-widget)
-    (make-group-widget 'GLOBAL "" main-frame))
-
-  (define (show-module)
-    (show-group-widget (app-state-module-widget *bintracker-state*)))
 
 
   ;; ---------------------------------------------------------------------------
