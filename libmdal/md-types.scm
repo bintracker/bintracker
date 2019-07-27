@@ -265,4 +265,11 @@
        ;;; dummy values for first run
        '(0 0 0))))
 
+  ;;; Returns the plain field values of a block, sorted per field node (column)
+  (define (md:mod-get-block-instance-values block-instance)
+    (map (lambda (field-node)
+	   (map (o md:inode-instance-val cadr)
+		(md:inode-instances field-node)))
+	 (md:inode-instance-val block-instance)))
+
   ) ;; end module md-types

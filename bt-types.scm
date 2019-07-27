@@ -6,7 +6,7 @@
 
 (module bt-types *
 
-  (import scheme (chicken base) srfi-1 defstruct)
+  (import scheme (chicken base) (chicken bitwise) srfi-1 srfi-13 defstruct)
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
@@ -14,7 +14,8 @@
 
   ;;; Recort type that wraps gui element colors
   (defstruct app-colors
-    text row row-highlight-major row-highlight-minor console-bg console-fg)
+    text cursor row row-highlight-major row-highlight-minor
+    console-bg console-fg)
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
@@ -34,11 +35,45 @@
   (define (make-default-colors)
     (make-app-colors
      text: "#00ee00"
+     cursor: "#0066cc"
      row: "#222222"
      row-highlight-major: "#444444"
      row-highlight-minor: "#333333"
      console-bg: "#000000"
      console-fg: "#ffffff"))
+
+  (defstruct rgb
+    red green blue)
+
+  ;;; Convert a color code string to a list of r,g,b values
+  (define (color->rgb color)
+    (let ((colorval (string->number (string-replace color "#x" 0 1)
+				    16)))
+      (make-rgb
+       red: (bitwise-and #xff (quotient colorval #x10000))
+       green: (bitwise-and #xff (quotient colorval #x100))
+       blue: (bitwise-and #xff colorval))))
+
+  ;;; Convert an rgb struct into a html color string
+  (define (rgb->color r)
+    (let ((hue->string (lambda (hue)
+			 (string-pad (number->string (hue r) 16)
+				     2 #\0))))
+      (string-append "#" (hue->string rgb-red)
+		     (hue->string rgb-green)
+		     (hue->string rgb-blue))))
+
+  ;;; Composite map an rgb value rgb1 onto rgb2, using alpha as intensity
+  ;;; modifier
+  (define (composite-rgb rgb1 rgb2 alpha1)
+    (let ((composite-component (lambda (component)
+				  (inexact->exact (+ (* alpha1 (component rgb2))
+						     (* (component rgb1)
+							(- 1 alpha1)))))))
+      (make-rgb
+       red: (composite-component rgb-red)
+       green: (composite-component rgb-green)
+       blue: (composite-component rgb-blue))))
 
   (define (make-default-settings)
     (make-app-settings themes-map: '((awdark "themes/awthemes.tcl")

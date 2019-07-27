@@ -10,7 +10,7 @@ IMPORTFLAGS = -s -d0
 BASEDEPS = md-helpers.import.so md-types.import.so
 
 # build libmdal
-mdal: mdal.scm $(BASEDEPS) md-config.import.so md-parser.import.so schemta.so
+mdal: mdal.scm $(BASEDEPS) md-config.import.so md-parser.import.so schemta.import.so
 	$(CSC) $(LIBFLAGS) mdal.scm -j mdal
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
 

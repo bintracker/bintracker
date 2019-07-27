@@ -20,10 +20,10 @@
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  srfi-1 srfi-13 srfi-69 pstk defstruct matchable
-	  simple-exceptions mdal bt-types)
+	  simple-exceptions mdal bt-state bt-types bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
-  (reexport mdal pstk bt-types (chicken bitwise)
+  (reexport mdal pstk bt-types bt-gui (chicken bitwise)
 	    srfi-1 srfi-13 simple-exceptions)
 
 
@@ -38,87 +38,6 @@
 			    labelframe scrollbar notebook panedwindow
 			    progressbar combobox separator scale sizegrip
 			    treeview))
-
-  (define *bintracker-state* (make-default-state))
-  (define *bintracker-settings* (make-default-settings))
-
-  ;;; Get the global application state, or a specific {{param}}eter of that
-  ;;; state.
-  (define (state #!optional param)
-    (if param
-	((eval (string->symbol (string-append "app-state-" (->string param))))
-	 *bintracker-state*)
-	*bintracker-state*))
-
-  ;;; Get the global application settings, or a specific {{param}}eter of that
-  ;;; state.
-  (define (settings #!optional param)
-    (if param
-	((eval (string->symbol (string-append "app-settings-"
-					      (->string param))))
-	 *bintracker-settings*)
-	*bintracker-settings*))
-
-  (define (colors param)
-    ((eval (string->symbol (string-append "app-colors-" (->string param))))
-     (app-settings-color-scheme *bintracker-settings*)))
-
-
-  ;;; All-purpose shorthand setter, used to implement setconf!, set-color, etc
-  (define (set-global! prefix obj param val)
-    ((eval (string->symbol (string-append prefix (->string param)
-					  "-set!")))
-     obj val))
-
-  ;;; Change Bintracker's global settings. Mainly an interface to config.scm.
-  ;;; setconf! does not immediately affect the current state of the application.
-  ;;; You may need to call (reconfigure!) for the changes to take effect.
-  (define (setconf! param val)
-    (set-global! "app-settings-" *bintracker-settings* param val))
-
-  ;;; Change Bintracker's color scheme
-  (define (set-color! param val)
-    (set-global! "app-colors-" (app-settings-color-scheme *bintracker-settings*)
-		 param val))
-
-  ;;; Change Bintracker's internal state variables.
-  (define (setstate! param val)
-    (set-global! "app-state-" *bintracker-state* param val))
-
-  ;;; Install additional themes.
-  (define (install-theme! name implementation-filepath)
-    (setconf! 'themes-map (cons (list name implementation-filepath)
-				 (settings 'themes-map))))
-
-  ;;; Set the Tk widget theme.
-  (define (set-theme! name)
-    (begin
-      (unless (string-contains (tk-eval "ttk::style theme names")
-			       (->string name))
-	(let ((impl-file (alist-ref name (settings 'themes-map))))
-	  (if impl-file
-	      (tk-eval (string-append "source \"" (car impl-file) "\""))
-	      (raise
-	       (make-exn (string-append "No implementation file found for theme"
-					(->string name)))))))
-      (tk-eval (string-append "ttk::style theme use " (->string name)))))
-
-  ;;; Returns the current module, or #f if no module is loaded.
-  (define (current-mod)
-    (app-state-current-mdmod *bintracker-state*))
-
-  ;;; Set the current module. Does not update GUI.
-  (define (set-current-mod! filename)
-    (setstate! 'current-mdmod
-	       (md:file->module filename
-				(app-settings-mdal-config-dir
-				 *bintracker-settings*)
-				"libmdal/")))
-
-  ;;; Returns the current module configuration (mdconf). It is an error to call
-  ;;; this procedure if no module is currently loaded.
-  (define (current-config)
-    (md:mod-cfg (current-mod)))
 
   ;; Load config file
   (handle-exceptions
@@ -368,54 +287,6 @@
   ;;; ## Module Specific GUI
   ;; ---------------------------------------------------------------------------
 
-  ;;; Determine how many characters are needed to print values of a given
-  ;;; command.
-  ;; TODO results should be cached
-  (define (value-display-size command-config)
-    (match (md:command-type command-config)
-      ;; FIXME this is incorrect for negative numbers
-      ((or 'int 'uint) (inexact->exact
-			(ceiling
-			 (/ (log (expt 2 (md:command-bits command-config)))
-			    (log (settings 'number-base))))))
-      ((or 'key 'ukey) (if (memq 'is_note (md:command-flags command-config))
-			   3 (apply max
-				    (map (o string-length car)
-					 (hash-table-keys
-					  (md:command-keys command-config))))))
-      ('reference (if (>= 16 (settings 'number-base))
-		      2 3))
-      ('trigger 1)
-      ('string 1)))
-
-  (define (normalize-note-name name)
-    (if (string=? "rest" name)
-	"==="
-	(if (string-contains "#" name)
-	    name
-	    (let ((name-string-list (string->list name)))
-	      (list->string (append (list (car name-string-list) #\-)
-				    (cdr name-string-list)))))))
-
-  ;;; Transform an ifield value from MDAL format to tracker display format.
-  ;;; Replaces empty values with dots, changes numbers depending on number
-  ;;; format setting, and turns everything into a string.
-  (define (normalize-field-value val field-id)
-    (let* ((command-config (md:config-get-inode-source-command
-  			    field-id (current-config))))
-      (if val
-  	  (match (md:command-type command-config)
-	    ((or 'int 'uint 'reference)
-	     (number->string val (settings 'number-base)))
-	    ((or 'key 'ukey) (if (memq 'is_note
-				       (md:command-flags command-config))
-				 (normalize-note-name val)
-				 val))
-	    ('trigger "x")
-	    ('string val))
-  	  (list->string (make-list (value-display-size command-config)
-  	  			   #\.)))))
-
   (defstruct bt-field-widget toplevel-frame id-label val-label)
 
   ;;; Create a group ifield widget.
@@ -516,36 +387,41 @@
 				(else ""))))
 	   block-values (iota (length block-values)))))
 
-  (define (show-blocks-view t)
-    (let ((tree (bt-blocks-view-tree t))
-	  (xscroll (bt-blocks-view-xscroll t))
-	  (yscroll (bt-blocks-view-yscroll t)))
-      (begin
-	(tk/pack (bt-blocks-view-topframe t)
-		 'expand: 1 'fill: 'both)
-	(tk/pack (bt-blocks-view-xscroll-frame t)
-		 'fill: 'x)
-	(map (lambda (id)
-	       (begin
-		 (tree 'column (symbol->string id) 'anchor: 'center
-		       'width: 50)
-		 (tree 'heading (symbol->string id)
-		       'text: (symbol->string id))))
-	     (bt-blocks-view-field-ids t))
-	(init-blocks-view t ((md:node-instance-path "0/PATTERNS/0")
-			     (md:mod-global-node (current-mod)))
-			  '(0 0 0))
-	(tk/pack yscroll 'fill: 'y 'side: 'right)
-	(tk/pack tree 'expand: 1 'fill: 'both 'side: 'right)
-	(tk/pack xscroll 'fill: 'x)
-	(tree 'configure 'xscrollcommand: (list xscroll 'set)
-	      'yscrollcommand: (list yscroll 'set)
-	      'selectmode: 'browse)
-	(tree 'column "#0" 'width: 70)
-	(tree 'tag 'configure 'rowhl-minor
-	      'background: (colors 'row-highlight-minor))
-	(tree 'tag 'configure 'rowhl-major
-	      'background: (colors 'row-highlight-major)))))
+  (define (show-blocks-view top)
+    (let ((mt (init-metatree top 'block 'PATTERNS)))
+      (show-metatree mt)
+      (update-blocks-view mt "0/PATTERNS/0" 0)))
+
+  ;; (define (show-blocks-view t)
+  ;;   (let ((tree (bt-blocks-view-tree t))
+  ;; 	  (xscroll (bt-blocks-view-xscroll t))
+  ;; 	  (yscroll (bt-blocks-view-yscroll t)))
+  ;;     (begin
+  ;; 	(tk/pack (bt-blocks-view-topframe t)
+  ;; 		 'expand: 1 'fill: 'both)
+  ;; 	(tk/pack (bt-blocks-view-xscroll-frame t)
+  ;; 		 'fill: 'x)
+  ;; 	(map (lambda (id)
+  ;; 	       (begin
+  ;; 		 (tree 'column (symbol->string id) 'anchor: 'center
+  ;; 		       'width: 50)
+  ;; 		 (tree 'heading (symbol->string id)
+  ;; 		       'text: (symbol->string id))))
+  ;; 	     (bt-blocks-view-field-ids t))
+  ;; 	(init-blocks-view t ((md:node-instance-path "0/PATTERNS/0")
+  ;; 			     (md:mod-global-node (current-mod)))
+  ;; 			  '(0 0 0))
+  ;; 	(tk/pack yscroll 'fill: 'y 'side: 'right)
+  ;; 	(tk/pack tree 'expand: 1 'fill: 'both 'side: 'right)
+  ;; 	(tk/pack xscroll 'fill: 'x)
+  ;; 	(tree 'configure 'xscrollcommand: (list xscroll 'set)
+  ;; 	      'yscrollcommand: (list yscroll 'set)
+  ;; 	      'selectmode: 'browse)
+  ;; 	(tree 'column "#0" 'width: 70)
+  ;; 	(tree 'tag 'configure 'rowhl-minor
+  ;; 	      'background: (colors 'row-highlight-minor))
+  ;; 	(tree 'tag 'configure 'rowhl-major
+  ;; 	      'background: (colors 'row-highlight-major)))))
 
   ;;; Toplevel order (sequence) view structure
   ;;; mode = 'virtual, 'real, or 'auto
@@ -588,33 +464,38 @@
 					     order-view))))
 	   order-values (iota (length order-values)))))
 
-  (define (show-order-view t)
-    (let ((order-tree (bt-order-view-tree t))
-	  (xscroll (bt-order-view-xscroll t))
-	  (yscroll (bt-order-view-yscroll t)))
-      (begin
-	(tk/pack (bt-order-view-topframe t)
-		 'expand: 1 'fill: 'both)
-	(tk/pack (bt-order-view-xscroll-frame t)
-		 'fill: 'x)
-	(map (lambda (id)
-	       (begin
-		 (order-tree 'column (symbol->string id) 'anchor: 'center
-			     'width: 40)
-		 (order-tree 'heading (symbol->string id)
-			     'text: (string-drop (symbol->string id) 2))))
-	     (bt-order-view-field-ids t))
-	;;; TODO remove hardcoded crap
-	(init-order-view t ((md:node-instance-path "0/PATTERNS/0")
-			    (md:mod-global-node (current-mod)))
-			 'PATTERNS)
-	(tk/pack yscroll 'fill: 'y 'side: 'right)
-	(tk/pack order-tree 'expand: 1 'fill: 'both 'side: 'right)
-	(tk/pack xscroll 'fill: 'x)
-	(order-tree 'configure 'xscrollcommand: (list xscroll 'set)
-		    'yscrollcommand: (list yscroll 'set))
-	;; set width for tree column
-	(order-tree 'column "#0" 'width: 50))))
+  (define (show-order-view top)
+    (let ((mt (init-metatree top 'order 'PATTERNS)))
+      (show-metatree mt)
+      (update-order-view mt "0/PATTERNS/0")))
+
+  ;; (define (show-order-view t)
+  ;;   (let ((order-tree (bt-order-view-tree t))
+  ;; 	  (xscroll (bt-order-view-xscroll t))
+  ;; 	  (yscroll (bt-order-view-yscroll t)))
+  ;;     (begin
+  ;; 	(tk/pack (bt-order-view-topframe t)
+  ;; 		 'expand: 1 'fill: 'both)
+  ;; 	(tk/pack (bt-order-view-xscroll-frame t)
+  ;; 		 'fill: 'x)
+  ;; 	(map (lambda (id)
+  ;; 	       (begin
+  ;; 		 (order-tree 'column (symbol->string id) 'anchor: 'center
+  ;; 			     'width: 40)
+  ;; 		 (order-tree 'heading (symbol->string id)
+  ;; 			     'text: (string-drop (symbol->string id) 2))))
+  ;; 	     (bt-order-view-field-ids t))
+  ;; 	;;; TODO remove hardcoded crap
+  ;; 	(init-order-view t ((md:node-instance-path "0/PATTERNS/0")
+  ;; 			    (md:mod-global-node (current-mod)))
+  ;; 			 'PATTERNS)
+  ;; 	(tk/pack yscroll 'fill: 'y 'side: 'right)
+  ;; 	(tk/pack order-tree 'expand: 1 'fill: 'both 'side: 'right)
+  ;; 	(tk/pack xscroll 'fill: 'x)
+  ;; 	(order-tree 'configure 'xscrollcommand: (list xscroll 'set)
+  ;; 		    'yscrollcommand: (list yscroll 'set))
+  ;; 	;; set width for tree column
+  ;; 	(order-tree 'column "#0" 'width: 50))))
 
   (defstruct bt-blocks-widget
     tl-panedwindow blocks-pane order-pane blocks-view order-view)
@@ -641,11 +522,15 @@
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (begin
-	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 3)
+	(top 'add (bt-blocks-widget-blocks-pane w) 'weight: 2)
 	(top 'add (bt-blocks-widget-order-pane w) 'weight: 1)
 	(tk/pack top 'expand: 1 'fill: 'both)
-	(show-blocks-view (bt-blocks-widget-blocks-view w))
-	(show-order-view (bt-blocks-widget-order-view w)))))
+	;; (show-blocks-view (bt-blocks-widget-blocks-view w))
+	(show-blocks-view (bt-blocks-widget-blocks-pane w))
+	;; TODO temp canvas test
+	(show-order-view (bt-blocks-widget-order-pane w))
+	;; (show-order-view (bt-blocks-widget-order-view w))
+	)))
 
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
@@ -752,7 +637,11 @@
 	     'fieldbackground: (colors 'row)
 	     'foreground: (colors 'text)
 	     'font: (list 'family: (settings 'font-mono)
-			  'size: (settings 'font-size)))
+			  'size: (settings 'font-size))
+	     'rowheight: (get-treeview-rowheight))
+  ;; hide treeview borders
+  (ttk/style 'layout 'Treeview '(Treeview.treearea sticky: nswe))
+  (ttk/style 'configure 'Treeview '(Treeview.Item indicatorsize: 0))
 
   (init-menu)
   (init-top-level-layout)
