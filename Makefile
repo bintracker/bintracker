@@ -8,7 +8,8 @@ endif
 IMPORTFLAGS = -s -d0
 
 # build bintracker-core
-bintracker-core: bintracker-core.scm bt-state.import.so bt-types.import.so bt-gui.import.so mdal
+bintracker-core.so: bintracker-core.scm bt-state.import.so bt-types.import.so\
+	bt-gui.import.so libmdal/mdal.import.so
 	export CHICKEN_REPOSITORY_PATH=/home/heinz/chickens/5.0.0/lib/chicken/9:${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bintracker-core.scm -j bintracker-core
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
@@ -19,7 +20,7 @@ bt-types.so: bt-types.scm
 bt-types.import.so: bt-types.so
 	$(CSC) $(IMPORTFLAGS) bt-types.import.scm
 
-bt-state.so: bt-state.scm bt-types.import.so mdal
+bt-state.so: bt-state.scm bt-types.import.so libmdal/mdal.import.so
 	export CHICKEN_REPOSITORY_PATH=/home/heinz/chickens/5.0.0/lib/chicken/9:${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-state.scm -j bt-state
 
@@ -43,8 +44,7 @@ bt-gui.md: bt-gui.scm
 docs: $(DOCS)
 	mkdocs build
 
-.PHONY: mdal
-mdal:
+libmdal/mdal.import.so:
 	$(MAKE) -C libmdal
 
 .PHONY: clean
