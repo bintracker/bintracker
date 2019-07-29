@@ -17,7 +17,11 @@ nav:
       - "Using The Console": console.md
   - "Hacking Bintracker":
       - "Getting Started": hacking.md
-      - "Bintracker API": 'generated/bintracker-core.md'
+      - "Bintracker API":
+          - "bintracker-core": 'generated/bintracker-core.md'
+          - "bt-gui": 'generated/bt-gui.md'
+          - "bt-types": 'generated/bt-types.md'
+          - "bt-state": 'generated/bt-state.md'
   - MDAL:
       - Introduction: '../libmdal/docs/index.md'
       - MDMOD: '../libmdal/docs/MDMOD_SPECIFICATION.md'

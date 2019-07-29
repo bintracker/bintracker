@@ -1,6 +1,6 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = bintracker-core.md
+DOCS = bintracker-core.md bt-gui.md bt-state.md bt-types.md
 LIBFLAGS = -s -d3
 ifdef RELEASE
  LIBFLAGS += -O3
@@ -38,11 +38,13 @@ bt-gui.import.so: bt-gui.so
 	$(DOCGEN) -i $< -o docs/generated/$@ -m
 
 bintracker-core.md: bintracker-core.scm
-bt-types.md: bt-types.scm
 bt-gui.md: bt-gui.scm
+bt-state.md: bt-state.scm
+bt-types.md: bt-types.scm
 
 docs: $(DOCS)
 	mkdocs build
+	$(MAKE) docs -C libmdal
 
 libmdal/mdal.import.so:
 	$(MAKE) -C libmdal
