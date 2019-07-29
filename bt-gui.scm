@@ -181,7 +181,8 @@
 			     (tree 'heading "#0"
 				   text: (if (eq? type 'block)
 					     (symbol->string id)
-					     (string-drop (symbol->string id) 2)))
+					     (string-drop (symbol->string id)
+							  2)))
 			     (tree 'column "#0" width: 80)
 			     ;; FIXME this is ignored - maybe only works for col 1ff
 			     (tree 'column "#0" anchor: 'center)
@@ -399,15 +400,13 @@
       (tk/focus (car (metatree-columns metatree)))
       ))
 
-  (define (show-blocks-view top)
-    (let ((mt (init-metatree top 'block 'PATTERNS)))
-      (show-metatree mt)
-      (update-blocks-view mt "0/PATTERNS/0" 0)))
+  (define (show-blocks-view metatree group-instance-path)
+    (show-metatree metatree)
+    (update-blocks-view metatree group-instance-path 0))
 
-  (define (show-order-view top)
-    (let ((mt (init-metatree top 'order 'PATTERNS)))
-      (show-metatree mt)
-      (update-order-view mt "0/PATTERNS/0")))
+  (define (show-order-view metatree group-instance-path)
+    (show-metatree metatree)
+    (update-order-view metatree group-instance-path))
 
   (defstruct bt-blocks-widget
     tl-panedwindow blocks-pane order-pane blocks-view order-view)
@@ -426,11 +425,8 @@
 	     tl-panedwindow: .tl
 	     blocks-pane: .blocks-pane
 	     order-pane: .order-pane
-	     ;; blocks-view: (make-blocks-view parent-node-id parent-path
-	     ;; 				    .blocks-pane)
-	     ;; order-view: (make-order-view parent-node-id parent-path
-	     ;; 				  .order-pane)
-	     )))))
+	     blocks-view: (init-metatree .blocks-pane 'block parent-node-id)
+	     order-view: (init-metatree .order-pane 'order parent-node-id))))))
 
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
@@ -438,8 +434,10 @@
 	(top 'add (bt-blocks-widget-blocks-pane w) weight: 2)
 	(top 'add (bt-blocks-widget-order-pane w) weight: 1)
 	(tk/pack top expand: 1 fill: 'both)
-	(show-blocks-view (bt-blocks-widget-blocks-pane w))
-	(show-order-view (bt-blocks-widget-order-pane w)))))
+	(show-blocks-view (bt-blocks-widget-blocks-view w)
+			  "0/PATTERNS/0")
+	(show-order-view (bt-blocks-widget-order-view w)
+			 "0/PATTERNS/0"))))
 
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
