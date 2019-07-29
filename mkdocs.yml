@@ -1,10 +1,9 @@
-site_name: "Bintracker NG"
+site_name: "Bintracker"
 
 theme:
   name: 'material'
   hljs_languages:
     - scheme
-    - xml
 
 site_dir: 'documentation'
 
