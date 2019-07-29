@@ -17,72 +17,49 @@
 	  bt-state bt-types mdal)
 
 
-  (defstruct bt-field-widget toplevel-frame id-label val-label)
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Module Display Related Widgets and Procedures
+  ;; ---------------------------------------------------------------------------
 
-  ;;; Create a group ifield widget.
-  (define (make-field-widget node-id instance-path parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame)))
-      (make-bt-field-widget
-       toplevel-frame: tl-frame
-       id-label: (tl-frame 'create-widget 'label
-			   text: (symbol->string node-id))
-       val-label: (tl-frame 'create-widget 'label
-			    relief: 'solid padding: '(2 2)
-			    text: (normalize-field-value
-				   (md:inode-instance-val
-				    ((md:node-instance-path instance-path)
-				     (md:mod-global-node (current-mod))))
-				   node-id)))))
+  ;;; The module display is constructed as follows:
+  ;;;
+  ;;; Within the module display frame provided by Bintracker's top level layout,
+  ;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
+  ;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
+  ;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
+  ;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
+  ;;; subgroups, respectively.
+  ;;;
+  ;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
+  ;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
+  ;;; that contains a label displaying the field ID, and an input field for the
+  ;;; associated value. `bt-fields-widget` and its children are only used for
+  ;;; group fields, block fields are handled differently.
+  ;;;
+  ;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
+  ;;; The first pane contains the actual block display (all of the parent
+  ;;; group's block members except the order block displayed next to each
+  ;;; other), and the second pane contains the order or block list display.
+  ;;; Both the block display and the order display are based on the `metatree`
+  ;;; meta-widget, which is documented below.
+  ;;;
+  ;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
+  ;;; notebook (tab view), with tabs for each of the parent node's subgroups.
+  ;;; A Tk frame is created in each of the tabs. For each subgroup, a
+  ;;; `bt-group-widget` is created as a child of the corresponding tab frame.
+  ;;; This allows for infinite nested groups, as required by MDAL.
+  ;;;
+  ;;; All `bt-*` widgets should be created by calling the corresponding
+  ;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
+  ;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
+  ;;; calling the corresponding `show-*-widget` procedures.
 
-  ;;; Show a group ifield widget.
-  (define (show-field-widget w)
-    (begin
-      (tk/pack (bt-field-widget-toplevel-frame w)
-	       side: 'left)
-      (tk/pack (bt-field-widget-id-label w)
-	       (bt-field-widget-val-label w)
-	       side: 'left padx: 4 pady: 4)))
 
-  ;; Not exported.
-  (defstruct bt-fields-widget toplevel-frame fields)
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Auxilliary procedures used by various BT meta-widgets
+  ;; ---------------------------------------------------------------------------
 
-  ;;; Create a widget for the group's ifields.
-  (define (make-fields-widget parent-node-id parent-path parent-widget)
-    (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
-						       (current-config)
-						       'field)))
-      (if (null? subnode-ids)
-	  #f
-	  (let ((tl-frame (parent-widget 'create-widget 'frame)))
-	    (make-bt-fields-widget
-	     toplevel-frame: tl-frame
-	     fields: (map (lambda (id)
-			    (make-field-widget
-			     id (string-append parent-path (symbol->string id)
-					       "/0/")
-			     tl-frame))
-			  subnode-ids))))))
-
-  ;;; Show a group fields widget.
-  (define (show-fields-widget w)
-    (begin
-      (tk/pack (bt-fields-widget-toplevel-frame w)
-	       fill: 'x)
-      (map show-field-widget (bt-fields-widget-fields w))))
-
-  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
-  ;;; the Treeview style has already been configured to use
-  ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
-  ;;; This is necessary because Tk's `style lookup` command is broken, producing
-  ;;; no result ca. 50% of the time.
-  (define (get-treeview-rowheight)
-    (+ 4 (string->number
-	  (tk-eval (string-append "font metrics {-family \""
-				  (settings 'font-mono) "\" -size "
-				  (number->string (settings 'font-size))
-				  "} -linespace")))))
-
-    ;;; Determine how many characters are needed to print values of a given
+  ;;; Determine how many characters are needed to print values of a given
   ;;; command.
   ;; TODO results should be cached
   (define (value-display-size command-config)
@@ -102,6 +79,8 @@
       ('trigger 1)
       ('string 1)))
 
+  ;;; Convert note names from MDAL's format to the conventional tracker naming
+  ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
   (define (normalize-note-name name)
     (if (string=? "rest" name)
 	"==="
@@ -133,22 +112,106 @@
 	    ('string val)))))
 
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Field-Related Widgets and Procedures
+  ;; ---------------------------------------------------------------------------
+
+  ;;; A meta widget for displaying an MDAL group field.
+  (defstruct bt-field-widget toplevel-frame id-label val-label)
+
+  ;;; Create a `bt-field-widget`.
+  (define (make-field-widget node-id instance-path parent-widget)
+    (let ((tl-frame (parent-widget 'create-widget 'frame)))
+      (make-bt-field-widget
+       toplevel-frame: tl-frame
+       id-label: (tl-frame 'create-widget 'label
+			   text: (symbol->string node-id))
+       val-label: (tl-frame 'create-widget 'label
+			    relief: 'solid padding: '(2 2)
+			    text: (normalize-field-value
+				   (md:inode-instance-val
+				    ((md:node-instance-path instance-path)
+				     (md:mod-global-node (current-mod))))
+				   node-id)))))
+
+  ;;; Display a `bt-field-widget`.
+  (define (show-field-widget w)
+    (begin
+      (tk/pack (bt-field-widget-toplevel-frame w)
+	       side: 'left)
+      (tk/pack (bt-field-widget-id-label w)
+	       (bt-field-widget-val-label w)
+	       side: 'left padx: 4 pady: 4)))
+
+  ;;; A meta widget for displaying an MDAL group's field members.
+  (defstruct bt-fields-widget toplevel-frame fields)
+
+  ;;; Create a `bt-fields-widget`.
+  (define (make-fields-widget parent-node-id parent-path parent-widget)
+    (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
+						       (current-config)
+						       'field)))
+      (if (null? subnode-ids)
+	  #f
+	  (let ((tl-frame (parent-widget 'create-widget 'frame)))
+	    (make-bt-fields-widget
+	     toplevel-frame: tl-frame
+	     fields: (map (lambda (id)
+			    (make-field-widget
+			     id (string-append parent-path (symbol->string id)
+					       "/0/")
+			     tl-frame))
+			  subnode-ids))))))
+
+  ;;; Show a group fields widget.
+  (define (show-fields-widget w)
+    (begin
+      (tk/pack (bt-fields-widget-toplevel-frame w)
+	       fill: 'x)
+      (map show-field-widget (bt-fields-widget-fields w))))
+
+
+  ;;; --------------------------------------------------------------------------
+  ;; ### The metatree widget
+  ;;; --------------------------------------------------------------------------
+
+  ;;; The `metatree` widget is a generic widget that implements a spreadsheet
+  ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
+  ;;; tables, etc.) and the corresponding order or list view.
+  ;;;
+  ;;; Metatrees are implemented as a set of single-column `ttk::treeview`s on
+  ;;; a canvas. The canvas takes care of horizontal scrolling, while the
+  ;;; treeviews handle the vertical scrolling. Optionally, a row number column
+  ;;; can be displayed, which is not part of the canvas (since it should not be
+  ;;; scrolled horizontally).
+
+  ;;; child record that wraps display related state such as the cursor position.
   (defstruct metatree-state
     cursor-x cursor-y)
 
-  ;;; Abstraction of a metatree tk widget, ie. a speadsheet
+  ;;; The main metatree structure.
   (defstruct metatree
     parent group-id type packframe canvas meta-header column-headers
     block-ids column-ids columns rownums xscroll yscroll mtstate)
 
+  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
+  ;;; the Treeview style has already been configured to use
+  ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
+  ;;; This is necessary because Tk's `style lookup` command is broken, producing
+  ;;; no result ca. 50% of the time.
+  (define (get-treeview-rowheight)
+    (+ 4 (string->number
+	  (tk-eval (string-append "font metrics {-family \""
+				  (settings 'font-mono) "\" -size "
+				  (number->string (settings 'font-size))
+				  "} -linespace")))))
+
+  ;;; Auxiliary procedure for `init-metatree`. Configure cell tags.
   (define (metatree-column-set-tags col)
-    (col 'tag 'configure 'active-cell
-	 ;; TODO
-	 background: (colors 'cursor))
-    (col 'tag 'configure 'rowhl-minor
-    	 background: (colors 'row-highlight-minor))
+    (col 'tag 'configure 'active-cell background: (colors 'cursor))
+    (col 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
     (col 'tag 'configure 'rowhl-major
-    	 background: (colors 'row-highlight-major)))
+	 background: (colors 'row-highlight-major)))
 
   ;;; {{type}} - either 'block (show an igroup's blocks) or 'order (show iorder)
   (define (init-metatree parent type group-id)
@@ -184,7 +247,8 @@
 					     (string-drop (symbol->string id)
 							  2)))
 			     (tree 'column "#0" width: 80)
-			     ;; FIXME this is ignored - maybe only works for col 1ff
+			     ;; FIXME this is ignored - maybe only works for col
+			     ;; 1pp
 			     (tree 'column "#0" anchor: 'center)
 			     (metatree-column-set-tags tree)
 			     tree))
@@ -255,6 +319,10 @@
 	      (list 0 0 (* 80 (length (metatree-columns mt)))
 		    1000))))
 
+  ;;; Auxilliary procedure for `update-order-view`/`update-blocks-view`,
+  ;;; displays {{len}} row numbers for the corresponding metatree display.
+  ;;; Row numbers are padded by {{padding}} digits.
+  ;;; Setting {{highlight}} to #t enables pattern-style row highlighting.
   (define (update-row-numbers metatree len padding highlight)
     (for-each (lambda (row)
 		((metatree-rownums metatree) 'insert '{} 'end
@@ -269,18 +337,27 @@
 			   "")))
 	      (iota len)))
 
+  ;;; Get the list of items in the given ttk::treeview. Items are returned as
+  ;;; symbols.
+  ;; TODO why return symbols?
   (define (tree-item-list tree)
     (map string->symbol (string-split (tree 'children '{}))))
 
+  ;;; Get the item at {{index}} in the given ttk::treeview.
   (define (nth-tree-item tree index)
     (list-ref (tree-item-list tree) index))
 
+  ;;; Get the number of items in the ttk::treeview.
   (define (tree-length tree)
     (length (tree-item-list tree)))
 
+  ;;; Get the number of rows currently displayed by the given metatree.
   (define (metatree-length mt)
     (length (tree-item-list (car (metatree-columns mt)))))
 
+  ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
+  ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
+  ;;; cursor.
   (define (cursor-do mt method)
     (for-each (lambda (tree index)
 		(when (= index (metatree-state-cursor-x (metatree-mtstate mt)))
@@ -297,12 +374,17 @@
      (nth-tree-item (metatree-rownums mt)
 		    (metatree-state-cursor-y (metatree-mtstate mt)))))
 
+  ;;; Display the cursor of a metatree widget.
   (define (show-cursor mt)
     (cursor-do mt 'add))
 
+  ;;; Remove the cursor of a metatree widget.
   (define (delete-cursor mt)
     (cursor-do mt 'remove))
 
+  ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
+  ;;; of `'up`, `'down`, `'left`, `'right`
+  ;; TODO this should consider the current edit step
   (define (move-cursor mt direction)
     (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
 	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
@@ -331,6 +413,12 @@
       ;; https://stackoverflow.com/questions/4299432/in-tkinter-how-do-i-remove-focus-from-a-widget
       (show-cursor mt)))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Block Related Widgets and Procedures
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Update a group's order/block list view.
   (define (update-order-view metatree parent-node-instance-path)
     (letrec ((fill-empty-values
 	      (lambda (vals previous)
@@ -363,6 +451,8 @@
       (update-row-numbers metatree (length (car block-values))
 			  3 #f)))
 
+  ;;; Update a group's blocks view, based on the current position in the
+  ;;; order or block list.
   (define (update-blocks-view metatree parent-node-instance-path order-pos)
     (let* ((parent-group-instance
 	    ((md:node-instance-path parent-node-instance-path)
@@ -397,20 +487,30 @@
       (update-row-numbers metatree (length (car block-values))
 			  4 #t)
       (show-cursor metatree)
-      (tk/focus (car (metatree-columns metatree)))
-      ))
+      ;; TODO this should not happen automatically, but must be called
+      ;; explicitly by core.
+      (tk/focus (car (metatree-columns metatree)))))
 
+  ;;; Display the blocks of a group instance.
+  ;;; TODO this must read the order position, or the list of instances must be
+  ;;; passed in.
   (define (show-blocks-view metatree group-instance-path)
     (show-metatree metatree)
     (update-blocks-view metatree group-instance-path 0))
 
+  ;;; Display the order or block list of a group instance.
   (define (show-order-view metatree group-instance-path)
     (show-metatree metatree)
     (update-order-view metatree group-instance-path))
 
+  ;;; A metawidget for displaying a group's block members and the corresponding
+  ;;; order or block list.
+  ;;; TODO MDAL defines order/block lists as optional if blocks are
+  ;;; single instance.
   (defstruct bt-blocks-widget
     tl-panedwindow blocks-pane order-pane blocks-view order-view)
 
+  ;;; Create a `bt-blocks-widget`.
   (define (make-blocks-widget parent-node-id parent-path parent-widget)
     (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
 						     (current-config)
@@ -428,6 +528,7 @@
 	     blocks-view: (init-metatree .blocks-pane 'block parent-node-id)
 	     order-view: (init-metatree .order-pane 'order parent-node-id))))))
 
+  ;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (begin
@@ -439,9 +540,15 @@
 	(show-order-view (bt-blocks-widget-order-view w)
 			 "0/PATTERNS/0"))))
 
+  ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
+  ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
+  ;;; bt-group-widget, which is useful for subgroups that have subgroups
+  ;;; themselves.
+  ;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
   (defstruct bt-subgroups-widget
     toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
 
+  ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
   (define (make-subgroups-widget parent-node-id parent-path parent-widget)
     (let ((sg-ids (md:config-get-subnode-type-ids parent-node-id
 						  (current-config)
@@ -465,6 +572,7 @@
 				frame))
 			     sg-ids subgroup-frames))))))
 
+  ;;; Pack a bt-subgroups-widget to the display.
   (define (show-subgroups-widget w)
     (begin
       (tk/pack (bt-subgroups-widget-toplevel-frame w)
