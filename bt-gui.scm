@@ -171,9 +171,9 @@
       (map show-field-widget (bt-fields-widget-fields w))))
 
 
-  ;;; --------------------------------------------------------------------------
-  ;; ### The metatree widget
-  ;;; --------------------------------------------------------------------------
+  ;; ---------------------------------------------------------------------------
+  ;;; ### The metatree widget
+  ;; ---------------------------------------------------------------------------
 
   ;;; The `metatree` widget is a generic widget that implements a spreadsheet
   ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
