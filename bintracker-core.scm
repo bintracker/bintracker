@@ -149,7 +149,7 @@
       (help-menu 'add 'command label: "About" underline: 0
 		 command: about-message)
 
-      (when (app-settings-show-menu *bintracker-settings*)
+      (when (settings 'show-menu)
 	(tk 'configure 'menu: main-menu))))
 
 
