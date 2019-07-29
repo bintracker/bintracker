@@ -17,6 +17,7 @@
 	  bt-types mdal)
 
 
+  (define *bintracker-version* "0.2.0")
   (define *bintracker-state* (make-default-state))
   (define *bintracker-settings* (make-default-settings))
 

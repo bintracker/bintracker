@@ -51,7 +51,9 @@
   ;; ---------------------------------------------------------------------------
 
   (define (about-message)
-    (tk/message-box title: "About" message: "Bintracker NG\nversion 0.1"
+    (tk/message-box title: "About"
+		    message: (string-append "Bintracker\nversion "
+					    *bintracker-version*)
 		    type: 'ok))
 
   (define (load-file)
@@ -292,7 +294,9 @@
       (console-yscroll 'configure command: `(,console-output yview))
       (console-output 'configure 'yscrollcommand: `(,console-yscroll set))
       (console-output 'insert 'end
-		      "Bintracker NG\n(c) 2019 utz/irrlicht project\nReady.\n")
+		      (string-append "Bintracker " *bintracker-version*
+				     "\n(c) 2019 utz/irrlicht project\n"
+				     "Ready.\n"))
       (console-output 'configure state: 'disabled)))
 
 
@@ -314,7 +318,7 @@
 
   ;;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
 
-  (tk/wm 'title tk "Bintracker NG")
+  (tk/wm 'title tk "Bintracker")
   ;; (tk/wm 'minsize tk 760 600)
   (tk-eval "option add *tearOff 0")
 
