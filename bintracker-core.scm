@@ -8,9 +8,9 @@
     (state
      settings
      colors
-     setconf!
+     set-conf!
      set-color!
-     setstate!
+     set-state!
      install-theme!
      set-theme!
      current-mod
@@ -72,8 +72,8 @@
 						  "\n"))
 		 (begin
 		   (set-current-mod! filename)
-		   (setstate! 'current-file filename)
-		   (setstate! 'module-widget (make-module-widget main-frame))
+		   (set-state! 'current-file filename)
+		   (set-state! 'module-widget (make-module-widget main-frame))
 		   (show-module)
 		   (enable-play-buttons)
 		   (update-status-text)
@@ -83,7 +83,7 @@
     (if (state 'current-file)
 	(md:module->file (current-mod) (state 'current-file))
 	(save-file-as))
-    (setstate! 'modified #f)
+    (set-state! 'modified #f)
     (update-window-title!))
 
   (define (save-file-as)
@@ -92,8 +92,8 @@
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
 	(md:module->file (current-mod) filename)
-	(setstate! 'current-file filename)
-	(setstate! 'modified #f)
+	(set-state! 'current-file filename)
+	(set-state! 'modified #f)
 	(update-window-title!))))
 
   (define (launch-help)

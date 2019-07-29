@@ -4,17 +4,17 @@
 ;; BINTRACKER CONFIGURATION
 ;; -----------------------------------------------------------------------------
 
-(setconf! 'keymap "DE")
+(set-conf! 'keymap "DE")
 
-;; (setconf! 'number-base 10)
+;; (set-conf! 'number-base 10)
 
-;; (setconf! 'show-menu #f)
-;; (setconf! 'show-toolbar #f)
+;; (set-conf! 'show-menu #f)
+;; (set-conf! 'show-toolbar #f)
 
 ;; (install-theme! 'awdark "themes/awthemes.tcl")
 ;; (set-theme! 'awdark)
 
-(setconf! 'font-mono "Roboto Mono for Powerline")
+(set-conf! 'font-mono "Roboto Mono for Powerline")
 
 (set-color! 'row "#222222")
 (set-color! 'row-highlight-major "#444444")

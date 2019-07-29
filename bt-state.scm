@@ -43,16 +43,16 @@
      (app-settings-color-scheme *bintracker-settings*)))
 
 
-  ;;; All-purpose shorthand setter, used to implement setconf!, set-color, etc
+  ;;; All-purpose shorthand setter, used to implement set-conf!, set-color, etc
   (define (set-global! prefix obj param val)
     ((eval (string->symbol (string-append prefix (->string param)
 					  "-set!")))
      obj val))
 
   ;;; Change Bintracker's global settings. Mainly an interface to config.scm.
-  ;;; setconf! does not immediately affect the current state of the application.
+  ;;; set-conf! does not immediately affect the current state of the application.
   ;;; You may need to call (reconfigure!) for the changes to take effect.
-  (define (setconf! param val)
+  (define (set-conf! param val)
     (set-global! "app-settings-" *bintracker-settings* param val))
 
   ;;; Change Bintracker's color scheme
@@ -61,12 +61,12 @@
 		 param val))
 
   ;;; Change Bintracker's internal state variables.
-  (define (setstate! param val)
+  (define (set-state! param val)
     (set-global! "app-state-" *bintracker-state* param val))
 
   ;;; Install additional themes.
   (define (install-theme! name implementation-filepath)
-    (setconf! 'themes-map (cons (list name implementation-filepath)
+    (set-conf! 'themes-map (cons (list name implementation-filepath)
 				 (settings 'themes-map))))
 
   ;;; Set the Tk widget theme.
@@ -88,7 +88,7 @@
 
   ;;; Set the current module. Does not update GUI.
   (define (set-current-mod! filename)
-    (setstate! 'current-mdmod
+    (set-state! 'current-mdmod
 	       (md:file->module filename
 				(app-settings-mdal-config-dir
 				 *bintracker-settings*)
