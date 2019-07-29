@@ -13,3 +13,5 @@ cfg/
 *~
 *.so
 *.import.*
+*.backup
+libmdal/unittests/modules/save-test.mdal
