@@ -74,6 +74,15 @@
 		   (enable-play-buttons)
 		   (update-status-text)))))))
 
+  ;; TODO track current filename/path
+  (define (save-file-as)
+    (let ((filename (tk/get-save-file
+		     filetypes: '(((MDAL Modules) (.mdal)))
+		     defaultextension: '.mdal)))
+      (unless (string-null? filename)
+	(md:module->file (current-mod)
+			 filename))))
+
   (define (launch-help)
     ;; TODO windows untested
     (let ((uri (cond-expand
@@ -118,7 +127,7 @@
       (file-menu 'add 'command label: "Save" underline: 0
 		 accelerator: "Ctrl+S")
       (file-menu 'add 'command label: "Save As..." underline: 5
-		 command: (lambda () #f)
+		 command: save-file-as
 		 accelerator: "Ctrl+Shift+S")
       (file-menu 'add 'command label: "Close" underline: 0
 		 command: (lambda () #f)
