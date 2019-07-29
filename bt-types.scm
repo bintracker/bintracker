@@ -28,9 +28,7 @@
     color-scheme)
 
   (define (make-default-state)
-    (make-app-state current-mdmod: #f
-		    module-widget: #f
-		    selection: #f))
+    (make-app-state))
 
   (define (make-default-colors)
     (make-app-colors
