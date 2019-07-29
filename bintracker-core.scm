@@ -71,14 +71,13 @@
 						  "\n"
 						  (message exn)
 						  "\n"))
-		 (begin
-		   (set-current-mod! filename)
-		   (set-state! 'current-file filename)
-		   (set-state! 'module-widget (make-module-widget main-frame))
-		   (show-module)
-		   (enable-play-buttons)
-		   (update-status-text)
-		   (update-window-title!)))))))
+		 (set-current-mod! filename)
+		 (set-state! 'current-file filename)
+		 (set-state! 'module-widget (make-module-widget main-frame))
+		 (show-module)
+		 (enable-play-buttons)
+		 (update-status-text)
+		 (update-window-title!))))))
 
   (define (save-file)
     (if (state 'current-file)
