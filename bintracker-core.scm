@@ -69,19 +69,24 @@
 						  "\n"))
 		 (begin
 		   (set-current-mod! filename)
+		   (setstate! 'current-file filename)
 		   (setstate! 'module-widget (make-module-widget main-frame))
 		   (show-module)
 		   (enable-play-buttons)
 		   (update-status-text)))))))
 
-  ;; TODO track current filename/path
+  (define (save-file)
+    (if (state 'current-file)
+	(md:module->file (current-mod) (state 'current-file))
+	(save-file-as)))
+
   (define (save-file-as)
     (let ((filename (tk/get-save-file
 		     filetypes: '(((MDAL Modules) (.mdal)))
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
-	(md:module->file (current-mod)
-			 filename))))
+	(md:module->file (current-mod) filename)
+	(setstate! 'current-file filename))))
 
   (define (launch-help)
     ;; TODO windows untested
@@ -125,6 +130,7 @@
       (file-menu 'add 'command label: "Open..." underline: 0
 		 command: load-file accelerator: "Ctrl+O")
       (file-menu 'add 'command label: "Save" underline: 0
+		 command: save-file
 		 accelerator: "Ctrl+S")
       (file-menu 'add 'command label: "Save As..." underline: 5
 		 command: save-file-as

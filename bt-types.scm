@@ -10,7 +10,7 @@
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
-    current-mdmod module-widget selection)
+    current-mdmod current-file module-widget selection)
 
   ;;; Recort type that wraps gui element colors
   (defstruct app-colors
