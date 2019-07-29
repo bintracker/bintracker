@@ -35,6 +35,7 @@
   ;; init pstk and fire up Tcl/Tk runtime.
   ;; This must be done prior to defining anything that depends on Tk.
   (tk-start)
+  (tk-eval "option add *tearOff 0")
   (ttk-map-widgets '(button checkbutton radiobutton menubutton label entry frame
 			    labelframe scrollbar notebook panedwindow
 			    progressbar combobox separator scale sizegrip
@@ -325,7 +326,6 @@
   ;;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
 
   (update-window-title!)
-  (tk-eval "option add *tearOff 0")
 
   (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
 	     fieldbackground: (colors 'row)
