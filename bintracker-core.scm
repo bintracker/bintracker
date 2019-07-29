@@ -15,6 +15,7 @@
      set-theme!
      current-mod
      current-config
+     update-window-title!
      make-module-widget)
 
   (import scheme (chicken base) (chicken platform) (chicken string)
@@ -75,12 +76,15 @@
 		   (setstate! 'module-widget (make-module-widget main-frame))
 		   (show-module)
 		   (enable-play-buttons)
-		   (update-status-text)))))))
+		   (update-status-text)
+		   (update-window-title!)))))))
 
   (define (save-file)
     (if (state 'current-file)
 	(md:module->file (current-mod) (state 'current-file))
-	(save-file-as)))
+	(save-file-as))
+    (setstate! 'modified #f)
+    (update-window-title!))
 
   (define (save-file-as)
     (let ((filename (tk/get-save-file
@@ -88,7 +92,9 @@
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
 	(md:module->file (current-mod) filename)
-	(setstate! 'current-file filename))))
+	(setstate! 'current-file filename)
+	(setstate! 'modified #f)
+	(update-window-title!))))
 
   (define (launch-help)
     ;; TODO windows untested
@@ -318,8 +324,7 @@
 
   ;;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
 
-  (tk/wm 'title tk "Bintracker")
-  ;; (tk/wm 'minsize tk 760 600)
+  (update-window-title!)
   (tk-eval "option add *tearOff 0")
 
   (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
