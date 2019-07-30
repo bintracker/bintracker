@@ -58,6 +58,23 @@
 					    *bintracker-version*)
 		    type: 'ok))
 
+  (define (exit-with-unsaved-changes-dialog)
+    (tk/message-box title: "Save before exit?"
+		    default: 'yes
+		    icon: 'warning
+		    parent: tk
+		    message: "There are unsaved changes. Save before exit?"
+		    type: 'yesnocancel))
+
+  (define (exit-bintracker)
+    (if (state 'modified)
+	(match (exit-with-unsaved-changes-dialog)
+	  ("yes" (begin (save-file)
+			(tk-end)))
+	  ("no" (tk-end))
+	  (else #f))
+	(tk-end)))
+
   (define (load-file)
     (let ((filename (tk/get-open-file
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
@@ -147,8 +164,8 @@
 		 command: (lambda () #f)
 		 accelerator: "Ctrl+W")
       (file-menu 'add 'separator)
-      (file-menu 'add 'command label: "Exit" underline: 1 command: tk-end
-		 accelerator: "Ctrl+Q")
+      (file-menu 'add 'command label: "Exit" underline: 1
+		 command: exit-bintracker accelerator: "Ctrl+Q")
 
       (help-menu 'add 'command label: "Help" underline: 0
 		 command: launch-help accelerator: "F1")
@@ -312,7 +329,7 @@
 
   (define (init-key-bindings)
     (begin
-      (tk/bind tk '<Control-q> tk-end)
+      (tk/bind tk '<Control-q> exit-bintracker)
       (tk/bind tk '<Control-o> load-file)
       (tk/bind tk '<F1> launch-help)
       (tk/bind console-input '<Return> eval-console)))
