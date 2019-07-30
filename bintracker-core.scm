@@ -351,12 +351,20 @@
 	     rowheight: (get-treeview-rowheight))
   ;; hide treeview borders
   (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
-  (ttk/style 'configure 'Metatree.Treeview '(Treeview.Item indicatorsize: 0))
+  ;; FIXME still doesn't hide the indicator
+  (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
 
   (ttk/style 'configure 'BT.TFrame background: (colors 'row))
 
   (ttk/style 'configure 'BT.TLabel background: (colors 'row)
 	     foreground: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+			 size: (settings 'font-size)
+			 weight: 'bold))
+
+  (ttk/style 'configure 'BT.TNotebook background: (colors 'row))
+  (ttk/style 'configure 'BT.TNotebook.Tab
+	     background: (colors 'row)
 	     font: (list family: (settings 'font-mono)
 			 size: (settings 'font-size)
 			 weight: 'bold))
