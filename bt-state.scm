@@ -109,4 +109,44 @@
 					" - Bintracker")
 			 "Bintracker")))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## The Undo/Redo System
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Bintracker uses a dual undo/redo stack system to track user edits.
+  ;;;
+  ;;; On every edit, the redo stack is cleared, and the executed action is
+  ;;; pushed to the undo stack, which is part of `*bintracker-state*`.
+  ;;;
+  ;;; Actions take the form `(action path content)`, where *action* is one of
+  ;;; `'remove`, `'replace`, or `'insert`, *path* is a node instance path
+  ;;; string, and `content` is the previous content that was removed or
+  ;;; replaced, or the empty list if *action* is `'insert`.
+  ;;;
+  ;;; On undo, the first element of the undo stack is popped and pushed to the
+  ;;; redo stack, and the necessary edits are performed on `(current-mod)`.
+  ;;;
+  ;;; Likewise, on redo, the first element of the redo stack is popped and
+  ;;; pushed to the undo stack, and the necessary edits are performed.
+
+
+  (define (push-undo action)
+    '())
+
+  (define (pop-undo)
+    '())
+
+  (define (pop-redo)
+    '())
+
+  (define (push-redo action)
+    '())
+
+  (define (undo)
+    '())
+
+  (define (redo)
+    '())
+
   ) ;; end module bt-state
