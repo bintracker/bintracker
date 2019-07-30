@@ -58,22 +58,39 @@
 					    *bintracker-version*)
 		    type: 'ok))
 
-  (define (exit-with-unsaved-changes-dialog)
-    (tk/message-box title: "Save before exit?"
+  ;;; Display a message box that asks the user whether to save unsaved changes
+  ;;; before exiting or closing. **exit-or-closing** should be the string
+  ;;; `"exit"` or `"closing"`, respectively.
+  (define (exit-with-unsaved-changes-dialog exit-or-closing)
+    (tk/message-box title: (string-append "Save before " exit-or-closing "?")
 		    default: 'yes
 		    icon: 'warning
 		    parent: tk
-		    message: "There are unsaved changes. Save before exit?"
+		    message: (string-append "There are unsaved changes. "
+					    "Save before " exit-or-closing "?")
 		    type: 'yesnocancel))
 
-  (define (exit-bintracker)
+  (define (do-proc-with-exit-dialogue dialogue-string proc)
     (if (state 'modified)
-	(match (exit-with-unsaved-changes-dialog)
+	(match (exit-with-unsaved-changes-dialog dialogue-string)
 	  ("yes" (begin (save-file)
-			(tk-end)))
-	  ("no" (tk-end))
+			(proc)))
+	  ("no" (proc))
 	  (else #f))
-	(tk-end)))
+	(proc)))
+
+  (define (exit-bintracker)
+    (do-proc-with-exit-dialogue "exit" tk-end))
+
+  ;; TODO disable menu option
+  (define (close-file)
+    (when (current-mod)
+      (do-proc-with-exit-dialogue
+       "closing"
+       (lambda ()
+	 (destroy-group-widget (state 'module-widget))
+	 (reset-state!)
+	 (update-window-title!)))))
 
   (define (load-file)
     (let ((filename (tk/get-open-file
@@ -161,8 +178,7 @@
 		 command: save-file-as
 		 accelerator: "Ctrl+Shift+S")
       (file-menu 'add 'command label: "Close" underline: 0
-		 command: (lambda () #f)
-		 accelerator: "Ctrl+W")
+		 command: close-file accelerator: "Ctrl+W")
       (file-menu 'add 'separator)
       (file-menu 'add 'command label: "Exit" underline: 1
 		 command: exit-bintracker accelerator: "Ctrl+Q")
@@ -330,7 +346,10 @@
   (define (init-key-bindings)
     (begin
       (tk/bind tk '<Control-q> exit-bintracker)
+      (tk/bind tk '<Control-w> close-file)
       (tk/bind tk '<Control-o> load-file)
+      (tk/bind tk '<Control-s> save-file)
+      (tk/bind tk '<Control-Shift-s> save-file-as)
       (tk/bind tk '<F1> launch-help)
       (tk/bind console-input '<Return> eval-console)))
 

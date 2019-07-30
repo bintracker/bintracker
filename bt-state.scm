@@ -29,6 +29,11 @@
 	 *bintracker-state*)
 	*bintracker-state*))
 
+  ;;; Reset `*bintracker-state*` to the default state. This procedure must be
+  ;;; called on unloading (closing) the currently loaded module.
+  (define (reset-state!)
+    (set! *bintracker-state* (make-default-state)))
+
   ;;; Get the global application settings, or a specific {{param}}eter of that
   ;;; state.
   (define (settings #!optional param)

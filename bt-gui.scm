@@ -566,7 +566,8 @@
       (if (null? sg-ids)
 	  #f
 	  (let* ((tl-frame (parent-widget 'create-widget 'frame))
-		 (notebook (tl-frame 'create-widget 'notebook))
+		 (notebook (tl-frame 'create-widget 'notebook
+				     style: 'BT.TNotebook))
 		 (subgroup-frames (map (lambda (id)
 					 (notebook 'create-widget 'frame))
 				       sg-ids)))
@@ -631,11 +632,14 @@
 		  'create-widget 'frame)
 		 expand: 1 fill: 'both))))
 
+  (define (destroy-group-widget w)
+    (tk/destroy (bt-group-widget-toplevel-frame w)))
+
   (define (make-module-widget parent)
     (make-group-widget 'GLOBAL "" parent))
 
   (define (show-module)
-    (show-group-widget (app-state-module-widget *bintracker-state*)
+    (show-group-widget (state 'module-widget)
 		       "0/"))
 
   ) ;; end module bt-gui
