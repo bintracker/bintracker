@@ -77,7 +77,7 @@
       ('reference (if (>= 16 (settings 'number-base))
 		      2 3))
       ('trigger 1)
-      ('string 1)))
+      ('string 32)))
 
   ;;; Convert note names from MDAL's format to the conventional tracker naming
   ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
@@ -117,34 +117,43 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; A meta widget for displaying an MDAL group field.
-  (defstruct bt-field-widget toplevel-frame id-label val-label)
+  (defstruct bt-field-widget toplevel-frame id-label val-entry node-id)
 
   ;;; Create a `bt-field-widget`.
-  (define (make-field-widget node-id instance-path parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame)))
+  (define (make-field-widget node-id parent-widget)
+    (let ((tl-frame (parent-widget 'create-widget 'frame style: 'BT.TFrame)))
       (make-bt-field-widget
        toplevel-frame: tl-frame
-       id-label: (tl-frame 'create-widget 'label
+       node-id: node-id
+       id-label: (tl-frame 'create-widget 'label style: 'BT.TLabel
 			   text: (symbol->string node-id))
-       val-label: (tl-frame 'create-widget 'label
-			    relief: 'solid padding: '(2 2)
-			    text: (normalize-field-value
-				   (md:inode-instance-val
-				    ((md:node-instance-path instance-path)
-				     (md:mod-global-node (current-mod))))
-				   node-id)))))
+       val-entry: (tl-frame 'create-widget 'entry
+			    bg: (colors 'row) fg: (colors 'text)
+			    bd: 0 highlightthickness: 0 insertborderwidth: 1
+			    justify: 'center
+			    font: (list family: (settings 'font-mono)
+					size: (settings 'font-size))))))
 
   ;;; Display a `bt-field-widget`.
-  (define (show-field-widget w)
-    (begin
-      (tk/pack (bt-field-widget-toplevel-frame w)
-	       side: 'left)
-      (tk/pack (bt-field-widget-id-label w)
-	       (bt-field-widget-val-label w)
-	       side: 'left padx: 4 pady: 4)))
+  (define (show-field-widget w group-instance-path)
+    (tk/pack (bt-field-widget-toplevel-frame w)
+	     side: 'left)
+    (tk/pack (bt-field-widget-id-label w)
+	     (bt-field-widget-val-entry w)
+	     side: 'top padx: 4 pady: 4)
+    ((bt-field-widget-val-entry w) 'insert 'end
+     (normalize-field-value (md:inode-instance-val
+    			     ((md:node-instance-path
+    			       (string-append
+    				group-instance-path
+    				(symbol->string (bt-field-widget-node-id w))
+    				"/0/"))
+    			      (md:mod-global-node (current-mod))))
+    			    (bt-field-widget-node-id w)))
+    )
 
   ;;; A meta widget for displaying an MDAL group's field members.
-  (defstruct bt-fields-widget toplevel-frame fields)
+  (defstruct bt-fields-widget toplevel-frame parent-node-id fields)
 
   ;;; Create a `bt-fields-widget`.
   (define (make-fields-widget parent-node-id parent-path parent-widget)
@@ -153,22 +162,23 @@
 						       'field)))
       (if (null? subnode-ids)
 	  #f
-	  (let ((tl-frame (parent-widget 'create-widget 'frame)))
+	  (let ((tl-frame (parent-widget 'create-widget 'frame
+					 style: 'BT.TFrame)))
 	    (make-bt-fields-widget
 	     toplevel-frame: tl-frame
+	     parent-node-id: parent-node-id
 	     fields: (map (lambda (id)
-			    (make-field-widget
-			     id (string-append parent-path (symbol->string id)
-					       "/0/")
-			     tl-frame))
+			    (make-field-widget id tl-frame))
 			  subnode-ids))))))
 
   ;;; Show a group fields widget.
-  (define (show-fields-widget w)
+  (define (show-fields-widget w group-instance-path)
     (begin
       (tk/pack (bt-fields-widget-toplevel-frame w)
 	       fill: 'x)
-      (map show-field-widget (bt-fields-widget-fields w))))
+      (for-each (lambda (field-widget)
+		  (show-field-widget field-widget group-instance-path))
+		(bt-fields-widget-fields w))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -574,17 +584,18 @@
 
   ;;; Pack a bt-subgroups-widget to the display.
   (define (show-subgroups-widget w)
-    (begin
-      (tk/pack (bt-subgroups-widget-toplevel-frame w)
-	       expand: 1 fill: 'both)
-      (tk/pack (bt-subgroups-widget-tl-notebook w)
-	       expand: 1 fill: 'both)
-      (map (lambda (sg-id sg-frame)
-	     ((bt-subgroups-widget-tl-notebook w)
-	      'add sg-frame text: (symbol->string sg-id)))
-	   (bt-subgroups-widget-subgroup-ids w)
-	   (bt-subgroups-widget-notebook-frames w))
-      (map show-group-widget (bt-subgroups-widget-subgroups w))))
+    (tk/pack (bt-subgroups-widget-toplevel-frame w)
+	     expand: 1 fill: 'both)
+    (tk/pack (bt-subgroups-widget-tl-notebook w)
+	     expand: 1 fill: 'both)
+    (for-each (lambda (sg-id sg-frame)
+		((bt-subgroups-widget-tl-notebook w)
+		 'add sg-frame text: (symbol->string sg-id)))
+	      (bt-subgroups-widget-subgroup-ids w)
+	      (bt-subgroups-widget-notebook-frames w))
+    (for-each (lambda (subgroup-widget)
+		(show-group-widget subgroup-widget ""))
+	      (bt-subgroups-widget-subgroups w)))
 
   ;; Not exported.
   (defstruct bt-group-widget
@@ -603,12 +614,13 @@
 						tl-frame))))
 
   ;; Display the group widget (using pack geometry manager).
-  (define (show-group-widget w)
+  (define (show-group-widget w group-instance-path)
     (begin
       (tk/pack (bt-group-widget-toplevel-frame w)
 	       expand: 1 fill: 'both)
       (when (bt-group-widget-fields-widget w)
-	(show-fields-widget (bt-group-widget-fields-widget w)))
+	(show-fields-widget (bt-group-widget-fields-widget w)
+			    group-instance-path))
       (when (bt-group-widget-blocks-widget w)
 	(show-blocks-widget (bt-group-widget-blocks-widget w)))
       (when (bt-group-widget-subgroups-widget w)
@@ -623,6 +635,7 @@
     (make-group-widget 'GLOBAL "" parent))
 
   (define (show-module)
-    (show-group-widget (app-state-module-widget *bintracker-state*)))
+    (show-group-widget (app-state-module-widget *bintracker-state*)
+		       "0/"))
 
   ) ;; end module bt-gui

@@ -36,7 +36,7 @@
   ;; This must be done prior to defining anything that depends on Tk.
   (tk-start)
   (tk-eval "option add *tearOff 0")
-  (ttk-map-widgets '(button checkbutton radiobutton menubutton label entry frame
+  (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
 			    labelframe scrollbar notebook panedwindow
 			    progressbar combobox separator scale sizegrip
 			    treeview))
@@ -352,6 +352,14 @@
   ;; hide treeview borders
   (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
   (ttk/style 'configure 'Metatree.Treeview '(Treeview.Item indicatorsize: 0))
+
+  (ttk/style 'configure 'BT.TFrame background: (colors 'row))
+
+  (ttk/style 'configure 'BT.TLabel background: (colors 'row)
+	     foreground: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+			 size: (settings 'font-size)
+			 weight: 'bold))
 
   (init-menu)
   (init-top-level-layout)
