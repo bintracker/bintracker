@@ -18,6 +18,9 @@
     text cursor row row-highlight-major row-highlight-minor
     console-bg console-fg)
 
+  (defstruct app-keys
+    global note-entry plugins)
+
   ;;; Record type that wraps application settings
   (defstruct app-settings
     themes-map
@@ -82,7 +85,7 @@
 		       mdal-config-dir: "libmdal/unittests/config/"
 		       show-menu: #t
 		       show-toolbar: #t
-		       font-mono: 'Courier
+		       font-mono: "Courier"
 		       font-size: 10
 		       color-scheme: (make-default-colors)))
 

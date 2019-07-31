@@ -5,18 +5,7 @@
 ;; See LICENSE for license details.
 
 (module bintracker-core
-    (state
-     settings
-     colors
-     set-conf!
-     set-color!
-     set-state!
-     install-theme!
-     set-theme!
-     current-mod
-     current-config
-     update-window-title!
-     make-module-widget)
+    *
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
@@ -24,7 +13,7 @@
 	  simple-exceptions mdal bt-state bt-types bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
-  (reexport mdal pstk bt-types bt-gui (chicken bitwise)
+  (reexport mdal pstk bt-types bt-state bt-gui (chicken bitwise)
 	    srfi-1 srfi-13 simple-exceptions)
 
 
@@ -44,7 +33,10 @@
   ;; Load config file
   (handle-exceptions
       exn
-      #f ;; TODO: ignoring config errors is fine, but actually report errors
+      (begin
+	(display exn)
+	(newline))
+      ;; #f ;; TODO: ignoring config errors is fine, but actually report errors
     (load "config/config.scm"))
 
 
@@ -343,15 +335,10 @@
   ;;; ## Key Bindings
   ;; ---------------------------------------------------------------------------
 
-  (define (init-key-bindings)
-    (begin
-      (tk/bind tk '<Control-q> exit-bintracker)
-      (tk/bind tk '<Control-w> close-file)
-      (tk/bind tk '<Control-o> load-file)
-      (tk/bind tk '<Control-s> save-file)
-      (tk/bind tk '<Control-Shift-s> save-file-as)
-      (tk/bind tk '<F1> launch-help)
-      (tk/bind console-input '<Return> eval-console)))
+  (define (update-key-bindings!)
+    (for-each (lambda (key-mapping)
+		(tk/bind tk (car key-mapping) (eval (cadr key-mapping))))
+	      (get-keybinding-group 'global)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -393,7 +380,7 @@
   (when (app-settings-show-toolbar *bintracker-settings*) (make-toolbar))
   (init-console)
   (init-status-bar)
-  (init-key-bindings)
+  (update-key-bindings!)
 
   ;; ---------------------------------------------------------------------------
   ;;; # Main Loop

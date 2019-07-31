@@ -12,8 +12,8 @@
     *
 
   (import scheme (chicken base) (chicken pathname)
-	  srfi-1 srfi-13
-	  defstruct matchable simple-exceptions pstk
+	  srfi-1 srfi-13 srfi-69
+	  defstruct matchable simple-exceptions pstk list-utils
 	  bt-types mdal)
 
 
@@ -86,6 +86,56 @@
 	       (make-exn (string-append "No implementation file found for theme"
 					(->string name)))))))
       (tk-eval (string-append "ttk::style theme use " (->string name)))))
+
+
+  ;;; Return the alist of key-bindings in the given **key-group**.
+  (define (get-keybinding-group key-group)
+    ((eval (symbol-append 'app-keys- key-group))
+     (settings 'keymap)))
+
+  ;;; Set the alist of keybindings in the given **key-group** to **group-lst**.
+  (define (set-keybinding-group! key-group group-lst)
+    ((eval (symbol-append 'app-keys- key-group '-set!))
+     (settings 'keymap)
+     group-lst))
+
+  ;;; Create a new key binding, or replace an existing one. **key-group** must
+  ;;; be one of 'global, 'note-keys, or 'plug-ins. **key-spec** shall be a key
+  ;;; key binding specifier, using Tk's angular bracket syntax.
+  ;;; https://www.tcl.tk/man/tcl8.6/TkCmd/bind.htm
+  ;;; **action** shall be the name of a procedure or quoted lambda definition,
+  ;;; except if **key-group** is 'note-entry. In that case, it should be a note
+  ;;; name, optionally followed by an octave offset.
+  (define (bind-keys! key-group key-spec action . args)
+    (set-keybinding-group!
+     key-group
+     (if (eq? key-group 'note-entry)
+	 '()
+	 (alist-update key-spec action (get-keybinding-group key-group)))))
+
+  ;;; Look up a key binding in the keymap table. Returns #f if the given
+  ;;; **key-spec** is not bound.
+  (define (key-binding key-group key-spec)
+    (and (app-keys? (settings 'keymap))
+	 (let ((binding (alist-ref key-spec (get-keybinding-group key-group))))
+	   (if binding
+	       (car binding)
+	       #f))))
+
+  ;;; Load a keymap, **name** shall be the name of the keymap file to load,
+  ;;; without extension or path. Keymaps are expected to reside in
+  ;;; `config/keymaps`.
+  ;;; Loading a keymap does not change active bindings in a running bintracker
+  ;;; instance. You need to call `update-key-bindings!` or `reconfigure!` for
+  ;;; changes to take effect.
+  (define (load-keymap name)
+    (let ((my-keymap (call-with-input-file (string-append "config/keymaps/"
+							  name ".keymap")
+		       read)))
+      (if (eq? 'keymap (car my-keymap))
+	  (set-conf! 'keymap
+		     (apply make-app-keys (cdr my-keymap)))
+	  (error "Not a valid Bintracker keymap."))))
 
   ;;; Returns the current module, or #f if no module is loaded.
   (define (current-mod)

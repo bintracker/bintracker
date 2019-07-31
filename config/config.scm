@@ -4,7 +4,7 @@
 ;; BINTRACKER CONFIGURATION
 ;; -----------------------------------------------------------------------------
 
-(set-conf! 'keymap "DE")
+(load-keymap "de")
 
 ;; (set-conf! 'number-base 10)
 
