@@ -211,6 +211,18 @@
     (col 'tag 'configure 'rowhl-major
 	 background: (colors 'row-highlight-major)))
 
+    ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
+  ;;; the Treeview style has already been configured to use
+  ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
+  ;;; This is necessary because Tk's `style lookup` command is broken, producing
+  ;;; no result ca. 50% of the time.
+  (define (get-treeview-rowheight)
+    (+ 4 (string->number
+	  (tk-eval (string-append "font metrics {-family \""
+				  (settings 'font-mono) "\" -size "
+				  (number->string (settings 'font-size))
+				  "} -linespace")))))
+
   ;;; {{type}} - either 'block (show an igroup's blocks) or 'order (show iorder)
   (define (init-metatree parent type group-id)
     (let* ((packframe (parent 'create-widget 'frame))

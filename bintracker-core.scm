@@ -90,7 +90,7 @@
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
 	(begin (console 'insert 'end
-			       (string-append "\nLoading file: " filename))
+			       (string-append "\nLoading file: " filename "\n"))
 	       (handle-exceptions
 		   exn
 		   (console 'insert 'end
@@ -331,11 +331,8 @@
 
   (define console-wrapper (console-frame 'create-widget 'frame))
 
-  (define console (console-wrapper 'create-widget 'text
-				   bg: (colors 'console-bg)
-				   fg: (colors 'console-fg)
-				   blockcursor: 'yes
-				   insertbackground: (colors 'text)))
+  ;; TODO color styling should be done in bt-state or bt-gui
+  (define console (console-wrapper 'create-widget 'text blockcursor: 'yes))
 
   (define console-yscroll (console-wrapper 'create-widget 'scrollbar
 					   orient: 'vertical))
@@ -378,6 +375,47 @@
 			  (get-keybinding-group group)))
 	      '(global console)
 	      (list tk console)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; Style updates
+  ;; ---------------------------------------------------------------------------
+
+    ;; TODO also update other metawidget colors here
+  (define (update-style!)
+    (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
+	       fieldbackground: (colors 'row)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size))
+	       rowheight: (get-treeview-rowheight))
+    ;; hide treeview borders
+    (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
+    ;; FIXME still doesn't hide the indicator
+    (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
+
+    (ttk/style 'configure 'BT.TFrame background: (colors 'row))
+
+    (ttk/style 'configure 'BT.TLabel background: (colors 'row)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    (ttk/style 'configure 'BT.TNotebook background: (colors 'row))
+    (ttk/style 'configure 'BT.TNotebook.Tab
+	       background: (colors 'row)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    ;; TODO console is defined in core, but needs to be known here
+    ;; or move update-style! to bt-gui
+    (console 'configure bg: (colors 'console-bg))
+    (console 'configure fg: (colors 'console-fg))
+    (console 'configure insertbackground: (colors 'console-fg))
+    )
+
 
 
   ;; ---------------------------------------------------------------------------
