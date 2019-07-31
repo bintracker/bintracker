@@ -128,7 +128,7 @@
        id-label: (tl-frame 'create-widget 'label style: 'BT.TLabel
 			   text: (symbol->string node-id))
        val-entry: (tl-frame 'create-widget 'entry
-			    bg: (colors 'row) fg: (colors 'text)
+			    bg: (colors 'row-highlight-minor) fg: (colors 'text)
 			    bd: 0 highlightthickness: 0 insertborderwidth: 1
 			    justify: 'center
 			    font: (list family: (settings 'font-mono)

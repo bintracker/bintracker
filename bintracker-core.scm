@@ -317,11 +317,11 @@
 	       ;; TODO validation
 	       (edit-settings-frame 'create-widget 'spinbox from: 0 to: 9
 				    state: 'disabled)))
-      (tk/pack edit-step-label side: 'left)
+      (tk/pack edit-step-label side: 'left padx: 5)
       (tk/pack edit-step-spinbox side: 'left)
       (tk/pack (edit-settings-frame 'create-widget 'separator orient: 'vertical)
 	       side: 'left fill: 'y)
-      (tk/pack base-octave-label side: 'left)
+      (tk/pack base-octave-label side: 'left padx: 5)
       (tk/pack base-octave-spinbox side: 'left)
       (edit-step-spinbox 'set 1)
       (base-octave-spinbox 'set 4)))
