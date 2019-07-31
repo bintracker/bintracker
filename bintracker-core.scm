@@ -83,7 +83,8 @@
 	 (destroy-group-widget (state 'module-widget))
 	 (reset-state!)
 	 (set-play-buttons 'disabled)
-	 (update-window-title!)))))
+	 (update-window-title!)
+	 (update-status-text)))))
 
   (define (load-file)
     (let ((filename (tk/get-open-file
