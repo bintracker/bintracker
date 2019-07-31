@@ -82,6 +82,7 @@
        (lambda ()
 	 (destroy-group-widget (state 'module-widget))
 	 (reset-state!)
+	 (set-play-buttons 'disabled)
 	 (update-window-title!)))))
 
   (define (load-file)
@@ -101,7 +102,7 @@
 		 (set-state! 'current-file filename)
 		 (set-state! 'module-widget (make-module-widget main-frame))
 		 (show-module)
-		 (enable-play-buttons)
+		 (set-play-buttons 'enabled)
 		 (update-status-text)
 		 (update-window-title!))))))
 
@@ -283,9 +284,9 @@
 		 button-play-ptn (make-separator)
 		 button-settings button-prompt))))
 
-  (define (enable-play-buttons)
+  (define (set-play-buttons state)
     (map (lambda (button)
-	   (button 'configure state: 'enabled))
+	   (button 'configure state: state))
 	 (list button-stop button-play button-play-from-start
 	       button-play-ptn)))
 
