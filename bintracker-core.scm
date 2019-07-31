@@ -45,7 +45,7 @@
   (handle-exceptions
       exn
       #f ;; TODO: ignoring config errors is fine, but actually report errors
-    (load "config.scm"))
+    (load "config/config.scm"))
 
 
   ;; ---------------------------------------------------------------------------
