@@ -28,7 +28,7 @@
   (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
 			    labelframe scrollbar notebook panedwindow
 			    progressbar combobox separator scale sizegrip
-			    treeview))
+			    spinbox treeview))
 
   ;; Load config file
   (handle-exceptions
@@ -192,6 +192,8 @@
 
   (define toolbar-frame (top-frame 'create-widget 'frame 'padding: "0 1 0 1"))
 
+  (define edit-settings-frame (top-frame 'create-widget 'frame))
+
   (define main-panes (top-frame 'create-widget 'panedwindow))
 
   (define main-frame (main-panes 'create-widget 'frame))
@@ -205,6 +207,10 @@
       (tk/pack status-frame fill: 'x side: 'bottom)
       (tk/pack top-frame expand: 1 fill: 'both)
       (tk/pack toolbar-frame expand: 0 fill: 'x)
+      (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
+	       expand: 0 fill: 'x)
+      (show-edit-settings)
+      (tk/pack edit-settings-frame expand: 0 'fill: 'x)
       (tk/pack main-panes expand: 1 fill: 'both)
       (main-panes 'add main-frame weight: 5)
       (main-panes 'add console-frame weight: 2)))
@@ -282,6 +288,42 @@
 	   (button 'configure state: 'enabled))
 	 (list button-stop button-play button-play-from-start
 	       button-play-ptn)))
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Edit Settings Display
+  ;; ---------------------------------------------------------------------------
+
+  (define (show-edit-settings)
+    (letrec* ((edit-step-label (edit-settings-frame 'create-widget 'label
+						    text: "Edit Step"))
+	      (base-octave-label (edit-settings-frame 'create-widget 'label
+						      text: "Base Octave"))
+	      (edit-step-spinbox
+	       (edit-settings-frame
+		'create-widget 'spinbox from: 0 to: 64 validate: 'focusout
+		validatecommand:
+		(lambda ()
+		  (let* ((newval (string->number (edit-step-spinbox 'get)))
+			 (valid? (and (integer? newval)
+				      (>= newval 0)
+				      (<= newval 64))))
+		    (when valid? (set-state! 'edit-step newval))
+		    valid?))
+		invalidcommand:
+		(lambda ()
+		  (edit-step-spinbox 'set (state 'edit-step)))))
+	      (base-octave-spinbox
+	       ;; TODO validation
+	       (edit-settings-frame 'create-widget 'spinbox from: 0 to: 9
+				    state: 'disabled)))
+      (tk/pack edit-step-label side: 'left)
+      (tk/pack edit-step-spinbox side: 'left)
+      (tk/pack (edit-settings-frame 'create-widget 'separator orient: 'vertical)
+	       side: 'left fill: 'y)
+      (tk/pack base-octave-label side: 'left)
+      (tk/pack base-octave-spinbox side: 'left)
+      (edit-step-spinbox 'set 1)
+      (base-octave-spinbox 'set 4)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Console

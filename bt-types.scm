@@ -10,6 +10,7 @@
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
+    (edit-step 1) (base-octave 4)
     current-mdmod current-file module-widget selection
     modified undo-stack redo-stack)
 
