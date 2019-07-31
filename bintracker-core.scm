@@ -89,15 +89,14 @@
     (let ((filename (tk/get-open-file
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
-	(begin (console-output 'insert 'end
-			       (string-append "Loading file: " filename "\n"))
+	(begin (console 'insert 'end
+			       (string-append "\nLoading file: " filename))
 	       (handle-exceptions
 		   exn
-		   (console-output 'insert 'end
-				   (string-append "Error: " (->string exn)
+		   (console 'insert 'end
+				   (string-append "\nError: " (->string exn)
 						  "\n"
-						  (message exn)
-						  "\n"))
+						  (message exn)))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
 		 (set-state! 'module-widget (make-module-widget main-frame))
@@ -332,46 +331,39 @@
 
   (define console-wrapper (console-frame 'create-widget 'frame))
 
-  (define console-output (console-wrapper 'create-widget 'text
-					  bg: (colors 'console-bg)
-					  fg: (colors 'console-fg)))
+  (define console (console-wrapper 'create-widget 'text
+				   bg: (colors 'console-bg)
+				   fg: (colors 'console-fg)
+				   blockcursor: 'yes
+				   insertbackground: (colors 'text)))
 
   (define console-yscroll (console-wrapper 'create-widget 'scrollbar
 					   orient: 'vertical))
 
-  ;; entry is a ttk widget, so styling via -bg/-fg won't work here
-  (define console-input (console-frame 'create-widget 'entry))
-
   (define (eval-console)
     (handle-exceptions
 	exn
-	(console-output 'insert 'end
-			(string-append "Error: " (->string exn)
-				       (->string (arguments exn))
-				       "\n"))
-      (let ((input-str (->string (console-input 'get))))
-	(begin
-	  (console-output 'configure state: 'normal)
-	  (console-output 'insert 'end
+	(console 'insert 'end
+			(string-append "\nError: " (->string exn)
+				       (->string (arguments exn))))
+      (let ((input-str (console 'get "end-1l" "end-1c")))
+	(when (not (string-null? input-str))
+	  (console 'insert 'end
 			  (string-append
+			   "\n"
 			   (->string
-			    (eval (read (open-input-string input-str))))
-			   "\n"))
-	  (console-output 'configure state: 'disabled)))))
+			    (eval (read (open-input-string input-str))))))))))
 
   (define (init-console)
-    (begin
-      (tk/pack console-input fill: 'x side: 'bottom)
-      (tk/pack console-wrapper expand: 1 fill: 'both)
-      (tk/pack console-output expand: 1 fill: 'both side: 'left)
-      (tk/pack console-yscroll side: 'right fill: 'y)
-      (console-yscroll 'configure command: `(,console-output yview))
-      (console-output 'configure 'yscrollcommand: `(,console-yscroll set))
-      (console-output 'insert 'end
-		      (string-append "Bintracker " *bintracker-version*
-				     "\n(c) 2019 utz/irrlicht project\n"
-				     "Ready.\n"))
-      (console-output 'configure state: 'disabled)))
+    (tk/pack console-wrapper expand: 1 fill: 'both)
+    (tk/pack console expand: 1 fill: 'both side: 'left)
+    (tk/pack console-yscroll side: 'right fill: 'y)
+    (console-yscroll 'configure command: `(,console yview))
+    (console 'configure 'yscrollcommand: `(,console-yscroll set))
+    (console 'insert 'end
+	     (string-append "Bintracker " *bintracker-version*
+			    "\n(c) 2019 utz/irrlicht project\n"
+			    "Ready.\n")))
 
 
   ;; ---------------------------------------------------------------------------
@@ -385,7 +377,7 @@
 				     (eval (cadr key-mapping))))
 			  (get-keybinding-group group)))
 	      '(global console)
-	      (list tk console-input)))
+	      (list tk console)))
 
 
   ;; ---------------------------------------------------------------------------
