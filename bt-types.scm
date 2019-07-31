@@ -20,7 +20,7 @@
     console-bg console-fg)
 
   (defstruct app-keys
-    global note-entry plugins)
+    global console note-entry plugins)
 
   ;;; Record type that wraps application settings
   (defstruct app-settings

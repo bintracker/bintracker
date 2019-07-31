@@ -378,9 +378,13 @@
   ;; ---------------------------------------------------------------------------
 
   (define (update-key-bindings!)
-    (for-each (lambda (key-mapping)
-		(tk/bind tk (car key-mapping) (eval (cadr key-mapping))))
-	      (get-keybinding-group 'global)))
+    (for-each (lambda (group widget)
+		(for-each (lambda (key-mapping)
+			    (tk/bind widget (car key-mapping)
+				     (eval (cadr key-mapping))))
+			  (get-keybinding-group group)))
+	      '(global console)
+	      (list tk console-input)))
 
 
   ;; ---------------------------------------------------------------------------

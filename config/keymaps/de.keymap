@@ -5,6 +5,7 @@
 	  (<Control-s> save-file)
 	  (<Control-Shift-s> save-file-as)
 	  (<F1> launch-help))
+ console: ((<Return> eval-console))
  note-entry: ((<y> "c")
 	      (<s> "c#")
 	      (<x> "d")
