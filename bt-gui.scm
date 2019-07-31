@@ -204,18 +204,6 @@
     parent group-id type packframe canvas meta-header column-headers
     block-ids column-ids columns rownums xscroll yscroll mtstate)
 
-  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
-  ;;; the Treeview style has already been configured to use
-  ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
-  ;;; This is necessary because Tk's `style lookup` command is broken, producing
-  ;;; no result ca. 50% of the time.
-  (define (get-treeview-rowheight)
-    (+ 4 (string->number
-	  (tk-eval (string-append "font metrics {-family \""
-				  (settings 'font-mono) "\" -size "
-				  (number->string (settings 'font-size))
-				  "} -linespace")))))
-
   ;;; Auxiliary procedure for `init-metatree`. Configure cell tags.
   (define (metatree-column-set-tags col)
     (col 'tag 'configure 'active-cell background: (colors 'cursor))

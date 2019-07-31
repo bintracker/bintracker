@@ -63,7 +63,8 @@
   ;;; Change Bintracker's color scheme
   (define (set-color! param val)
     (set-global! "app-colors-" (app-settings-color-scheme *bintracker-settings*)
-		 param val))
+		 param val)
+    (update-style!))
 
   ;;; Change Bintracker's internal state variables.
   (define (set-state! param val)
@@ -154,6 +155,22 @@
   (define (current-config)
     (md:mod-cfg (current-mod)))
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ## GUI Update Procedures
+  ;; ---------------------------------------------------------------------------
+
+    ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
+  ;;; the Treeview style has already been configured to use
+  ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
+  ;;; This is necessary because Tk's `style lookup` command is broken, producing
+  ;;; no result ca. 50% of the time.
+  (define (get-treeview-rowheight)
+    (+ 4 (string->number
+	  (tk-eval (string-append "font metrics {-family \""
+				  (settings 'font-mono) "\" -size "
+				  (number->string (settings 'font-size))
+				  "} -linespace")))))
+
   ;;; update window title by looking at current file name and 'modified'
   ;;; property
   (define (update-window-title!)
@@ -163,6 +180,34 @@
 					    "*" "")
 					" - Bintracker")
 			 "Bintracker")))
+
+  (define (update-style!)
+    (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
+	       fieldbackground: (colors 'row)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size))
+	       rowheight: (get-treeview-rowheight))
+    ;; hide treeview borders
+    (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
+    ;; FIXME still doesn't hide the indicator
+    (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
+
+    (ttk/style 'configure 'BT.TFrame background: (colors 'row))
+
+    (ttk/style 'configure 'BT.TLabel background: (colors 'row)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    (ttk/style 'configure 'BT.TNotebook background: (colors 'row))
+    (ttk/style 'configure 'BT.TNotebook.Tab
+	       background: (colors 'row)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold)))
+
 
 
   ;; ---------------------------------------------------------------------------
