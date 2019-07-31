@@ -11,7 +11,7 @@
 (module bt-gui
     *
 
-  (import scheme (chicken.base)
+  (import scheme (chicken base)
 	  srfi-1 srfi-13
 	  defstruct matchable simple-exceptions pstk
 	  bt-state bt-types mdal)
@@ -407,8 +407,11 @@
 			current-ypos))))
 	('down (metatree-state-cursor-y-set!
 		(metatree-mtstate mt)
-		(if (>= (+ 1 current-ypos) (metatree-length mt))
-		    0 (add1 current-ypos))))
+		(let ((edit-step (if (= 0 (state 'edit-step))
+				     1 (state 'edit-step))))
+		  (if (>= (+ current-ypos edit-step)
+			  (metatree-length mt))
+		      0 (+ current-ypos edit-step)))))
 	('left (metatree-state-cursor-x-set!
 		(metatree-mtstate mt)
 		(sub1 (if (= current-xpos 0)
