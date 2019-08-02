@@ -95,9 +95,8 @@
 	       (handle-exceptions
 		   exn
 		   (console 'insert 'end
-				   (string-append "\nError: " (->string exn)
-						  "\n"
-						  (message exn)))
+			    (string-append "\nError: " (->string exn)
+					   "\n" (message exn)))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
 		 (set-state! 'module-widget (make-module-widget main-frame))
