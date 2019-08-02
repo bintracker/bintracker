@@ -142,46 +142,28 @@
   ;;; ## Main Menu
   ;; ---------------------------------------------------------------------------
 
-  (define main-menu (tk 'create-widget 'menu))
-  (define file-menu (tk 'create-widget 'menu))
-  (define edit-menu (tk 'create-widget 'menu))
-  (define generate-menu (tk 'create-widget 'menu))
-  (define transform-menu (tk 'create-widget 'menu))
-  (define help-menu (tk 'create-widget 'menu))
-
-  (define (init-menu)
-    (begin
-
-      (map (lambda (submenu title)
-	     (main-menu 'add 'cascade menu: submenu label: title
-			underline: 0))
-	   (list file-menu edit-menu generate-menu transform-menu help-menu)
-	   '("File" "Edit" "Generate" "Transform" "Help"))
-
-      (file-menu 'add 'command label: "New..." underline: 0
-		 command: (lambda () #f)
-		 accelerator: "Ctrl+N")
-      (file-menu 'add 'command label: "Open..." underline: 0
-		 command: load-file accelerator: "Ctrl+O")
-      (file-menu 'add 'command label: "Save" underline: 0
-		 command: save-file
-		 accelerator: "Ctrl+S")
-      (file-menu 'add 'command label: "Save As..." underline: 5
-		 command: save-file-as
-		 accelerator: "Ctrl+Shift+S")
-      (file-menu 'add 'command label: "Close" underline: 0
-		 command: close-file accelerator: "Ctrl+W")
-      (file-menu 'add 'separator)
-      (file-menu 'add 'command label: "Exit" underline: 1
-		 command: exit-bintracker accelerator: "Ctrl+Q")
-
-      (help-menu 'add 'command label: "Help" underline: 0
-		 command: launch-help accelerator: "F1")
-      (help-menu 'add 'command label: "About" underline: 0
-		 command: about-message)
-
-      (when (settings 'show-menu)
-	(tk 'configure 'menu: main-menu))))
+  (define (init-main-menu)
+    (set-state!
+     'menu (construct-menu
+	    (map (lambda (item) (cons 'submenu item))
+		 `((file "File" 0 ((command new "New..." 0 "Ctrl+N" #f)
+				   (command open "Open..." 0 "Ctrl+O"
+					    ,load-file)
+				   (command save "Save" 0 "Ctrl+S" ,save-file)
+				   (command save-as "Save as..." 5
+					    "Ctrl+Shift+S" ,save-file-as)
+				   (command close "Close" 0 "Ctrl+W"
+					    ,close-file)
+				   (separator)
+				   (command exit "Exit" 1 "Ctrl+Q"
+					    ,exit-bintracker)))
+		   (edit "Edit" 0 ())
+		   (generate "Generate" 0 ())
+		   (transform "Transform" 0 ())
+		   (help "Help" 0 ((command launch-help "Help" 0 "F1"
+					    ,launch-help)
+				   (command about "About" 0 #f
+					    ,about-message))))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -427,7 +409,11 @@
   (update-window-title!)
   (update-style!)
 
-  (init-menu)
+  ;; (init-menu)
+  (init-main-menu)
+  (when (settings 'show-menu)
+    (tk 'configure 'menu: (menu-widget (state 'menu))))
+
   (init-top-level-layout)
   (when (app-settings-show-toolbar *bintracker-settings*) (make-toolbar))
   (init-console)

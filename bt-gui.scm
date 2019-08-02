@@ -56,6 +56,60 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ### Menus
+  ;; ---------------------------------------------------------------------------
+
+  ;;; `submenus` shall be an alist, where keys are unique identifiers, and
+  ;;; values are the actual tk menus.
+  (defstruct menu
+    widget (items '()))
+
+  ;;; Destructively add an item to menu-struct **menu** according to
+  ;;; **item-spec**. **item-spec** must be a list containing either
+  ;;; ('separator)
+  ;;; ('command id label underline accelerator command)
+  ;;; ('submenu id label underline items-list)
+  ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
+  ;;; name that will be shown in the menu for this item, and its underline
+  ;;; position; *accelerator* is a string naming a keyboard shortcut for the
+  ;;; item, command is a procedure to be associated with the item, and
+  ;;; items-list is a list of item-specs.
+  ;; TODO add at position (insert)
+  (define (add-menu-item! menu item-spec)
+    (let ((append-to-item-list!
+	   (lambda (id item)
+	     (menu-items-set! menu (append (menu-items menu)
+					   (list id item))))))
+      (match (car item-spec)
+	('command (begin
+		    (append-to-item-list! (second item-spec) #f)
+		    ((menu-widget menu) 'add 'command label: (third item-spec)
+		     underline: (fourth item-spec)
+		     accelerator: (fifth item-spec)
+		     command: (sixth item-spec))))
+	('submenu (let* ((submenu (construct-menu (fifth item-spec))))
+		    (append-to-item-list! (second item-spec)
+					  submenu)
+		    ((menu-widget menu) 'add 'cascade
+		     menu: (menu-widget submenu)
+		     label: (third item-spec)
+		     underline: (fourth item-spec))))
+	('separator (begin
+		      (append-to-item-list! 'separator #f)
+		      ((menu-widget menu) 'add 'separator)))
+	(else (error (string-append "Unknown menu item type \""
+				    (->string (car item-spec))
+				    "\""))))))
+
+  (define (construct-menu items)
+    (let* ((my-menu (make-menu widget: (tk 'create-widget 'menu))))
+      (for-each (lambda (item)
+		  (add-menu-item! my-menu item))
+		items)
+      my-menu))
+
+
+  ;; ---------------------------------------------------------------------------
   ;;; ### Auxilliary procedures used by various BT meta-widgets
   ;; ---------------------------------------------------------------------------
 
