@@ -303,17 +303,15 @@
 			       show: 'tree style: 'Metatree.Treeview))
 	   (columns (map (lambda (id)
 			   (let ((tree (canvas 'create-widget 'treeview
-					       selectmode: 'none show: 'tree
+					       columns: 'content
+					       selectmode: 'none show: '()
 					       style: 'Metatree.Treeview)))
-			     (tree 'heading "#0"
-				   text: (if (eq? type 'block)
-					     (symbol->string id)
-					     (string-drop (symbol->string id)
-							  2)))
-			     (tree 'column "#0" width: 80)
-			     ;; FIXME this is ignored - maybe only works for col
-			     ;; 1pp
-			     (tree 'column "#0" anchor: 'center)
+			     ;; (tree 'heading "#0"
+			     ;; 	   text: (if (eq? type 'block)
+			     ;; 		     (symbol->string id)
+			     ;; 		     (string-drop (symbol->string id)
+			     ;; 				  2)))
+			     (tree 'column "#1" width: 80 anchor: 'center)
 			     (metatree-column-set-tags tree)
 			     tree))
 			 column-ids)))
@@ -505,8 +503,9 @@
       (for-each (lambda (column values field-id)
 		  (for-each (lambda (value)
 			      (column 'insert '{} 'end
-				      text: (normalize-field-value value
-								   field-id)))
+				      values:
+				      (list (normalize-field-value value
+								   field-id))))
 			    values))
 		(metatree-columns metatree)
 		(map (lambda (fields) (fill-empty-values fields '()))
@@ -543,8 +542,9 @@
       (for-each
        (lambda (column values field-id)
 	 (for-each (lambda (value rownum)
-		     (column 'insert '{} 'end text:
-			     (normalize-field-value value field-id)
+		     (column 'insert '{} 'end
+			     values: (list
+				      (normalize-field-value value field-id))
 			     tags: (cond ((= 0 (modulo rownum 8)) "rowhl-major")
 					 ((= 0 (modulo rownum 4)) "rowhl-minor")
 					 (else ""))))
