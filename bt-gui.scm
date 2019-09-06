@@ -255,7 +255,7 @@
 
   ;;; The main metatree structure.
   (defstruct metatree
-    parent group-id type packframe canvas meta-header column-headers
+    parent group-id type packframe canvas ;; meta-headers column-headers
     block-ids column-ids columns rownums xscroll yscroll mtstate)
 
   ;;; Auxiliary procedure for `init-metatree`. Configure cell tags.
@@ -306,11 +306,6 @@
 					       columns: 'content
 					       selectmode: 'none show: '()
 					       style: 'Metatree.Treeview)))
-			     ;; (tree 'heading "#0"
-			     ;; 	   text: (if (eq? type 'block)
-			     ;; 		     (symbol->string id)
-			     ;; 		     (string-drop (symbol->string id)
-			     ;; 				  2)))
 			     (tree 'column "#1" width: 80 anchor: 'center)
 			     (metatree-column-set-tags tree)
 			     tree))
@@ -319,10 +314,6 @@
       (make-metatree
        parent: parent group-id: group-id type: type packframe: packframe
        canvas: canvas
-       column-headers: (map (lambda (id)
-			      (canvas 'create-widget 'label
-				      text: (symbol->string id)))
-			    column-ids)
        block-ids: block-ids column-ids: column-ids
        columns: columns rownums: rownums
        xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
@@ -341,32 +332,64 @@
   ;;; directly, but rather invoke it through `update-order-view` or
   ;;; `update-blocks-view`.
   (define (show-metatree mt)
-    (letrec ((canvas (metatree-canvas mt))
-	     (tree-rowheight (get-treeview-rowheight))
-	     (pack-columns
-	      (lambda (columns xpos)
-		(if (null? columns)
-		    '()
-		    (begin
-		      (canvas 'create 'window (list xpos 0)
-			      anchor: 'nw window: (car columns))
-		      (tk/bind (car columns) '<Down> (lambda ()
-						       (move-cursor mt 'down)))
-		      (tk/bind (car columns) '<Up> (lambda ()
-						     (move-cursor mt 'up)))
-		      (tk/bind (car columns) '<Left> (lambda ()
-						       (move-cursor mt 'left)))
-		      (tk/bind (car columns) '<Right>
-			       (lambda () (move-cursor mt 'right)))
-		      ((car columns) 'configure height: 32)
-		      (pack-columns (cdr columns) (+ xpos 80)))))))
+    (letrec* ((canvas (metatree-canvas mt))
+	      (tree-rowheight (get-treeview-rowheight))
+	      (header-font (list family: (settings 'font-mono)
+				 size: (settings 'font-size)
+				 weight: 'bold))
+	      (pack-block-headers
+	       (lambda (ids xpos)
+		 (when (not (null? ids))
+		   (let ((header-width
+			  (* 80 (length (md:config-get-subnode-ids
+					 (car ids)
+					 (md:config-itree (current-config)))))))
+		     (canvas 'create 'text
+			     (list (+ xpos (quotient header-width 2))
+				   0)
+			     anchor: 'n width: header-width fill: (colors 'text)
+			     font: header-font
+			     text: (symbol->string (car ids)))
+		     (pack-block-headers (cdr ids)
+					 (+ xpos header-width))))))
+	      (pack-columns
+	       (lambda (columns column-ids xpos)
+		 (when (not (null? columns))
+		   (let ((init-ypos (if (eq? 'block (metatree-type mt))
+					tree-rowheight 0)))
+		     (canvas 'create 'text (list (+ xpos 40) init-ypos)
+			     anchor: 'n width: 80 fill: (colors 'text)
+			     font: header-font
+			     text:
+			     (let ((id (symbol->string (car column-ids))))
+			       (if (eq? 'block (metatree-type mt))
+				   id (string-drop id 2))))
+		     (canvas 'create 'window
+			     (list xpos (+ init-ypos tree-rowheight))
+			     anchor: 'nw window: (car columns))
+		     (tk/bind (car columns) '<Down> (lambda ()
+						      (move-cursor mt 'down)))
+		     (tk/bind (car columns) '<Up> (lambda ()
+						    (move-cursor mt 'up)))
+		     (tk/bind (car columns) '<Left> (lambda ()
+						      (move-cursor mt 'left)))
+		     (tk/bind (car columns) '<Right>
+			      (lambda () (move-cursor mt 'right)))
+		     ((car columns) 'configure height: 32)
+		     (pack-columns (cdr columns)
+				   (cdr column-ids)
+				   (+ xpos 80)))))))
       (tk/pack (metatree-xscroll mt) expand: 0 fill: 'x side: 'bottom)
       (tk/pack (metatree-packframe mt) expand: 1 fill: 'both)
       ((metatree-rownums mt) 'column "#0" width: 80)
       (tk/pack (metatree-yscroll mt) fill: 'y side: 'right)
       (tk/pack (metatree-rownums mt) fill: 'y side: 'left)
       (tk/pack canvas expand: 1 fill: 'both side: 'left)
-      (pack-columns (metatree-columns mt) 0)
+      (when (eq? 'block (metatree-type mt))
+	(pack-block-headers (metatree-block-ids mt) 0))
+      (pack-columns (metatree-columns mt)
+		    (metatree-column-ids mt)
+		    0)
       (canvas 'configure xscrollcommand: (list (metatree-xscroll mt) 'set))
       (tk/bind (metatree-packframe mt) '<Configure>
       	       `(,(lambda (h)
