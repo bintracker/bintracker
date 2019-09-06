@@ -255,7 +255,7 @@
 
   ;;; The main metatree structure.
   (defstruct metatree
-    parent group-id type packframe canvas ;; meta-headers column-headers
+    parent group-id type packframe rownums-packframe canvas
     block-ids column-ids columns rownums xscroll yscroll mtstate)
 
   ;;; Auxiliary procedure for `init-metatree`. Configure cell tags.
@@ -280,6 +280,7 @@
   ;;; {{type}} - either 'block (show an igroup's blocks) or 'order (show iorder)
   (define (init-metatree parent type group-id)
     (let* ((packframe (parent 'create-widget 'frame))
+	   (rownums-packframe (packframe 'create-widget 'frame))
 	   (canvas (packframe 'create-widget 'canvas
 			      scrollregion: "0 0 1000 1000" bg: (colors 'row)
 			      bd: 0 highlightthickness: 0))
@@ -299,8 +300,9 @@
 			   (md:config-get-subnode-ids
 			    (symbol-append group-id '_ORDER)
 			    (md:config-itree (current-config)))))
-	   (rownums (packframe 'create-widget 'treeview selectmode: 'none
-			       show: 'tree style: 'Metatree.Treeview))
+	   (rownums (rownums-packframe 'create-widget 'treeview
+				       selectmode: 'none
+				       show: 'tree style: 'Metatree.Treeview))
 	   (columns (map (lambda (id)
 			   (let ((tree (canvas 'create-widget 'treeview
 					       columns: 'content
@@ -313,6 +315,7 @@
       (metatree-column-set-tags rownums)
       (make-metatree
        parent: parent group-id: group-id type: type packframe: packframe
+       rownums-packframe: rownums-packframe
        canvas: canvas
        block-ids: block-ids column-ids: column-ids
        columns: columns rownums: rownums
@@ -383,7 +386,14 @@
       (tk/pack (metatree-packframe mt) expand: 1 fill: 'both)
       ((metatree-rownums mt) 'column "#0" width: 80)
       (tk/pack (metatree-yscroll mt) fill: 'y side: 'right)
-      (tk/pack (metatree-rownums mt) fill: 'y side: 'left)
+      (tk/pack (metatree-rownums-packframe mt) fill: 'y side: 'left)
+      (tk/pack ((metatree-rownums-packframe mt) 'create-widget 'frame
+		height: (if (eq? 'block (metatree-type mt))
+			    (* 2 tree-rowheight)
+			    tree-rowheight)
+		style: 'BT.TFrame)
+	       side: 'top fill: 'x)
+      (tk/pack (metatree-rownums mt) fill: 'y expand: 1 side: 'top)
       (tk/pack canvas expand: 1 fill: 'both side: 'left)
       (when (eq? 'block (metatree-type mt))
 	(pack-block-headers (metatree-block-ids mt) 0))
