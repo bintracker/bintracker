@@ -265,7 +265,7 @@
     (col 'tag 'configure 'rowhl-major
 	 background: (colors 'row-highlight-major)))
 
-    ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
+  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
   ;;; the Treeview style has already been configured to use
   ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
   ;;; This is necessary because Tk's `style lookup` command is broken, producing
@@ -405,7 +405,12 @@
       	       `(,(lambda (h)
       		    (for-each (lambda (column)
 				(column 'configure height:
-					(quotient h tree-rowheight)
+					(quotient
+					 (- h (* tree-rowheight
+						 (if (eq? 'block
+							  (metatree-type mt))
+						     2 1)))
+					 tree-rowheight)
 					yscrollcommand:
 					`(,(metatree-yscroll mt) set)))
       			      (metatree-columns mt)))
