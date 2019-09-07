@@ -264,22 +264,23 @@
   ;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
 
-  (define status-text (status-frame 'create-widget 'label))
-
-  (define (update-status-text)
-    (let ((status-msg (if (current-mod)
-			  (string-append
-			   (md:target-id
-			    (md:config-target (current-config)))
-			   " | "
-			   (md:mod-cfg-id (current-mod)))
-			  "No module loaded.")))
-      (status-text 'configure 'text: status-msg)))
-
   (define (init-status-bar)
-    (begin (tk/pack status-text fill: 'x side: 'left)
-	   (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)
-	   (update-status-text)))
+    (let ((status-label (status-frame 'create-widget 'label
+				      textvariable: (tk-var "status-text"))))
+      (tk-set-var! "status-text" "No module loaded.")
+      (tk/pack status-label fill: 'x side: 'left)
+      (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
+
+  ;;; Set the message in the status to either a combination of the current
+  ;;; module's target platform and configuration name, or the string
+  ;;; "No module loaded."
+  (define (reset-status-text!)
+    (tk-set-var! "status-text"
+		 (if (current-mod)
+		     (string-append
+  		      (md:target-id (md:config-target (current-config)))
+  		      " | " (md:mod-cfg-id (current-mod)))
+		     "No module loaded.")))
 
 
   ;; ---------------------------------------------------------------------------

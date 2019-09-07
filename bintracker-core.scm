@@ -57,7 +57,7 @@
 	 (reset-state!)
 	 (set-play-buttons 'disabled)
 	 (update-window-title!)
-	 (update-status-text)))))
+	 (reset-status-text!)))))
 
   (define (load-file)
     (let ((filename (tk/get-open-file
@@ -75,7 +75,7 @@
 		 (set-state! 'module-widget (make-module-widget main-frame))
 		 (show-module)
 		 (set-play-buttons 'enabled)
-		 (update-status-text)
+		 (reset-status-text!)
 		 (update-window-title!))))))
 
   (define (save-file)
