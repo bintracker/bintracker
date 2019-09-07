@@ -12,6 +12,7 @@
   (defstruct app-state
     (edit-step 1) (base-octave 4)
     menu current-mdmod current-file module-widget selection
+    (active-md-command-info "")
     modified undo-stack redo-stack)
 
   ;;; Recort type that wraps gui element colors
@@ -26,6 +27,7 @@
   (defstruct app-settings
     themes-map
     keymap
+    reverse-keymap
     number-base
     mdal-config-dir
     show-menu show-toolbar

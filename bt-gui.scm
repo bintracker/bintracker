@@ -264,10 +264,11 @@
   ;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
 
+  ;;; Initialize the status bar at the bottom of the main window.
   (define (init-status-bar)
     (let ((status-label (status-frame 'create-widget 'label
 				      textvariable: (tk-var "status-text"))))
-      (tk-set-var! "status-text" "No module loaded.")
+      (reset-status-text!)
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
@@ -276,11 +277,18 @@
   ;;; "No module loaded."
   (define (reset-status-text!)
     (tk-set-var! "status-text"
-		 (if (current-mod)
-		     (string-append
-  		      (md:target-id (md:config-target (current-config)))
-  		      " | " (md:mod-cfg-id (current-mod)))
-		     "No module loaded.")))
+		 (string-append
+		  (if (current-mod)
+		      (string-append
+  		       (md:target-id (md:config-target (current-config)))
+  		       " | " (md:mod-cfg-id (current-mod)))
+		      "No module loaded.")
+		  " | " (state 'active-md-command-info))))
+
+  ;;; Append the string {{msg}} to the current message in the status bar.
+  (define (append-status-text! msg)
+    (tk-set-var! "status-text" (string-append (tk-get-var "status-text")
+					      msg)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -724,12 +732,21 @@
 		 (if (>= (+ 1 current-xpos) (length (metatree-columns mt)))
 		     0
 		     (add1 current-xpos)))))
-      (show-cursor mt)))
+      (show-cursor mt)
+      (when (and (eq? 'block (metatree-type mt))
+		 (memq direction '(left right)))
+	(update-active-block-column-info mt))))
 
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
+
+  (define (update-active-block-column-info metatree)
+    (set-active-md-command-info!
+     (list-ref (metatree-column-ids metatree)
+	       (metatree-state-cursor-x (metatree-mtstate metatree))))
+    (reset-status-text!))
 
   ;;; Update a group's order/block list view.
   (define (update-order-view metatree parent-node-instance-path)
@@ -804,7 +821,9 @@
       (show-cursor metatree)
       ;; TODO this should not happen automatically, but must be called
       ;; explicitly by core.
-      (tk/focus (car (metatree-columns metatree)))))
+      (tk/focus (car (metatree-columns metatree)))
+      ;; TODO this should only be done when really needed, eg. on load-file
+      (update-active-block-column-info metatree)))
 
   ;;; Display the blocks of a group instance.
   ;;; TODO this must read the order position, or the list of instances must be
