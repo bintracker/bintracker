@@ -220,12 +220,14 @@
 			    "\n(c) 2019 utz/irrlicht project\n"
 			    "Ready.\n")))
 
+  (define (clear-console)
+    (console 'delete 0.0 'end))
 
   ;; ---------------------------------------------------------------------------
   ;;; Style updates
   ;; ---------------------------------------------------------------------------
 
-    ;; TODO also update other metawidget colors here
+  ;; TODO also update other metawidget colors here
   (define (update-style!)
     (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
 	       fieldbackground: (colors 'row)
