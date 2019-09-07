@@ -16,6 +16,61 @@
 	  defstruct matchable simple-exceptions pstk
 	  bt-state bt-types mdal)
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ### PS/Tk Initialization
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Init pstk and fire up Tcl/Tk runtime.
+  ;;; This must be done prior to defining anything that depends on Tk.
+
+  (tk-start)
+
+  ;; disable "tearoff" style menus
+  (tk-eval "option add *tearOff 0")
+
+  ;; automatically map the following tk widgets to their ttk equivalent
+  (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
+			    labelframe scrollbar notebook panedwindow
+			    progressbar combobox separator scale sizegrip
+			    spinbox treeview))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Dialogues
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Various general-purpose dialogue (tk message-box) procedures.
+
+  (define (about-message)
+    (tk/message-box title: "About"
+		    message: (string-append "Bintracker\nversion "
+					    *bintracker-version*)
+		    type: 'ok))
+
+  ;;; Display a message box that asks the user whether to save unsaved changes
+  ;;; before exiting or closing. **exit-or-closing** should be the string
+  ;;; `"exit"` or `"closing"`, respectively.
+  (define (exit-with-unsaved-changes-dialog exit-or-closing)
+    (tk/message-box title: (string-append "Save before " exit-or-closing "?")
+		    default: 'yes
+		    icon: 'warning
+		    parent: tk
+		    message: (string-append "There are unsaved changes. "
+					    "Save before " exit-or-closing "?")
+		    type: 'yesnocancel))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Images
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Auxilliary image handling procedures.
+
+  ;;; Create a tk image resource from a given PNG file.
+  (define (tk/icon filename)
+    (tk/image 'create 'photo format: "PNG"
+	      file: (string-append "resources/icons/" filename)))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Menus
@@ -69,6 +124,160 @@
 		  (add-menu-item! my-menu item))
 		items)
       my-menu))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Top Level Layout
+  ;; ---------------------------------------------------------------------------
+
+  ;;; The core widgets that make up Bintracker's GUI.
+
+  (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
+
+  (define toolbar-frame (top-frame 'create-widget 'frame 'padding: "0 1 0 1"))
+
+  (define edit-settings-frame (top-frame 'create-widget 'frame))
+
+  (define main-panes (top-frame 'create-widget 'panedwindow))
+
+  (define main-frame (main-panes 'create-widget 'frame))
+
+  (define console-frame (main-panes 'create-widget 'frame))
+
+  (define status-frame (top-frame 'create-widget 'frame))
+
+  (define (init-top-level-layout)
+    (begin
+      (tk/pack status-frame fill: 'x side: 'bottom)
+      (tk/pack top-frame expand: 1 fill: 'both)
+      (tk/pack toolbar-frame expand: 0 fill: 'x)
+      (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
+	       expand: 0 fill: 'x)
+      (show-edit-settings)
+      (tk/pack edit-settings-frame expand: 0 'fill: 'x)
+      (tk/pack main-panes expand: 1 fill: 'both)
+      (main-panes 'add main-frame weight: 5)
+      (main-panes 'add console-frame weight: 2)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Edit Settings Display
+  ;; ---------------------------------------------------------------------------
+
+  (define (show-edit-settings)
+    (letrec* ((edit-step-label (edit-settings-frame 'create-widget 'label
+						    text: "Edit Step"))
+	      (base-octave-label (edit-settings-frame 'create-widget 'label
+						      text: "Base Octave"))
+	      (edit-step-spinbox
+	       (edit-settings-frame
+		'create-widget 'spinbox from: 0 to: 64 validate: 'focusout
+		validatecommand:
+		(lambda ()
+		  (let* ((newval (string->number (edit-step-spinbox 'get)))
+			 (valid? (and (integer? newval)
+				      (>= newval 0)
+				      (<= newval 64))))
+		    (when valid? (set-state! 'edit-step newval))
+		    valid?))
+		invalidcommand:
+		(lambda ()
+		  (edit-step-spinbox 'set (state 'edit-step)))))
+	      (base-octave-spinbox
+	       ;; TODO validation
+	       (edit-settings-frame 'create-widget 'spinbox from: 0 to: 9
+				    state: 'disabled)))
+      (tk/pack edit-step-label side: 'left padx: 5)
+      (tk/pack edit-step-spinbox side: 'left)
+      (tk/pack (edit-settings-frame 'create-widget 'separator orient: 'vertical)
+	       side: 'left fill: 'y)
+      (tk/pack base-octave-label side: 'left padx: 5)
+      (tk/pack base-octave-spinbox side: 'left)
+      (edit-step-spinbox 'set 1)
+      (base-octave-spinbox 'set 4)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Console
+  ;; ---------------------------------------------------------------------------
+
+  (define console-wrapper (console-frame 'create-widget 'frame))
+
+  ;; TODO color styling should be done in bt-state or bt-gui
+  (define console (console-wrapper 'create-widget 'text blockcursor: 'yes))
+
+  (define console-yscroll (console-wrapper 'create-widget 'scrollbar
+					   orient: 'vertical))
+
+  (define (init-console)
+    (tk/pack console-wrapper expand: 1 fill: 'both)
+    (tk/pack console expand: 1 fill: 'both side: 'left)
+    (tk/pack console-yscroll side: 'right fill: 'y)
+    (console-yscroll 'configure command: `(,console yview))
+    (console 'configure 'yscrollcommand: `(,console-yscroll set))
+    (console 'insert 'end
+	     (string-append "Bintracker " *bintracker-version*
+			    "\n(c) 2019 utz/irrlicht project\n"
+			    "Ready.\n")))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; Style updates
+  ;; ---------------------------------------------------------------------------
+
+    ;; TODO also update other metawidget colors here
+  (define (update-style!)
+    (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
+	       fieldbackground: (colors 'row)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size))
+	       rowheight: (get-treeview-rowheight))
+
+    ;; hide treeview borders
+    (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
+    (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
+
+    (ttk/style 'configure 'BT.TFrame background: (colors 'row))
+
+    (ttk/style 'configure 'BT.TLabel background: (colors 'row)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    (ttk/style 'configure 'BT.TNotebook background: (colors 'row))
+    (ttk/style 'configure 'BT.TNotebook.Tab
+	       background: (colors 'row)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    (console 'configure bg: (colors 'console-bg))
+    (console 'configure fg: (colors 'console-fg))
+    (console 'configure insertbackground: (colors 'console-fg)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Status Bar
+  ;; ---------------------------------------------------------------------------
+
+  (define status-text (status-frame 'create-widget 'label))
+
+  (define (update-status-text)
+    (let ((status-msg (if (current-mod)
+			  (string-append
+			   (md:target-id
+			    (md:config-target (current-config)))
+			   " | "
+			   (md:mod-cfg-id (current-mod)))
+			  "No module loaded.")))
+      (status-text 'configure 'text: status-msg)))
+
+  (define (init-status-bar)
+    (begin (tk/pack status-text fill: 'x side: 'left)
+	   (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)
+	   (update-status-text)))
 
 
   ;; ---------------------------------------------------------------------------
