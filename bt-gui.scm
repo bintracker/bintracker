@@ -18,44 +18,6 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Module Display Related Widgets and Procedures
-  ;; ---------------------------------------------------------------------------
-
-  ;;; The module display is constructed as follows:
-  ;;;
-  ;;; Within the module display frame provided by Bintracker's top level layout,
-  ;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
-  ;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
-  ;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
-  ;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
-  ;;; subgroups, respectively.
-  ;;;
-  ;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
-  ;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
-  ;;; that contains a label displaying the field ID, and an input field for the
-  ;;; associated value. `bt-fields-widget` and its children are only used for
-  ;;; group fields, block fields are handled differently.
-  ;;;
-  ;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
-  ;;; The first pane contains the actual block display (all of the parent
-  ;;; group's block members except the order block displayed next to each
-  ;;; other), and the second pane contains the order or block list display.
-  ;;; Both the block display and the order display are based on the `metatree`
-  ;;; meta-widget, which is documented below.
-  ;;;
-  ;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
-  ;;; notebook (tab view), with tabs for each of the parent node's subgroups.
-  ;;; A Tk frame is created in each of the tabs. For each subgroup, a
-  ;;; `bt-group-widget` is created as a child of the corresponding tab frame.
-  ;;; This allows for infinite nested groups, as required by MDAL.
-  ;;;
-  ;;; All `bt-*` widgets should be created by calling the corresponding
-  ;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
-  ;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
-  ;;; calling the corresponding `show-*-widget` procedures.
-
-
-  ;; ---------------------------------------------------------------------------
   ;;; ### Menus
   ;; ---------------------------------------------------------------------------
 
@@ -107,6 +69,44 @@
 		  (add-menu-item! my-menu item))
 		items)
       my-menu))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Module Display Related Widgets and Procedures
+  ;; ---------------------------------------------------------------------------
+
+  ;;; The module display is constructed as follows:
+  ;;;
+  ;;; Within the module display frame provided by Bintracker's top level layout,
+  ;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
+  ;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
+  ;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
+  ;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
+  ;;; subgroups, respectively.
+  ;;;
+  ;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
+  ;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
+  ;;; that contains a label displaying the field ID, and an input field for the
+  ;;; associated value. `bt-fields-widget` and its children are only used for
+  ;;; group fields, block fields are handled differently.
+  ;;;
+  ;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
+  ;;; The first pane contains the actual block display (all of the parent
+  ;;; group's block members except the order block displayed next to each
+  ;;; other), and the second pane contains the order or block list display.
+  ;;; Both the block display and the order display are based on the `metatree`
+  ;;; meta-widget, which is documented below.
+  ;;;
+  ;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
+  ;;; notebook (tab view), with tabs for each of the parent node's subgroups.
+  ;;; A Tk frame is created in each of the tabs. For each subgroup, a
+  ;;; `bt-group-widget` is created as a child of the corresponding tab frame.
+  ;;; This allows for infinite nested groups, as required by MDAL.
+  ;;;
+  ;;; All `bt-*` widgets should be created by calling the corresponding
+  ;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
+  ;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
+  ;;; calling the corresponding `show-*-widget` procedures.
 
 
   ;; ---------------------------------------------------------------------------
@@ -512,8 +512,6 @@
 		 (if (>= (+ 1 current-xpos) (length (metatree-columns mt)))
 		     0
 		     (add1 current-xpos)))))
-      ;; TODO disable focus, see
-      ;; https://stackoverflow.com/questions/4299432/in-tkinter-how-do-i-remove-focus-from-a-widget
       (show-cursor mt)))
 
 
