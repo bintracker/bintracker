@@ -153,59 +153,77 @@
   ;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
-  (define (toolbar-button icon command #!optional (init-state 'disabled))
-    (toolbar-frame 'create-widget 'button image: (tk/icon icon)
-		   state: init-state
-		   command: command
-		   style: "Toolbutton"))
+  (define (toolbar-button icon command key-action description
+  			  #!optional (init-state 'disabled))
+    (let ((button-widget
+  	   (toolbar-frame 'create-widget 'button image: (tk/icon icon)
+  			  state: init-state command: command
+  			  style: "Toolbutton")))
+      (tk/bind button-widget '<Enter>
+  	       (lambda ()
+  		 (display-action-info-status!
+  		  (string-append description
+  				 ;; all toolbar buttons must trigger actions
+  				 ;; from the global key-group
+  				 (key-binding->info 'global key-action)))))
+      (tk/bind button-widget '<Leave> reset-status-text!)
+      button-widget))
 
-  (define button-new (toolbar-button "new.png" (lambda () #t) 'enabled))
-  (define button-load (toolbar-button "load.png" load-file 'enabled))
-  (tk/bind button-load '<Enter>
-	   (lambda ()
-	     (display-action-info-status!
-	      (string-append "Load File... "
-			     (key-binding->info 'global 'load-file)))))
-  (tk/bind button-load '<Leave> reset-status-text!)
-  (define button-save (toolbar-button "save.png" (lambda () #t)))
-  (define button-undo (toolbar-button "undo.png" (lambda () #t)))
-  (define button-redo (toolbar-button "redo.png" (lambda () #t)))
-  (define button-copy (toolbar-button "copy.png" (lambda () #t)))
-  (define button-cut (toolbar-button "cut.png" (lambda () #t)))
-  (define button-clear (toolbar-button "clear.png" (lambda () #t)))
-  (define button-paste (toolbar-button "paste.png" (lambda () #t)))
-  (define button-insert (toolbar-button "insert.png" (lambda () #t)))
-  (define button-swap (toolbar-button "swap.png" (lambda () #t)))
-  (define button-stop (toolbar-button "stop.png" (lambda () #t)))
-  (define button-play (toolbar-button "play.png" (lambda () #t)))
-  (define button-play-from-start (toolbar-button "play-from-start.png"
-						 (lambda () #t)))
-  (define button-play-ptn (toolbar-button "play-ptn.png" (lambda () #t)))
-  (define button-prompt (toolbar-button "prompt.png" (lambda () #t) 'enabled))
-  (define button-settings (toolbar-button "settings.png" (lambda () #t)
+  (define toolbar-button-groups
+    `((file (new ,(toolbar-button "new.png" (lambda () #t)
+				  'create-new-file "New File" 'enabled))
+	    (load ,(toolbar-button "load.png" load-file 'load-file
+				   "Load File..." 'enabled))
+	    (save ,(toolbar-button "save.png" save-file 'save-file
+				   "Save File")))
+      (edit (copy ,(toolbar-button "copy.png" (lambda () #t)
+      				   'copy "Copy Selection"))
+      	    (cut ,(toolbar-button "cut.png" (lambda () #t)
+      				  'cut "Cut Selection (delete with shift)"))
+      	    (clear ,(toolbar-button "clear.png" (lambda () #t)
+      				    'clear
+				    "Clear Selection (delete, no shift)"))
+      	    (paste ,(toolbar-button "paste.png" (lambda () #t)
+      				    'paste "Paste from Clipboard (no shift)"))
+      	    (insert ,(toolbar-button "insert.png" (lambda () #t)
+      				     'insert
+				     "Insert from Clipbard (with shift)"))
+      	    (swap ,(toolbar-button "swap.png" (lambda () #t)
+      				   'swap "Swap Selection with Clipboard")))
+      (play (stop ,(toolbar-button "stop.png" (lambda () #t)
+      				   'stop "Stop Playback"))
+      	    (play ,(toolbar-button "play.png" (lambda () #t)
+      				   'play "Play Track from Current Position"))
+      	    (play-from-start ,(toolbar-button "play-from-start.png"
+      					      (lambda () #t)
+      					      'play-from-start
+					      "Play Track from Start"))
+      	    (play-pattern ,(toolbar-button "play-ptn.png" (lambda () #t)
+      					   'play-pattern "Play Pattern")))
+      (configure (prompt ,(toolbar-button "prompt.png" (lambda () #t)
+      					  'toggle-prompt "Toggle Console"
 					  'enabled))
+      		 (settings ,(toolbar-button "settings.png" (lambda () #t)
+      					    'show-settings "Settings..."
+					    'enabled)))))
 
+  ;;; construct and display the main toolbar
   (define (make-toolbar)
-    (let ((make-separator (lambda ()
-			    (toolbar-frame 'create-widget 'separator
-					   orient: 'vertical))))
-      (map (lambda (elem)
-	     ;; TODO pad seperators, but nothing else
-	     (tk/pack elem side: 'left padx: 0 fill: 'y))
-	   (list button-new button-load button-save (make-separator)
-		 button-undo button-redo (make-separator)
-		 button-copy button-cut button-clear button-paste
-		 button-insert button-swap (make-separator)
-		 button-stop button-play button-play-from-start
-		 button-play-ptn (make-separator)
-		 button-settings button-prompt))))
+    (for-each (lambda (button-group)
+  		(for-each (lambda (button)
+  			    (tk/pack button side: 'left padx: 0 fill: 'y))
+  			  (map cadr (cdr button-group)))
+  		(tk/pack (toolbar-frame 'create-widget 'separator
+  					orient: 'vertical)
+  			 side: 'left padx: 0 'fill: 'y))
+  	      toolbar-button-groups))
 
+  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
+  ;;; `'disabled`.
   (define (set-play-buttons state)
-    (map (lambda (button)
-	   (button 'configure state: state))
-	 (list button-stop button-play button-play-from-start
-	       button-play-ptn)))
-
+    (for-each (lambda (button)
+		(button 'configure state: state))
+	      (car (alist-ref 'play toolbar-button-groups))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Key Bindings
