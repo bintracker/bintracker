@@ -159,11 +159,21 @@
 
   ;;; Set the active MD command info string from the given MDCONF ifield ID.
   (define (set-active-md-command-info! field-id)
-    (set-state! 'active-md-command-info
-		(string-append (symbol->string field-id)
-			       ": " (md:command-description
-				     (md:config-get-inode-source-command
-				      field-id (current-config))))))
+    (let ((command (md:config-get-inode-source-command field-id
+						       (current-config))))
+      (set-state! 'active-md-command-info
+		  (string-append
+		   (symbol->string field-id) ": "
+		   (if (md:command-has-flag? command 'is_note)
+		       (string-append
+			(md:normalize-note-name
+			 (md:lowest-note (md:command-keys command)))
+			" - "
+			(md:normalize-note-name
+			 (md:highest-note (md:command-keys command)))
+			" ")
+		       "")
+		   (md:command-description command)))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Update Procedures
