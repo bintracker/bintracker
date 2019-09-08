@@ -9,12 +9,12 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
-	  srfi-1 srfi-13 srfi-69 pstk defstruct matchable
+	  srfi-1 srfi-13 srfi-69 pstk defstruct matchable list-utils
 	  simple-exceptions mdal bt-state bt-types bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-gui (chicken bitwise)
-	    srfi-1 srfi-13 simple-exceptions)
+	    srfi-1 srfi-13 list-utils simple-exceptions)
 
 
   ;; ---------------------------------------------------------------------------

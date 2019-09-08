@@ -124,6 +124,13 @@
 	       (car binding)
 	       #f))))
 
+  ;;; Look up the key binding for {{action}} in the given {{key-group}}
+  (define (inverse-key-binding key-group action)
+    (and (app-keys? (settings 'keymap))
+	 (alist-inverse-ref (list action)
+			    (get-keybinding-group key-group)
+			    equal? #f)))
+
   ;;; Load a keymap, **name** shall be the name of the keymap file to load,
   ;;; without extension or path. Keymaps are expected to reside in
   ;;; `config/keymaps`.

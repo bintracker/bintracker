@@ -27,7 +27,6 @@
   (defstruct app-settings
     themes-map
     keymap
-    reverse-keymap
     number-base
     mdal-config-dir
     show-menu show-toolbar
