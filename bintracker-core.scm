@@ -222,8 +222,8 @@
   ;;; `'disabled`.
   (define (set-play-buttons state)
     (for-each (lambda (button)
-		(button 'configure state: state))
-	      (car (alist-ref 'play toolbar-button-groups))))
+		((cadr button) 'configure state: state))
+	      (alist-ref 'play toolbar-button-groups)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Key Bindings
