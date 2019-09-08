@@ -353,17 +353,6 @@
       ('trigger 1)
       ('string 32)))
 
-  ;;; Convert note names from MDAL's format to the conventional tracker naming
-  ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
-  (define (normalize-note-name name)
-    (if (string=? "rest" name)
-	"==="
-	(if (string-contains "#" name)
-	    name
-	    (let ((name-string-list (string->list name)))
-	      (list->string (append (list (car name-string-list) #\-)
-				    (cdr name-string-list)))))))
-
   ;;; Transform an ifield value from MDAL format to tracker display format.
   ;;; Replaces empty values with dots, changes numbers depending on number
   ;;; format setting, and turns everything into a string.
@@ -380,7 +369,7 @@
 			 #\0))
 	    ((or 'key 'ukey) (if (memq 'is_note
 				       (md:command-flags command-config))
-				 (normalize-note-name val)
+				 (md:normalize-note-name val)
 				 val))
 	    ('trigger "x")
 	    ('string val)))))

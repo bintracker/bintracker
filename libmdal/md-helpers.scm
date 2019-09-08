@@ -11,6 +11,17 @@
   ;; MDAL: UTILITIES
   ;; ---------------------------------------------------------------------------
 
+  ;;; Convert note names from MDAL's format to the conventional tracker naming
+  ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
+  (define (md:normalize-note-name name)
+    (if (string=? "rest" name)
+	"==="
+	(if (string-contains name "#")
+	    name
+	    (let ((name-string-list (string->list name)))
+	      (list->string (append (list (car name-string-list) #\-)
+				    (cdr name-string-list)))))))
+
   ;;; **[RECORD]** MD:RANGE
   ;;; Constructor: `(md:make-range minimum maximum)`
   ;;; Predicate: `md:range?`
