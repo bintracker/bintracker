@@ -161,6 +161,12 @@
 
   (define button-new (toolbar-button "new.png" (lambda () #t) 'enabled))
   (define button-load (toolbar-button "load.png" load-file 'enabled))
+  (tk/bind button-load '<Enter>
+	   (lambda ()
+	     (display-action-info-status!
+	      (string-append "Load File... "
+			     (key-binding->info 'global 'load-file)))))
+  (tk/bind button-load '<Leave> reset-status-text!)
   (define button-save (toolbar-button "save.png" (lambda () #t)))
   (define button-undo (toolbar-button "undo.png" (lambda () #t)))
   (define button-redo (toolbar-button "redo.png" (lambda () #t)))

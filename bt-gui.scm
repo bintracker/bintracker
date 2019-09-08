@@ -272,24 +272,37 @@
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
+  (define (get-module-info-text)
+    (string-append (if (current-mod)
+		       (string-append
+  			(md:target-id (md:config-target (current-config)))
+  			" | " (md:mod-cfg-id (current-mod)))
+		       "No module loaded.")
+		   " | "))
+
   ;;; Set the message in the status to either a combination of the current
   ;;; module's target platform and configuration name, or the string
   ;;; "No module loaded."
   (define (reset-status-text!)
-    (tk-set-var! "status-text"
-		 (string-append
-		  (if (current-mod)
-		      (string-append
-  		       (md:target-id (md:config-target (current-config)))
-  		       " | " (md:mod-cfg-id (current-mod)))
-		      "No module loaded.")
-		  " | " (state 'active-md-command-info))))
+    (tk-set-var! "status-text" (string-append (get-module-info-text)
+					      (state 'active-md-command-info))))
 
   ;;; Append the string {{msg}} to the current message in the status bar.
   (define (append-status-text! msg)
     (tk-set-var! "status-text" (string-append (tk-get-var "status-text")
 					      msg)))
 
+  (define (display-action-info-status! msg)
+    (tk-set-var! "status-text" (string-append (get-module-info-text)
+					      msg)))
+
+  ;;; Construct an info string for the key binding of the given action in the
+  ;;; given key-group
+  (define (key-binding->info key-group action)
+    (let ((binding (inverse-key-binding key-group action)))
+      (if binding
+	  (string-upcase (string-translate (->string binding) "<>" "()"))
+	  "")))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Module Display Related Widgets and Procedures
