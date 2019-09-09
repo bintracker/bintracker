@@ -18,22 +18,17 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Load Settings
+  ;;; ## Global Actions
   ;; ---------------------------------------------------------------------------
 
-  ;; Load config file
-  (handle-exceptions
-      exn
-      (begin
-	(display exn)
-	(newline))
-      ;; #f ;; TODO: ignoring config errors is fine, but actually report errors
-    (load "config/config.scm"))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ### Global Actions
-  ;; ---------------------------------------------------------------------------
+  ;;; load the main configuration file
+  (define (load-config)
+    (handle-exceptions
+	exn
+	(begin
+	  (display exn)
+	  (newline))
+      (load "config/config.scm")))
 
   (define (do-proc-with-exit-dialogue dialogue-string proc)
     (if (state 'modified)
@@ -240,27 +235,36 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; # Startup Procedure
+  ;;; ## Hooks
+  ;; ---------------------------------------------------------------------------
+
+  (define on-startup-hooks
+    (list load-config update-window-title! update-style! init-main-menu
+	  (lambda ()
+	    (when (settings 'show-menu)
+	      (tk 'configure 'menu: (menu-widget (state 'menu)))))
+	  init-top-level-layout
+	  (lambda ()
+	    (when (app-settings-show-toolbar *bintracker-settings*)
+	      (make-toolbar)))
+	  init-console init-status-bar update-key-bindings!))
+
+  (define (execute-hooks hooks)
+    (for-each (lambda (hook)
+		(hook))
+	      hooks))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Startup Procedure
   ;; ---------------------------------------------------------------------------
 
   ;;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
 
-  (update-window-title!)
-  (update-style!)
-
-  ;; (init-menu)
-  (init-main-menu)
-  (when (settings 'show-menu)
-    (tk 'configure 'menu: (menu-widget (state 'menu))))
-
-  (init-top-level-layout)
-  (when (app-settings-show-toolbar *bintracker-settings*) (make-toolbar))
-  (init-console)
-  (init-status-bar)
-  (update-key-bindings!)
+  (execute-hooks on-startup-hooks)
 
   ;; ---------------------------------------------------------------------------
-  ;;; # Main Loop
+  ;;; ## Main Loop
   ;; ---------------------------------------------------------------------------
 
   (tk-event-loop)
