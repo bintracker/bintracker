@@ -159,6 +159,26 @@
       (main-panes 'add main-frame weight: 5)
       (main-panes 'add console-frame weight: 2)))
 
+  ;; TODO take into account which zones are actually active
+  ;;; The list of all ui zones that can be focussed. The list consists of a list
+  ;;; for each zone, which contains the focus procedure in car, and the unfocus
+  ;;; procedure in cadr.
+  (define ui-zone-focus-procs
+    (list (list (lambda () (focus-metatree (current-blocks-view)))
+		(lambda () (unfocus-metatree (current-blocks-view))))
+	  (list (lambda () (focus-metatree (current-order-view)))
+		(lambda () (unfocus-metatree (current-order-view))))
+	  (list (lambda () (tk/focus console))
+		(lambda () '()))))
+
+  (define (focus-next-ui-zone)
+    (let* ((current-zone (state 'current-ui-zone))
+	   (next-zone (if (= current-zone (sub1 (length ui-zone-focus-procs)))
+			  0 (+ 1 current-zone))))
+      ((cadr (list-ref ui-zone-focus-procs current-zone)))
+      (set-state! 'current-ui-zone next-zone)
+      ((car (list-ref ui-zone-focus-procs next-zone)))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Edit Settings Display
@@ -750,7 +770,7 @@
   ;;;
   (define (unfocus-metatree mt)
     (delete-cursor mt)
-    (set-active-md-command-info! "")
+    (set-state! 'active-md-command-info "")
     (reset-status-text!))
 
 

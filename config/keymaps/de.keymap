@@ -4,6 +4,7 @@
 	  (<Control-o> load-file)
 	  (<Control-s> save-file)
 	  (<Control-Shift-s> save-file-as)
+	  (<Control-n> focus-next-ui-zone)
 	  (<F1> launch-help))
  console: ((<Return> eval-console)
 	   (<Control-l> clear-console))
