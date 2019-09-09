@@ -102,7 +102,7 @@
 		    (append-to-item-list! (second item-spec) #f)
 		    ((menu-widget menu) 'add 'command label: (third item-spec)
 		     underline: (fourth item-spec)
-		     accelerator: (fifth item-spec)
+		     accelerator: (or (fifth item-spec) "")
 		     command: (sixth item-spec))))
 	('submenu (let* ((submenu (construct-menu (fifth item-spec))))
 		    (append-to-item-list! (second item-spec)
