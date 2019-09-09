@@ -739,6 +739,20 @@
 		 (memq direction '(left right)))
 	(update-active-block-column-info mt))))
 
+  ;;;
+  (define (focus-metatree mt)
+    (show-cursor mt)
+    (tk/focus (list-ref (metatree-columns mt)
+			(metatree-state-cursor-x (metatree-mtstate mt))))
+    (when (eq? 'block (metatree-type mt))
+      (update-active-block-column-info mt)))
+
+  ;;;
+  (define (unfocus-metatree mt)
+    (delete-cursor mt)
+    (set-active-md-command-info! "")
+    (reset-status-text!))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Block Related Widgets and Procedures
