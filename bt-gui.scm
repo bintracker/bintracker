@@ -819,6 +819,7 @@
        (metatree-columns metatree)
        block-values (metatree-column-ids metatree))
       (update-row-numbers metatree (length (car block-values))
+			  ;; 4 digits for row numbers
 			  4 #t)))
 
   ;;; Display the blocks of a group instance.
