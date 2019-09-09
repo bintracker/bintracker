@@ -30,6 +30,9 @@
 	  (newline))
       (load "config/config.scm")))
 
+  ;;; If there are unsaved changes to the current module, ask user if they
+  ;;; should be saved, then execute the procedure {{proc}} unless the user
+  ;;; cancelled the action. With no unsaved changes, simply execute {{proc}}.
   (define (do-proc-with-exit-dialogue dialogue-string proc)
     (if (state 'modified)
 	(match (exit-with-unsaved-changes-dialog dialogue-string)
@@ -42,24 +45,30 @@
   (define (exit-bintracker)
     (do-proc-with-exit-dialogue "exit" tk-end))
 
+  (define on-close-file-hooks
+    (list (lambda () (destroy-group-widget (state 'module-widget)))
+	  (lambda () (set-play-buttons 'disabled))
+	  reset-state! update-window-title! reset-status-text!))
+
   ;; TODO disable menu option
   (define (close-file)
     (when (current-mod)
       (do-proc-with-exit-dialogue
        "closing"
-       (lambda ()
-	 (destroy-group-widget (state 'module-widget))
-	 (reset-state!)
-	 (set-play-buttons 'disabled)
-	 (update-window-title!)
-	 (reset-status-text!)))))
+       (lambda () (execute-hooks on-close-file-hooks)))))
+
+  (define after-load-file-hooks
+    (list (lambda ()
+	    (set-state! 'module-widget (make-module-widget main-frame)))
+	  (lambda () (set-play-buttons 'enabled))
+	  show-module reset-status-text! update-window-title!))
 
   (define (load-file)
     (let ((filename (tk/get-open-file
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
 	(begin (console 'insert 'end
-			       (string-append "\nLoading file: " filename "\n"))
+			(string-append "\nLoading file: " filename "\n"))
 	       (handle-exceptions
 		   exn
 		   (console 'insert 'end
@@ -67,28 +76,25 @@
 					   "\n" (message exn)))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
-		 (set-state! 'module-widget (make-module-widget main-frame))
-		 (show-module)
-		 (set-play-buttons 'enabled)
-		 (reset-status-text!)
-		 (update-window-title!))))))
+		 (execute-hooks after-load-file-hooks))))))
+
+  (define on-save-file-hooks
+    (list (lambda () (md:module->file (current-mod) (state 'current-file)))
+	  (lambda () (set-state! 'modified #f))
+	  update-window-title!))
 
   (define (save-file)
     (if (state 'current-file)
-	(md:module->file (current-mod) (state 'current-file))
-	(save-file-as))
-    (set-state! 'modified #f)
-    (update-window-title!))
+	(execute-hooks on-save-file-hooks)
+	(save-file-as)))
 
   (define (save-file-as)
     (let ((filename (tk/get-save-file
 		     filetypes: '(((MDAL Modules) (.mdal)))
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
-	(md:module->file (current-mod) filename)
 	(set-state! 'current-file filename)
-	(set-state! 'modified #f)
-	(update-window-title!))))
+	(execute-hooks on-save-file-hooks))))
 
   (define (launch-help)
     ;; TODO windows untested
