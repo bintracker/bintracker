@@ -61,7 +61,12 @@
     (list (lambda ()
 	    (set-state! 'module-widget (make-module-widget main-frame)))
 	  (lambda () (set-play-buttons 'enabled))
-	  show-module reset-status-text! update-window-title!))
+	  show-module reset-status-text! update-window-title!
+	  (lambda ()
+	    (let ((current-blocks (current-blocks-view)))
+	      (show-cursor current-blocks)
+	      (tk/focus (car (metatree-columns current-blocks)))
+	      (update-active-block-column-info current-blocks)))))
 
   (define (load-file)
     (let ((filename (tk/get-open-file
