@@ -154,6 +154,8 @@
   ;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
+  ;;; Create a toolbar button widget. This also binds the mouse <Enter>/<Leave>
+  ;;; events to display {{description}} in the status bar.
   (define (toolbar-button icon command key-action description
   			  #!optional (init-state 'disabled))
     (let ((button-widget
