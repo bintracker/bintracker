@@ -968,4 +968,24 @@
     (show-group-widget (state 'module-widget)
 		       "0/"))
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Accessors
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Returns the currently visible blocks metatree
+  ;; TODO assumes first subgroup is shown, check actual state
+  (define (current-blocks-view)
+    (bt-blocks-widget-blocks-view
+     (bt-group-widget-blocks-widget
+      (car (bt-subgroups-widget-subgroups
+	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
+
+  ;;; Returns the currently visible order metatree
+  ;; TODO assumes first subgroup is shown, check actual state
+  (define (current-order-view)
+    (bt-blocks-widget-order-view
+     (bt-group-widget-blocks-widget
+      (car (bt-subgroups-widget-subgroups
+	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
+
   ) ;; end module bt-gui
