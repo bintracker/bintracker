@@ -819,13 +819,7 @@
        (metatree-columns metatree)
        block-values (metatree-column-ids metatree))
       (update-row-numbers metatree (length (car block-values))
-			  4 #t)
-      (show-cursor metatree)
-      ;; TODO this should not happen automatically, but must be called
-      ;; explicitly by core.
-      (tk/focus (car (metatree-columns metatree)))
-      ;; TODO this should only be done when really needed, eg. on load-file
-      (update-active-block-column-info metatree)))
+			  4 #t)))
 
   ;;; Display the blocks of a group instance.
   ;;; TODO this must read the order position, or the list of instances must be
