@@ -1017,4 +1017,15 @@
       (car (bt-subgroups-widget-subgroups
 	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Utilities
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Disable automatic keyboard traversal. Needed because it messes with key
+  ;;; binding involving Tab.
+  (define (disable-keyboard-traversal)
+    (tk/bind 'all '<<NextWindow>> '{})
+    (tk/bind 'all '<<PrevWindow>> '{}))
+
   ) ;; end module bt-gui

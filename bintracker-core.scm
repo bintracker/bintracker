@@ -256,7 +256,8 @@
 	  (lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
 	      (make-toolbar)))
-	  init-console init-status-bar update-key-bindings!))
+	  init-console init-status-bar update-key-bindings!
+	  disable-keyboard-traversal))
 
   (define (execute-hooks hooks)
     (for-each (lambda (hook)
