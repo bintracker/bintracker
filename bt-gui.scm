@@ -164,7 +164,9 @@
   ;;; for each zone, which contains the focus procedure in car, and the unfocus
   ;;; procedure in cadr.
   (define ui-zone-focus-procs
-    (list (list (lambda () (focus-metatree (current-blocks-view)))
+    (list (list (lambda () (focus-fields-widget (current-fields-view)))
+		(lambda () (unfocus-fields-widget (current-fields-view))))
+	  (list (lambda () (focus-metatree (current-blocks-view)))
 		(lambda () (unfocus-metatree (current-blocks-view))))
 	  (list (lambda () (focus-metatree (current-order-view)))
 		(lambda () (unfocus-metatree (current-order-view))))
@@ -445,11 +447,19 @@
     				(symbol->string (bt-field-widget-node-id w))
     				"/0/"))
     			      (md:mod-global-node (current-mod))))
-    			    (bt-field-widget-node-id w)))
-    )
+    			    (bt-field-widget-node-id w))))
+
+  (define (focus-field-widget w)
+    (let ((entry (bt-field-widget-val-entry w)))
+      (entry 'configure bg: (colors 'cursor))
+      (tk/focus entry)))
+
+  (define (unfocus-field-widget w)
+    ((bt-field-widget-val-entry w) 'configure bg: (colors 'row-highlight-minor)))
 
   ;;; A meta widget for displaying an MDAL group's field members.
-  (defstruct bt-fields-widget toplevel-frame parent-node-id fields)
+  (defstruct bt-fields-widget toplevel-frame parent-node-id fields
+    (active-index 0))
 
   ;;; Create a `bt-fields-widget`.
   (define (make-fields-widget parent-node-id parent-path parent-widget)
@@ -475,6 +485,14 @@
       (for-each (lambda (field-widget)
 		  (show-field-widget field-widget group-instance-path))
 		(bt-fields-widget-fields w))))
+
+  (define (focus-fields-widget w)
+    (focus-field-widget (list-ref (bt-fields-widget-fields w)
+				  (bt-fields-widget-active-index w))))
+
+  (define (unfocus-fields-widget w)
+    (unfocus-field-widget (list-ref (bt-fields-widget-fields w)
+				    (bt-fields-widget-active-index w))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -1000,6 +1018,9 @@
   ;; ---------------------------------------------------------------------------
   ;;; ## Accessors
   ;; ---------------------------------------------------------------------------
+
+  (define (current-fields-view)
+    (bt-group-widget-fields-widget (state 'module-widget)))
 
   ;;; Returns the currently visible blocks metatree
   ;; TODO assumes first subgroup is shown, check actual state
