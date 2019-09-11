@@ -173,13 +173,23 @@
 	  (list (lambda () (tk/focus console))
 		(lambda () '()))))
 
+  (define (switch-ui-zone-focus current-zone-index new-zone-index)
+    ((cadr (list-ref ui-zone-focus-procs current-zone-index)))
+    (set-state! 'current-ui-zone new-zone-index)
+    ((car (list-ref ui-zone-focus-procs new-zone-index))))
+
   (define (focus-next-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (next-zone (if (= current-zone (sub1 (length ui-zone-focus-procs)))
 			  0 (+ 1 current-zone))))
-      ((cadr (list-ref ui-zone-focus-procs current-zone)))
-      (set-state! 'current-ui-zone next-zone)
-      ((car (list-ref ui-zone-focus-procs next-zone)))))
+      (switch-ui-zone-focus current-zone next-zone)))
+
+  (define (focus-previous-ui-zone)
+    (let* ((current-zone (state 'current-ui-zone))
+	   (prev-zone (if (= current-zone 0)
+			  (sub1 (length ui-zone-focus-procs))
+			  (sub1 current-zone))))
+      (switch-ui-zone-focus current-zone prev-zone)))
 
 
   ;; ---------------------------------------------------------------------------
