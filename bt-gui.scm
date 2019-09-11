@@ -1056,7 +1056,7 @@
   ;;; Disable automatic keyboard traversal. Needed because it messes with key
   ;;; binding involving Tab.
   (define (disable-keyboard-traversal)
-    (tk/bind 'all '<<NextWindow>> '{})
-    (tk/bind 'all '<<PrevWindow>> '{}))
+    (tk/event 'delete '<<NextWindow>>)
+    (tk/event 'delete '<<PrevWindow>>))
 
   ) ;; end module bt-gui
