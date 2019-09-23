@@ -248,7 +248,8 @@
   ;; ---------------------------------------------------------------------------
 
   (define on-startup-hooks
-    (list load-config update-window-title! update-style! init-main-menu
+    (list load-config update-window-title! patch-tcltk-8.6.9-treeview
+	  update-style! init-main-menu
 	  (lambda ()
 	    (when (settings 'show-menu)
 	      (tk 'configure 'menu: (menu-widget (state 'menu)))))

@@ -259,6 +259,13 @@
   ;;; Style updates
   ;; ---------------------------------------------------------------------------
 
+  (define (patch-tcltk-8.6.9-treeview)
+    (when (string= "8.6.9" (tk-eval "info patchlevel"))
+      (ttk/style 'map 'Metatree.Treeview foreground:
+		 '(disabled SystemGrayText selected SystemHighlightText)
+		 background: '(disabled SystemButtonFace selected
+					SystemHighlightText))))
+
   ;; TODO also update other metawidget colors here
   (define (update-style!)
     (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
