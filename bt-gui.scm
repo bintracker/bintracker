@@ -196,13 +196,15 @@
   ;;; ## Edit Settings Display
   ;; ---------------------------------------------------------------------------
 
+  ;;; Display a label widget as description of an edit setting spinbox
+  (define (pack-edit-settings-label text description)
+    (let ((label (edit-settings-frame 'create-widget 'label text: text)))
+      (tk/pack label side: 'left padx: 5)
+      (bind-info-status label description)))
+
+  ;;; Display the edit settings toolbar
   (define (show-edit-settings)
-    (letrec ((pack-spinbox-label
-	      (lambda (text)
-		(tk/pack (edit-settings-frame 'create-widget 'label
-					      text: text)
-			 side: 'left padx: 5)))
-	     (edit-step-spinbox
+    (letrec ((edit-step-spinbox
 	      (edit-settings-frame
 	       'create-widget 'spinbox from: 0 to: 64 width: 4
 	       validate: 'focusout
@@ -227,13 +229,13 @@
 	     (minor-hl-spinbox
 	      (edit-settings-frame 'create-widget 'spinbox from: 2 to: 32
 				   state: 'disabled width: 4)))
-      (pack-spinbox-label "Step")
+      (pack-edit-settings-label "Step" "Set the edit step")
       (tk/pack edit-step-spinbox side: 'left)
-      (pack-spinbox-label "Octave")
+      (pack-edit-settings-label "Octave" "Set the base octave")
       (tk/pack base-octave-spinbox side: 'left)
-      (pack-spinbox-label "Major Row")
+      (pack-edit-settings-label "Major Row" "Set the major row highlight")
       (tk/pack major-hl-spinbox side: 'left)
-      (pack-spinbox-label "Minor Row")
+      (pack-edit-settings-label "Minor Row" "Set the minor row highlight")
       (tk/pack minor-hl-spinbox side: 'left)
       (edit-step-spinbox 'set 1)
       (base-octave-spinbox 'set 4)
@@ -346,6 +348,13 @@
   (define (display-action-info-status! msg)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      msg)))
+
+  ;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
+  ;;; remove the given info {{text}} in the status bar.
+  (define (bind-info-status widget text)
+    (tk/bind widget '<Enter>
+	     (lambda () (display-action-info-status! text)))
+    (tk/bind widget '<Leave> reset-status-text!))
 
   ;;; Construct an info string for the key binding of the given action in the
   ;;; given key-group

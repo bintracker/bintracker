@@ -163,14 +163,9 @@
   	   (toolbar-frame 'create-widget 'button image: (tk/icon icon)
   			  state: init-state command: command
   			  style: "Toolbutton")))
-      (tk/bind button-widget '<Enter>
-  	       (lambda ()
-  		 (display-action-info-status!
-  		  (string-append description
-  				 ;; all toolbar buttons must trigger actions
-  				 ;; from the global key-group
-  				 (key-binding->info 'global key-action)))))
-      (tk/bind button-widget '<Leave> reset-status-text!)
+      (bind-info-status button-widget
+			(string-append description " "
+				       (key-binding->info 'global key-action)))
       button-widget))
 
   (define toolbar-button-groups
