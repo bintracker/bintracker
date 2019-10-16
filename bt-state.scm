@@ -67,6 +67,19 @@
     (set-global! "app-colors-" (app-settings-color-scheme *bintracker-settings*)
 		 param val))
 
+  ;;; Load and apply a color theme from a theme config file.
+  (define (load-color-theme filename)
+    (let ((set-color-theme
+	   (lambda (theme)
+	     (if (and (pair? theme)
+		      (eqv? 'bt-color-theme (car theme)))
+		 (set-conf! 'color-scheme (apply make-app-colors (cdr theme)))
+		 (warning
+		  (string-append filename
+				 " is not a valid Bintracker color theme"))))))
+      (call-with-input-file filename (lambda (port)
+				       (set-color-theme (read port))))))
+
   ;;; Change Bintracker's internal state variables.
   (define (set-state! param val)
     (set-global! "app-state-" *bintracker-state* param val))

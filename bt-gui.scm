@@ -282,8 +282,8 @@
 
   ;; TODO also update other metawidget colors here
   (define (update-style!)
-    (ttk/style 'configure 'Metatree.Treeview background: (colors 'row)
-	       fieldbackground: (colors 'row)
+    (ttk/style 'configure 'Metatree.Treeview background: (colors 'background)
+	       fieldbackground: (colors 'background)
 	       foreground: (colors 'text)
 	       font: (list family: (settings 'font-mono)
 			   size: (settings 'font-size))
@@ -293,24 +293,24 @@
     (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
     (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
 
-    (ttk/style 'configure 'BT.TFrame background: (colors 'row))
+    (ttk/style 'configure 'BT.TFrame background: (colors 'background))
 
-    (ttk/style 'configure 'BT.TLabel background: (colors 'row)
+    (ttk/style 'configure 'BT.TLabel background: (colors 'background)
 	       foreground: (colors 'text)
 	       font: (list family: (settings 'font-mono)
 			   size: (settings 'font-size)
 			   weight: 'bold))
 
-    (ttk/style 'configure 'BT.TNotebook background: (colors 'row))
+    (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
     (ttk/style 'configure 'BT.TNotebook.Tab
-	       background: (colors 'row)
+	       background: (colors 'background)
 	       font: (list family: (settings 'font-mono)
 			   size: (settings 'font-size)
 			   weight: 'bold))
 
-    (console 'configure bg: (colors 'console-bg))
-    (console 'configure fg: (colors 'console-fg))
-    (console 'configure insertbackground: (colors 'console-fg)))
+    (console 'configure bg: (colors 'background))
+    (console 'configure fg: (colors 'text))
+    (console 'configure insertbackground: (colors 'text)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -580,7 +580,8 @@
     (let* ((packframe (parent 'create-widget 'frame))
 	   (rownums-packframe (packframe 'create-widget 'frame))
 	   (canvas (packframe 'create-widget 'canvas
-			      scrollregion: "0 0 1000 1000" bg: (colors 'row)
+			      scrollregion: "0 0 1000 1000"
+			      bg: (colors 'background)
 			      bd: 0 highlightthickness: 0))
 	   (block-ids
 	    (and (eq? type 'block)

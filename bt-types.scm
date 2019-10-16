@@ -15,10 +15,29 @@
     (active-md-command-info "")
     modified undo-stack redo-stack)
 
-  ;;; Recort type that wraps gui element colors
+  ;;; Record type that wraps GUI element colors.
+  ;;; {{text-1}}: note commands
+  ;;; {{text-2}}: numeric commands (int/uint)
+  ;;; {{text-3}}: key commands
+  ;;; {{text-4}}: reference commands
+  ;;; {{text-5}}: trigger commands
+  ;;; {{text-6}}: string commands
+  ;;; {{text-7}}: modifier commands
   (defstruct app-colors
-    text cursor row row-highlight-major row-highlight-minor
-    console-bg console-fg)
+    (background "#222222")
+    (background-inactive "#111111")
+    (row-highlight-major "#444444")
+    (row-highlight-minor "#333333")
+    (cursor "#0066cc")
+    (text "#00ee00")
+    (text-inactive "#00aa00")
+    (text-1 "#00ee00")
+    (text-2 "#00ee00")
+    (text-3 "#00ee00")
+    (text-4 "#00ee00")
+    (text-5 "#00ee00")
+    (text-6 "#00ee00")
+    (text-7 "#00ee00"))
 
   (defstruct app-keys
     global console note-entry plugins)
@@ -35,16 +54,6 @@
 
   (define (make-default-state)
     (make-app-state))
-
-  (define (make-default-colors)
-    (make-app-colors
-     text: "#00ee00"
-     cursor: "#0066cc"
-     row: "#222222"
-     row-highlight-major: "#444444"
-     row-highlight-minor: "#333333"
-     console-bg: "#000000"
-     console-fg: "#ffffff"))
 
   (defstruct rgb
     red green blue)
@@ -89,6 +98,6 @@
 		       show-toolbar: #t
 		       font-mono: "Courier"
 		       font-size: 10
-		       color-scheme: (make-default-colors)))
+		       color-scheme: (make-app-colors)))
 
   ) ;; end module bt-types
