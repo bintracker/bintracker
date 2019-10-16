@@ -197,36 +197,48 @@
   ;; ---------------------------------------------------------------------------
 
   (define (show-edit-settings)
-    (letrec* ((edit-step-label (edit-settings-frame 'create-widget 'label
-						    text: "Edit Step"))
-	      (base-octave-label (edit-settings-frame 'create-widget 'label
-						      text: "Base Octave"))
-	      (edit-step-spinbox
-	       (edit-settings-frame
-		'create-widget 'spinbox from: 0 to: 64 validate: 'focusout
-		validatecommand:
-		(lambda ()
-		  (let* ((newval (string->number (edit-step-spinbox 'get)))
-			 (valid? (and (integer? newval)
-				      (>= newval 0)
-				      (<= newval 64))))
-		    (when valid? (set-state! 'edit-step newval))
-		    valid?))
-		invalidcommand:
-		(lambda ()
-		  (edit-step-spinbox 'set (state 'edit-step)))))
-	      (base-octave-spinbox
-	       ;; TODO validation
-	       (edit-settings-frame 'create-widget 'spinbox from: 0 to: 9
-				    state: 'disabled)))
-      (tk/pack edit-step-label side: 'left padx: 5)
+    (letrec ((pack-spinbox-label
+	      (lambda (text)
+		(tk/pack (edit-settings-frame 'create-widget 'label
+					      text: text)
+			 side: 'left padx: 5)))
+	     (edit-step-spinbox
+	      (edit-settings-frame
+	       'create-widget 'spinbox from: 0 to: 64 width: 4
+	       validate: 'focusout
+	       validatecommand:
+	       (lambda ()
+		 (let* ((newval (string->number (edit-step-spinbox 'get)))
+			(valid? (and (integer? newval)
+				     (>= newval 0)
+				     (<= newval 64))))
+		   (when valid? (set-state! 'edit-step newval))
+		   valid?))
+	       invalidcommand:
+	       (lambda ()
+		 (edit-step-spinbox 'set (state 'edit-step)))))
+	     (base-octave-spinbox
+	      ;; TODO validation
+	      (edit-settings-frame 'create-widget 'spinbox from: 0 to: 9
+				   state: 'disabled width: 4))
+	     (major-hl-spinbox
+	      (edit-settings-frame 'create-widget 'spinbox from: 2 to: 64
+				   state: 'disabled width: 4))
+	     (minor-hl-spinbox
+	      (edit-settings-frame 'create-widget 'spinbox from: 2 to: 32
+				   state: 'disabled width: 4)))
+      (pack-spinbox-label "Step")
       (tk/pack edit-step-spinbox side: 'left)
-      (tk/pack (edit-settings-frame 'create-widget 'separator orient: 'vertical)
-	       side: 'left fill: 'y)
-      (tk/pack base-octave-label side: 'left padx: 5)
+      (pack-spinbox-label "Octave")
       (tk/pack base-octave-spinbox side: 'left)
+      (pack-spinbox-label "Major Row")
+      (tk/pack major-hl-spinbox side: 'left)
+      (pack-spinbox-label "Minor Row")
+      (tk/pack minor-hl-spinbox side: 'left)
       (edit-step-spinbox 'set 1)
-      (base-octave-spinbox 'set 4)))
+      (base-octave-spinbox 'set 4)
+      (major-hl-spinbox 'set 16)
+      (minor-hl-spinbox 'set 4)))
 
 
   ;; ---------------------------------------------------------------------------
