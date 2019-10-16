@@ -1,4 +1,4 @@
-;; A color scheme based on base16 by Chris Kempson
+;; A color scheme based on base16/Tomorrow Night by Chris Kempson
 ;; http://chriskempson.com/projects/base16/
 
 (bt-color-theme background: "#1d1f21" ; background
