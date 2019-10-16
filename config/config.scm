@@ -14,6 +14,6 @@
 ;; (install-theme! 'awdark "themes/awthemes.tcl")
 ;; (set-theme! 'awdark)
 
-(load-color-theme "srcery")
+(load-color-theme "gruvbox")
 
 (set-conf! 'font-mono "Roboto Mono for Powerline")
