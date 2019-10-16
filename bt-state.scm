@@ -68,17 +68,21 @@
 		 param val))
 
   ;;; Load and apply a color theme from a theme config file.
-  (define (load-color-theme filename)
+  ;;; {{theme-name}} must be the name of the theme config, without path or
+  ;;; extension.
+  (define (load-color-theme theme-name)
     (let ((set-color-theme
 	   (lambda (theme)
 	     (if (and (pair? theme)
 		      (eqv? 'bt-color-theme (car theme)))
 		 (set-conf! 'color-scheme (apply make-app-colors (cdr theme)))
 		 (warning
-		  (string-append filename
+		  (string-append "config/color-themes/" theme-name ".scm"
 				 " is not a valid Bintracker color theme"))))))
-      (call-with-input-file filename (lambda (port)
-				       (set-color-theme (read port))))))
+      (call-with-input-file (string-append "config/color-themes/" theme-name
+					   ".scm")
+	(lambda (port)
+	  (set-color-theme (read port))))))
 
   ;;; Change Bintracker's internal state variables.
   (define (set-state! param val)

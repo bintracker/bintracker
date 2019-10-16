@@ -14,6 +14,6 @@
 ;; (install-theme! 'awdark "themes/awthemes.tcl")
 ;; (set-theme! 'awdark)
 
-(load-color-theme "config/color-themes/solarized-dark.scm")
+(load-color-theme "monokai")
 
 (set-conf! 'font-mono "Roboto Mono for Powerline")
