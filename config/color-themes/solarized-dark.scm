@@ -1,7 +1,7 @@
-;;; A color scheme based on Solarized Dark by Ethan Schoonover
+;;; A color scheme based on Solarized by Ethan Schoonover
 ;;; https://ethanschoonover.com/solarized/
 
-(bt-color-theme background: "#073642" ; base02
+(bt-color-theme background: "#002b36" ; base03 "#073642" ; base02
 		background-inactive: "#002b36" ; base03
 		row-highlight-major: "#657b83" ; base00
 		row-highlight-minor: "#586e75" ; base01
