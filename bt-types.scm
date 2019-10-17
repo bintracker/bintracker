@@ -54,37 +54,4 @@
     (font-size 10)
     (color-scheme (make-app-colors)))
 
-  (defstruct rgb
-    red green blue)
-
-  ;;; Convert a color code string to a list of r,g,b values
-  (define (color->rgb color)
-    (let ((colorval (string->number (string-replace color "#x" 0 1)
-				    16)))
-      (make-rgb
-       red: (bitwise-and #xff (quotient colorval #x10000))
-       green: (bitwise-and #xff (quotient colorval #x100))
-       blue: (bitwise-and #xff colorval))))
-
-  ;;; Convert an rgb struct into a html color string
-  (define (rgb->color r)
-    (let ((hue->string (lambda (hue)
-			 (string-pad (number->string (hue r) 16)
-				     2 #\0))))
-      (string-append "#" (hue->string rgb-red)
-		     (hue->string rgb-green)
-		     (hue->string rgb-blue))))
-
-  ;;; Composite map an rgb value rgb1 onto rgb2, using alpha as intensity
-  ;;; modifier
-  (define (composite-rgb rgb1 rgb2 alpha1)
-    (let ((composite-component (lambda (component)
-				  (inexact->exact (+ (* alpha1 (component rgb2))
-						     (* (component rgb1)
-							(- 1 alpha1)))))))
-      (make-rgb
-       red: (composite-component rgb-red)
-       green: (composite-component rgb-green)
-       blue: (composite-component rgb-blue))))
-
   ) ;; end module bt-types
