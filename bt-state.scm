@@ -199,20 +199,6 @@
 		       "")
 		   (md:command-description command)))))
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Update Procedures
-  ;; ---------------------------------------------------------------------------
-
-  ;;; update window title by looking at current file name and 'modified'
-  ;;; property
-  (define (update-window-title!)
-    (tk/wm 'title tk (if (state 'current-file)
-			 (string-append (pathname-file (state 'current-file))
-					(if (state 'modified)
-					    "*" "")
-					" - Bintracker")
-			 "Bintracker")))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## The Undo/Redo System

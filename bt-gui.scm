@@ -11,7 +11,7 @@
 (module bt-gui
     *
 
-  (import scheme (chicken base)
+  (import scheme (chicken base) (chicken pathname)
 	  srfi-1 srfi-13
 	  defstruct matchable simple-exceptions pstk
 	  bt-state bt-types mdal)
@@ -1121,5 +1121,15 @@
   (define (disable-keyboard-traversal)
     (tk/event 'delete '<<NextWindow>>)
     (tk/event 'delete '<<PrevWindow>>))
+
+    ;;; update window title by looking at current file name and 'modified'
+  ;;; property
+  (define (update-window-title!)
+    (tk/wm 'title tk (if (state 'current-file)
+			 (string-append (pathname-file (state 'current-file))
+					(if (state 'modified)
+					    "*" "")
+					" - Bintracker")
+			 "Bintracker")))
 
   ) ;; end module bt-gui
