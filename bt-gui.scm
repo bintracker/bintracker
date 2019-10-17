@@ -700,20 +700,19 @@
 		    (metatree-column-ids mt)
 		    0)
       (canvas 'configure xscrollcommand: (list (metatree-xscroll mt) 'set))
-      (tk/bind (metatree-packframe mt) '<Configure>
-      	       `(,(lambda (h)
-      		    (for-each (lambda (column)
-				(column 'configure height:
-					(quotient
-					 (- h (* tree-rowheight
-						 (if (eq? 'block
-							  (metatree-type mt))
-						     2 1)))
-					 tree-rowheight)
-					yscrollcommand:
-					`(,(metatree-yscroll mt) set)))
-      			      (metatree-columns mt)))
-      		 %h))
+      (tk/bind
+       (metatree-packframe mt) '<Configure>
+       `(,(lambda (h)
+      	    (for-each (lambda (column)
+			(column 'configure height:
+				(quotient
+				 (- h (* tree-rowheight
+					 (if (eq? 'block (metatree-type mt))
+					     2 1)))
+				 tree-rowheight)
+				yscrollcommand: `(,(metatree-yscroll mt) set)))
+      		      (metatree-columns mt)))
+      	 %h))
       (canvas 'configure scrollregion:
 	      (list 0 0 (* 80 (length (metatree-columns mt)))
 		    1000))))
