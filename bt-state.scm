@@ -18,8 +18,8 @@
 
 
   (define *bintracker-version* "0.2.0")
-  (define *bintracker-state* (make-default-state))
-  (define *bintracker-settings* (make-default-settings))
+  (define *bintracker-state* (make-app-state))
+  (define *bintracker-settings* (make-app-settings))
 
   ;;; Get the global application state, or a specific {{param}}eter of that
   ;;; state.
@@ -33,7 +33,7 @@
   ;;; called on unloading (closing) the currently loaded module.
   (define (reset-state!)
     (let ((menu (state 'menu)))
-      (set! *bintracker-state* (make-default-state))
+      (set! *bintracker-state* (make-app-state))
       (set-state! 'menu menu)))
 
   ;;; Get the global application settings, or a specific {{param}}eter of that

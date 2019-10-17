@@ -44,16 +44,15 @@
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
-    themes-map
-    keymap
-    number-base
-    mdal-config-dir
-    show-menu show-toolbar
-    font-mono font-size
-    color-scheme)
-
-  (define (make-default-state)
-    (make-app-state))
+    (themes-map '())
+    (keymap "EN")
+    (number-base 16)
+    (mdal-config-dir "libmdal/unittests/config/")
+    (show-menu #t)
+    (show-toolbar #t)
+    (font-mono "Courier")
+    (font-size 10)
+    (color-scheme (make-app-colors)))
 
   (defstruct rgb
     red green blue)
@@ -87,17 +86,5 @@
        red: (composite-component rgb-red)
        green: (composite-component rgb-green)
        blue: (composite-component rgb-blue))))
-
-  (define (make-default-settings)
-    (make-app-settings themes-map: '((awdark "themes/awthemes.tcl")
-				     (awlight "themes/awthemes.tcl"))
-		       keymap: "EN"
-		       number-base: 16
-		       mdal-config-dir: "libmdal/unittests/config/"
-		       show-menu: #t
-		       show-toolbar: #t
-		       font-mono: "Courier"
-		       font-size: 10
-		       color-scheme: (make-app-colors)))
 
   ) ;; end module bt-types
