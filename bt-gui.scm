@@ -364,11 +364,7 @@
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      (state 'active-md-command-info))))
 
-  ;; ;;; Append the string {{msg}} to the current message in the status bar.
-  ;; (define (append-status-text! msg)
-  ;;   (tk-set-var! "status-text" (string-append (tk-get-var "status-text")
-  ;; 					      msg)))
-
+  ;;; Display {{msg}} in the status bar, extending the current info string.
   (define (display-action-info-status! msg)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      msg)))
