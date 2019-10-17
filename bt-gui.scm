@@ -447,6 +447,20 @@
 	    ('trigger "x")
 	    ('string val)))))
 
+  ;;; Get the RGB color string associated with the field's command type.
+  (define (get-field-color field-id)
+    (let ((command-config (md:config-get-inode-source-command
+			   field-id (current-config))))
+      (if (memq 'note (md:command-flags command-config))
+	  (colors 'text-1)
+	  (match (md:command-type command-config)
+	    ((or 'int 'uint) (colors 'text-2))
+	    ((or 'key 'ukey) (colors 'text-3))
+	    ('reference (colors 'text-4))
+	    ('trigger (colors 'text-5))
+	    ('string (colors 'text-6))
+	    ('modifier (colors 'text-7))
+	    (else (colors 'text))))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Field-Related Widgets and Procedures
@@ -457,14 +471,15 @@
 
   ;;; Create a `bt-field-widget`.
   (define (make-field-widget node-id parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame style: 'BT.TFrame)))
+    (let ((tl-frame (parent-widget 'create-widget 'frame style: 'BT.TFrame))
+	  (color (get-field-color node-id)))
       (make-bt-field-widget
        toplevel-frame: tl-frame
        node-id: node-id
        id-label: (tl-frame 'create-widget 'label style: 'BT.TLabel
-			   text: (symbol->string node-id))
+			   foreground: color text: (symbol->string node-id))
        val-entry: (tl-frame 'create-widget 'entry
-			    bg: (colors 'row-highlight-minor) fg: (colors 'text)
+			    bg: (colors 'row-highlight-minor) fg: color
 			    bd: 0 highlightthickness: 0 insertborderwidth: 1
 			    justify: 'center
 			    font: (list family: (settings 'font-mono)
@@ -561,7 +576,25 @@
     (col 'tag 'configure 'active-cell background: (colors 'cursor))
     (col 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
     (col 'tag 'configure 'rowhl-major
-	 background: (colors 'row-highlight-major)))
+	 background: (colors 'row-highlight-major))
+    (col 'tag 'configure 'note foreground: (colors 'text-1))
+    (col 'tag 'configure 'int foreground: (colors 'text-2))
+    (col 'tag 'configure 'key foreground: (colors 'text-3))
+    (col 'tag 'configure 'reference foreground: (colors 'text-4))
+    (col 'tag 'configure 'trigger foreground: (colors 'text-5))
+    (col 'tag 'configure 'string foreground: (colors 'text-6))
+    (col 'tag 'configure 'modifier foreground: (colors 'text-7)))
+
+  ;;; Get the appropriate command type tag to set the item color for metatrees.
+  (define (get-command-type-tag field-id)
+    (let ((command-config (md:config-get-inode-source-command
+			   field-id (current-config))))
+      (if (memq 'note (md:command-flags command-config))
+	  'note
+	  (match (md:command-type command-config)
+	    ((or 'int 'uint) 'int)
+	    ((or 'key 'ukey) 'key)
+	    (else (md:command-type command-config))))))
 
   ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
   ;;; the Treeview style has already been configured to use
@@ -660,8 +693,8 @@
 		   (let ((init-ypos (if (eq? 'block (metatree-type mt))
 					tree-rowheight 0)))
 		     (canvas 'create 'text (list (+ xpos 40) init-ypos)
-			     anchor: 'n width: 80 fill: (colors 'text)
-			     font: header-font
+			     anchor: 'n width: 80 font: header-font
+			     fill: (get-field-color (car column-ids))
 			     text:
 			     (let ((id (symbol->string (car column-ids))))
 			       (if (eq? 'block (metatree-type mt))
@@ -859,7 +892,7 @@
 	  		     (md:mod-global-node (current-mod))))))
       (for-each (lambda (column values field-id)
 		  (for-each (lambda (value)
-			      (column 'insert '{} 'end
+			      (column 'insert '{} 'end tags: '(reference)
 				      values:
 				      (list (normalize-field-value value
 								   field-id))))
@@ -902,9 +935,11 @@
 		     (column 'insert '{} 'end
 			     values: (list
 				      (normalize-field-value value field-id))
-			     tags: (cond ((= 0 (modulo rownum 8)) "rowhl-major")
-					 ((= 0 (modulo rownum 4)) "rowhl-minor")
-					 (else ""))))
+			     tags:
+			     (list (get-command-type-tag field-id)
+				   (cond ((= 0 (modulo rownum 8)) 'rowhl-major)
+					 ((= 0 (modulo rownum 4)) 'rowhl-minor)
+					 (else 'default)))))
 		   values (iota (length values))))
        (metatree-columns metatree)
        block-values (metatree-column-ids metatree))
