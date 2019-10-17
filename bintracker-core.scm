@@ -48,7 +48,8 @@
   (define on-close-file-hooks
     (list (lambda () (destroy-group-widget (state 'module-widget)))
 	  (lambda () (set-play-buttons 'disabled))
-	  reset-state! update-window-title! reset-status-text!))
+	  reset-state! update-window-title! reset-status-text!
+	  disable-edit-settings!))
 
   ;; TODO disable menu option
   (define (close-file)
@@ -62,7 +63,8 @@
 	    (set-state! 'module-widget (make-module-widget main-frame)))
 	  (lambda () (set-play-buttons 'enabled))
 	  show-module reset-status-text! update-window-title!
-	  (lambda () (focus-metatree (current-blocks-view)))))
+	  (lambda () (focus-metatree (current-blocks-view)))
+	  enable-edit-settings!))
 
   (define (load-file)
     (let ((filename (tk/get-open-file

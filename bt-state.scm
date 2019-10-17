@@ -33,8 +33,13 @@
   ;;; called on unloading (closing) the currently loaded module.
   (define (reset-state!)
     (let ((menu (state 'menu)))
-      (set! *bintracker-state* (make-app-state))
-      (set-state! 'menu menu)))
+      (set! *bintracker-state*
+	(make-app-state menu: menu edit-step: (settings 'default-edit-step)
+			base-octave: (settings 'default-base-octave)
+			major-row-highlight:
+			(settings 'default-major-row-highlight)
+			minor-row-highlight:
+			(settings 'default-minor-row-highlight)))))
 
   ;;; Get the global application settings, or a specific {{param}}eter of that
   ;;; state.

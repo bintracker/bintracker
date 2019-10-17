@@ -10,7 +10,8 @@
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
-    (edit-step 1) (base-octave 4) (current-ui-zone 1)
+    (edit-step 1) (base-octave 4) (major-row-highlight 8)
+    (minor-row-highlight 4) (current-ui-zone 1)
     menu current-mdmod current-file module-widget selection
     (active-md-command-info "")
     modified undo-stack redo-stack)
@@ -52,6 +53,10 @@
     (show-toolbar #t)
     (font-mono "Courier")
     (font-size 10)
-    (color-scheme (make-app-colors)))
+    (color-scheme (make-app-colors))
+    (default-edit-step 1)
+    (default-base-octave 4)
+    (default-major-row-highlight 8)
+    (default-minor-row-highlight 4))
 
   ) ;; end module bt-types

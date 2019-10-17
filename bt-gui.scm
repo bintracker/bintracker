@@ -202,13 +202,24 @@
       (tk/pack label side: 'left padx: 5)
       (bind-info-status label description)))
 
-  ;;; Display the edit settings toolbar
-  (define (show-edit-settings)
+  ;;; Create a spinbox in the edit settings toolbar.
+  ;;; {{from}} and {{to}} specify the permitted range of values,
+  ;;; {{default-setting}} specifies an entry in `app-settings`, and
+  ;;; {{validate-command}}/{{invalid-command}} specify the commands called by
+  ;;; the spinbox widget on validation and validation failure. Validation
+  ;;; occurs on `focusout`.
+  ;; TODO perhaps validating on focusout is not the best option?
+  (define (make-edit-settings-spinbox from to validate-command
+				      invalid-command)
+    (edit-settings-frame 'create-widget 'spinbox from: from to: to width: 4
+			 state: 'disabled validate: 'focusout
+			 validatecommand: validate-command
+			 invalidcommand: invalid-command))
+
+  (define edit-settings
     (letrec ((edit-step-spinbox
-	      (edit-settings-frame
-	       'create-widget 'spinbox from: 0 to: 64 width: 4
-	       validate: 'focusout
-	       validatecommand:
+	      (make-edit-settings-spinbox
+	       0 64
 	       (lambda ()
 		 (let* ((newval (string->number (edit-step-spinbox 'get)))
 			(valid? (and (integer? newval)
@@ -216,31 +227,44 @@
 				     (<= newval 64))))
 		   (when valid? (set-state! 'edit-step newval))
 		   valid?))
-	       invalidcommand:
 	       (lambda ()
-		 (edit-step-spinbox 'set (state 'edit-step)))))
-	     (base-octave-spinbox
-	      ;; TODO validation
-	      (edit-settings-frame 'create-widget 'spinbox from: 0 to: 9
-				   state: 'disabled width: 4))
-	     (major-hl-spinbox
-	      (edit-settings-frame 'create-widget 'spinbox from: 2 to: 64
-				   state: 'disabled width: 4))
-	     (minor-hl-spinbox
-	      (edit-settings-frame 'create-widget 'spinbox from: 2 to: 32
-				   state: 'disabled width: 4)))
-      (pack-edit-settings-label "Step" "Set the edit step")
-      (tk/pack edit-step-spinbox side: 'left)
-      (pack-edit-settings-label "Octave" "Set the base octave")
-      (tk/pack base-octave-spinbox side: 'left)
-      (pack-edit-settings-label "Major Row" "Set the major row highlight")
-      (tk/pack major-hl-spinbox side: 'left)
-      (pack-edit-settings-label "Minor Row" "Set the minor row highlight")
-      (tk/pack minor-hl-spinbox side: 'left)
-      (edit-step-spinbox 'set 1)
-      (base-octave-spinbox 'set 4)
-      (major-hl-spinbox 'set 16)
-      (minor-hl-spinbox 'set 4)))
+		 (edit-step-spinbox 'set (state 'edit-step))))))
+      `((edit-step "Step" "Set the edit step" default-edit-step
+		   ,edit-step-spinbox)
+	(base-octave "Octave" "Set the base octave" default-base-octave
+		     ,(make-edit-settings-spinbox 0 9 (lambda () #t)
+						  (lambda () #t)))
+	(major-highlight "Major Row" "Set the major row highlight"
+			 default-major-row-highlight
+			 ,(make-edit-settings-spinbox 2 64 (lambda () #t)
+						      (lambda () #t)))
+	(minor-highlight "Minor Row" "Set the minor row highlight"
+			 default-minor-row-highlight
+			 ,(make-edit-settings-spinbox 2 32 (lambda () #t)
+						      (lambda () #t))))))
+
+  ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
+  ;;; either `'enabled` or `'disabled`.
+  (define (set-edit-settings-state! state)
+    (for-each (lambda (setting)
+		((fifth setting) 'configure state: state))
+	      edit-settings))
+
+  ;;; Enable the edit settings spinboxes.
+  (define (enable-edit-settings!)
+    (set-edit-settings-state! 'enabled))
+
+  ;;; Disable the edit settings spinboxes.
+  (define (disable-edit-settings!)
+    (set-edit-settings-state! 'disabled))
+
+  ;;; Display the edit settings in the main GUI.
+  (define (show-edit-settings)
+    (for-each (lambda (setting)
+		(pack-edit-settings-label (cadr setting) (third setting))
+		(tk/pack (fifth setting) side: 'left)
+		((fifth setting) 'set (settings (fourth setting))))
+	      edit-settings))
 
 
   ;; ---------------------------------------------------------------------------
