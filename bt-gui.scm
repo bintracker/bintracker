@@ -430,8 +430,8 @@
   ;;; Replaces empty values with dots, changes numbers depending on number
   ;;; format setting, and turns everything into a string.
   (define (normalize-field-value val field-id)
-    (let* ((command-config (md:config-get-inode-source-command
-  			    field-id (current-config))))
+    (let ((command-config (md:config-get-inode-source-command
+  			   field-id (current-config))))
       (if (null? val)
 	  (list->string (make-list (value-display-size command-config)
   	  			   #\.))
