@@ -203,71 +203,49 @@
       (bind-info-status label description)))
 
   ;;; Create a spinbox in the edit settings toolbar.
-  ;;; {{from}} and {{to}} specify the permitted range of values,
-  ;;; {{default-setting}} specifies an entry in `app-settings`, and
-  ;;; {{validate-command}}/{{invalid-command}} specify the commands called by
-  ;;; the spinbox widget on validation and validation failure. Validation
-  ;;; occurs on `focusout`.
+  ;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
+  ;;; specifies the relevant field in `app-state`, and {{action}} specifies
+  ;;; an additional procedure to call on validation. Validation occurs on
+  ;;; `focusout`.
   ;; TODO perhaps validating on focusout is not the best option?
-  (define (make-edit-settings-spinbox from to validate-command
-				      invalid-command)
-    (edit-settings-frame 'create-widget 'spinbox from: from to: to width: 4
-			 state: 'disabled validate: 'focusout
-			 validatecommand: validate-command
-			 invalidcommand: invalid-command))
+  (define (make-edit-settings-spinbox from to statevar action)
+    (letrec ((spinbox
+	      (edit-settings-frame
+	       'create-widget 'spinbox from: from to: to
+	       width: 4 state: 'disabled validate: 'focusout
+	       validatecommand:
+	       (lambda ()
+		 (let* ((newval (string->number (spinbox 'get)))
+			(valid? (and (integer? newval)
+				     (>= newval from)
+				     (<= newval to))))
+		   (when valid? (begin (set-state! statevar newval)
+				       (when action (action))))
+		   valid?))
+	       invalidcommand: (lambda () (spinbox 'set (state statevar))))))
+      spinbox))
 
+  ;;; The list of edit setting widgets. Each element in the list must be a list
+  ;;; containing an identifier, a label string, a documentation string, a field
+  ;;; in `app-settings` from which to draw the default value, and a spinbox
+  ;;; widget which should be created with `make-edit-settings-spinbox`.
   (define edit-settings
-    (letrec ((edit-step-spinbox
-	      (make-edit-settings-spinbox
-	       0 64
-	       (lambda ()
-		 (let* ((newval (string->number (edit-step-spinbox 'get)))
-			(valid? (and (integer? newval)
-				     (>= newval 0)
-				     (<= newval 64))))
-		   (when valid? (set-state! 'edit-step newval))
-		   valid?))
-	       (lambda ()
-		 (edit-step-spinbox 'set (state 'edit-step)))))
-	     (major-hl-spinbox
-	      (make-edit-settings-spinbox
-	       2 64
-	       (lambda ()
-		 (let* ((newval (string->number (major-hl-spinbox 'get)))
-			(valid? (and (integer? newval)
-				     (>= newval 2)
-				     (<= newval 64))))
-		   (when valid?
-		     (begin (set-state! 'major-row-highlight newval)
-			    (update-row-highlights (current-blocks-view))))
-		   valid?))
-	       (lambda ()
-		 (major-hl-spinbox 'set (state 'major-row-highlight)))))
-	     (minor-hl-spinbox
-	      (make-edit-settings-spinbox
-	       2 32
-	       (lambda ()
-		 (let* ((newval (string->number (minor-hl-spinbox 'get)))
-			(valid? (and (integer? newval)
-				     (>= newval 2)
-				     (<= newval 32))))
-		   (when valid?
-		     (begin (set-state! 'minor-row-highlight newval)
-			    (update-row-highlights (current-blocks-view))))
-		   valid?))
-	       (lambda ()
-		 (minor-hl-spinbox 'set (state 'minor-row-highlight))))))
-      `((edit-step "Step" "Set the edit step" default-edit-step
-		   ,edit-step-spinbox)
-	(base-octave "Octave" "Set the base octave" default-base-octave
-		     ,(make-edit-settings-spinbox 0 9 (lambda () #t)
-						  (lambda () #t)))
-	(major-highlight "Major Row" "Set the major row highlight"
-			 default-major-row-highlight
-			 ,major-hl-spinbox)
-	(minor-highlight "Minor Row" "Set the minor row highlight"
-			 default-minor-row-highlight
-			 ,minor-hl-spinbox))))
+    `((edit-step "Step" "Set the edit step" default-edit-step
+		 ,(make-edit-settings-spinbox 0 64 'edit-step #f))
+      (base-octave "Octave" "Set the base octave" default-base-octave
+		   ,(make-edit-settings-spinbox 0 9 'base-octave #f))
+      (major-highlight "Major Row" "Set the major row highlight"
+		       default-major-row-highlight
+		       ,(make-edit-settings-spinbox
+			 2 64 'major-row-highlight
+			 (lambda ()
+			   (update-row-highlights (current-blocks-view)))))
+      (minor-highlight "Minor Row" "Set the minor row highlight"
+		       default-minor-row-highlight
+		       ,(make-edit-settings-spinbox
+			 2 32 'minor-row-highlight
+			 (lambda ()
+			   (update-row-highlights (current-blocks-view)))))))
 
   ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
   ;;; either `'enabled` or `'disabled`.
