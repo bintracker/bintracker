@@ -42,10 +42,15 @@
   ;;; Various general-purpose dialogue (tk message-box) procedures.
 
   (define (about-message)
+    ;; Work-around for message-box getting stuck after it loses focus:
+    ;; tk busy is used to block events in the main window.
+    (tk-eval "tk busy .")
+    (tk/update)
     (tk/message-box title: "About"
 		    message: (string-append "Bintracker\nversion "
 					    *bintracker-version*)
-		    type: 'ok))
+		    type: 'ok)
+    (tk-eval "tk busy forget ."))
 
   ;;; Display a message box that asks the user whether to save unsaved changes
   ;;; before exiting or closing. **exit-or-closing** should be the string

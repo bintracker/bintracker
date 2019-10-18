@@ -67,6 +67,10 @@
 	  enable-edit-settings!))
 
   (define (load-file)
+    ;; Work-around to prevent file dialogue getting stuck when invoked through
+    ;; menu. See (about-message).
+    (tk-eval "tk busy .")
+    (tk/update)
     (let ((filename (tk/get-open-file
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
@@ -79,7 +83,8 @@
 					   "\n" (message exn)))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
-		 (execute-hooks after-load-file-hooks))))))
+		 (execute-hooks after-load-file-hooks))))
+      (tk-eval "tk busy forget .")))
 
   (define on-save-file-hooks
     (list (lambda () (md:module->file (current-mod) (state 'current-file)))
@@ -92,12 +97,17 @@
 	(save-file-as)))
 
   (define (save-file-as)
+    ;; Work-around to prevent file dialogue getting stuck when invoked through
+    ;; menu. See (about-message).
+    (tk-eval "tk busy .")
+    (tk/update)
     (let ((filename (tk/get-save-file
 		     filetypes: '(((MDAL Modules) (.mdal)))
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
 	(set-state! 'current-file filename)
-	(execute-hooks on-save-file-hooks))))
+	(execute-hooks on-save-file-hooks)))
+    (tk-eval "tk busy forget ."))
 
   (define (launch-help)
     ;; TODO windows untested
