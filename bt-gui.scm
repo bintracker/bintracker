@@ -205,24 +205,32 @@
   ;;; Create a spinbox in the edit settings toolbar.
   ;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
   ;;; specifies the relevant field in `app-state`, and {{action}} specifies
-  ;;; an additional procedure to call on validation. Validation occurs on
-  ;;; `focusout`.
-  ;; TODO perhaps validating on focusout is not the best option?
+  ;;; an additional procedure to call on validation.
+  ;; TODO <<Increment>>/<<Decrement>> events are buggy, events are
+  ;; sometimes generated repeatedly
+  ;; see https://wiki.tcl-lang.org/page/ttk::spinbox
+  ;; TODO hex display is possible, see link above
   (define (make-edit-settings-spinbox from to statevar action)
-    (letrec ((spinbox
-	      (edit-settings-frame
-	       'create-widget 'spinbox from: from to: to
-	       width: 4 state: 'disabled validate: 'focusout
-	       validatecommand:
-	       (lambda ()
-		 (let* ((newval (string->number (spinbox 'get)))
-			(valid? (and (integer? newval)
-				     (>= newval from)
-				     (<= newval to))))
-		   (when valid? (begin (set-state! statevar newval)
-				       (when action (action))))
-		   valid?))
-	       invalidcommand: (lambda () (spinbox 'set (state statevar))))))
+    (letrec ((spinbox (edit-settings-frame
+		       'create-widget 'spinbox from: from to: to
+		       width: 4 state: 'disabled validate: 'none))
+	     (validate-new-value (lambda (new-val)
+				   (if (and (integer? new-val)
+					    (>= new-val from)
+					    (<= new-val to))
+				       (begin (set-state! statevar new-val)
+					      (when action (action)))
+				       (spinbox 'set (state statevar))))))
+      ;; (tk/bind spinbox '<<Increment>>
+      ;; 	       (lambda ()
+      ;; 		 (validate-new-value (add1 (string->number (spinbox 'get))))))
+      ;; (tk/bind spinbox '<<Decrement>>
+      ;; 	       (lambda ()
+      ;; 		 (validate-new-value (sub1 (string->number (spinbox 'get))))))
+      (tk/bind spinbox '<Return>
+	       (lambda () (validate-new-value (string->number (spinbox 'get)))))
+      (tk/bind spinbox '<FocusOut>
+	       (lambda () (validate-new-value (string->number (spinbox 'get)))))
       spinbox))
 
   ;;; The list of edit setting widgets. Each element in the list must be a list
