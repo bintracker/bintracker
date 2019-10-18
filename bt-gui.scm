@@ -228,7 +228,35 @@
 		   (when valid? (set-state! 'edit-step newval))
 		   valid?))
 	       (lambda ()
-		 (edit-step-spinbox 'set (state 'edit-step))))))
+		 (edit-step-spinbox 'set (state 'edit-step)))))
+	     (major-hl-spinbox
+	      (make-edit-settings-spinbox
+	       2 64
+	       (lambda ()
+		 (let* ((newval (string->number (major-hl-spinbox 'get)))
+			(valid? (and (integer? newval)
+				     (>= newval 2)
+				     (<= newval 64))))
+		   (when valid?
+		     (begin (set-state! 'major-row-highlight newval)
+			    (update-row-highlights (current-blocks-view))))
+		   valid?))
+	       (lambda ()
+		 (major-hl-spinbox 'set (state 'major-row-highlight)))))
+	     (minor-hl-spinbox
+	      (make-edit-settings-spinbox
+	       2 32
+	       (lambda ()
+		 (let* ((newval (string->number (minor-hl-spinbox 'get)))
+			(valid? (and (integer? newval)
+				     (>= newval 2)
+				     (<= newval 32))))
+		   (when valid?
+		     (begin (set-state! 'minor-row-highlight newval)
+			    (update-row-highlights (current-blocks-view))))
+		   valid?))
+	       (lambda ()
+		 (minor-hl-spinbox 'set (state 'minor-row-highlight))))))
       `((edit-step "Step" "Set the edit step" default-edit-step
 		   ,edit-step-spinbox)
 	(base-octave "Octave" "Set the base octave" default-base-octave
@@ -236,12 +264,10 @@
 						  (lambda () #t)))
 	(major-highlight "Major Row" "Set the major row highlight"
 			 default-major-row-highlight
-			 ,(make-edit-settings-spinbox 2 64 (lambda () #t)
-						      (lambda () #t)))
+			 ,major-hl-spinbox)
 	(minor-highlight "Minor Row" "Set the minor row highlight"
 			 default-minor-row-highlight
-			 ,(make-edit-settings-spinbox 2 32 (lambda () #t)
-						      (lambda () #t))))))
+			 ,minor-hl-spinbox))))
 
   ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
   ;;; either `'enabled` or `'disabled`.
@@ -773,19 +799,13 @@
   ;;; Auxilliary procedure for `update-order-view`/`update-blocks-view`,
   ;;; displays {{len}} row numbers for the corresponding metatree display.
   ;;; Row numbers are padded by {{padding}} digits.
-  ;;; Setting {{highlight}} to #t enables pattern-style row highlighting.
-  (define (update-row-numbers metatree len padding highlight)
+  (define (update-row-numbers metatree len padding)
     (for-each (lambda (row)
 		((metatree-rownums metatree) 'insert '{} 'end
 		 text: (string-pad (number->string row
 						   (app-settings-number-base
 						    *bintracker-settings*))
-				   padding #\0)
-		 tags: (if highlight
-			   (cond ((= 0 (modulo row 8)) "rowhl-major")
-				 ((= 0 (modulo row 4)) "rowhl-minor")
-				 (else ""))
-			   "")))
+				   padding #\0)))
 	      (iota len)))
 
   ;;; Get the list of items in the given ttk::treeview. Items are returned as
@@ -805,6 +825,26 @@
   ;;; Get the number of rows currently displayed by the given metatree.
   (define (metatree-length mt)
     (length (tree-item-list (car (metatree-columns mt)))))
+
+  ;;; Update row highlight tags according to the current settings in
+  ;;; *bintracker-app-state*.
+  ;;; This procedure should be called *after* calling `update-row-numbers`.
+  (define (update-row-highlights mt)
+    (let ((item-indices (iota (metatree-length mt))))
+      (for-each
+       (lambda (tree)
+	 (for-each (lambda (item index)
+		     (tree 'tag 'remove 'rowhl-major item)
+		     (tree 'tag 'remove 'rowhl-minor item)
+		     (cond ((= 0 (modulo index (state 'major-row-highlight)))
+			    (tree 'tag 'add 'rowhl-major item))
+			   ((= 0 (modulo index (state 'minor-row-highlight)))
+			    (tree 'tag 'add 'rowhl-minor item))
+			   (else #t)))
+		   (tree-item-list tree)
+		   item-indices))
+       (cons (metatree-rownums mt)
+	     (metatree-columns mt)))))
 
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
@@ -925,7 +965,7 @@
 				'_ORDER)
 		 (md:config-itree (current-config))))
       (update-row-numbers metatree (length (car block-values))
-			  3 #f)))
+			  3)))
 
   ;;; Update a group's blocks view, based on the current position in the
   ;;; order or block list.
@@ -953,19 +993,15 @@
        (lambda (column values field-id)
 	 (for-each (lambda (value rownum)
 		     (column 'insert '{} 'end
-			     values: (list
-				      (normalize-field-value value field-id))
-			     tags:
-			     (list (get-command-type-tag field-id)
-				   (cond ((= 0 (modulo rownum 8)) 'rowhl-major)
-					 ((= 0 (modulo rownum 4)) 'rowhl-minor)
-					 (else 'default)))))
+			     values:
+			     (list (normalize-field-value value field-id))))
 		   values (iota (length values))))
        (metatree-columns metatree)
        block-values (metatree-column-ids metatree))
       (update-row-numbers metatree (length (car block-values))
 			  ;; 4 digits for row numbers
-			  4 #t)))
+			  4)
+      (update-row-highlights metatree)))
 
   ;;; Display the blocks of a group instance.
   ;;; TODO this must read the order position, or the list of instances must be
