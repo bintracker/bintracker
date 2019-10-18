@@ -979,6 +979,7 @@
        (lambda (column values field-id)
 	 (for-each (lambda (value rownum)
 		     (column 'insert '{} 'end
+			     tags: (list (get-command-type-tag field-id))
 			     values:
 			     (list (normalize-field-value value field-id))))
 		   values (iota (length values))))
