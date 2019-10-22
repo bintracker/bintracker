@@ -7,7 +7,7 @@
 
 (module md-types *
 
-  (import scheme (chicken base) (chicken string) (chicken format)
+  (import scheme (chicken base) (chicken string) (chicken format) (chicken sort)
 	  srfi-1 srfi-13 srfi-69 md-helpers)
 
   ;; ---------------------------------------------------------------------------
@@ -58,6 +58,67 @@
     (if (not (md:inode-instances node))
 	0
 	(length (md:inode-instances node))))
+
+  ;;;---------------------------------------------------------------------------
+  ;; ### md:inode mutators
+  ;;;---------------------------------------------------------------------------
+
+  ;;; Returns a list of inode instances that have consecutive IDs. Renumbering
+  ;;; starts at index 0, unless specified otherwise with the {{from}} argument.
+  (define (md:renumber-node-instances instances #!optional (from 0))
+    (map (lambda (id instance)
+	   (cons id (cdr instance)))
+	 (iota (length instances) from 1)
+	 instances))
+
+  ;;; Set the given instances in the given {{inode}}. {{instances}} must be an
+  ;;; alist of (id value) or (id value name) lists, where *id* is the ID of the
+  ;;; inode instance to set, *value* is the new inode instance value, and *name*
+  ;;; is an optional string argument naming the inode instance.
+  ;;; This procedure does not perform any error checks, so the given instance
+  ;;; values must be verified to be safe before use.
+  (define (md:node-set! inode instances)
+    (for-each
+     (lambda (instance)
+       (md:set-inode-instance-val! (car (alist-ref (car instance)
+						   (md:inode-instances inode)))
+				   (cadr instance))
+       (when (> 2 (length instance))
+	 (md:set-inode-instance-name! (alist-ref (car instance)
+						 (md:inode-instances inode))
+				      (third instance))))
+     instances))
+
+  ;;; Delete the given {{instances}} in {{inode}}. {{instances}} must be a list
+  ;;; of inode instance IDs. If {{renumber}} is `#t`, then the inode's instance
+  ;;; IDs will be regenerated to be consecutive.
+  (define (md:node-remove! inode instances #!optional renumber)
+    (let* ((new-instances (remove (lambda (i)
+				    (memq (car i) instances))
+				  (md:inode-instances inode))))
+      (md:set-inode-instances! inode
+			       (if renumber
+				   (md:renumber-node-instances new-instances)
+				   new-instances))))
+
+  ;;; Insert the given list of {{instances}} into the given {{inode}}.
+  ;;; {{instances}} must be a list of (id value [name]) lists, where *id* is the
+  ;;; inode instance ID, *value* is the inode instance value, and the optional
+  ;;; *name* is an inode instance name.
+  (define (md:node-insert! inode instances #!optional renumber)
+    (let ((new-instances (merge (md:inode-instances inode)
+				(map (lambda (instance)
+				       (list (car instance)
+					     (apply md:make-inode-instance
+						    (cdr instance))))
+				     instances)
+				(lambda (x y)
+				  (<= (car x) (car y))))))
+      (md:set-inode-instances! inode
+			       (if renumber
+				   (md:renumber-node-instances new-instances)
+				   new-instances))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDMOD: MODULE

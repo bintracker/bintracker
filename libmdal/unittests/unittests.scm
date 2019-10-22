@@ -164,7 +164,31 @@
 
  (test "md:eval-field" 0
        (md:eval-field 3 my-note1-inode
-		      (md:get-node-command-cfg my-note1-inode my-cfg))))
+		      (md:get-node-command-cfg my-note1-inode my-cfg)))
+
+ (define (make-test-inode instances)
+   (md:make-inode 'FOO (map (lambda (i)
+			      (list (car i)
+				    (md:make-inode-instance (cadr i))))
+			    instances)))
+
+ (define my-mutable-inode
+   (make-test-inode '((0 "n0") (1 "n1") (2 "n2"))))
+
+ (test "md:node-set!"
+       (make-test-inode '((0 "n0") (1 "foo") (2 "bar")))
+       (begin (md:node-set! my-mutable-inode '((1 "foo") (2 "bar")))
+	      my-mutable-inode))
+
+ (test "md:node-remove!"
+       (make-test-inode '((0 "n0") (1 "bar")))
+       (begin (md:node-remove! my-mutable-inode '(1) #t)
+	      my-mutable-inode))
+
+ (test "md:node-insert!"
+       (make-test-inode '((0 "n0") (1 "baz") (2 "bar")))
+       (begin (md:node-insert! my-mutable-inode '((1 "baz")) #t)
+	      my-mutable-inode)))
 
 
 (test-group
