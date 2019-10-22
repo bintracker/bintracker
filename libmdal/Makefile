@@ -74,7 +74,7 @@ docs: $(DOCS)
 
 # run unit tests
 .PHONY: run-tests
-run-tests: mdal
+run-tests: mdal.so
 	cp -t ./ unittests/unittests.scm && csi unittests.scm -e
 	-rm unittests.scm test.mdal
 
