@@ -247,7 +247,7 @@
 	      (alist-ref 'play toolbar-button-groups)))
 
   ;;; construct and display the main toolbar
-  (define (make-toolbar)
+  (define (show-toolbar)
     (for-each (lambda (button-group)
   		(for-each (lambda (button-entry)
   			    (tk/pack (cadr button-entry)
@@ -288,7 +288,7 @@
 	  init-top-level-layout
 	  (lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
-	      (make-toolbar)))
+	      (show-toolbar)))
 	  init-console init-status-bar disable-keyboard-traversal))
 
   (define (execute-hooks hooks)
