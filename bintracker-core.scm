@@ -134,6 +134,11 @@
 			   (->string
 			    (eval (read (open-input-string input-str))))))))))
 
+  (define (undo)
+    '())
+
+  (define (redo)
+    '())
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu
@@ -154,7 +159,8 @@
 				   (separator)
 				   (command exit "Exit" 1 "Ctrl+Q"
 					    ,exit-bintracker)))
-		   (edit "Edit" 0 ())
+		   (edit "Edit" 0 ((command undo "Undo" 0 "Ctrl+Z" ,undo)
+				   (command redo "Redo" 0 "Ctrl+Y" ,redo)))
 		   (generate "Generate" 0 ())
 		   (transform "Transform" 0 ())
 		   (help "Help" 0 ((command launch-help "Help" 0 "F1"
@@ -187,6 +193,10 @@
 				   "Load File..." 'enabled))
 	    (save ,(toolbar-button "save.png" save-file 'save-file
 				   "Save File")))
+      (journal (undo ,(toolbar-button "undo.png" (lambda () #t)
+				      'undo "Undo"))
+	       (redo ,(toolbar-button "redo.png" (lambda () #t)
+				      'redo "Redo")))
       (edit (copy ,(toolbar-button "copy.png" (lambda () #t)
       				   'copy "Copy Selection"))
       	    (cut ,(toolbar-button "cut.png" (lambda () #t)

@@ -4,6 +4,8 @@
 	  (<Control-o> load-file)
 	  (<Control-s> save-file)
 	  (<Control-S> save-file-as)
+	  (<Control-z> undo)
+	  (<Control-y> redo)
 	  (<Control-ISO_Left_Tab> focus-previous-ui-zone)
 	  (<Control-Tab> focus-next-ui-zone)
 	  (<F1> launch-help))
