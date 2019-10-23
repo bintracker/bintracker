@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname)
 	  srfi-1 srfi-13 srfi-69
-	  defstruct matchable simple-exceptions pstk list-utils
+	  defstruct matchable simple-exceptions pstk list-utils stack
 	  bt-types mdal)
 
 
@@ -206,7 +206,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## The Undo/Redo System
+  ;;; ## The Journal (Edit History)
   ;; ---------------------------------------------------------------------------
 
   ;;; Bintracker uses a dual undo/redo stack system to track user edits.
@@ -215,33 +215,70 @@
   ;;; pushed to the undo stack, which is part of `*bintracker-state*`.
   ;;;
   ;;; Actions take the form `(action path content)`, where *action* is one of
-  ;;; `'remove`, `'replace`, or `'insert`, *path* is a node instance path
+  ;;; `set`, `'remove`, `'insert`, or `compound`, *path* is a node instance path
   ;;; string, and `content` is the previous content that was removed or
   ;;; replaced, or the empty list if *action* is `'insert`.
   ;;;
-  ;;; On undo, the first element of the undo stack is popped and pushed to the
-  ;;; redo stack, and the necessary edits are performed on `(current-mod)`.
+  ;;; On `push-undo`, the first element of the undo stack is popped and pushed
+  ;;; to the redo stack.
   ;;;
-  ;;; Likewise, on redo, the first element of the redo stack is popped and
-  ;;; pushed to the undo stack, and the necessary edits are performed.
+  ;;; Likewise, on `push-redo`, the first element of the redo stack is popped
+  ;;; and pushed to the undo stack.
+  ;;;
+  ;;; The undo stack size is limited by the `journal-limit` global setting.
 
+  (define (clear-journal)
+    (set-state! 'journal (make-app-journal)))
 
+  (define (clear-redo-stack)
+    (stack-empty! (app-journal-redo-stack (state 'journal))))
+
+  ;;; Check if the undo stack has reached the depth limit set by the global
+  ;;; `journal-limit` setting, and drop the first half of the stack if it has.
+  (define (limit-undo-stack)
+    (let ((stack-depth (app-journal-undo-stack-depth (state 'journal)))
+	  (journal-limit (settings 'journal-limit)))
+      (unless (>= stack-depth journal-limit)
+	(stack-cut! (app-journal-undo-stack (state 'journal))
+		    0 (quotient journal-limit 2))
+	(app-journal-undo-stack-depth-set! (state 'journal)
+					   (stack-count (app-journal-undo-stack
+							 (state 'journal)))))))
+
+  ;;; Push {{action}} to the journal's undo stack. If the stack is full, half of
+  ;;; the old entries are dropped.
   (define (push-undo action)
-    '())
+    (limit-undo-stack)
+    (stack-push! (app-journal-undo-stack (state 'journal))
+		 action)
+    (app-journal-undo-stack-depth-set! (state 'journal)
+				       (add1 (app-journal-undo-stack-depth
+					      (state 'journal)))))
 
+  ;;; Pop the last action from the undo stack, and push it to the redo stack.
+  ;;; Returns the action, or #f if the undo stack is empty.
   (define (pop-undo)
-    '())
+    (let ((stack-depth (app-journal-undo-stack-depth (state 'journal))))
+      (and (not (= 0 stack-depth))
+	   (let ((action (stack-pop! (app-journal-undo-stack
+				      (state 'journal)))))
+	     (app-journal-undo-stack-depth-set! (state 'journal)
+						(sub1 stack-depth))
+	     (push-redo action)
+	     action))))
 
-  (define (pop-redo)
-    '())
-
+  ;;; Push {{action}} to the redo stack.
   (define (push-redo action)
-    '())
+    (stack-push! (app-journal-redo-stack (state 'journal))
+		 action))
 
-  (define (undo)
-    '())
-
-  (define (redo)
-    '())
+  ;;; Pop the latest *action* from the redo stack, and push it to the undo
+  ;;; stack.
+  (define (pop-redo)
+    (let ((redo-stack (app-journal-redo-stack (state 'journal))))
+      (and (not (stack-empty? redo-stack))
+	   (let ((action (stack-pop! redo-stack)))
+	     (push-undo action)
+	     action))))
 
   ) ;; end module bt-state

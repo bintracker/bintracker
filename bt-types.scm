@@ -6,7 +6,17 @@
 
 (module bt-types *
 
-  (import scheme (chicken base) (chicken bitwise) srfi-1 srfi-13 defstruct)
+  (import scheme (chicken base) (chicken bitwise) srfi-1 srfi-13 defstruct
+	  stack)
+
+  ;;; Undo/Redo stack wrapper
+  ;;; Undo stack depth is limited to {{stack-limit}}. For performance reason,
+  ;;; undo stack depth is tracked manually. Redo stack size does not need to be
+  ;;; tracked since it cannot grow beyond the undo stack depth.
+  (defstruct app-journal
+    (undo-stack (make-stack))
+    (redo-stack (make-stack))
+    (undo-stack-depth 0))
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
@@ -14,7 +24,8 @@
     (minor-row-highlight 4) (current-ui-zone 1)
     menu current-mdmod current-file module-widget selection
     (active-md-command-info "")
-    modified undo-stack redo-stack)
+    modified
+    (journal (make-app-journal)))
 
   ;;; Record type that wraps GUI element colors.
   ;;; {{text-1}}: note commands
@@ -57,6 +68,7 @@
     (default-edit-step 1)
     (default-base-octave 4)
     (default-major-row-highlight 8)
-    (default-minor-row-highlight 4))
+    (default-minor-row-highlight 4)
+    (journal-limit 100))
 
   ) ;; end module bt-types
