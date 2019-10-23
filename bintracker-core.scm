@@ -9,7 +9,7 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
-	  srfi-1 srfi-13 srfi-69 pstk defstruct matchable list-utils
+	  srfi-1 srfi-13 srfi-69 pstk typed-records matchable list-utils
 	  simple-exceptions mdal bt-state bt-types bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported

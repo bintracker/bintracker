@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname)
 	  srfi-1 srfi-13
-	  defstruct matchable simple-exceptions pstk
+	  typed-records matchable simple-exceptions pstk
 	  bt-state bt-types mdal)
 
   ;; ---------------------------------------------------------------------------
