@@ -234,6 +234,18 @@
 				       " "
 				       (key-binding->info 'global button-id)))))
 
+  ;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
+  (define (set-toolbar-button-state group-id button-id state)
+    ((car (toolbar-button-ref group-id button-id))
+     'configure 'state: state))
+
+  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
+  ;;; `'disabled`.
+  (define (set-play-buttons state)
+    (for-each (lambda (button)
+		((cadr button) 'configure state: state))
+	      (alist-ref 'play toolbar-button-groups)))
+
   ;;; construct and display the main toolbar
   (define (make-toolbar)
     (for-each (lambda (button-group)
@@ -247,13 +259,6 @@
   					orient: 'vertical)
   			 side: 'left padx: 0 'fill: 'y))
   	      toolbar-button-groups))
-
-  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
-  ;;; `'disabled`.
-  (define (set-play-buttons state)
-    (for-each (lambda (button)
-		((cadr button) 'configure state: state))
-	      (alist-ref 'play toolbar-button-groups)))
 
 
   ;; ---------------------------------------------------------------------------
