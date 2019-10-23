@@ -173,67 +173,75 @@
   ;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
-  ;;; Create a toolbar button widget. This also binds the mouse <Enter>/<Leave>
-  ;;; events to display {{description}} in the status bar.
-  (define (toolbar-button icon command key-action description
-  			  #!optional (init-state 'disabled))
-    (let ((button-widget
-  	   (toolbar-frame 'create-widget 'button image: (tk/icon icon)
-  			  state: init-state command: command
-  			  style: "Toolbutton")))
-      (bind-info-status button-widget
-			(string-append description " "
-				       (key-binding->info 'global key-action)))
-      button-widget))
+  ;;; Create a toolbar button widget.
+  (define (toolbar-button icon command #!optional (init-state 'disabled))
+    (toolbar-frame 'create-widget 'button image: (tk/icon icon)
+  		   state: init-state command: command
+  		   style: "Toolbutton"))
 
   (define toolbar-button-groups
-    `((file (new ,(toolbar-button "new.png" (lambda () #t)
-				  'create-new-file "New File" 'enabled))
-	    (load ,(toolbar-button "load.png" load-file 'load-file
-				   "Load File..." 'enabled))
-	    (save ,(toolbar-button "save.png" save-file 'save-file
-				   "Save File")))
-      (journal (undo ,(toolbar-button "undo.png" (lambda () #t)
-				      'undo "Undo"))
-	       (redo ,(toolbar-button "redo.png" (lambda () #t)
-				      'redo "Redo")))
-      (edit (copy ,(toolbar-button "copy.png" (lambda () #t)
-      				   'copy "Copy Selection"))
-      	    (cut ,(toolbar-button "cut.png" (lambda () #t)
-      				  'cut "Cut Selection (delete with shift)"))
-      	    (clear ,(toolbar-button "clear.png" (lambda () #t)
-      				    'clear
-				    "Clear Selection (delete, no shift)"))
-      	    (paste ,(toolbar-button "paste.png" (lambda () #t)
-      				    'paste "Paste from Clipboard (no shift)"))
-      	    (insert ,(toolbar-button "insert.png" (lambda () #t)
-      				     'insert
-				     "Insert from Clipbard (with shift)"))
-      	    (swap ,(toolbar-button "swap.png" (lambda () #t)
-      				   'swap "Swap Selection with Clipboard")))
-      (play (stop ,(toolbar-button "stop.png" (lambda () #t)
-      				   'stop "Stop Playback"))
-      	    (play ,(toolbar-button "play.png" (lambda () #t)
-      				   'play "Play Track from Current Position"))
+    `((file (new-file ,(toolbar-button "new.png" (lambda () #t) 'enabled)
+			  "New File")
+	    (load-file ,(toolbar-button "load.png" load-file 'enabled)
+		       "Load File...")
+	    (save-file ,(toolbar-button "save.png" save-file)
+		       "Save File"))
+      (journal (undo ,(toolbar-button "undo.png" (lambda () #t))
+		     "Undo last edit")
+	       (redo ,(toolbar-button "redo.png" (lambda () #t))
+		     "Redo last edit"))
+      (edit (copy ,(toolbar-button "copy.png" (lambda () #t))
+      		  "Copy Selection")
+      	    (cut ,(toolbar-button "cut.png" (lambda () #t))
+      	      "Cut Selection (delete with shift)")
+      	    (clear ,(toolbar-button "clear.png" (lambda () #t))
+      		   "Clear Selection (delete, no shift)")
+      	    (paste ,(toolbar-button "paste.png" (lambda () #t))
+      		   "Paste from Clipboard (no shift)")
+      	    (insert ,(toolbar-button "insert.png" (lambda () #t))
+      		    "Insert from Clipbard (with shift)")
+      	    (swap ,(toolbar-button "swap.png" (lambda () #t))
+      		  "Swap Selection with Clipboard"))
+      (play (stop ,(toolbar-button "stop.png" (lambda () #t))
+      		  "Stop Playback")
+      	    (play ,(toolbar-button "play.png" (lambda () #t))
+      		  "Play Track from Current Position")
       	    (play-from-start ,(toolbar-button "play-from-start.png"
-      					      (lambda () #t)
-      					      'play-from-start
-					      "Play Track from Start"))
-      	    (play-pattern ,(toolbar-button "play-ptn.png" (lambda () #t)
-      					   'play-pattern "Play Pattern")))
-      (configure (prompt ,(toolbar-button "prompt.png" (lambda () #t)
-      					  'toggle-prompt "Toggle Console"
-					  'enabled))
-      		 (settings ,(toolbar-button "settings.png" (lambda () #t)
-      					    'show-settings "Settings..."
-					    'enabled)))))
+      					      (lambda () #t))
+      			     "Play Track from Start")
+      	    (play-pattern ,(toolbar-button "play-ptn.png" (lambda () #t))
+      			  "Play Pattern"))
+      (configure (toggle-prompt ,(toolbar-button "prompt.png" (lambda () #t)
+						 'enabled)
+      				"Toggle Console")
+      		 (show-settings ,(toolbar-button "settings.png" (lambda () #t)
+						 'enabled)
+      				"Settings..."))))
+
+  ;;; Returns the entry associated with {{id}} in the given toolbar
+  ;;; button {{group}}.
+  (define (toolbar-button-ref group-id button-id)
+    (let ((group (alist-ref group-id toolbar-button-groups)))
+      (and group (alist-ref button-id group))))
+
+  ;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
+  ;;; status bar.
+  (define (bind-toolbar-button-info group-id button-id)
+    (let ((button-entry (toolbar-button-ref group-id button-id)))
+      (bind-info-status (car button-entry)
+			(string-append (cadr button-entry)
+				       " "
+				       (key-binding->info 'global button-id)))))
 
   ;;; construct and display the main toolbar
   (define (make-toolbar)
     (for-each (lambda (button-group)
-  		(for-each (lambda (button)
-  			    (tk/pack button side: 'left padx: 0 fill: 'y))
-  			  (map cadr (cdr button-group)))
+  		(for-each (lambda (button-entry)
+  			    (tk/pack (cadr button-entry)
+				     side: 'left padx: 0 fill: 'y)
+			    (bind-toolbar-button-info (car button-group)
+			    			      (car button-entry)))
+  			  (cdr button-group))
   		(tk/pack (toolbar-frame 'create-widget 'separator
   					orient: 'vertical)
   			 side: 'left padx: 0 'fill: 'y))
@@ -266,7 +274,7 @@
 
   (define on-startup-hooks
     (list load-config update-window-title! patch-tcltk-8.6.9-treeview
-	  update-style! init-main-menu
+	  update-style! update-key-bindings! init-main-menu
 	  (lambda ()
 	    (when (settings 'show-menu)
 	      (tk 'configure 'menu: (menu-widget (state 'menu)))))
@@ -274,8 +282,7 @@
 	  (lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
 	      (make-toolbar)))
-	  init-console init-status-bar disable-keyboard-traversal
-	  update-key-bindings!))
+	  init-console init-status-bar disable-keyboard-traversal))
 
   (define (execute-hooks hooks)
     (for-each (lambda (hook)
