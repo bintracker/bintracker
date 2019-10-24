@@ -560,7 +560,7 @@
     ((active-index 0) : fixnum))
 
   ;;; Create a `bt-fields-widget`.
-  (define (make-fields-widget parent-node-id parent-path parent-widget)
+  (define (make-fields-widget parent-node-id parent-widget)
     (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
 						       (current-config)
 						       'field)))
@@ -1037,7 +1037,7 @@
     (order-view : (struct metatree)))
 
   ;;; Create a `bt-blocks-widget`.
-  (define (make-blocks-widget parent-node-id parent-path parent-widget)
+  (define (make-blocks-widget parent-node-id parent-widget)
     (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
 						     (current-config)
 						     'block)))
@@ -1079,7 +1079,7 @@
     (subgroups : (list-of (struct bt-group-widget))))
 
   ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
-  (define (make-subgroups-widget parent-node-id parent-path parent-widget)
+  (define (make-subgroups-widget parent-node-id parent-widget)
     (let ((sg-ids (md:config-get-subnode-type-ids parent-node-id
 						  (current-config)
 						  'group)))
@@ -1096,15 +1096,11 @@
 	     subgroup-ids: sg-ids
 	     tl-notebook: notebook
 	     notebook-frames: subgroup-frames
-	     subgroups: (map (lambda (id frame)
-			       (make-group-widget
-				id (string-append parent-path
-						  (symbol->string id) "/0/")
-				frame))
+	     subgroups: (map make-group-widget
 			     sg-ids subgroup-frames))))))
 
   ;;; Pack a bt-subgroups-widget to the display.
-  (define (show-subgroups-widget w)
+  (define (show-subgroups-widget w instance-path)
     (tk/pack (bt-subgroups-widget-toplevel-frame w)
 	     expand: 1 fill: 'both)
     (tk/pack (bt-subgroups-widget-tl-notebook w)
@@ -1114,52 +1110,56 @@
 		 'add sg-frame text: (symbol->string sg-id)))
 	      (bt-subgroups-widget-subgroup-ids w)
 	      (bt-subgroups-widget-notebook-frames w))
-    (for-each (lambda (subgroup-widget)
-		(show-group-widget subgroup-widget ""))
-	      (bt-subgroups-widget-subgroups w)))
+    (for-each (lambda (group-widget group-id)
+		(show-group-widget group-widget
+				   (string-append instance-path
+						  (symbol->string group-id)
+						  "/0")))
+	      (bt-subgroups-widget-subgroups w)
+	      (bt-subgroups-widget-subgroup-ids w)))
 
   ;; Not exported.
   (defstruct bt-group-widget
     (toplevel-frame : procedure)
     (fields-widget : (struct bt-fields-widget))
     (blocks-widget : (struct bt-blocks-widget))
-    (subgroups-widget : (struct bt-subgroups-widget)))
+    (subgroups-widget : (struct bt-subgroups-widget))
+    ((current-path "") : string))
 
   ;; TODO handle groups with multiple instances
   ;; parent-path is misleading, it should be the igroup path itself
-  (define (make-group-widget node-id parent-path parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame))
-	  (instance-path (string-append parent-path "0/")))
+  (define (make-group-widget node-id parent-widget)
+    (let ((tl-frame (parent-widget 'create-widget 'frame)))
       (make-bt-group-widget
        toplevel-frame: tl-frame
-       fields-widget: (make-fields-widget node-id instance-path tl-frame)
-       blocks-widget: (make-blocks-widget node-id instance-path tl-frame)
-       subgroups-widget: (make-subgroups-widget node-id instance-path
-						tl-frame))))
+       fields-widget: (make-fields-widget node-id tl-frame)
+       blocks-widget: (make-blocks-widget node-id tl-frame)
+       subgroups-widget: (make-subgroups-widget node-id tl-frame))))
 
   ;; Display the group widget (using pack geometry manager).
-  (define (show-group-widget w group-instance-path)
-    (begin
-      (tk/pack (bt-group-widget-toplevel-frame w)
-	       expand: 1 fill: 'both)
-      (when (bt-group-widget-fields-widget w)
-	(show-fields-widget (bt-group-widget-fields-widget w)
-			    group-instance-path))
-      (when (bt-group-widget-blocks-widget w)
-	(show-blocks-widget (bt-group-widget-blocks-widget w)))
-      (when (bt-group-widget-subgroups-widget w)
-	(show-subgroups-widget (bt-group-widget-subgroups-widget w)))
-      (when (not (or (bt-group-widget-blocks-widget w)
-		     (bt-group-widget-subgroups-widget w)))
-	(tk/pack ((bt-group-widget-toplevel-frame w)
-		  'create-widget 'frame)
-		 expand: 1 fill: 'both))))
+  (define (show-group-widget w instance-path)
+    (bt-group-widget-current-path-set! w instance-path)
+    (tk/pack (bt-group-widget-toplevel-frame w)
+	     expand: 1 fill: 'both)
+    (when (bt-group-widget-fields-widget w)
+      (show-fields-widget (bt-group-widget-fields-widget w)
+			  instance-path))
+    (when (bt-group-widget-blocks-widget w)
+      (show-blocks-widget (bt-group-widget-blocks-widget w)))
+    (when (bt-group-widget-subgroups-widget w)
+      (show-subgroups-widget (bt-group-widget-subgroups-widget w)
+			     instance-path))
+    (when (not (or (bt-group-widget-blocks-widget w)
+		   (bt-group-widget-subgroups-widget w)))
+      (tk/pack ((bt-group-widget-toplevel-frame w)
+		'create-widget 'frame)
+	       expand: 1 fill: 'both)))
 
   (define (destroy-group-widget w)
     (tk/destroy (bt-group-widget-toplevel-frame w)))
 
   (define (make-module-widget parent)
-    (make-group-widget 'GLOBAL "" parent))
+    (make-group-widget 'GLOBAL parent))
 
   (define (show-module)
     (show-group-widget (state 'module-widget)
