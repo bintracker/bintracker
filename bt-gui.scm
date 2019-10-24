@@ -84,7 +84,8 @@
   ;;; `submenus` shall be an alist, where keys are unique identifiers, and
   ;;; values are the actual tk menus.
   (defstruct menu
-    widget (items '()))
+    ((widget (tk 'create-widget 'menu)) : procedure)
+    ((items '()) : list))
 
   ;;; Destructively add an item to menu-struct **menu** according to
   ;;; **item-spec**. **item-spec** must be a list containing either
@@ -504,7 +505,11 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; A meta widget for displaying an MDAL group field.
-  (defstruct bt-field-widget toplevel-frame id-label val-entry node-id)
+  (defstruct bt-field-widget
+    (toplevel-frame : procedure)
+    (id-label : procedure)
+    (val-entry : procedure)
+    (node-id : symbol))
 
   ;;; Create a `bt-field-widget`.
   (define (make-field-widget node-id parent-widget)
@@ -548,8 +553,11 @@
     ((bt-field-widget-val-entry w) 'configure bg: (colors 'row-highlight-minor)))
 
   ;;; A meta widget for displaying an MDAL group's field members.
-  (defstruct bt-fields-widget toplevel-frame parent-node-id fields
-    (active-index 0))
+  (defstruct bt-fields-widget
+    (toplevel-frame : procedure)
+    (parent-node-id : symbol)
+    ((fields '()) : (list-of (struct bt-field-widget)))
+    ((active-index 0) : fixnum))
 
   ;;; Create a `bt-fields-widget`.
   (define (make-fields-widget parent-node-id parent-path parent-widget)
@@ -601,12 +609,23 @@
 
   ;;; child record that wraps display related state such as the cursor position.
   (defstruct metatree-state
-    cursor-x cursor-y)
+    ((cursor-x 0) : integer)
+    ((cursor-y 0) : integer))
 
   ;;; The main metatree structure.
   (defstruct metatree
-    parent group-id type packframe rownums-packframe canvas
-    block-ids column-ids columns rownums xscroll yscroll mtstate)
+    (group-id : symbol)
+    (type : symbol)
+    (packframe : procedure)
+    (rownums-packframe : procedure)
+    (canvas : procedure)
+    (block-ids : (list-of symbol))
+    (column-ids : (list-of symbol))
+    (columns : (list-of procedure))
+    (rownums : procedure)
+    (xscroll : procedure)
+    (yscroll : procedure)
+    ((mtstate (make-metatree-state)) : (struct metatree-state)))
 
   ;;; Auxiliary procedure for `init-metatree`. Configure cell tags.
   (define (metatree-column-set-tags col)
@@ -683,7 +702,7 @@
 			 column-ids)))
       (metatree-column-set-tags rownums)
       (make-metatree
-       parent: parent group-id: group-id type: type packframe: packframe
+       group-id: group-id type: type packframe: packframe
        rownums-packframe: rownums-packframe
        canvas: canvas
        block-ids: block-ids column-ids: column-ids
@@ -696,8 +715,7 @@
 			     (for-each (lambda (column)
 					 (column 'yview 'moveto (cadr args)))
 			   	       columns)
-			     (rownums 'yview 'moveto (cadr args))))
-       mtstate: (make-metatree-state cursor-x: 0 cursor-y: 0))))
+			     (rownums 'yview 'moveto (cadr args)))))))
 
   ;;; Pack the given metatree-widget. This only sets up the structure, but does
   ;;; not add any data. You most likely do not want to call this procedure
@@ -1012,7 +1030,11 @@
   ;;; TODO MDAL defines order/block lists as optional if blocks are
   ;;; single instance.
   (defstruct bt-blocks-widget
-    tl-panedwindow blocks-pane order-pane blocks-view order-view)
+    (tl-panedwindow : procedure)
+    (blocks-pane : procedure)
+    (order-pane : procedure)
+    (blocks-view : (struct metatree))
+    (order-view : (struct metatree)))
 
   ;;; Create a `bt-blocks-widget`.
   (define (make-blocks-widget parent-node-id parent-path parent-widget)
@@ -1050,7 +1072,11 @@
   ;;; themselves.
   ;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
   (defstruct bt-subgroups-widget
-    toplevel-frame subgroup-ids tl-notebook notebook-frames subgroups)
+    (toplevel-frame : procedure)
+    (subgroup-ids : (list-of symbol))
+    (tl-notebook : procedure)
+    (notebook-frames : (list-of procedure))
+    (subgroups : (list-of (struct bt-group-widget))))
 
   ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
   (define (make-subgroups-widget parent-node-id parent-path parent-widget)
@@ -1094,7 +1120,10 @@
 
   ;; Not exported.
   (defstruct bt-group-widget
-    toplevel-frame fields-widget blocks-widget subgroups-widget)
+    (toplevel-frame : procedure)
+    (fields-widget : (struct bt-fields-widget))
+    (blocks-widget : (struct bt-blocks-widget))
+    (subgroups-widget : (struct bt-subgroups-widget)))
 
   ;; TODO handle groups with multiple instances
   ;; parent-path is misleading, it should be the igroup path itself
