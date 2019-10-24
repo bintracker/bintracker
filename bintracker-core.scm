@@ -62,7 +62,8 @@
     (list (lambda ()
 	    (set-state! 'module-widget (make-module-widget main-frame)))
 	  (lambda () (set-play-buttons 'enabled))
-	  show-module reset-status-text! update-window-title!
+	  init-instances-record! show-module
+	  reset-status-text! update-window-title!
 	  (lambda () (focus-metatree (current-blocks-view)))
 	  enable-edit-settings!))
 

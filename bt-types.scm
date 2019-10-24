@@ -28,6 +28,7 @@
     menu current-mdmod
     (current-file : (or boolean string))
     module-widget selection
+    ((current-instances '()) : list)
     ((active-md-command-info "") : string)
     (modified : boolean)
     ((journal (make-app-journal)) : (struct app-journal)))

@@ -206,6 +206,56 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ## Instance Paths
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Bintracker keeps a record of the currently displayed group and block node
+  ;;; instances in `(app-state-current-instances *bintracker-state*)`.
+  ;;; The following section contains procedures for retrieving information from
+  ;;; and updating the instance record.
+
+  ;;; Initialize the instance record. This should be called on loading a file,
+  ;;; after setting `current-mod` but before calling `(show-module)`.
+  (define (init-instances-record!)
+    (when (current-mod)
+      (set-state! 'current-instances
+    		  (map (lambda (inode-cfg)
+    			 (list (car inode-cfg) 0))
+    		       (filter (lambda (inode-cfg)
+    				 (memq (md:inode-config-type (cadr inode-cfg))
+    				       '(group block)))
+    			       (hash-table->alist
+    				(md:config-inodes (current-config))))))))
+
+  ;;; Query the instance record for the currently visible instance of the
+  ;;; group or block node {{node-id}}.
+  (define (get-current-instance node-id)
+    (car (alist-ref node-id (state 'current-instances))))
+
+  ;;; Update the instance record for {{node-id}}.
+  (define (set-current-instance! node-id val)
+    (alist-update! node-id val (state 'current-instances)))
+
+  ;;; Return the node-instance path string for the currently visible instance
+  ;;; of the group or block node {{node-id}}. The result can be fed into
+  ;;; `md:node-instance-path`.
+  (define (get-current-instance-path node-id)
+    (let ((ancestors (md:config-get-node-ancestors-ids
+		      node-id (md:config-itree (current-config)))))
+      (string-concatenate
+       (cons "0/" (map (lambda (id)
+			 (string-append (symbol->string id)
+					"/" (->string (get-current-instance id))
+					"/"))
+		       (cdr (reverse (cons node-id ancestors))))))))
+
+  ;;; Return the currently visible md:inode-instance of the group or block node
+  ;;; {{node-id}}.
+  (define (get-current-node-instance node-id)
+    ((md:node-instance-path (get-current-instance-path node-id))
+     (md:mod-global-node (current-mod))))
+
+  ;; ---------------------------------------------------------------------------
   ;;; ## The Journal (Edit History)
   ;; ---------------------------------------------------------------------------
 
