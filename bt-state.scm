@@ -206,7 +206,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Instance Paths
+  ;;; ## Instances Record
   ;; ---------------------------------------------------------------------------
 
   ;;; Bintracker keeps a record of the currently displayed group and block node
