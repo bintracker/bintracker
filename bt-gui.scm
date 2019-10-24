@@ -1127,7 +1127,6 @@
     ((current-path "") : string))
 
   ;; TODO handle groups with multiple instances
-  ;; parent-path is misleading, it should be the igroup path itself
   (define (make-group-widget node-id parent-widget)
     (let ((tl-frame (parent-widget 'create-widget 'frame)))
       (make-bt-group-widget
