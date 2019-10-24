@@ -56,13 +56,21 @@
   ;;; before exiting or closing. **exit-or-closing** should be the string
   ;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
-    (tk/message-box title: (string-append "Save before " exit-or-closing "?")
-		    default: 'yes
-		    icon: 'warning
-		    parent: tk
-		    message: (string-append "There are unsaved changes. "
-					    "Save before " exit-or-closing "?")
-		    type: 'yesnocancel))
+    (let ((response ""))
+      (tk-eval "tk busy .")
+      (tk/update)
+      (set! response
+	(tk/message-box title: (string-append "Save before "
+					      exit-or-closing "?")
+			default: 'yes
+			icon: 'warning
+			parent: tk
+			message: (string-append "There are unsaved changes. "
+						"Save before " exit-or-closing
+						"?")
+			type: 'yesnocancel))
+      (tk-eval "tk busy forget .")
+      response))
 
 
   ;; ---------------------------------------------------------------------------
