@@ -589,7 +589,10 @@
       (tk/pack (bt-fields-widget-toplevel-frame w)
 	       fill: 'x)
       (for-each (lambda (field-widget)
-		  (show-field-widget field-widget group-instance-path))
+		  (show-field-widget field-widget group-instance-path)
+		  (tk/bind (bt-field-widget-val-entry field-widget)
+			   '<Tab> (lambda ()
+				    (select-next-field w))))
 		(bt-fields-widget-fields w))))
 
   (define (focus-fields-widget w)
@@ -599,6 +602,17 @@
   (define (unfocus-fields-widget w)
     (unfocus-field-widget (list-ref (bt-fields-widget-fields w)
 				    (bt-fields-widget-active-index w))))
+
+  (define (select-next-field fields-widget)
+    (let ((current-index (bt-fields-widget-active-index fields-widget)))
+      (unfocus-fields-widget fields-widget)
+      (bt-fields-widget-active-index-set!
+       fields-widget
+       (if (< current-index (sub1 (length (bt-fields-widget-fields
+					   fields-widget))))
+	   (add1 current-index)
+	   0))
+      (focus-fields-widget fields-widget)))
 
 
   ;; ---------------------------------------------------------------------------
