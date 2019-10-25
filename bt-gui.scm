@@ -951,7 +951,7 @@
     (reset-status-text!))
 
   ;;; Update a group's order/block list view.
-  (define (update-order-view metatree parent-node-instance-path)
+  (define (update-order-view metatree)
     (letrec ((fill-empty-values
 	      (lambda (vals previous)
 		(if (null? vals)
@@ -961,12 +961,9 @@
 		      (cons next-val (fill-empty-values (cdr vals)
 							next-val))))))
 	     (block-values (md:mod-get-block-instance-values
-	  		    ((md:node-instance-path
-	  		      (string-append parent-node-instance-path "/"
-	  				     (symbol->string
-	  				      (metatree-group-id metatree))
-	  				     "_ORDER/0"))
-	  		     (md:mod-global-node (current-mod))))))
+			    (get-current-node-instance
+			     (symbol-append (metatree-group-id metatree)
+					    '_ORDER)))))
       (for-each (lambda (column values field-id)
 		  (for-each (lambda (value)
 			      (column 'insert '{} 'end tags: '(reference)
@@ -986,10 +983,9 @@
 
   ;;; Update a group's blocks view, based on the current position in the
   ;;; order or block list.
-  (define (update-blocks-view metatree parent-node-instance-path order-pos)
-    (let* ((parent-group-instance
-	    ((md:node-instance-path parent-node-instance-path)
-	     (md:mod-global-node (current-mod))))
+  (define (update-blocks-view metatree order-pos)
+    (let* ((parent-group-instance (get-current-node-instance
+				   (metatree-group-id metatree)))
 	   (block-instance-ids
 	    (list-ref (md:mod-get-order-values (metatree-group-id metatree)
 					       parent-group-instance
@@ -1000,7 +996,8 @@
 	     (map (lambda (block-id instance-id)
 		    (md:mod-get-block-instance-values
 		     ((md:node-instance-path
-		       (string-append parent-node-instance-path "/"
+		       (string-append (get-current-instance-path
+				       (metatree-group-id metatree))
 				      (symbol->string block-id) "/"
 				      (number->string instance-id)))
 		      (md:mod-global-node (current-mod)))))
@@ -1024,14 +1021,14 @@
   ;;; Display the blocks of a group instance.
   ;;; TODO this must read the order position, or the list of instances must be
   ;;; passed in.
-  (define (show-blocks-view metatree group-instance-path)
+  (define (show-blocks-view metatree)
     (show-metatree metatree)
-    (update-blocks-view metatree group-instance-path 0))
+    (update-blocks-view metatree 0))
 
   ;;; Display the order or block list of a group instance.
-  (define (show-order-view metatree group-instance-path)
+  (define (show-order-view metatree)
     (show-metatree metatree)
-    (update-order-view metatree group-instance-path))
+    (update-order-view metatree))
 
   ;;; A metawidget for displaying a group's block members and the corresponding
   ;;; order or block list.
@@ -1069,10 +1066,8 @@
 	(top 'add (bt-blocks-widget-blocks-pane w) weight: 2)
 	(top 'add (bt-blocks-widget-order-pane w) weight: 1)
 	(tk/pack top expand: 1 fill: 'both)
-	(show-blocks-view (bt-blocks-widget-blocks-view w)
-			  "0/PATTERNS/0")
-	(show-order-view (bt-blocks-widget-order-view w)
-			 "0/PATTERNS/0"))))
+	(show-blocks-view (bt-blocks-widget-blocks-view w))
+	(show-order-view (bt-blocks-widget-order-view w)))))
 
   ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
   ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
@@ -1108,7 +1103,7 @@
 			     sg-ids subgroup-frames))))))
 
   ;;; Pack a bt-subgroups-widget to the display.
-  (define (show-subgroups-widget w instance-path)
+  (define (show-subgroups-widget w)
     (tk/pack (bt-subgroups-widget-toplevel-frame w)
 	     expand: 1 fill: 'both)
     (tk/pack (bt-subgroups-widget-tl-notebook w)
@@ -1119,48 +1114,46 @@
 	      (bt-subgroups-widget-subgroup-ids w)
 	      (bt-subgroups-widget-notebook-frames w))
     (for-each (lambda (group-widget group-id)
-		(show-group-widget group-widget
-				   (string-append instance-path
-						  (symbol->string group-id)
-						  "/0")))
+		(show-group-widget group-widget))
 	      (bt-subgroups-widget-subgroups w)
 	      (bt-subgroups-widget-subgroup-ids w)))
 
   ;; Not exported.
   (defstruct bt-group-widget
+    (node-id : symbol)
     (toplevel-frame : procedure)
     (fields-widget : (struct bt-fields-widget))
     (blocks-widget : (struct bt-blocks-widget))
-    (subgroups-widget : (struct bt-subgroups-widget))
-    ((current-path "") : string))
+    (subgroups-widget : (struct bt-subgroups-widget)))
 
   ;; TODO handle groups with multiple instances
   (define (make-group-widget node-id parent-widget)
     (let ((tl-frame (parent-widget 'create-widget 'frame)))
       (make-bt-group-widget
+       node-id: node-id
        toplevel-frame: tl-frame
        fields-widget: (make-fields-widget node-id tl-frame)
        blocks-widget: (make-blocks-widget node-id tl-frame)
        subgroups-widget: (make-subgroups-widget node-id tl-frame))))
 
   ;; Display the group widget (using pack geometry manager).
-  (define (show-group-widget w instance-path)
-    (bt-group-widget-current-path-set! w instance-path)
-    (tk/pack (bt-group-widget-toplevel-frame w)
-	     expand: 1 fill: 'both)
-    (when (bt-group-widget-fields-widget w)
-      (show-fields-widget (bt-group-widget-fields-widget w)
-			  instance-path))
-    (when (bt-group-widget-blocks-widget w)
-      (show-blocks-widget (bt-group-widget-blocks-widget w)))
-    (when (bt-group-widget-subgroups-widget w)
-      (show-subgroups-widget (bt-group-widget-subgroups-widget w)
-			     instance-path))
-    (when (not (or (bt-group-widget-blocks-widget w)
-		   (bt-group-widget-subgroups-widget w)))
-      (tk/pack ((bt-group-widget-toplevel-frame w)
-		'create-widget 'frame)
-	       expand: 1 fill: 'both)))
+  (define (show-group-widget w)
+    (let ((instance-path (get-current-instance-path
+			  (bt-group-widget-node-id w))))
+      (tk/pack (bt-group-widget-toplevel-frame w)
+	       expand: 1 fill: 'both)
+      (when (bt-group-widget-fields-widget w)
+	(show-fields-widget (bt-group-widget-fields-widget w)
+			    instance-path))
+      (when (bt-group-widget-blocks-widget w)
+	(show-blocks-widget (bt-group-widget-blocks-widget w)))
+      (when (bt-group-widget-subgroups-widget w)
+	(show-subgroups-widget (bt-group-widget-subgroups-widget w)))
+      (when (not (or (bt-group-widget-blocks-widget w)
+		     (bt-group-widget-subgroups-widget w)))
+	(tk/pack ((bt-group-widget-toplevel-frame w)
+		  'create-widget 'frame)
+		 expand: 1 fill: 'both))))
 
   (define (destroy-group-widget w)
     (tk/destroy (bt-group-widget-toplevel-frame w)))
@@ -1169,8 +1162,7 @@
     (make-group-widget 'GLOBAL parent))
 
   (define (show-module)
-    (show-group-widget (state 'module-widget)
-		       "0/"))
+    (show-group-widget (state 'module-widget)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Accessors
