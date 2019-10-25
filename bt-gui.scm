@@ -178,32 +178,40 @@
   ;;; for each zone, which contains the focus procedure in car, and the unfocus
   ;;; procedure in cadr.
   (define ui-zone-focus-procs
-    (list (list (lambda () (focus-fields-widget (current-fields-view)))
-		(lambda () (unfocus-fields-widget (current-fields-view))))
-	  (list (lambda () (focus-metatree (current-blocks-view)))
-		(lambda () (unfocus-metatree (current-blocks-view))))
-	  (list (lambda () (focus-metatree (current-order-view)))
-		(lambda () (unfocus-metatree (current-order-view))))
-	  (list (lambda () (tk/focus console))
-		(lambda () '()))))
+    `((fields ,(lambda () (focus-fields-widget (current-fields-view)))
+	      ,(lambda () (unfocus-fields-widget (current-fields-view))))
+      (blocks ,(lambda () (focus-metatree (current-blocks-view)))
+	      ,(lambda () (unfocus-metatree (current-blocks-view))))
+      (order ,(lambda () (focus-metatree (current-order-view)))
+	     ,(lambda () (unfocus-metatree (current-order-view))))
+      (console ,(lambda () (tk/focus console))
+	       ,(lambda () '()))))
 
-  (define (switch-ui-zone-focus current-zone-index new-zone-index)
-    ((cadr (list-ref ui-zone-focus-procs current-zone-index)))
-    (set-state! 'current-ui-zone new-zone-index)
-    ((car (list-ref ui-zone-focus-procs new-zone-index))))
+  ;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
+  ;;; index to the `ui-zone-focus-procs` list, or a symbol naming an entry in
+  ;;; that list.
+  (define (switch-ui-zone-focus new-zone)
+    (let ((new-zone-index (or (and (integer? new-zone)
+				   new-zone)
+			      (list-index (lambda (zone)
+					    (eq? new-zone (car zone)))
+					  ui-zone-focus-procs))))
+      ((third (list-ref ui-zone-focus-procs (state 'current-ui-zone))))
+      (set-state! 'current-ui-zone new-zone-index)
+      ((second (list-ref ui-zone-focus-procs new-zone-index)))))
 
   (define (focus-next-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (next-zone (if (= current-zone (sub1 (length ui-zone-focus-procs)))
 			  0 (+ 1 current-zone))))
-      (switch-ui-zone-focus current-zone next-zone)))
+      (switch-ui-zone-focus next-zone)))
 
   (define (focus-previous-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (prev-zone (if (= current-zone 0)
 			  (sub1 (length ui-zone-focus-procs))
 			  (sub1 current-zone))))
-      (switch-ui-zone-focus current-zone prev-zone)))
+      (switch-ui-zone-focus prev-zone)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -314,7 +322,10 @@
     (console 'insert 'end
 	     (string-append "Bintracker " *bintracker-version*
 			    "\n(c) 2019 utz/irrlicht project\n"
-			    "Ready.\n")))
+			    "Ready.\n"))
+    (tk/bind console '<ButtonPress-1>
+	     (lambda ()
+	       (switch-ui-zone-focus 'console))))
 
   (define (clear-console)
     (console 'delete 0.0 'end))
@@ -593,7 +604,10 @@
 		  (tk/bind (bt-field-widget-val-entry field-widget)
 			   '<Tab> (lambda ()
 				    (select-next-field w))))
-		(bt-fields-widget-fields w))))
+		(bt-fields-widget-fields w))
+      (tk/bind (bt-fields-widget-toplevel-frame w)
+	       '<ButtonPress-1> (lambda ()
+				  (switch-ui-zone-focus 'fields)))))
 
   (define (focus-fields-widget w)
     (focus-field-widget (list-ref (bt-fields-widget-fields w)
@@ -1037,12 +1051,16 @@
   ;;; passed in.
   (define (show-blocks-view metatree)
     (show-metatree metatree)
-    (update-blocks-view metatree 0))
+    (update-blocks-view metatree 0)
+    (tk/bind (metatree-canvas metatree)
+	     '<ButtonPress-1> (lambda () (switch-ui-zone-focus 'blocks))))
 
   ;;; Display the order or block list of a group instance.
   (define (show-order-view metatree)
     (show-metatree metatree)
-    (update-order-view metatree))
+    (update-order-view metatree)
+    (tk/bind (metatree-canvas metatree)
+	     '<ButtonPress-1> (lambda () (switch-ui-zone-focus 'order))))
 
   ;;; A metawidget for displaying a group's block members and the corresponding
   ;;; order or block list.
