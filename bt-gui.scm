@@ -599,12 +599,26 @@
     (begin
       (tk/pack (bt-fields-widget-toplevel-frame w)
 	       fill: 'x)
-      (for-each (lambda (field-widget)
-		  (show-field-widget field-widget group-instance-path)
-		  (tk/bind (bt-field-widget-val-entry field-widget)
-			   '<Tab> (lambda ()
-				    (select-next-field w))))
-		(bt-fields-widget-fields w))
+      (for-each (lambda (field-widget index)
+		  (let ((bind-tk-widget-button-press
+			 (lambda (widget)
+			   (tk/bind widget '<ButtonPress-1>
+				    (lambda ()
+				      (bt-fields-widget-active-index-set!
+				       w index)
+				      (switch-ui-zone-focus 'fields))))))
+		    (show-field-widget field-widget group-instance-path)
+		    (tk/bind (bt-field-widget-val-entry field-widget)
+			     '<Tab> (lambda ()
+				      (select-next-field w)))
+		    (bind-tk-widget-button-press
+		     (bt-field-widget-val-entry field-widget))
+		    (bind-tk-widget-button-press
+		     (bt-field-widget-id-label field-widget))
+		    (bind-tk-widget-button-press
+		     (bt-field-widget-toplevel-frame field-widget))))
+		(bt-fields-widget-fields w)
+		(iota (length (bt-fields-widget-fields w))))
       (tk/bind (bt-fields-widget-toplevel-frame w)
 	       '<ButtonPress-1> (lambda ()
 				  (switch-ui-zone-focus 'fields)))))
