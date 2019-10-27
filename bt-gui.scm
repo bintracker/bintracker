@@ -519,6 +519,21 @@
 	    ('modifier (colors 'text-7))
 	    (else (colors 'text))))))
 
+  (define (keypress->note action)
+    (let ((entry-spec (alist-ref action
+				 (app-keys-note-entry (settings 'keymap)))))
+      (and entry-spec
+	   (let* ((octave-modifier (if (> (length entry-spec) 1)
+				       (cadr entry-spec)
+				       0))
+		  (mod-octave (+ octave-modifier (state 'base-octave))))
+	     ;; TODO proper range check
+	     (and (and (>= mod-octave 0)
+		       (<= mod-octave 9)
+		       (string-append (car entry-spec)
+				      (->string mod-octave))))))))
+
+
   ;; ---------------------------------------------------------------------------
   ;;; ### Field-Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
@@ -980,6 +995,14 @@
     (when (eq? 'block (metatree-type mt))
       (update-active-block-column-info mt)))
 
+  (define (bind-note-entry-keys widget)
+    (for-each (lambda (event-spec)
+		(tk/bind widget event-spec
+			 (lambda ()
+			   (display (keypress->note event-spec))
+			   (newline))))
+	      (map car (app-keys-note-entry (settings 'keymap)))))
+
   ;;;
   (define (focus-metatree mt)
     (show-cursor mt)
@@ -1085,7 +1108,8 @@
 				     (if (>= ypos (length values))
 					 (sub1 (length values))
 					 ypos))))
-		    %y)))
+		    %y))
+	 (bind-note-entry-keys column))
        (metatree-columns metatree)
        (iota (length (metatree-columns metatree)))
        block-values (metatree-column-ids metatree))
