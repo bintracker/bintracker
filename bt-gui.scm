@@ -918,6 +918,14 @@
   (define (metatree-length mt)
     (length (tree-item-list (car (metatree-columns mt)))))
 
+  ;;; Delete all items of the metatree
+  (define (clear-metatree mt)
+    (map (lambda (tree)
+	   (tree 'delete
+		 (string-split (string-delete #\" (tree 'children '{})))))
+	 (cons (metatree-rownums mt)
+	       (metatree-columns mt))))
+
   ;;; Update row highlight tags according to the current settings in
   ;;; *bintracker-app-state*.
   ;;; This procedure should be called *after* calling `update-row-numbers`.
@@ -1033,6 +1041,31 @@
 	       (metatree-state-cursor-x (metatree-mtstate metatree))))
     (reset-status-text!))
 
+  ;;; Bind events for a metatree column. As event handling depends on the
+  ;;; items present in the column, this procedure must be called on updating
+  ;;; the metatree, rather than on creation. {{index}} is the index of the
+  ;;; column to bind, and {{values}} are the column's item values.
+  (define (bind-column-events metatree index values)
+    (let ((ui-zone (if (eq? 'block (metatree-type metatree))
+		       'blocks 'order))
+	  (column (list-ref (metatree-columns metatree)
+			    index)))
+      (tk/bind column '<ButtonPress-1>
+	       `(,(lambda (y)
+		    (let ((ypos (treeview-ypos->item-index y)))
+		      (switch-ui-zone-focus ui-zone)
+		      (set-cursor metatree index
+				  (if (>= (add1 ypos)
+					  (length values))
+				      (sub1 (length values))
+				      ypos))))
+		 %y))
+      (tk/bind column '<<NoteEntry>>
+	       `(,(lambda (keysym)
+		    (display (keypress->note keysym))
+		    (newline))
+		 %K))))
+
   ;;; Update a group's order/block list view.
   (define (update-order-view metatree)
     (letrec ((fill-empty-values
@@ -1047,6 +1080,7 @@
 			    (get-current-node-instance
 			     (symbol-append (metatree-group-id metatree)
 					    '_ORDER)))))
+      (clear-metatree metatree)
       (for-each (lambda (column index values field-id)
 		  (for-each (lambda (value)
 			      (column 'insert '{} 'end tags: '(reference)
@@ -1054,16 +1088,7 @@
 				      (list (normalize-field-value value
 								   field-id))))
 			    values)
-		  (tk/bind column '<ButtonPress-1>
-			   `(,(lambda (y)
-				(let ((ypos (treeview-ypos->item-index y)))
-				  (switch-ui-zone-focus 'order)
-				  (set-cursor metatree index
-					      (if (>= (add1 ypos)
-						      (length values))
-						  (sub1 (length values))
-						  ypos))))
-			     %y)))
+		  (bind-column-events metatree index values))
 		(metatree-columns metatree)
 		(iota (length (metatree-columns metatree)))
 		(map (lambda (fields) (fill-empty-values fields '()))
@@ -1097,6 +1122,7 @@
 		      (md:mod-global-node (current-mod)))))
 		  (metatree-block-ids metatree)
 		  block-instance-ids))))
+      (clear-metatree metatree)
       (for-each
        (lambda (column index values field-id)
 	 (for-each (lambda (value rownum)
@@ -1105,20 +1131,7 @@
 			     values:
 			     (list (normalize-field-value value field-id))))
 		   values (iota (length values)))
-	 (tk/bind column '<ButtonPress-1>
-		  `(,(lambda (y)
-		       (let ((ypos (treeview-ypos->item-index y)))
-			 (switch-ui-zone-focus 'blocks)
-			 (set-cursor metatree index
-				     (if (>= ypos (length values))
-					 (sub1 (length values))
-					 ypos))))
-		    %y))
-	 (tk/bind column '<<NoteEntry>>
-		  `(,(lambda (keysym)
-		       (display (keypress->note keysym))
-		       (newline))
-		    %K)))
+	 (bind-column-events metatree index values))
        (metatree-columns metatree)
        (iota (length (metatree-columns metatree)))
        block-values (metatree-column-ids metatree))
