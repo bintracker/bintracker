@@ -273,7 +273,8 @@
 				     (eval (cadr key-mapping))))
 			  (get-keybinding-group group)))
 	      '(global console)
-	      (list tk console)))
+	      (list tk console))
+    (create-virtual-events))
 
 
   ;; ---------------------------------------------------------------------------
