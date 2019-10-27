@@ -93,9 +93,10 @@
 	  update-window-title!))
 
   (define (save-file)
-    (if (state 'current-file)
-	(execute-hooks on-save-file-hooks)
-	(save-file-as)))
+    (when (state 'modified)
+      (if (state 'current-file)
+	  (execute-hooks on-save-file-hooks)
+	  (save-file-as))))
 
   (define (save-file-as)
     ;; Work-around to prevent file dialogue getting stuck when invoked through
