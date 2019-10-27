@@ -196,7 +196,10 @@
 			      (list-index (lambda (zone)
 					    (eq? new-zone (car zone)))
 					  ui-zone-focus-procs))))
-      ((third (list-ref ui-zone-focus-procs (state 'current-ui-zone))))
+      ;; TODO find a better way of preventing focussing/unfocussing unpacked
+      ;; widgets
+      (when (current-mod)
+	((third (list-ref ui-zone-focus-procs (state 'current-ui-zone)))))
       (set-state! 'current-ui-zone new-zone-index)
       ((second (list-ref ui-zone-focus-procs new-zone-index)))))
 
