@@ -1081,17 +1081,18 @@
 							 (->string instance)
 							 "/"))
 			   (note-val (keypress->note keysym)))
-		      (md:node-set! ((md:node-path node-path)
-				     (md:mod-global-node (current-mod)))
-				    `((,instance ,note-val)))
-		      (column 'set (nth-tree-item column instance)
-			      "content"
-			      (normalize-field-value note-val column-id))
-		      (tk/update)
-		      (move-cursor metatree 'down)
-		      (unless (state 'modified)
-			(set-state! 'modified #t)
-			(update-window-title!))))
+		      (when note-val
+			(md:node-set! ((md:node-path node-path)
+				       (md:mod-global-node (current-mod)))
+				      `((,instance ,note-val)))
+			(column 'set (nth-tree-item column instance)
+				"content"
+				(normalize-field-value note-val column-id))
+			(tk/update)
+			(move-cursor metatree 'down)
+			(unless (state 'modified)
+			  (set-state! 'modified #t)
+			  (update-window-title!)))))
 		 %K))))
 
   ;;; Update a group's order/block list view.
