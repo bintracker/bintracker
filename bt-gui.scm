@@ -975,10 +975,13 @@
 
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
   ;;; of `'up`, `'down`, `'left`, `'right`
-  ;; TODO this should consider the current edit step
   (define (move-cursor mt direction)
     (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
-	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
+	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt)))
+	  (set-focus! (lambda ()
+			(tk/focus (list-ref (metatree-columns mt)
+					    (metatree-state-cursor-x
+					     (metatree-mtstate mt)))))))
       (delete-cursor mt)
       (match direction
 	('up (metatree-state-cursor-y-set!
@@ -993,16 +996,19 @@
 		  (if (>= (+ current-ypos edit-step)
 			  (metatree-length mt))
 		      0 (+ current-ypos edit-step)))))
-	('left (metatree-state-cursor-x-set!
-		(metatree-mtstate mt)
-		(sub1 (if (= current-xpos 0)
-			  (length (metatree-columns mt))
-			  current-xpos))))
-	('right (metatree-state-cursor-x-set!
-		 (metatree-mtstate mt)
-		 (if (>= (+ 1 current-xpos) (length (metatree-columns mt)))
-		     0
-		     (add1 current-xpos)))))
+	('left (begin (metatree-state-cursor-x-set!
+		       (metatree-mtstate mt)
+		       (sub1 (if (= current-xpos 0)
+				 (length (metatree-columns mt))
+				 current-xpos)))
+		      (set-focus!)))
+	('right (begin (metatree-state-cursor-x-set!
+			(metatree-mtstate mt)
+			(if (>= (+ 1 current-xpos)
+				(length (metatree-columns mt)))
+			    0
+			    (add1 current-xpos)))
+		       (set-focus!))))
       (show-cursor mt)
       (when (and (eq? 'block (metatree-type mt))
 		 (memq direction '(left right)))
