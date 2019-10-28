@@ -78,16 +78,11 @@
   ;;; This procedure does not perform any error checks, so the given instance
   ;;; values must be verified to be safe before use.
   (define (md:node-set! inode instances)
-    (for-each
-     (lambda (instance)
-       (md:set-inode-instance-val! (car (alist-ref (car instance)
-						   (md:inode-instances inode)))
-				   (cadr instance))
-       (when (> 2 (length instance))
-	 (md:set-inode-instance-name! (alist-ref (car instance)
-						 (md:inode-instances inode))
-				      (third instance))))
-     instances))
+    (for-each (lambda (instance)
+		(alist-update! (car instance)
+			       (apply md:make-inode-instance (cdr instance))
+			       (md:inode-instances inode)))
+	      instances))
 
   ;;; Delete the given {{instances}} in {{inode}}. {{instances}} must be a list
   ;;; of inode instance IDs. If {{renumber}} is `#t`, then the inode's instance
