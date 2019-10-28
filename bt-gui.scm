@@ -1052,10 +1052,14 @@
   ;;; the metatree, rather than on creation. {{index}} is the index of the
   ;;; column to bind, and {{values}} are the column's item values.
   (define (bind-column-events metatree index values)
-    (let ((ui-zone (if (eq? 'block (metatree-type metatree))
-		       'blocks 'order))
-	  (column (list-ref (metatree-columns metatree)
-			    index)))
+    (let* ((ui-zone (if (eq? 'block (metatree-type metatree))
+			'blocks 'order))
+	   (column (list-ref (metatree-columns metatree)
+			     index))
+	   (column-id (list-ref (metatree-column-ids metatree)
+				index))
+	   (block-id (md:config-get-parent-node-id
+		      column-id (md:config-itree (current-config)))))
       (tk/bind column '<ButtonPress-1>
 	       `(,(lambda (y)
 		    (let ((ypos (treeview-ypos->item-index y)))
@@ -1068,8 +1072,26 @@
 		 %y))
       (tk/bind column '<<NoteEntry>>
 	       `(,(lambda (keysym)
-		    (display (keypress->note keysym))
-		    (newline))
+		    (let* ((instance (metatree-state-cursor-y
+				      (metatree-mtstate metatree)))
+			   (node-path (string-append
+				       (get-current-instance-path block-id)
+				       (symbol->string column-id) "/"))
+			   (instance-path (string-append node-path
+							 (->string instance)
+							 "/"))
+			   (note-val (keypress->note keysym)))
+		      (md:node-set! ((md:node-path node-path)
+				     (md:mod-global-node (current-mod)))
+				    `((,instance ,note-val)))
+		      (column 'set (nth-tree-item column instance)
+			      "content"
+			      (normalize-field-value note-val column-id))
+		      (tk/update)
+		      (move-cursor metatree 'down)
+		      (unless (state 'modified)
+			(set-state! 'modified #t)
+			(update-window-title!))))
 		 %K))))
 
   ;;; Update a group's order/block list view.
