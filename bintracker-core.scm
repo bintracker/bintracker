@@ -136,12 +136,6 @@
 			   (->string
 			    (eval (read (open-input-string input-str))))))))))
 
-  (define (undo)
-    '())
-
-  (define (redo)
-    '())
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu

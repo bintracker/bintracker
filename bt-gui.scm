@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname)
 	  srfi-1 srfi-13
-	  typed-records matchable simple-exceptions pstk
+	  typed-records matchable simple-exceptions pstk stack
 	  bt-state bt-types mdal)
 
   ;; ---------------------------------------------------------------------------
@@ -525,6 +525,38 @@
       (if binding
 	  (string-upcase (string-translate (->string binding) "<>" "()"))
 	  "")))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Editing
+  ;; ---------------------------------------------------------------------------
+
+  (define (apply-edit! action)
+    (match (car action)
+      ('set (md:node-set! ((md:node-path (cadr action))
+			   (md:mod-global-node (current-mod)))
+			  (third action)))
+      ('remove '())
+      ('insert '())
+      ('compound (for-each apply-edit! (cdr action)))))
+
+  ;; TODO update display (requires an update-blocks-display proc)
+  (define (undo)
+    (let ((action (pop-undo)))
+      (when action
+	(apply-edit! action)
+	(set-toolbar-button-state 'journal 'redo 'enabled)
+	(when (= 0 (app-journal-undo-stack-depth (state 'journal)))
+	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
+
+  (define (redo)
+    (let ((action (pop-redo)))
+      (when action
+	(apply-edit! action)
+	(set-toolbar-button-state 'journal 'undo 'enabled)
+	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
+	  (set-toolbar-button-state 'journal 'redo 'disabled)))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Module Display Related Widgets and Procedures
@@ -1174,17 +1206,19 @@
 							 "/"))
 			   (note-val (keypress->note keysym)))
 		      (when note-val
-			(md:node-set! ((md:node-path node-path)
-				       (md:mod-global-node (current-mod)))
-				      `((,instance ,note-val)))
-			(column 'set (nth-tree-item column instance)
-				"content"
-				(normalize-field-value note-val column-id))
-			(tk/update)
-			(move-cursor metatree 'down)
-			(unless (state 'modified)
-			  (set-state! 'modified #t)
-			  (update-window-title!)))))
+			(let ((action `(set ,node-path ((,instance
+							 ,note-val)))))
+			  (push-undo (make-reverse-action action))
+			  (apply-edit! action)
+			  (column 'set (nth-tree-item column instance)
+				  "content"
+				  (normalize-field-value note-val column-id))
+			  (tk/update)
+			  (move-cursor metatree 'down)
+			  (set-toolbar-button-state 'journal 'undo 'enabled)
+			  (unless (state 'modified)
+			    (set-state! 'modified #t)
+			    (update-window-title!))))))
 		 %K))))
 
   ;;; Update a group's order/block list view.

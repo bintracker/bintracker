@@ -264,10 +264,13 @@
   ;;; On every edit, the redo stack is cleared, and the executed action is
   ;;; pushed to the undo stack, which is part of `*bintracker-state*`.
   ;;;
-  ;;; Actions take the form `(action path content)`, where *action* is one of
-  ;;; `set`, `'remove`, `'insert`, or `compound`, *path* is a node instance path
-  ;;; string, and `content` is the previous content that was removed or
-  ;;; replaced, or the empty list if *action* is `'insert`.
+  ;;; Actions take the form `(action-type  node-path ((instance value) ...))`,
+  ;;; where *action-type* is one of `set`, `'remove`, `'insert`. *action-type*
+  ;;; may also be `'compound`, in that case the action specifier is followed by
+  ;;; a list of actions. Otherwise, *node-path* is a mdmod node path string,
+  ;;; `instance` is a node instance ID, and `value` is the node instance value
+  ;;; prior to the associated edit, ie. the instance value that was removed or
+  ;;; replaced, or the empty list if *action-type* is `'remove`.
   ;;;
   ;;; On `push-undo`, the first element of the undo stack is popped and pushed
   ;;; to the redo stack.
@@ -288,12 +291,31 @@
   (define (limit-undo-stack)
     (let ((stack-depth (app-journal-undo-stack-depth (state 'journal)))
 	  (journal-limit (settings 'journal-limit)))
-      (unless (>= stack-depth journal-limit)
+      (when (>= stack-depth journal-limit)
 	(stack-cut! (app-journal-undo-stack (state 'journal))
 		    0 (quotient journal-limit 2))
 	(app-journal-undo-stack-depth-set! (state 'journal)
 					   (stack-count (app-journal-undo-stack
 							 (state 'journal)))))))
+
+  ;;; Generate an action specification that when applied, will revert the edit
+  ;;; that results from the given {{action}} specification.
+  ;;; TODO preserve instance names
+  (define (make-reverse-action action)
+    (match (car action)
+      ('set (list 'set (cadr action)
+		  (map (lambda (id+val)
+			 (list (car id+val)
+			       (md:inode-instance-val
+				((md:node-instance-path
+				  (string-append (cadr action)
+						 (->string (car id+val))
+						 "/"))
+				 (md:mod-global-node (current-mod))))))
+		       (third action))))
+      ('remove '())
+      ('insert '())
+      ('compound '())))
 
   ;;; Push {{action}} to the journal's undo stack. If the stack is full, half of
   ;;; the old entries are dropped.
@@ -314,7 +336,7 @@
 				      (state 'journal)))))
 	     (app-journal-undo-stack-depth-set! (state 'journal)
 						(sub1 stack-depth))
-	     (push-redo action)
+	     (push-redo (make-reverse-action action))
 	     action))))
 
   ;;; Push {{action}} to the redo stack.
@@ -328,7 +350,7 @@
     (let ((redo-stack (app-journal-redo-stack (state 'journal))))
       (and (not (stack-empty? redo-stack))
 	   (let ((action (stack-pop! redo-stack)))
-	     (push-undo action)
+	     (push-undo (make-reverse-action action))
 	     action))))
 
   ) ;; end module bt-state
