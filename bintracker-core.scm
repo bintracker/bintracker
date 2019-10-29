@@ -129,7 +129,7 @@
 			(string-append "\nError: " (->string exn)
 				       (->string (arguments exn))))
       (let ((input-str (console 'get "end-1l" "end-1c")))
-	(when (not (string-null? input-str))
+	(unless (string-null? input-str)
 	  (console 'insert 'end
 			  (string-append
 			   "\n"

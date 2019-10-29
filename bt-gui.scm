@@ -943,7 +943,7 @@
 				 weight: 'bold))
 	      (pack-block-headers
 	       (lambda (ids xpos)
-		 (when (not (null? ids))
+		 (unless (null? ids)
 		   (let ((header-width
 			  (* 80 (length (md:config-get-subnode-ids
 					 (car ids)
@@ -958,7 +958,7 @@
 					 (+ xpos header-width))))))
 	      (pack-columns
 	       (lambda (columns column-ids xpos)
-		 (when (not (null? columns))
+		 (unless (null? columns)
 		   (let ((init-ypos (if (eq? 'block (metatree-type mt))
 					tree-rowheight 0)))
 		     (canvas 'create 'text (list (+ xpos 40) init-ypos)
@@ -1437,8 +1437,8 @@
 	(show-blocks-widget (bt-group-widget-blocks-widget w)))
       (when (bt-group-widget-subgroups-widget w)
 	(show-subgroups-widget (bt-group-widget-subgroups-widget w)))
-      (when (not (or (bt-group-widget-blocks-widget w)
-		     (bt-group-widget-subgroups-widget w)))
+      (unless (or (bt-group-widget-blocks-widget w)
+		  (bt-group-widget-subgroups-widget w))
 	(tk/pack ((bt-group-widget-toplevel-frame w)
 		  'create-widget 'frame)
 		 expand: 1 fill: 'both))))
