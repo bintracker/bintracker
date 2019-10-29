@@ -540,11 +540,14 @@
       ('insert '())
       ('compound (for-each apply-edit! (cdr action)))))
 
-  ;; TODO update display (requires an update-blocks-display proc)
   (define (undo)
     (let ((action (pop-undo)))
       (when action
 	(apply-edit! action)
+	(update-order-view (current-order-view))
+	(update-blocks-view (current-blocks-view)
+			    (metatree-state-cursor-y
+			     (metatree-mtstate (current-order-view))))
 	(set-toolbar-button-state 'journal 'redo 'enabled)
 	(when (= 0 (app-journal-undo-stack-depth (state 'journal)))
 	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
@@ -553,6 +556,10 @@
     (let ((action (pop-redo)))
       (when action
 	(apply-edit! action)
+	(update-order-view (current-order-view))
+	(update-blocks-view (current-blocks-view)
+			    (metatree-state-cursor-y
+			     (metatree-mtstate (current-order-view))))
 	(set-toolbar-button-state 'journal 'undo 'enabled)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
 	  (set-toolbar-button-state 'journal 'redo 'disabled)))))
