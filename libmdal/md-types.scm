@@ -80,7 +80,8 @@
   (define (md:node-set! inode instances)
     (for-each (lambda (instance)
 		(alist-update! (car instance)
-			       (apply md:make-inode-instance (cdr instance))
+			       (list (apply md:make-inode-instance
+					    (cdr instance)))
 			       (md:inode-instances inode)))
 	      instances))
 
