@@ -331,7 +331,7 @@
   ;;; Returns the action, or #f if the undo stack is empty.
   (define (pop-undo)
     (let ((stack-depth (app-journal-undo-stack-depth (state 'journal))))
-      (and (not (= 0 stack-depth))
+      (and (not (zero? stack-depth))
 	   (let ((action (stack-pop! (app-journal-undo-stack
 				      (state 'journal)))))
 	     (app-journal-undo-stack-depth-set! (state 'journal)

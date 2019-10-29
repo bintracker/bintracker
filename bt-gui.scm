@@ -549,7 +549,7 @@
 			    (metatree-state-cursor-y
 			     (metatree-mtstate (current-order-view))))
 	(set-toolbar-button-state 'journal 'redo 'enabled)
-	(when (= 0 (app-journal-undo-stack-depth (state 'journal)))
+	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
 	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
 
   (define (redo)
@@ -1067,9 +1067,9 @@
 	 (for-each (lambda (item index)
 		     (tree 'tag 'remove 'rowhl-major item)
 		     (tree 'tag 'remove 'rowhl-minor item)
-		     (cond ((= 0 (modulo index (state 'major-row-highlight)))
+		     (cond ((zero? (modulo index (state 'major-row-highlight)))
 			    (tree 'tag 'add 'rowhl-major item))
-			   ((= 0 (modulo index (state 'minor-row-highlight)))
+			   ((zero? (modulo index (state 'minor-row-highlight)))
 			    (tree 'tag 'add 'rowhl-minor item))
 			   (else #t)))
 		   (tree-item-list tree)
@@ -1122,7 +1122,7 @@
 			current-ypos))))
 	('down (metatree-state-cursor-y-set!
 		(metatree-mtstate mt)
-		(let ((edit-step (if (= 0 (state 'edit-step))
+		(let ((edit-step (if (zero? (state 'edit-step))
 				     1 (state 'edit-step))))
 		  (if (>= (+ current-ypos edit-step)
 			  (metatree-length mt))

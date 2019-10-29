@@ -47,10 +47,10 @@
       (if (null? rows)
 	  '()
 	  (let* ((empty-count (count-empty rows 0))
-		 (drop-count (if (= 0 empty-count)
+		 (drop-count (if (zero? empty-count)
 				 1 empty-count)))
 	    (cons
-	     (cond ((= 0 empty-count)
+	     (cond ((zero? empty-count)
 		    (car rows))
 		   ((= 1 empty-count)
 		    ".")

@@ -656,7 +656,7 @@
   ;; TODO should go elsewhere
   (define (md:int->bytes val number-of-bytes endian)
     (letrec* ((make-bytes (lambda (restval remaining-bytes)
-			    (if (= 0 remaining-bytes)
+			    (if (zero? remaining-bytes)
 				'()
 				(cons (bitwise-and #xff restval)
 				      (make-bytes (quotient restval #x100)
