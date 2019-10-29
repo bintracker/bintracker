@@ -228,6 +228,98 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ## Toolbar
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Create a toolbar button widget.
+  (define (toolbar-button icon #!optional (init-state 'disabled))
+    (toolbar-frame 'create-widget 'button image: (tk/icon icon)
+  		   state: init-state style: "Toolbutton"))
+
+  (define toolbar-button-groups
+    `((file (new-file ,(toolbar-button "new.png" 'enabled)
+			  "New File")
+	    (load-file ,(toolbar-button "load.png" 'enabled)
+		       "Load File...")
+	    (save-file ,(toolbar-button "save.png")
+		       "Save File"))
+      (journal (undo ,(toolbar-button "undo.png")
+		     "Undo last edit")
+	       (redo ,(toolbar-button "redo.png")
+		     "Redo last edit"))
+      (edit (copy ,(toolbar-button "copy.png")
+      		  "Copy Selection")
+      	    (cut ,(toolbar-button "cut.png")
+      	      "Cut Selection (delete with shift)")
+      	    (clear ,(toolbar-button "clear.png")
+      		   "Clear Selection (delete, no shift)")
+      	    (paste ,(toolbar-button "paste.png")
+      		   "Paste from Clipboard (no shift)")
+      	    (insert ,(toolbar-button "insert.png")
+      		    "Insert from Clipbard (with shift)")
+      	    (swap ,(toolbar-button "swap.png")
+      		  "Swap Selection with Clipboard"))
+      (play (stop ,(toolbar-button "stop.png")
+      		  "Stop Playback")
+      	    (play ,(toolbar-button "play.png")
+      		  "Play Track from Current Position")
+      	    (play-from-start ,(toolbar-button "play-from-start.png")
+      			     "Play Track from Start")
+      	    (play-pattern ,(toolbar-button "play-ptn.png")
+      			  "Play Pattern"))
+      (configure (toggle-prompt ,(toolbar-button "prompt.png" 'enabled)
+      				"Toggle Console")
+      		 (show-settings ,(toolbar-button "settings.png" 'enabled)
+      				"Settings..."))))
+
+  ;;; Returns the entry associated with {{id}} in the given toolbar
+  ;;; button {{group}}.
+  (define (toolbar-button-ref group-id button-id)
+    (let ((group (alist-ref group-id toolbar-button-groups)))
+      (and group (alist-ref button-id group))))
+
+  ;;; Associate the procedure {{command}} with a toolbar button.
+  (define (set-toolbar-button-command group-id button-id command)
+    ((car (toolbar-button-ref group-id button-id))
+     'configure command: command))
+
+  ;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
+  ;;; status bar.
+  (define (bind-toolbar-button-info group-id button-id)
+    (let ((button-entry (toolbar-button-ref group-id button-id)))
+      (bind-info-status (car button-entry)
+			(string-append (cadr button-entry)
+				       " "
+				       (key-binding->info 'global button-id)))))
+
+  ;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
+  (define (set-toolbar-button-state group-id button-id state)
+    ((car (toolbar-button-ref group-id button-id))
+     'configure 'state: state))
+
+  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
+  ;;; `'disabled`.
+  (define (set-play-buttons state)
+    (for-each (lambda (button)
+		((cadr button) 'configure state: state))
+	      (alist-ref 'play toolbar-button-groups)))
+
+  ;;; construct and display the main toolbar
+  (define (show-toolbar)
+    (for-each (lambda (button-group)
+  		(for-each (lambda (button-entry)
+  			    (tk/pack (cadr button-entry)
+				     side: 'left padx: 0 fill: 'y)
+			    (bind-toolbar-button-info (car button-group)
+			    			      (car button-entry)))
+  			  (cdr button-group))
+  		(tk/pack (toolbar-frame 'create-widget 'separator
+  					orient: 'vertical)
+  			 side: 'left padx: 0 'fill: 'y))
+  	      toolbar-button-groups))
+
+
+  ;; ---------------------------------------------------------------------------
   ;;; ## Edit Settings Display
   ;; ---------------------------------------------------------------------------
 
