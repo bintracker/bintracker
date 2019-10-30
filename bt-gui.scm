@@ -198,7 +198,7 @@
   ;;; The list of all ui zones that can be focussed. The list consists of a list
   ;;; for each zone, which contains the focus procedure in car, and the unfocus
   ;;; procedure in cadr.
-  (define ui-zone-focus-procs
+  (define ui-zones
     `((fields ,(lambda () (focus-fields-widget (current-fields-view)))
 	      ,(lambda () (unfocus-fields-widget (current-fields-view))))
       (blocks ,(lambda () (focus-metatree (current-blocks-view)))
@@ -209,35 +209,35 @@
 	       ,(lambda () '()))))
 
   ;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
-  ;;; index to the `ui-zone-focus-procs` list, or a symbol naming an entry in
+  ;;; index to the `ui-zones` list, or a symbol naming an entry in
   ;;; that list.
   (define (switch-ui-zone-focus new-zone)
     (let ((new-zone-index (or (and (integer? new-zone)
 				   new-zone)
 			      (list-index (lambda (zone)
 					    (eq? new-zone (car zone)))
-					  ui-zone-focus-procs))))
+					  ui-zones))))
       ;; TODO find a better way of preventing focussing/unfocussing unpacked
       ;; widgets
       (when (current-mod)
-	((third (list-ref ui-zone-focus-procs (state 'current-ui-zone)))))
+	((third (list-ref ui-zones (state 'current-ui-zone)))))
       (set-state! 'current-ui-zone new-zone-index)
-      ((second (list-ref ui-zone-focus-procs new-zone-index)))))
+      ((second (list-ref ui-zones new-zone-index)))))
 
   ;;; Unfocus the currently active UI zone, and focus the next one listed in
-  ;;; ui-zone-focus-procs.
+  ;;; ui-zones.
   (define (focus-next-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
-	   (next-zone (if (= current-zone (sub1 (length ui-zone-focus-procs)))
+	   (next-zone (if (= current-zone (sub1 (length ui-zones)))
 			  0 (+ 1 current-zone))))
       (switch-ui-zone-focus next-zone)))
 
   ;;; Unfocus the currently active UI zone, and focus the previous one listed in
-  ;;; ui-zone-focus-procs.
+  ;;; ui-zones.
   (define (focus-previous-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (prev-zone (if (= current-zone 0)
-			  (sub1 (length ui-zone-focus-procs))
+			  (sub1 (length ui-zones))
 			  (sub1 current-zone))))
       (switch-ui-zone-focus prev-zone)))
 
