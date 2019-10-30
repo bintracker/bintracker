@@ -553,6 +553,7 @@
 	(update-blocks-view (current-blocks-view)
 			    (metatree-state-cursor-y
 			     (metatree-mtstate (current-order-view))))
+	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'redo 'enabled)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
 	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
@@ -565,6 +566,7 @@
 	(update-blocks-view (current-blocks-view)
 			    (metatree-state-cursor-y
 			     (metatree-mtstate (current-order-view))))
+	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'undo 'enabled)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
 	  (set-toolbar-button-state 'journal 'redo 'disabled)))))
