@@ -21,7 +21,7 @@
   ;;; ## Global Actions
   ;; ---------------------------------------------------------------------------
 
-  ;;; load the main configuration file
+  ;;; Load the main configuration file
   (define (load-config)
     (handle-exceptions
 	exn
@@ -42,6 +42,7 @@
 	  (else #f))
 	(proc)))
 
+  ;;; Shut down the running application.
   (define (exit-bintracker)
     (do-proc-with-exit-dialogue "exit" tk-end))
 
@@ -51,6 +52,7 @@
 	  reset-state! update-window-title! reset-status-text!
 	  disable-edit-settings!))
 
+  ;;; Close the currently opened module file.
   ;; TODO disable menu option
   (define (close-file)
     (when (current-mod)
@@ -67,6 +69,7 @@
 	  (lambda () (focus-metatree (current-blocks-view)))
 	  enable-edit-settings!))
 
+  ;;; Load an MDAL module file.
   (define (load-file)
     ;; Work-around to prevent file dialogue getting stuck when invoked through
     ;; menu. See (about-message).
@@ -93,12 +96,15 @@
 	  (lambda () (set-state! 'modified #f))
 	  update-window-title!))
 
+  ;;; Save the current MDAL module. If no file name has been specified yet,
+  ;;; promt the user for one.
   (define (save-file)
     (when (state 'modified)
       (if (state 'current-file)
 	  (execute-hooks on-save-file-hooks)
 	  (save-file-as))))
 
+  ;;; Save the current MDAL module under a new, different name.
   (define (save-file-as)
     ;; Work-around to prevent file dialogue getting stuck when invoked through
     ;; menu. See (about-message).
@@ -112,6 +118,7 @@
 	(execute-hooks on-save-file-hooks)))
     (tk-eval "tk busy forget ."))
 
+  ;;; Launch the online help in the user's default system web browser.
   (define (launch-help)
     ;; TODO windows untested
     (let ((uri (cond-expand
@@ -123,6 +130,8 @@
 		      (windows "[list {*}[auto_execok start] {}] "))))
       (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
 
+  ;;; Evaluate the latest command that the user entered into the internal
+  ;;; command line prompt.
   (define (eval-console)
     (handle-exceptions
 	exn
@@ -142,6 +151,7 @@
   ;;; ## Main Menu
   ;; ---------------------------------------------------------------------------
 
+  ;;; Initialize the main menu.
   (define (init-main-menu)
     (set-state!
      'menu (construct-menu
@@ -171,6 +181,7 @@
   ;;; ## Bindings
   ;; ---------------------------------------------------------------------------
 
+  ;;; Update the key bindings, as specified in the current keymap setting.
   (define (update-key-bindings!)
     (for-each (lambda (group widget)
 		(for-each (lambda (key-mapping)
@@ -186,6 +197,7 @@
 	      (list tk console))
     (create-virtual-events))
 
+  ;;; Update the bindings for the toolbar buttons.
   (define (update-toolbar-bindings!)
     (for-each (lambda (spec)
 		(apply set-toolbar-button-command spec))
@@ -199,6 +211,20 @@
   ;;; ## Hooks
   ;; ---------------------------------------------------------------------------
 
+  ;;; Execute the given list of {{hooks}}.
+  (define (execute-hooks hooks)
+    (for-each (lambda (hook)
+		(hook))
+	      hooks))
+
+  ;; TODO: add-hooks procedure
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Startup Procedure
+  ;; ---------------------------------------------------------------------------
+
+  ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
     (list load-config update-window-title! patch-tcltk-8.6.9-treeview
 	  update-style! update-key-bindings! init-main-menu
@@ -211,17 +237,7 @@
 	      (show-toolbar)))
 	  init-console init-status-bar disable-keyboard-traversal))
 
-  (define (execute-hooks hooks)
-    (for-each (lambda (hook)
-		(hook))
-	      hooks))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Startup Procedure
-  ;; ---------------------------------------------------------------------------
-
-  ;;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
+  ;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
 
   (execute-hooks on-startup-hooks)
 
