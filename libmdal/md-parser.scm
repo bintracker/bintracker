@@ -47,6 +47,10 @@
 			(char-set-delete char-set:punctuation #\")))))
 		 (is #\")))
 
+  (define md:string-arg
+    (as-string (one-or-more (in (char-set-union char-set:letter+digit
+						(->char-set #\#))))))
+
   (define md:linebreak (sequence (one-or-more (is #\newline))))
 
   (define md:instance-id
@@ -117,7 +121,8 @@
 	  (lambda (a)
 	    (result (list prefix-sym a)))))
 
-  (define md:csv-shorthand (md:csv-parser md:numeric-arg 'csv-shorthand))
+  (define md:csv-shorthand (md:csv-parser (any-of md:numeric-arg md:string-arg)
+					  'csv-shorthand))
 
   (define md:csv (md:csv-parser md:row-assignment 'csv))
 
