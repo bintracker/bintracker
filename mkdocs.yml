@@ -16,6 +16,7 @@ nav:
       - "Using The Console": console.md
   - "Hacking Bintracker":
       - "Getting Started": hacking.md
+      - "Style Guide": style-guide.md
       - "Bintracker API":
           - "bintracker-core": 'generated/bintracker-core.md'
           - "bt-gui": 'generated/bt-gui.md'
