@@ -2,7 +2,7 @@
 
 (import scheme (chicken base) (chicken io) (chicken bitwise)
 	srfi-1 simple-exceptions
-	mdal test simple-md5 srfi-13 srfi-69 ssax sxpath sxpath-lolevel)
+	mdal test simple-md5 srfi-13 srfi-69)
 
 (define my-config-path "unittests/config/")
 (define my-target (eval (car (read-list
