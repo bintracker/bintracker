@@ -733,7 +733,8 @@
       (tk/focus entry)))
 
   (define (unfocus-field-widget w)
-    ((bt-field-widget-val-entry w) 'configure bg: (colors 'row-highlight-minor)))
+    ((bt-field-widget-val-entry w) 'configure
+     bg: (colors 'row-highlight-minor)))
 
   ;;; A meta widget for displaying an MDAL group's field members.
   (defstruct bt-fields-widget
