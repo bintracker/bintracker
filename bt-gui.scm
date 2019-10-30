@@ -768,6 +768,10 @@
 			 (lambda (widget)
 			   (tk/bind widget '<ButtonPress-1>
 				    (lambda ()
+				      (unfocus-field-widget
+				       (list-ref (bt-fields-widget-fields w)
+						 (bt-fields-widget-active-index
+						  w)))
 				      (bt-fields-widget-active-index-set!
 				       w index)
 				      (switch-ui-zone-focus 'fields)))))
