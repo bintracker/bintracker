@@ -74,7 +74,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Virtual Events
+  ;;; ### Events
   ;; ---------------------------------------------------------------------------
 
   (define (create-virtual-events)
@@ -82,6 +82,11 @@
 			    (map car
 				 (app-keys-note-entry (settings 'keymap))))))
 
+  (define (reverse-binding-eval-order widget)
+    (let ((widget-id (widget 'get-id)))
+      (tk-eval (string-append "bindtags " widget-id " {all . "
+			      (tk/winfo 'class widget)
+			      " " widget-id "}"))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Images
@@ -765,13 +770,13 @@
 				    (lambda ()
 				      (bt-fields-widget-active-index-set!
 				       w index)
-				      (switch-ui-zone-focus 'fields))))))
+				      (switch-ui-zone-focus 'fields)))))
+			(val-entry (bt-field-widget-val-entry field-widget)))
 		    (show-field-widget field-widget group-instance-path)
-		    (tk/bind (bt-field-widget-val-entry field-widget)
-			     '<Tab> (lambda ()
-				      (select-next-field w)))
-		    (bind-tk-widget-button-press
-		     (bt-field-widget-val-entry field-widget))
+		    (tk/bind val-entry '<Tab> (lambda ()
+						(select-next-field w)))
+		    (reverse-binding-eval-order val-entry)
+		    (bind-tk-widget-button-press val-entry)
 		    (bind-tk-widget-button-press
 		     (bt-field-widget-id-label field-widget))
 		    (bind-tk-widget-button-press
@@ -1226,7 +1231,8 @@
 			  (unless (state 'modified)
 			    (set-state! 'modified #t)
 			    (update-window-title!))))))
-		 %K))))
+		 %K))
+      (reverse-binding-eval-order column)))
 
   ;;; Update a group's order/block list view.
   (define (update-order-view metatree)

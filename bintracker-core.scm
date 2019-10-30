@@ -175,14 +175,11 @@
 		(for-each (lambda (key-mapping)
 			    (tk/bind widget (car key-mapping)
 				     (eval (cadr key-mapping)))
-			    ;; TODO prevent propagation of keypress events
-			    ;; not working as such -> seems unspecific event
-			    ;; is processed before specific one????
-			    ;; (tk-eval (string-append "bind " (widget 'get-id)
-			    ;; 			    " " (symbol->string
-			    ;; 				 (car key-mapping))
-			    ;; 			    " +break"))
-			    )
+			    ;; prevent propagation of keypress events
+			    (tk-eval (string-append
+				      "bind " (widget 'get-id)
+			    	      " " (symbol->string (car key-mapping))
+			    	      " +break")))
 			  (get-keybinding-group group)))
 	      '(global console)
 	      (list tk console))
