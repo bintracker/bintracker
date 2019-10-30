@@ -70,6 +70,7 @@
   (define (load-file)
     ;; Work-around to prevent file dialogue getting stuck when invoked through
     ;; menu. See (about-message).
+    (close-file)
     (tk-eval "tk busy .")
     (tk/update)
     (let ((filename (tk/get-open-file
