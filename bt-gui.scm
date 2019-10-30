@@ -77,11 +77,17 @@
   ;;; ### Events
   ;; ---------------------------------------------------------------------------
 
+  ;;; Create default virtual events for Bintracker. This procedure only needs
+  ;;; to be called on startup, or after updating key bindings.
   (define (create-virtual-events)
     (apply tk/event (append '(add <<NoteEntry>>)
 			    (map car
 				 (app-keys-note-entry (settings 'keymap))))))
 
+  ;;; Reverse the evaluation order for tk bindings, so that global bindings are
+  ;;; evaluated before the local bindings of {{widget}}. This is necessary to
+  ;;; prevent keypresses that are handled globally being passed through to the
+  ;;; widget.
   (define (reverse-binding-eval-order widget)
     (let ((widget-id (widget 'get-id)))
       (tk-eval (string-append "bindtags " widget-id " {all . "
@@ -218,12 +224,16 @@
       (set-state! 'current-ui-zone new-zone-index)
       ((second (list-ref ui-zone-focus-procs new-zone-index)))))
 
+  ;;; Unfocus the currently active UI zone, and focus the next one listed in
+  ;;; ui-zone-focus-procs.
   (define (focus-next-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (next-zone (if (= current-zone (sub1 (length ui-zone-focus-procs)))
 			  0 (+ 1 current-zone))))
       (switch-ui-zone-focus next-zone)))
 
+  ;;; Unfocus the currently active UI zone, and focus the previous one listed in
+  ;;; ui-zone-focus-procs.
   (define (focus-previous-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (prev-zone (if (= current-zone 0)
@@ -241,9 +251,15 @@
     (toolbar-frame 'create-widget 'button image: (tk/icon icon)
   		   state: init-state style: "Toolbutton"))
 
+  ;;; The list of buttons in the main toolbar. It is a nested alist. The main
+  ;;; keys name button groups, where the associated values are another alist
+  ;;; containing the button names as keys. The key names must correspond to
+  ;;; the names of the procedure that the buttons will call.
+  ;;; The cdr of the button alist contains a button widget created with
+  ;;; `toolbar-button` in car, and a short description in cadr.
   (define toolbar-button-groups
     `((file (new-file ,(toolbar-button "new.png" 'enabled)
-			  "New File")
+		      "New File")
 	    (load-file ,(toolbar-button "load.png" 'enabled)
 		       "Load File...")
 	    (save-file ,(toolbar-button "save.png")
@@ -417,7 +433,6 @@
 
   (define console-wrapper (console-frame 'create-widget 'frame))
 
-  ;; TODO color styling should be done in bt-state or bt-gui
   (define console (console-wrapper 'create-widget 'text blockcursor: 'yes))
 
   (define console-yscroll (console-wrapper 'create-widget 'scrollbar
@@ -440,10 +455,14 @@
   (define (clear-console)
     (console 'delete 0.0 'end))
 
+
   ;; ---------------------------------------------------------------------------
   ;;; Style updates
   ;; ---------------------------------------------------------------------------
 
+  ;;; A work-around for the treeview tag configuration bug that affects
+  ;;; Tk 8.6.9 under Linux, based on
+  ;;; https://core.tcl-lang.org/tk/tktview?name=509cafafae
   (define (patch-tcltk-8.6.9-treeview)
     (when (string= "8.6.9" (tk-eval "info patchlevel"))
       (ttk/style 'map 'Metatree.Treeview foreground:
@@ -451,7 +470,7 @@
 		 background: '(disabled SystemButtonFace selected
 					SystemHighlightText))))
 
-  ;; TODO also update other metawidget colors here
+  ;;; Configure Tk widget styles
   (define (update-style!)
     (ttk/style 'configure 'Metatree.Treeview background: (colors 'background)
 	       fieldbackground: (colors 'background)
@@ -496,6 +515,8 @@
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
+  ;;; Returns a string containing the current target platform and MDAL config
+  ;;; name, separated by a pipe.
   (define (get-module-info-text)
     (string-append (if (current-mod)
 		       (string-append
@@ -536,6 +557,8 @@
   ;;; ## Editing
   ;; ---------------------------------------------------------------------------
 
+  ;;; Apply an edit action. See the Journal section in the documentation of
+  ;;; bt-state for a description of the `action` format.
   (define (apply-edit! action)
     (match (car action)
       ('set (md:node-set! ((md:node-path (cadr action))
@@ -545,6 +568,8 @@
       ('insert '())
       ('compound (for-each apply-edit! (cdr action)))))
 
+  ;;; Undo the latest edit action, by retrieving the latest action from the undo
+  ;;; stack, applying it, updating the redo stack, and refreshing the display.
   (define (undo)
     (let ((action (pop-undo)))
       (when action
@@ -558,6 +583,7 @@
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
 	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
 
+  ;;; Redo the latest undo action.
   (define (redo)
     (let ((action (pop-redo)))
       (when action
@@ -670,6 +696,8 @@
 	    ('modifier (colors 'text-7))
 	    (else (colors 'text))))))
 
+  ;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
+  ;;; MDAL note name.
   (define (keypress->note key)
     (let ((entry-spec (alist-ref (symbol-append '<Key- key '>)
 				 (app-keys-note-entry (settings 'keymap)))))
@@ -1184,6 +1212,7 @@
   ;;; ### Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
+  ;;; Update the status bar hint on the currently selected block field.
   (define (update-active-block-column-info metatree)
     (set-active-md-command-info!
      (list-ref (metatree-column-ids metatree)

@@ -255,6 +255,7 @@
     ((md:node-instance-path (get-current-instance-path node-id))
      (md:mod-global-node (current-mod))))
 
+
   ;; ---------------------------------------------------------------------------
   ;;; ## The Journal (Edit History)
   ;; ---------------------------------------------------------------------------
