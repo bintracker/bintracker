@@ -1244,7 +1244,8 @@
 				  (if (>= (add1 ypos)
 					  (length values))
 				      (sub1 (length values))
-				      ypos))))
+				      ypos))
+		      (tk/focus column)))
 		 %y))
       (tk/bind column '<<NoteEntry>>
 	       `(,(lambda (keysym)
