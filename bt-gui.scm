@@ -82,7 +82,10 @@
   (define (create-virtual-events)
     (apply tk/event (append '(add <<NoteEntry>>)
 			    (map car
-				 (app-keys-note-entry (settings 'keymap))))))
+				 (app-keys-note-entry (settings 'keymap)))))
+    (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
+    (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
+    (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
   ;;; evaluated before the local bindings of {{widget}}. This is necessary to
@@ -1247,6 +1250,27 @@
 				      ypos))
 		      (tk/focus column)))
 		 %y))
+      (tk/bind column '<<ClearStep>>
+	       (lambda ()
+		 (let* ((instance (metatree-state-cursor-y
+				   (metatree-mtstate metatree)))
+			(node-path (string-append
+				    (get-current-instance-path block-id)
+				    (symbol->string column-id) "/"))
+			(instance-path (string-append node-path
+						      (->string instance)
+						      "/")))
+		   (let ((action `(set ,node-path ((,instance ())))))
+		     (push-undo (make-reverse-action action))
+		     (apply-edit! action)
+		     (column 'set (nth-tree-item column instance)
+			     "content" (normalize-field-value '() column-id))
+		     (tk/update)
+		     (move-cursor metatree 'down)
+		     (set-toolbar-button-state 'journal 'undo 'enabled)
+		     (unless (state 'modified)
+		       (set-state! 'modified #t)
+		       (update-window-title!))))))
       (tk/bind column '<<NoteEntry>>
 	       `(,(lambda (keysym)
 		    (let* ((instance (metatree-state-cursor-y

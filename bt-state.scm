@@ -124,8 +124,8 @@
      group-lst))
 
   ;;; Create a new key binding, or replace an existing one. **key-group** must
-  ;;; be one of 'global, 'note-keys, or 'plug-ins. **key-spec** shall be a key
-  ;;; key binding specifier, using Tk's angular bracket syntax.
+  ;;; be one of 'global, 'console, 'edit, 'note-keys, or 'plug-ins. **key-spec**
+  ;;; shall be a key key binding specifier, using Tk's angular bracket syntax.
   ;;; https://www.tcl.tk/man/tcl8.6/TkCmd/bind.htm
   ;;; **action** shall be the name of a procedure or quoted lambda definition,
   ;;; except if **key-group** is 'note-entry. In that case, it should be a note

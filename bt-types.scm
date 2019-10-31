@@ -58,7 +58,7 @@
     ((text-7 "#00ee00") : string))
 
   (defstruct app-keys
-    global console note-entry plugins)
+    global console edit note-entry plugins)
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
