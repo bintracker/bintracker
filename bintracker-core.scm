@@ -71,12 +71,8 @@
 
   ;;; Load an MDAL module file.
   (define (load-file)
-    ;; Work-around to prevent file dialogue getting stuck when invoked through
-    ;; menu. See (about-message).
     (close-file)
-    (tk-eval "tk busy .")
-    (tk/update)
-    (let ((filename (tk/get-open-file
+    (let ((filename (tk/get-open-file*
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
 	(begin (console 'insert 'end
@@ -88,8 +84,7 @@
 					   "\n" (message exn)))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
-		 (execute-hooks after-load-file-hooks))))
-      (tk-eval "tk busy forget .")))
+		 (execute-hooks after-load-file-hooks))))))
 
   (define on-save-file-hooks
     (list (lambda () (md:module->file (current-mod) (state 'current-file)))
@@ -106,17 +101,12 @@
 
   ;;; Save the current MDAL module under a new, different name.
   (define (save-file-as)
-    ;; Work-around to prevent file dialogue getting stuck when invoked through
-    ;; menu. See (about-message).
-    (tk-eval "tk busy .")
-    (tk/update)
-    (let ((filename (tk/get-save-file
+    (let ((filename (tk/get-save-file*
 		     filetypes: '(((MDAL Modules) (.mdal)))
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
 	(set-state! 'current-file filename)
-	(execute-hooks on-save-file-hooks)))
-    (tk-eval "tk busy forget ."))
+	(execute-hooks on-save-file-hooks))))
 
   ;;; Launch the online help in the user's default system web browser.
   (define (launch-help)

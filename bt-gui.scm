@@ -39,39 +39,52 @@
   ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
 
-  ;;; Various general-purpose dialogue (tk message-box) procedures.
+  ;;; Various general-purpose dialogue procedures.
 
-  (define (about-message)
-    ;; Work-around for message-box getting stuck after it loses focus:
-    ;; tk busy is used to block events in the main window.
+  ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
+  ;;; tk/get-save-file that block the main application window  while the pop-up
+  ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
+  ;;; once they lose focus.
+  (define (tk/safe-dialogue type . args)
     (tk-eval "tk busy .")
     (tk/update)
-    (tk/message-box title: "About"
-		    message: (string-append "Bintracker\nversion "
-					    *bintracker-version*)
-		    detail: "Dedicated to Ján Deák"
-		    type: 'ok)
-    (tk-eval "tk busy forget ."))
+    (let ((result (apply type args)))
+      (tk-eval "tk busy forget .")
+      result))
+
+  ;;; Crash-safe variant of tk/message-box.
+  (define (tk/message-box* . args)
+    (apply tk/safe-dialogue (cons tk/message-box args)))
+
+  ;;; Crash-safe variant of tk/get-open-file.
+  (define (tk/get-open-file* . args)
+    (apply tk/safe-dialogue (cons tk/get-open-file args)))
+
+    ;;; Crash-safe variant of tk/get-save-file.
+  (define (tk/get-save-file* . args)
+    (apply tk/safe-dialogue (cons tk/get-save-file args)))
+
+  ;;; Display the "About Bintracker" message.
+  (define (about-message)
+    (tk/message-box* title: "About"
+		     message: (string-append "Bintracker\nversion "
+					     *bintracker-version*)
+		     detail: "Dedicated to Ján Deák"
+		     type: 'ok))
 
   ;;; Display a message box that asks the user whether to save unsaved changes
   ;;; before exiting or closing. **exit-or-closing** should be the string
   ;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
-    (let ((response ""))
-      (tk-eval "tk busy .")
-      (tk/update)
-      (set! response
-	(tk/message-box title: (string-append "Save before "
-					      exit-or-closing "?")
-			default: 'yes
-			icon: 'warning
-			parent: tk
-			message: (string-append "There are unsaved changes. "
-						"Save before " exit-or-closing
-						"?")
-			type: 'yesnocancel))
-      (tk-eval "tk busy forget .")
-      response))
+    (tk/message-box* title: (string-append "Save before "
+					   exit-or-closing "?")
+		     default: 'yes
+		     icon: 'warning
+		     parent: tk
+		     message: (string-append "There are unsaved changes. "
+					     "Save before " exit-or-closing
+					     "?")
+		     type: 'yesnocancel))
 
 
   ;; ---------------------------------------------------------------------------
