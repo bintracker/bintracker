@@ -699,18 +699,22 @@
   ;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
   ;;; MDAL note name.
   (define (keypress->note key)
-    (let ((entry-spec (alist-ref (symbol-append '<Key- key '>)
+    (let ((entry-spec (alist-ref (string->symbol
+				  (string-append "<Key-" (->string key)
+						 ">"))
 				 (app-keys-note-entry (settings 'keymap)))))
       (and entry-spec
-	   (let* ((octave-modifier (if (> (length entry-spec) 1)
-				       (cadr entry-spec)
-				       0))
-		  (mod-octave (+ octave-modifier (state 'base-octave))))
-	     ;; TODO proper range check
-	     (and (and (>= mod-octave 0)
-		       (<= mod-octave 9)
-		       (string-append (car entry-spec)
-				      (->string mod-octave))))))))
+	   (if (string= "rest" (car entry-spec))
+	       "rest"
+	       (let* ((octave-modifier (if (> (length entry-spec) 1)
+					   (cadr entry-spec)
+					   0))
+		      (mod-octave (+ octave-modifier (state 'base-octave))))
+		 ;; TODO proper range check
+		 (and (and (>= mod-octave 0)
+			   (<= mod-octave 9)
+			   (string-append (car entry-spec)
+					  (->string mod-octave)))))))))
 
 
   ;; ---------------------------------------------------------------------------
