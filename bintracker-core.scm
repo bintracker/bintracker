@@ -137,14 +137,16 @@
 	exn
 	(console 'insert 'end
 			(string-append "\nError: " (->string exn)
-				       (->string (arguments exn))))
+				       (->string (arguments exn))
+				       "\n"))
       (let ((input-str (console 'get "end-1l" "end-1c")))
 	(unless (string-null? input-str)
 	  (console 'insert 'end
 			  (string-append
 			   "\n"
 			   (->string
-			    (eval (read (open-input-string input-str))))))))))
+			    (eval (read (open-input-string input-str))))
+			   "\n"))))))
 
 
   ;; ---------------------------------------------------------------------------
