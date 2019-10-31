@@ -49,6 +49,7 @@
     (tk/message-box title: "About"
 		    message: (string-append "Bintracker\nversion "
 					    *bintracker-version*)
+		    detail: "Dedicated to Ján Deák"
 		    type: 'ok)
     (tk-eval "tk busy forget ."))
 
