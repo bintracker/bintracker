@@ -195,26 +195,48 @@
   ;; TODO currently dead code, but should be useful
   (define (md:mod-get-group-instance-order igroup-instance igroup-id)
     ((md:mod-get-node-instance 0)
-     (md:get-subnode igroup-instance (md:symbol-append igroup-id "_ORDER"))))
+     (md:get-subnode igroup-instance (md:symbol-append igroup-id '_ORDER))))
 
-  ;;; helper, create a "default" order with single field instances all set to 0
-  ;; TODO expand so it takes a numeric arg and produces n field node instances
-  ;; TODO currently dead code, but should be useful
-  (define (md:mod-make-default-order len igroup-id config)
-    (letrec* ((order-id (md:symbol-append igroup-id "_ORDER"))
-  	      (subnode-ids
-  	       (md:config-get-subnode-ids order-id (md:config-itree config)))
-  	      (make-generic-instances
-  	       (lambda (start-id)
-  		 (if (= start-id len)
-  		     '()
-  		     (cons (list start-id (md:make-inode-instance start-id))
-  			   (make-generic-instances (+ start-id 1)))))))
-      (md:make-inode
-       order-id
-       (list (list 0 (md:make-inode-instance
-  		      (map (lambda (id)
-  			     (md:make-inode id (make-generic-instances 0)))
-  			   subnode-ids)))))))
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Generators
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Generate a new, empty inode instance based on the md:config {{config}}.
+  (define (md:generate-new-inode-instance config node-id parent-id block-length)
+    (let ((node-type (md:inode-config-type
+		      (car (hash-table-ref (md:config-inodes config)
+					   node-id))))
+	  (order-node (md:symbol-contains node-id "_ORDER")))
+      (md:make-inode-instance
+       (if (eq? 'field node-type)
+	   (if (or (md:symbol-contains parent-id "_ORDER")
+		   (eq? 'group (md:inode-config-type
+				(car (hash-table-ref (md:config-inodes config)
+						     parent-id)))))
+	       (md:command-default (md:config-get-inode-source-command
+				    node-id config))
+	       '())
+	   (map (lambda (subnode-id)
+		  (md:make-inode
+		   subnode-id
+		   (map (lambda (instance-id)
+			  `(,instance-id ,(md:generate-new-inode-instance
+					   config subnode-id node-id
+					   block-length)))
+			(iota (if (or (eq? 'group node-type)
+				      (md:symbol-contains node-id "_ORDER"))
+				  1 block-length)))))
+		(md:config-get-subnode-ids node-id
+					   (md:config-itree config)))))))
+
+  ;;; Generate a new, empty module based on the md:config {{config}}. Generated
+  ;;; blocks will have the length specified by {{block-length}}, unless other
+  ;;; constraints apply from the config.
+  (define (md:generate-new-module config-id config block-length)
+    (md:make-module config-id config
+		    (md:make-inode 'GLOBAL
+				   `((0 ,(md:generate-new-inode-instance
+					  config 'GLOBAL #f block-length))))))
 
   ) ;; end module mdal
