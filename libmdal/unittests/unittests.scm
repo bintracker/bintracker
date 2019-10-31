@@ -16,8 +16,6 @@
 (define (hash-table-equal? ht1 ht2)
   (null? (lset-difference equal? (hash-table->alist ht1)
 			  (hash-table->alist ht2))))
-(define (string->sxml-node str)
-  (cadr (ssax:xml->sxml (open-input-string str) '())))
 
 
 (test-group
@@ -372,23 +370,7 @@
  	(md:mod-global-node my-mod))
        (md:mod-get-group-instance-order
  	((md:node-instance-path "0/PATTERNS/0") (md:mod-global-node my-mod))
- 	'PATTERNS))
-
- (test "md:mod-make-default-order"
-       (md:make-inode
- 	'PATTERNS_ORDER
- 	(list
- 	 (list 0 (md:make-inode-instance
- 		  (list (md:make-inode
- 			 'R_DRUMS
- 			 (list (list 0 (md:make-inode-instance 0 ""))))
- 			(md:make-inode
- 			 'R_CH1
- 			 (list (list 0 (md:make-inode-instance 0 ""))))
- 			(md:make-inode
- 			 'R_CH2
- 			 (list (list 0 (md:make-inode-instance 0 "")))))))))
-       (md:mod-make-default-order 1 'PATTERNS my-cfg)))
+ 	'PATTERNS)))
 
 
 (test-group
