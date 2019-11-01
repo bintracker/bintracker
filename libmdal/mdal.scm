@@ -128,7 +128,7 @@
 
   ;;; Write the MDAL text of {{mod}} to {{port}}. {{port}} defaults to
   ;;; (current-output-port) if omitted.
-  (define (write-mod mod . port)
+  (define (write-mdmod mod . port)
     (let ((out (if (null? port)
 		   (current-output-port)
 		   (car port))))
@@ -147,7 +147,7 @@
   (define (mdmod->file mod filename)
     (call-with-output-file filename
       (lambda (port)
-	(write-mod mod port))))
+	(write-mdmod mod port))))
 
   ;;; compile an module to an onode tree
   ;;; TODO and a list of symbols for mod->asm?
