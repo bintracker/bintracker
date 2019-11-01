@@ -185,7 +185,6 @@
   (define (current-config)
     (mdmod-config (current-mod)))
 
-
   ;;; Set the active MD command info string from the given MDCONF ifield ID.
   (define (set-active-md-command-info! field-id)
     (let ((command (config-get-inode-source-command field-id
