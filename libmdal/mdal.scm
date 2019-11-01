@@ -128,20 +128,16 @@
 
   ;;; Write the MDAL text of {{mod}} to {{port}}. {{port}} defaults to
   ;;; (current-output-port) if omitted.
-  (define (write-mdmod mod . port)
-    (let ((out (if (null? port)
-		   (current-output-port)
-		   (car port))))
-      (begin
-	(fprintf out "MDAL_VERSION=~s\n" mdal-version)
-	(fprintf out "CONFIG=\"~A\"\n\n" (mdmod-config-id mod))
-	(for-each (lambda (subnode)
-		    (begin
-		      (write-node subnode 0 (mdmod-config mod)
-				  out)
-		      (newline out)))
-		  (inode-instance-val ((mod-get-node-instance 0)
-				       (mdmod-global-node mod)))))))
+  (define (write-mdmod mod #!optional (port (current-output-port)))
+    (fprintf port "MDAL_VERSION=~s\n" mdal-version)
+    (fprintf port "CONFIG=\"~A\"\n\n" (mdmod-config-id mod))
+    (for-each (lambda (subnode)
+		(begin
+		  (write-node subnode 0 (mdmod-config mod)
+			      port)
+		  (newline port)))
+	      (inode-instance-val ((mod-get-node-instance 0)
+				   (mdmod-global-node mod)))))
 
   ;;; write {{module}} to an .mdal file.
   (define (mdmod->file mod filename)
