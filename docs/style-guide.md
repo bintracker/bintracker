@@ -25,8 +25,6 @@ We advise the use of an editor that supports structural editing (aka paredit), s
   - `foo->bar  ;; this is a converter that takes a 'foo and returns a 'bar`
   - `foo-set!  ;; this is a mutator`
 - Be verbose. Use descriptive names, and avoid abbreviations except in cases where the meaning is completely obvious.
-- Prefer noun-verb over verb-noun style names, eg. use `foo-set!` instead of `set-foo!`.
-- Symbols exported from MDAL should be prefixed with `md:`.
 
 
 ## Documentation
