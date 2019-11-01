@@ -183,7 +183,7 @@
   ;;; Returns the current module configuration (mdconf). It is an error to call
   ;;; this procedure if no module is currently loaded.
   (define (current-config)
-    (md:mod-cfg (current-mod)))
+    (md:module-config (current-mod)))
 
 
   ;;; Set the active MD command info string from the given MDCONF ifield ID.
@@ -253,7 +253,7 @@
   ;;; {{node-id}}.
   (define (get-current-node-instance node-id)
     ((md:node-instance-path (get-current-instance-path node-id))
-     (md:mod-global-node (current-mod))))
+     (md:module-global-node (current-mod))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -312,7 +312,7 @@
 				  (string-append (cadr action)
 						 (->string (car id+val))
 						 "/"))
-				 (md:mod-global-node (current-mod))))))
+				 (md:module-global-node (current-mod))))))
 		       (third action))))
       ('remove '())
       ('insert '())

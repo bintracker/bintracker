@@ -6,7 +6,7 @@
 
   (import scheme (chicken base) (chicken module) (chicken format)
 	  (chicken string) (chicken bitwise)
-	  srfi-1 srfi-4 srfi-13 srfi-69
+	  srfi-1 srfi-4 srfi-13 srfi-69 typed-records
 	  matchable md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
 
@@ -134,14 +134,14 @@
 		   (car port))))
       (begin
 	(fprintf out "MDAL_VERSION=~s\n" md:mdal-version)
-	(fprintf out "CONFIG=\"~A\"\n\n" (md:mod-cfg-id mod))
+	(fprintf out "CONFIG=\"~A\"\n\n" (md:module-config-id mod))
 	(for-each (lambda (subnode)
 		    (begin
-		      (md:write-node subnode 0 (md:mod-cfg mod)
+		      (md:write-node subnode 0 (md:module-config mod)
 				     out)
 		      (newline out)))
 		  (md:inode-instance-val ((md:mod-get-node-instance 0)
-					  (md:mod-global-node mod)))))))
+					  (md:module-global-node mod)))))))
 
   ;;; write {{module}} to an .mdal file.
   (define (md:module->file mod filename)
@@ -152,7 +152,7 @@
   ;;; compile an md:module to an onode tree
   ;;; TODO and a list of symbols for mod->asm?
   (define (md:mod-compile mod origin)
-    ((md:config-compiler (md:mod-cfg mod)) mod origin))
+    ((md:config-compiler (md:module-config mod)) mod origin))
 
   ;; TODO
   (define (md:mod->bin mod origin)
@@ -234,7 +234,8 @@
   ;;; blocks will have the length specified by {{block-length}}, unless other
   ;;; constraints apply from the config.
   (define (md:generate-new-module config-id config block-length)
-    (md:make-module config-id config
+    (make-md:module config-id: config-id config: config
+		    global-node:
 		    (md:make-inode 'GLOBAL
 				   `((0 ,(md:generate-new-inode-instance
 					  config 'GLOBAL #f block-length))))))

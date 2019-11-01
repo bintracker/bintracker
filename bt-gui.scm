@@ -538,7 +538,7 @@
     (string-append (if (current-mod)
 		       (string-append
   			(md:target-id (md:config-target (current-config)))
-  			" | " (md:mod-cfg-id (current-mod)))
+  			" | " (md:module-config-id (current-mod)))
 		       "No module loaded.")
 		   " | "))
 
@@ -579,7 +579,7 @@
   (define (apply-edit! action)
     (match (car action)
       ('set (md:node-set! ((md:node-path (cadr action))
-			   (md:mod-global-node (current-mod)))
+			   (md:module-global-node (current-mod)))
 			  (third action)))
       ('remove '())
       ('insert '())
@@ -775,7 +775,7 @@
     				group-instance-path
     				(symbol->string (bt-field-widget-node-id w))
     				"/0/"))
-    			      (md:mod-global-node (current-mod))))
+    			      (md:module-global-node (current-mod))))
     			    (bt-field-widget-node-id w))))
 
   (define (focus-field-widget w)
@@ -1366,7 +1366,7 @@
 				       (metatree-group-id metatree))
 				      (symbol->string block-id) "/"
 				      (number->string instance-id)))
-		      (md:mod-global-node (current-mod)))))
+		      (md:module-global-node (current-mod)))))
 		  (metatree-block-ids metatree)
 		  block-instance-ids))))
       (clear-metatree metatree)

@@ -11,7 +11,7 @@
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
 	  (chicken condition) (chicken sort)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
-	  simple-exceptions
+	  simple-exceptions typed-records
 	  md-helpers md-types md-command md-note-table schemta)
   (reexport md-command md-note-table schemta)
 
@@ -49,7 +49,7 @@
     (id md:target-id)
     (cpu md:target-cpu)
     (clock-speed md:target-clock-speed)
-    (export-format md:target-export-format))
+    (export-formats md:target-export-formats))
 
 
   ;; ---------------------------------------------------------------------------
@@ -1198,8 +1198,8 @@
 		      output-expr)))
       (lambda (mod origin)
 	(car (md:compile-otree otree ((md:mod-get-node-instance 0)
-				      (md:mod-global-node mod))
-			       (md:mod-cfg mod)
+				      (md:module-global-node mod))
+			       (md:module-config mod)
 			       origin '())))))
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this

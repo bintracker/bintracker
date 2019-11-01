@@ -11,7 +11,7 @@
 
   (import scheme (chicken base) (chicken io) (chicken string)
 	  (chicken condition)
-	  srfi-1 srfi-13 srfi-14 simple-exceptions
+	  srfi-1 srfi-13 srfi-14 simple-exceptions typed-records
 	  comparse md-helpers md-types md-config)
 
   (define (md:string-parser char-set convert-fn)
@@ -316,12 +316,13 @@
 			       (string-append config-dir-path cfg-name "/"
 					      cfg-name ".mdconf")
 			       path-prefix)))
-		 (md:make-module
-		  cfg-name config
-		  (md:make-inode
-		   'GLOBAL
-		   (list (list 0 (md:make-inode-instance
-				  (md:mod-parse-group
-				   mod-sexp 'GLOBAL config)))))))))))
+		 (make-md:module
+		  config-id: cfg-name
+		  config: config
+		  global-node: (md:make-inode
+				'GLOBAL
+				`((0 ,(md:make-inode-instance
+				       (md:mod-parse-group
+					mod-sexp 'GLOBAL config)))))))))))
 
   ) ;; end module md-parser

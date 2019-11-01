@@ -8,7 +8,7 @@
 (module md-types *
 
   (import scheme (chicken base) (chicken string) (chicken format) (chicken sort)
-	  srfi-1 srfi-13 srfi-69 md-helpers)
+	  srfi-1 srfi-13 srfi-69 typed-records md-helpers)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDMOD: INPUT NODES
@@ -120,17 +120,13 @@
   ;;; ## MDMOD: MODULE
   ;; ---------------------------------------------------------------------------
 
-  (define-record-type md:module
-    (md:make-module cfg-id cfg global-node)
-    md:module?
-    (cfg-id md:mod-cfg-id md:set-mod-cfg-id!)
-    (cfg md:mod-cfg md:set-mod-cfg!)
-    (global-node md:mod-global-node md:set-mod-global-node!))
+  (defstruct md:module
+    config-id config global-node)
 
-  (define-record-printer (md:module mod out)
-    (begin
-      (fprintf out "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:mod-cfg-id mod))
-      (fprintf out "CONFIG:\n~S\n" (md:mod-cfg mod))))
+  ;;; Printer for md:module.
+  (define (md:display-module mod)
+    (printf "#<md:module>\n\nCONFIG ID: ~A\n\n" (md:module-config-id mod))
+    (printf "CONFIG:\n~S\n" (md:module-config mod)))
 
   ;;; generate a function that takes an inode as parameter, and returns the node
   ;;; instance matching the given numeric instance id

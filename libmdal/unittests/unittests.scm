@@ -125,7 +125,7 @@
  "MD-Module/Inodes"
 
  (define my-global-inode-instance
-   (car (alist-ref 0 (md:inode-instances (md:mod-global-node my-mod)))))
+   (car (alist-ref 0 (md:inode-instances (md:module-global-node my-mod)))))
 
  (test "md:get-subnode"
        (find (lambda (node)
@@ -206,18 +206,19 @@
 		    (car (alist-ref
 			  0
 			  (md:inode-instances
-			   (md:mod-global-node my-mod))))
+			   (md:module-global-node my-mod))))
 		    'PATTERNS))))
 	    'CH1))))
     'NOTE1))
 
  (test "md:node-path" my-test-node
-       ((md:node-path "0/PATTERNS/0/CH1/0/NOTE1") (md:mod-global-node my-mod)))
+       ((md:node-path "0/PATTERNS/0/CH1/0/NOTE1")
+	(md:module-global-node my-mod)))
 
  (test "md:node-instance-path"
        (car (alist-ref 4 (md:inode-instances my-test-node)))
        ((md:node-instance-path "0/PATTERNS/0/CH1/0/NOTE1/4")
-	(md:mod-global-node my-mod))))
+	(md:module-global-node my-mod))))
 
 
 (test-group
@@ -353,23 +354,24 @@
  (test "md:file->module"
        (md:make-inode 'GLOBAL (list (list 0 (md:make-inode-instance
 					      my-global-subnodes))))
-       (md:mod-global-node
+       (md:module-global-node
 	(md:file->module "unittests/modules/huby-test.mdal"
 			 my-config-path)))
 
  (test "md:mod-get-group-instance-blocks"
-       (list ((md:node-path "0/PATTERNS/0/DRUMS") (md:mod-global-node my-mod))
- 	     ((md:node-path "0/PATTERNS/0/CH1") (md:mod-global-node my-mod))
- 	     ((md:node-path "0/PATTERNS/0/CH2") (md:mod-global-node my-mod)))
+       (list ((md:node-path "0/PATTERNS/0/DRUMS")
+	      (md:module-global-node my-mod))
+ 	     ((md:node-path "0/PATTERNS/0/CH1") (md:module-global-node my-mod))
+ 	     ((md:node-path "0/PATTERNS/0/CH2") (md:module-global-node my-mod)))
        (md:mod-get-group-instance-blocks
- 	((md:node-instance-path "0/PATTERNS/0") (md:mod-global-node my-mod))
+ 	((md:node-instance-path "0/PATTERNS/0") (md:module-global-node my-mod))
  	'PATTERNS my-cfg))
 
  (test "md:mod-get-group-instance-order"
        ((md:node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
- 	(md:mod-global-node my-mod))
+ 	(md:module-global-node my-mod))
        (md:mod-get-group-instance-order
- 	((md:node-instance-path "0/PATTERNS/0") (md:mod-global-node my-mod))
+ 	((md:node-instance-path "0/PATTERNS/0") (md:module-global-node my-mod))
  	'PATTERNS)))
 
 
@@ -378,16 +380,16 @@
 
  (test "md:mod-split-node-list-at"
        (list (list ((md:node-path "0/PATTERNS/0/DRUMS")
-		    (md:mod-global-node my-mod)))
+		    (md:module-global-node my-mod)))
 	     (list ((md:node-path "0/PATTERNS/0/CH1")
-		    (md:mod-global-node my-mod))
+		    (md:module-global-node my-mod))
 		   ((md:node-path "0/PATTERNS/0/CH2")
-		    (md:mod-global-node my-mod))
+		    (md:module-global-node my-mod))
 		   ((md:node-path "0/PATTERNS/0/PATTERNS_ORDER")
-		    (md:mod-global-node my-mod))))
+		    (md:module-global-node my-mod))))
        (md:mod-split-node-list-at
 	'CH1 (md:inode-instance-val ((md:node-instance-path "0/PATTERNS/0")
-				      (md:mod-global-node my-mod)))))
+				      (md:module-global-node my-mod)))))
 
  (test "md:mod-split-instances-at"
        (list (zip (iota 5)
@@ -397,7 +399,7 @@
 		  (make-list 11 (md:make-inode-instance '()))))
        (md:mod-split-instances-at
 	5 (md:inode-instances ((md:node-path "0/PATTERNS/0/CH2/0/NOTE2")
-			       (md:mod-global-node my-mod)))))
+			       (md:module-global-node my-mod)))))
 
  (test "md:mod-replace-subnode"
        (md:make-inode-instance
@@ -407,7 +409,7 @@
 				   4 (md:make-inode-instance '()))))))
        (md:mod-replace-subnode
 	((md:node-instance-path "0/PATTERNS/0/CH1/0")
-	 (md:mod-global-node my-mod))
+	 (md:module-global-node my-mod))
 	(md:make-inode 'NOTE1
 		       (zip (iota 4)
 			    (make-list 4 (md:make-inode-instance '()))))))
@@ -418,7 +420,7 @@
 			   (make-list 16 (md:make-inode-instance '()))))
        (md:mod-replace-inode-instance
 	((md:node-path "0/PATTERNS/0/CH2/0/NOTE2")
-	 (md:mod-global-node my-mod))
+	 (md:module-global-node my-mod))
 	0 (md:make-inode-instance '())))
 
  (test "md:mod-node-setter"
@@ -442,12 +444,12 @@
 		       (zip (iota 16)
 			    (make-list 16 (md:make-inode-instance '()))))
 	((md:node-path "0/PATTERNS/0/CH2")
-	 (md:mod-global-node my-mod))))
+	 (md:module-global-node my-mod))))
 
  (test "md:mod-get-row-values"
        '("on" "c4" #f)
        (md:mod-get-row-values ((md:node-instance-path "0/PATTERNS/0")
-			       (md:mod-global-node my-mod))
+			       (md:module-global-node my-mod))
 			      '(0 0 0)
 			      4))
 
@@ -469,7 +471,7 @@
 	 (#f "rest" #f)
 	 (#f #f #f))
        (md:mod-get-block-values ((md:node-instance-path "0/PATTERNS/0")
-				 (md:mod-global-node my-mod))
+				 (md:module-global-node my-mod))
 				'(0 0 0))))
 
 (test-group
@@ -502,7 +504,7 @@
  "New Config Compiler Generator"
 
  (define my-parent-node ((md:node-instance-path "0")
-			 (md:mod-global-node my-mod)))
+			 (md:module-global-node my-mod)))
 
  (test "md:int->bytes"
        (list 0 0 0 8)

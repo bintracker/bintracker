@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
 	  (chicken condition)
-	  srfi-1 srfi-13 srfi-14 srfi-69 ;; sxpath sxpath-lolevel
+	  srfi-1 srfi-13 srfi-14 srfi-69 typed-records
 	  simple-exceptions matchable md-helpers)
 
   ;;; **[RECORD]** MD:COMMAND

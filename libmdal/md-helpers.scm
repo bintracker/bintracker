@@ -5,7 +5,8 @@
 (module md-helpers *
 
   (import scheme (chicken base) (chicken condition) (chicken string)
-	  srfi-1 srfi-13 srfi-69 simple-exceptions matchable)
+	  srfi-1 srfi-13 srfi-69 simple-exceptions matchable
+	  typed-records)
 
   ;; ---------------------------------------------------------------------------
   ;; MDAL: UTILITIES
