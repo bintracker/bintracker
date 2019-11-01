@@ -24,38 +24,34 @@
   ;; write the left part of an MDAL block/group instance assignment to port.
   (define (write-node-instance-header indent node-id instance-id
 				      omit-instance-id instance-name port)
-    (begin
-      (fprintf port "~A~s" indent
-	       (if (symbol-contains node-id "_ORDER")
-		   'ORDER node-id))
-      (when (not omit-instance-id)
-	(fprintf port "(~s)" instance-id))
-      (when (not (string-null? instance-name))
-	(write instance-name port))
-      (display "={\n" port)))
+    (fprintf port "~A~s" indent
+	     (if (symbol-contains node-id "_ORDER")
+		 'ORDER node-id))
+    (when (not omit-instance-id)
+      (fprintf port "(~s)" instance-id))
+    (when (not (string-null? instance-name))
+      (write instance-name port))
+    (display "={\n" port))
 
   ;; find empty rows in the given list of {{rows}} and collapse them using .n
   ;; syntax
   (define (collapse-empty-rows rows)
-    (letrec ((count-empty
-	      (lambda (rs empty-count)
-		(if (or (null? rs)
-			(not (string=? "." (car rs))))
-		    empty-count
-		    (count-empty (cdr rs)
-				 (+ 1 empty-count))))))
+    (letrec ((count-empty (lambda (rs empty-count)
+			    (if (or (null? rs)
+				    (not (string=? "." (car rs))))
+				empty-count
+				(count-empty (cdr rs)
+					     (+ 1 empty-count))))))
       (if (null? rows)
 	  '()
 	  (let* ((empty-count (count-empty rows 0))
 		 (drop-count (if (zero? empty-count)
 				 1 empty-count)))
-	    (cons
-	     (cond ((zero? empty-count)
-		    (car rows))
-		   ((= 1 empty-count)
-		    ".")
-		   (else (string-append "." (->string empty-count))))
-	     (collapse-empty-rows (drop rows drop-count)))))))
+	    (cons (match empty-count
+		    (0 (car rows))
+		    (1 ".")
+		    (else (string-append "." (->string empty-count))))
+		  (collapse-empty-rows (drop rows drop-count)))))))
 
   ;; convert block instance rows to MDAL strings
   (define (rows->string rows field-ids)
@@ -200,16 +196,15 @@
 
   ;;; Generate a new, empty inode instance based on the config {{config}}.
   (define (generate-new-inode-instance config node-id parent-id block-length)
-    (let ((node-type (inode-config-type
-		      (car (hash-table-ref (config-inodes config)
-					   node-id))))
+    (let ((get-node-type (lambda (id)
+			   (inode-config-type
+			    (car (hash-table-ref (config-inodes config)
+						 id)))))
 	  (order-node (symbol-contains node-id "_ORDER")))
       (make-inode-instance
-       (if (eq? 'field node-type)
+       (if (eq? 'field (get-node-type node-id))
 	   (if (or (symbol-contains parent-id "_ORDER")
-		   (eq? 'group (inode-config-type
-				(car (hash-table-ref (config-inodes config)
-						     parent-id)))))
+		   (eq? 'group (get-node-type parent-id)))
 	       (command-default (config-get-inode-source-command
 				 node-id config))
 	       '())
@@ -220,7 +215,7 @@
 			  `(,instance-id ,(generate-new-inode-instance
 					   config subnode-id node-id
 					   block-length)))
-			(iota (if (or (eq? 'group node-type)
+			(iota (if (or (eq? 'group (get-node-type node-id))
 				      (symbol-contains node-id "_ORDER"))
 				  1 block-length)))))
 		(config-get-subnode-ids node-id
