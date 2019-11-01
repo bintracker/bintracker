@@ -14,7 +14,7 @@
 
   ;;; Convert note names from MDAL's format to the conventional tracker naming
   ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
-  (define (md:normalize-note-name name)
+  (define (normalize-note-name name)
     (if (string=? "rest" name)
 	"==="
 	(if (string-contains name "#")
@@ -23,69 +23,69 @@
 	      (list->string (append (list (car name-string-list) #\-)
 				    (cdr name-string-list)))))))
 
-  ;;; **[RECORD]** MD:RANGE
-  ;;; Constructor: `(md:make-range minimum maximum)`
-  ;;; Predicate: `md:range?`
-  ;;; Getters: `md:range-min` `md:range-max`
-  (define-record-type md:range
-    (md:make-range minimum maximum)
-    md:range?
-    (minimum md:range-min)
-    (maximum md:range-max))
+  ;;; **[RECORD]** RANGE
+  ;;; Constructor: `(make-range minimum maximum)`
+  ;;; Predicate: `range?`
+  ;;; Getters: `range-min` `range-max`
+  (define-record-type range
+    (make-range minimum maximum)
+    range?
+    (minimum range-min)
+    (maximum range-max))
 
   ;;;
-  (define (md:in-range? val range)
-    (and (>= val (md:range-min range))
-	 (<= val (md:range-max range))))
+  (define (in-range? val range)
+    (and (>= val (range-min range))
+	 (<= val (range-max range))))
 
-  ;;; **[RECORD]** MD:ASM-SYNTAX
-  ;;; Constructor: `(make-md:asm-syntax hex-prefix byte-op word-op dword-op)`
-  ;;; Predicate: `md:asm-syntax?`
-  ;;; Getters: `md:asm-syntax-hex-prefix` `md-asm-syntax-byte-op`
-  ;;;          `md:asm-syntax-word-op` `md-asm-dword-op`
-  (define-record-type md:asm-syntax
-    (make-md:asm-syntax hex-prefix byte-op word-op dword-op)
-    md:asm-syntax?
-    (hex-prefix md:asm-syntax-hex-prefix md:asm-syntax-set-hex-prefix!)
-    (byte-op md:asm-syntax-byte-op md:asm-syntax-set-byte-op!)
-    (word-op md:asm-syntax-word-op md:asm-syntax-set-word-op!)
-    (dword-op md:asm-syntax-dword-op md:asm-syntax-set-dword-op!))
+  ;;; **[RECORD]** ASM-SYNTAX
+  ;;; Constructor: `(make-asm-syntax hex-prefix byte-op word-op dword-op)`
+  ;;; Predicate: `asm-syntax?`
+  ;;; Getters: `asm-syntax-hex-prefix` `md-asm-syntax-byte-op`
+  ;;;          `asm-syntax-word-op` `md-asm-dword-op`
+  (define-record-type asm-syntax
+    (make-asm-syntax hex-prefix byte-op word-op dword-op)
+    asm-syntax?
+    (hex-prefix asm-syntax-hex-prefix asm-syntax-set-hex-prefix!)
+    (byte-op asm-syntax-byte-op asm-syntax-set-byte-op!)
+    (word-op asm-syntax-word-op asm-syntax-set-word-op!)
+    (dword-op asm-syntax-dword-op asm-syntax-set-dword-op!))
 
   ;;;
-  (define (md:default-asm-syntax)
-    (make-md:asm-syntax "$" "db" "dw" "dl"))
+  (define (default-asm-syntax)
+    (make-asm-syntax "$" "db" "dw" "dl"))
 
   ;;; pair elements in a list
-  (define (md:make-pairs lst)
+  (define (make-pairs lst)
     (if (null? lst)
 	'()
 	(cons (list (car lst) (cadr lst))
-	      (md:make-pairs (cddr lst)))))
+	      (make-pairs (cddr lst)))))
 
   ;;; add a key/value pair to a hash-table
   ;;; will be ignored if key is already in ht
-  (define (md:add-hash-table-entry ht key value)
+  (define (add-hash-table-entry ht key value)
     (hash-table-merge ht (alist->hash-table (list (list key value)))))
 
   ;;; add {{val}} to all numeric elements of the list {{lst}}
-  (define (md:add-to-list lst val)
+  (define (add-to-list lst val)
     (map (lambda (elem)
 	   (if (number? elem)
 	       (+ elem val)
-	       (md:add-to-list elem val)))
+	       (add-to-list elem val)))
 	 lst))
 
-  ;;; Append {{y}} to {{x}} and turn the result into a symbol.
-  (define (md:symbol-append x y)
-    (string->symbol (string-append (->string x) (->string y))))
+  ;; ;;; Append {{y}} to {{x}} and turn the result into a symbol.
+  ;; (define (symbol-append x y)
+  ;;   (string->symbol (string-append (->string x) (->string y))))
 
   ;;; Check if the symbol name {{sym}} contains the string {{str}}.
-  (define (md:symbol-contains sym str)
+  (define (symbol-contains sym str)
     (string-contains (symbol->string sym) str))
 
   ;;; create a new exception from the given {{exn}}, prefixing exn message
   ;;; with {{msg-prefix}} and adding {{kind-key}} to the existing kind-keys
-  (define (md:amend-exn exn msg-prefix kind-key)
+  (define (amend-exn exn msg-prefix kind-key)
     (make-exn (string-append msg-prefix (message exn))
 	      kind-key (apply values (map car
 					  (remove (lambda (co)
@@ -103,43 +103,43 @@
   (define (raise-local exn-type . args)
     (raise ((make-exn
 	     (match exn-type
-	       ('md:missing-command-specifier
+	       ('missing-command-specifier
 		"missing id, type, and/or default specifier")
-	       ('md:missing-command-bits "missing bits specifier")
-	       ('md:unknown-command-type
+	       ('missing-command-bits "missing bits specifier")
+	       ('unknown-command-type
 		(string-append "unknown command type "
 			       (->string (car args))))
-	       ('md:missing-command-keys "missing keys specifier")
-	       ('md:missing-command-reference-to
+	       ('missing-command-keys "missing keys specifier")
+	       ('missing-command-reference-to
 		"missing reference-to specifier")
-	       ('md:nonnumeric-command-range
+	       ('nonnumeric-command-range
 		"range used on command not of type int/uint")
-	       ('md:incomplete-config
+	       ('incomplete-config
 		"incomplete mdalconfig specification")
-	       ('md:unsupported-mdconf-version
+	       ('unsupported-mdconf-version
 		(string-append "unsupported MDCONF version "
 			       (->string (car args))))
-	       ('md:not-mdconf "Not an MDCONF specification.")
-	       ('md:not-command
+	       ('not-mdconf "Not an MDCONF specification.")
+	       ('not-command
 		(string-append "Not an MDAL command specification."
 			       (->string (car args))))
-	       ('md:missing-inode-type "missing inode config type")
-	       ('md:unknown-inode-type
+	       ('missing-inode-type "missing inode config type")
+	       ('unknown-inode-type
 		(string-append "unknown inode config type "
 			       (->string (car args))))
-	       ('md:missing-ifield-source "missing source command id specifier")
-	       ('md:missing-inode-id "missing id specifier")
-	       ('md:missing-inode-subnodes "inode contains no subnodes")
-	       ('md:illegal-block-child
+	       ('missing-ifield-source "missing source command id specifier")
+	       ('missing-inode-id "missing id specifier")
+	       ('missing-inode-subnodes "inode contains no subnodes")
+	       ('illegal-block-child
 		(string-append "inode of type " (->string (car args))
 			       " may not be a child of a block inode"))
-	       ('md:missing-onode-id "missing id specifier")
-	       ('md:no-config "No CONFIG specified")
-	       ('md:no-mdal-version "No MDAL version specified")
-	       ('md:unsupported-mdal-version
+	       ('missing-onode-id "missing id specifier")
+	       ('no-config "No CONFIG specified")
+	       ('no-mdal-version "No MDAL version specified")
+	       ('unsupported-mdal-version
 		(string-append "Unsupported MDAL version: "
 			       (->string (car args))))
-	       ('md:compiler-failed "Failed to compile module."))
+	       ('compiler-failed "Failed to compile module."))
 	     exn-type)
 	    "")))
 

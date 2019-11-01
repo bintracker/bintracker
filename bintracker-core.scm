@@ -10,7 +10,8 @@
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  srfi-1 srfi-13 srfi-69 pstk typed-records matchable list-utils
-	  simple-exceptions mdal bt-state bt-types bt-gui)
+	  simple-exceptions mdal
+	  bt-state bt-types bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-gui (chicken bitwise)
@@ -81,13 +82,14 @@
 		   exn
 		   (console 'insert 'end
 			    (string-append "\nError: " (->string exn)
-					   "\n" (message exn)))
+					   "\n" (message exn)
+					   "\n"))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
 		 (execute-hooks after-load-file-hooks))))))
 
   (define on-save-file-hooks
-    (list (lambda () (md:module->file (current-mod) (state 'current-file)))
+    (list (lambda () (mdmod->file (current-mod) (state 'current-file)))
 	  (lambda () (set-state! 'modified #f))
 	  update-window-title!))
 
@@ -126,17 +128,17 @@
     (handle-exceptions
 	exn
 	(console 'insert 'end
-			(string-append "\nError: " (->string exn)
-				       (->string (arguments exn))
-				       "\n"))
+		 (string-append "\nError: " (->string exn)
+				(->string (arguments exn))
+				"\n"))
       (let ((input-str (console 'get "end-1l" "end-1c")))
 	(unless (string-null? input-str)
 	  (console 'insert 'end
-			  (string-append
-			   "\n"
-			   (->string
-			    (eval (read (open-input-string input-str))))
-			   "\n"))))))
+		   (string-append
+		    "\n"
+		    (->string
+		     (eval (read (open-input-string input-str))))
+		    "\n"))))))
 
 
   ;; ---------------------------------------------------------------------------

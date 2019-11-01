@@ -11,8 +11,8 @@
 (module bt-gui
     *
 
-  (import scheme (chicken base) (chicken pathname)
-	  srfi-1 srfi-13
+  (import scheme (chicken base) (chicken pathname) (chicken string)
+	  srfi-1 srfi-13 srfi-69
 	  typed-records matchable simple-exceptions pstk stack
 	  bt-state bt-types mdal)
 
@@ -537,8 +537,8 @@
   (define (get-module-info-text)
     (string-append (if (current-mod)
 		       (string-append
-  			(md:target-id (md:config-target (current-config)))
-  			" | " (md:module-config-id (current-mod)))
+  			(target-id (config-target (current-config)))
+  			" | " (mdmod-config-id (current-mod)))
 		       "No module loaded.")
 		   " | "))
 
@@ -578,9 +578,9 @@
   ;;; bt-state for a description of the `action` format.
   (define (apply-edit! action)
     (match (car action)
-      ('set (md:node-set! ((md:node-path (cadr action))
-			   (md:module-global-node (current-mod)))
-			  (third action)))
+      ('set (node-set! ((node-path (cadr action))
+			(mdmod-global-node (current-mod)))
+		       (third action)))
       ('remove '())
       ('insert '())
       ('compound (for-each apply-edit! (cdr action)))))
@@ -661,17 +661,17 @@
   ;;; command.
   ;; TODO results should be cached
   (define (value-display-size command-config)
-    (match (md:command-type command-config)
+    (match (command-type command-config)
       ;; FIXME this is incorrect for negative numbers
       ((or 'int 'uint) (inexact->exact
 			(ceiling
-			 (/ (log (expt 2 (md:command-bits command-config)))
+			 (/ (log (expt 2 (command-bits command-config)))
 			    (log (settings 'number-base))))))
-      ((or 'key 'ukey) (if (memq 'is_note (md:command-flags command-config))
+      ((or 'key 'ukey) (if (memq 'is_note (command-flags command-config))
 			   3 (apply max
 				    (map (o string-length car)
 					 (hash-table-keys
-					  (md:command-keys command-config))))))
+					  (command-keys command-config))))))
       ('reference (if (>= 16 (settings 'number-base))
 		      2 3))
       ('trigger 1)
@@ -681,30 +681,30 @@
   ;;; Replaces empty values with dots, changes numbers depending on number
   ;;; format setting, and turns everything into a string.
   (define (normalize-field-value val field-id)
-    (let ((command-config (md:config-get-inode-source-command
+    (let ((command-config (config-get-inode-source-command
   			   field-id (current-config))))
       (if (null? val)
 	  (list->string (make-list (value-display-size command-config)
   	  			   #\.))
-  	  (match (md:command-type command-config)
+  	  (match (command-type command-config)
 	    ((or 'int 'uint 'reference)
 	     (string-pad (number->string val (settings 'number-base))
 			 (value-display-size command-config)
 			 #\0))
 	    ((or 'key 'ukey) (if (memq 'is_note
-				       (md:command-flags command-config))
-				 (md:normalize-note-name val)
+				       (command-flags command-config))
+				 (normalize-note-name val)
 				 val))
 	    ('trigger "x")
 	    ('string val)))))
 
   ;;; Get the RGB color string associated with the field's command type.
   (define (get-field-color field-id)
-    (let ((command-config (md:config-get-inode-source-command
+    (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
-      (if (memq 'note (md:command-flags command-config))
+      (if (memq 'note (command-flags command-config))
 	  (colors 'text-1)
-	  (match (md:command-type command-config)
+	  (match (command-type command-config)
 	    ((or 'int 'uint) (colors 'text-2))
 	    ((or 'key 'ukey) (colors 'text-3))
 	    ('reference (colors 'text-4))
@@ -769,13 +769,13 @@
 	     (bt-field-widget-val-entry w)
 	     side: 'top padx: 4 pady: 4)
     ((bt-field-widget-val-entry w) 'insert 'end
-     (normalize-field-value (md:inode-instance-val
-    			     ((md:node-instance-path
+     (normalize-field-value (inode-instance-val
+    			     ((node-instance-path
     			       (string-append
     				group-instance-path
     				(symbol->string (bt-field-widget-node-id w))
     				"/0/"))
-    			      (md:module-global-node (current-mod))))
+    			      (mdmod-global-node (current-mod))))
     			    (bt-field-widget-node-id w))))
 
   (define (focus-field-widget w)
@@ -796,9 +796,9 @@
 
   ;;; Create a `bt-fields-widget`.
   (define (make-fields-widget parent-node-id parent-widget)
-    (let ((subnode-ids (md:config-get-subnode-type-ids parent-node-id
-						       (current-config)
-						       'field)))
+    (let ((subnode-ids (config-get-subnode-type-ids parent-node-id
+						    (current-config)
+						    'field)))
       (if (null? subnode-ids)
 	  #f
 	  (let ((tl-frame (parent-widget 'create-widget 'frame
@@ -913,14 +913,14 @@
 
   ;;; Get the appropriate command type tag to set the item color for metatrees.
   (define (get-command-type-tag field-id)
-    (let ((command-config (md:config-get-inode-source-command
+    (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
-      (if (memq 'note (md:command-flags command-config))
+      (if (memq 'note (command-flags command-config))
 	  'note
-	  (match (md:command-type command-config)
+	  (match (command-type command-config)
 	    ((or 'int 'uint) 'int)
 	    ((or 'key 'ukey) 'key)
-	    (else (md:command-type command-config))))))
+	    (else (command-type command-config))))))
 
   ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
   ;;; the Treeview style has already been configured to use
@@ -951,18 +951,18 @@
 	    (and (eq? type 'block)
 		 (remove (lambda (id)
 			   (eq? id (symbol-append group-id '_ORDER)))
-			 (md:config-get-subnode-type-ids
+			 (config-get-subnode-type-ids
 			  group-id (current-config) 'block))))
 	   (column-ids (if (eq? type 'block)
 			   (flatten
 			    (map (lambda (block-id)
-				   (md:config-get-subnode-ids
+				   (config-get-subnode-ids
 				    block-id
-				    (md:config-itree (current-config))))
+				    (config-itree (current-config))))
 				 block-ids))
-			   (md:config-get-subnode-ids
+			   (config-get-subnode-ids
 			    (symbol-append group-id '_ORDER)
-			    (md:config-itree (current-config)))))
+			    (config-itree (current-config)))))
 	   (rownums (rownums-packframe 'create-widget 'treeview
 				       selectmode: 'none
 				       show: 'tree style: 'Metatree.Treeview))
@@ -1006,9 +1006,9 @@
 	       (lambda (ids xpos)
 		 (unless (null? ids)
 		   (let ((header-width
-			  (* 80 (length (md:config-get-subnode-ids
+			  (* 80 (length (config-get-subnode-ids
 					 (car ids)
-					 (md:config-itree (current-config)))))))
+					 (config-itree (current-config)))))))
 		     (canvas 'create 'text
 			     (list (+ xpos (quotient header-width 2))
 				   0)
@@ -1251,8 +1251,8 @@
 			     index))
 	   (column-id (list-ref (metatree-column-ids metatree)
 				index))
-	   (block-id (md:config-get-parent-node-id
-		      column-id (md:config-itree (current-config)))))
+	   (block-id (config-get-parent-node-id
+		      column-id (config-itree (current-config)))))
       (tk/bind column '<ButtonPress-1>
 	       `(,(lambda (y)
 		    (let ((ypos (treeview-ypos->item-index y)))
@@ -1323,7 +1323,7 @@
 					previous (car vals))))
 		      (cons next-val (fill-empty-values (cdr vals)
 							next-val))))))
-	     (block-values (md:mod-get-block-instance-values
+	     (block-values (mod-get-block-instance-values
 			    (get-current-node-instance
 			     (symbol-append (metatree-group-id metatree)
 					    '_ORDER)))))
@@ -1340,10 +1340,10 @@
 		(iota (length (metatree-columns metatree)))
 		(map (lambda (fields) (fill-empty-values fields '()))
 		     block-values)
-		(md:config-get-subnode-ids
+		(config-get-subnode-ids
 		 (symbol-append (metatree-group-id metatree)
 				'_ORDER)
-		 (md:config-itree (current-config))))
+		 (config-itree (current-config))))
       (update-row-numbers metatree (length (car block-values))
 			  3)))
 
@@ -1353,20 +1353,20 @@
     (let* ((parent-group-instance (get-current-node-instance
 				   (metatree-group-id metatree)))
 	   (block-instance-ids
-	    (list-ref (md:mod-get-order-values (metatree-group-id metatree)
-					       parent-group-instance
-					       (current-config))
+	    (list-ref (mod-get-order-values (metatree-group-id metatree)
+					    parent-group-instance
+					    (current-config))
 		      order-pos))
 	   (block-values
 	    (concatenate
 	     (map (lambda (block-id instance-id)
-		    (md:mod-get-block-instance-values
-		     ((md:node-instance-path
+		    (mod-get-block-instance-values
+		     ((node-instance-path
 		       (string-append (get-current-instance-path
 				       (metatree-group-id metatree))
 				      (symbol->string block-id) "/"
 				      (number->string instance-id)))
-		      (md:module-global-node (current-mod)))))
+		      (mdmod-global-node (current-mod)))))
 		  (metatree-block-ids metatree)
 		  block-instance-ids))))
       (clear-metatree metatree)
@@ -1416,9 +1416,9 @@
 
   ;;; Create a `bt-blocks-widget`.
   (define (make-blocks-widget parent-node-id parent-widget)
-    (let ((block-ids (md:config-get-subnode-type-ids parent-node-id
-						     (current-config)
-						     'block)))
+    (let ((block-ids (config-get-subnode-type-ids parent-node-id
+						  (current-config)
+						  'block)))
       (if (null? block-ids)
 	  #f
 	  (let* ((.tl (parent-widget 'create-widget 'panedwindow
@@ -1456,9 +1456,9 @@
 
   ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
   (define (make-subgroups-widget parent-node-id parent-widget)
-    (let ((sg-ids (md:config-get-subnode-type-ids parent-node-id
-						  (current-config)
-						  'group)))
+    (let ((sg-ids (config-get-subnode-type-ids parent-node-id
+					       (current-config)
+					       'group)))
       (if (null? sg-ids)
 	  #f
 	  (let* ((tl-frame (parent-widget 'create-widget 'frame))
@@ -1571,7 +1571,7 @@
     (tk/event 'delete '<<NextWindow>>)
     (tk/event 'delete '<<PrevWindow>>))
 
-    ;;; update window title by looking at current file name and 'modified'
+  ;;; update window title by looking at current file name and 'modified'
   ;;; property
   (define (update-window-title!)
     (tk/wm 'title tk (if (state 'current-file)

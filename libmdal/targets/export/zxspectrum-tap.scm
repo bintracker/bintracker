@@ -1,1 +1,1 @@
-(md:make-export-format "zxspectrum-tap" #f)
+(make-export-format "zxspectrum-tap" #f)

@@ -1,1 +1,1 @@
-(md:make-cpu "z80" 'md:little-endian)
+(make-cpu "z80" 'little-endian)

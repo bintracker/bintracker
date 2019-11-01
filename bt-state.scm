@@ -11,7 +11,7 @@
 (module bt-state
     *
 
-  (import scheme (chicken base) (chicken pathname)
+  (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
 	  typed-records matchable simple-exceptions pstk list-utils stack
 	  bt-types mdal)
@@ -175,34 +175,34 @@
   ;;; Set the current module. Does not update GUI.
   (define (set-current-mod! filename)
     (set-state! 'current-mdmod
-	       (md:file->module filename
-				(app-settings-mdal-config-dir
-				 *bintracker-settings*)
-				"libmdal/")))
+		(file->mdmod filename
+			     (app-settings-mdal-config-dir
+			      *bintracker-settings*)
+			     "libmdal/")))
 
   ;;; Returns the current module configuration (mdconf). It is an error to call
   ;;; this procedure if no module is currently loaded.
   (define (current-config)
-    (md:module-config (current-mod)))
+    (mdmod-config (current-mod)))
 
 
   ;;; Set the active MD command info string from the given MDCONF ifield ID.
   (define (set-active-md-command-info! field-id)
-    (let ((command (md:config-get-inode-source-command field-id
-						       (current-config))))
+    (let ((command (config-get-inode-source-command field-id
+						    (current-config))))
       (set-state! 'active-md-command-info
 		  (string-append
 		   (symbol->string field-id) ": "
-		   (if (md:command-has-flag? command 'is_note)
+		   (if (command-has-flag? command 'is_note)
 		       (string-append
-			(md:normalize-note-name
-			 (md:lowest-note (md:command-keys command)))
+			(normalize-note-name
+			 (lowest-note (command-keys command)))
 			" - "
-			(md:normalize-note-name
-			 (md:highest-note (md:command-keys command)))
+			(normalize-note-name
+			 (highest-note (command-keys command)))
 			" ")
 		       "")
-		   (md:command-description command)))))
+		   (command-description command)))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -222,10 +222,10 @@
     		  (map (lambda (inode-cfg)
     			 (list (car inode-cfg) 0))
     		       (filter (lambda (inode-cfg)
-    				 (memq (md:inode-config-type (cadr inode-cfg))
+    				 (memq (inode-config-type (cadr inode-cfg))
     				       '(group block)))
     			       (hash-table->alist
-    				(md:config-inodes (current-config))))))))
+    				(config-inodes (current-config))))))))
 
   ;;; Query the instance record for the currently visible instance of the
   ;;; group or block node {{node-id}}.
@@ -238,10 +238,10 @@
 
   ;;; Return the node-instance path string for the currently visible instance
   ;;; of the group or block node {{node-id}}. The result can be fed into
-  ;;; `md:node-instance-path`.
+  ;;; `node-instance-path`.
   (define (get-current-instance-path node-id)
-    (let ((ancestors (md:config-get-node-ancestors-ids
-		      node-id (md:config-itree (current-config)))))
+    (let ((ancestors (config-get-node-ancestors-ids
+		      node-id (config-itree (current-config)))))
       (string-concatenate
        (cons "0/" (map (lambda (id)
 			 (string-append (symbol->string id)
@@ -249,11 +249,11 @@
 					"/"))
 		       (cdr (reverse (cons node-id ancestors))))))))
 
-  ;;; Return the currently visible md:inode-instance of the group or block node
+  ;;; Return the currently visible inode-instance of the group or block node
   ;;; {{node-id}}.
   (define (get-current-node-instance node-id)
-    ((md:node-instance-path (get-current-instance-path node-id))
-     (md:module-global-node (current-mod))))
+    ((node-instance-path (get-current-instance-path node-id))
+     (mdmod-global-node (current-mod))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -307,12 +307,12 @@
       ('set (list 'set (cadr action)
 		  (map (lambda (id+val)
 			 (list (car id+val)
-			       (md:inode-instance-val
-				((md:node-instance-path
+			       (inode-instance-val
+				((node-instance-path
 				  (string-append (cadr action)
 						 (->string (car id+val))
 						 "/"))
-				 (md:module-global-node (current-mod))))))
+				 (mdmod-global-node (current-mod))))))
 		       (third action))))
       ('remove '())
       ('insert '())
