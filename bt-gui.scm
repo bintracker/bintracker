@@ -537,7 +537,7 @@
   (define (get-module-info-text)
     (string-append (if (current-mod)
 		       (string-append
-  			(target-id (config-target (current-config)))
+  			(target-platform-id (config-target (current-config)))
   			" | " (mdmod-config-id (current-mod)))
 		       "No module loaded.")
 		   " | "))

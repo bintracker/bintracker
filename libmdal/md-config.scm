@@ -33,13 +33,8 @@
 
   ;;; **[RECORD]** TARGET
   ;;; Describe the target system of a sound driver.
-  (define-record-type target-platform
-    (make-target id cpu clock-speed)
-    target?
-    (id target-id)
-    (cpu target-cpu)
-    (clock-speed target-clock-speed))
-
+  (defstruct target-platform
+    id cpu clock-speed)
 
   ;; ---------------------------------------------------------------------------
   ;; ## MDCONF: INPUT NODE CONFIGURATION
@@ -157,7 +152,7 @@
     (config-x-ref config-inodes id cfg))
 
   (define (config-get-target-endianness cfg)
-    ((o cpu-endianness target-cpu config-target) cfg))
+    ((o cpu-endianness target-platform-cpu config-target) cfg))
 
   ;;; create an target from a target config file
   (define (target-generator target-name path-prefix)
@@ -170,9 +165,9 @@
 			       (string-append path-prefix "targets/cpu/"
 					      (second parameters) ".scm"))))))
       (if (eqv? 'cpu (car target-decl))
-	  (make-target (car parameters)
-		       (apply make-cpu (cdr target-decl))
-		       (third parameters))
+	  (make-target-platform id: (car parameters)
+				cpu: (apply make-cpu (cdr target-decl))
+				clock-speed: (third parameters))
 	  (error (string-append "Unsupported target "
 				(second parameters))))))
 
@@ -403,7 +398,8 @@
 			      (eqv? 'command (car cmd)))
 			 (apply eval-command
 				(append (list path-prefix
-					      (target-clock-speed target))
+					      (target-platform-clock-speed
+					       target))
 					(cdr cmd)))
 			 (raise-local 'not-command cmd)))
 		   commands)))

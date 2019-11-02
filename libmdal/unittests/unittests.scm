@@ -65,7 +65,7 @@
  "MD-Config/Master Config"
 
  (test "creating system target" "spectrum48"
-       (target-id (config-target my-cfg)))
+       (target-platform-id (config-target my-cfg)))
 
  (test "parsing description" "f224aa0c3de07810142a50825ad6a523"
        (string->md5sum (config-description my-cfg)))
