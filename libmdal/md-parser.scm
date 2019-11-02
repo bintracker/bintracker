@@ -198,11 +198,12 @@
     (map (lambda (node-id)
 	   (let ((assignments (get-assignments exprs node-id)))
 	     (make-inode
-	      node-id
-	      (list (list 0 (make-inode-instance
-			     (if (null? assignments)
-				 (config-get-node-default node-id config)
-				 (last (car assignments)))))))))
+	      config-id: node-id
+	      instances:
+	      `((0 ,(make-inode-instance
+		     val: (if (null? assignments)
+			      (config-get-node-default node-id config)
+			      (last (car assignments)))))))))
 	 (config-get-subnode-type-ids group-id config 'field)))
 
   (define (exprs->node-instances exprs block-id node-id config)
@@ -216,16 +217,16 @@
 	     (map (lambda (row)
 		    (if (eq? 'dotted (car row))
 			(make-list (last row)
-				   (make-inode-instance '()))
+				   (make-inode-instance))
 			(make-inode-instance
-			 (if (eq? 'csv-shorthand (car row))
-			     (list-ref (last row)
-				       node-index)
-			     (let ((assignments (get-assignments (last row)
-								 node-id)))
-			       (if (null? assignments)
-				   '()
-				   (last (car assignments))))))))
+			 val: (if (eq? 'csv-shorthand (car row))
+				  (list-ref (last row)
+					    node-index)
+				  (let ((assignments (get-assignments (last row)
+								      node-id)))
+				    (if (null? assignments)
+					'()
+					(last (car assignments))))))))
 		  exprs))))
       (zip (iota (length instances))
 	   instances)))
@@ -235,9 +236,9 @@
   (define (mod-parse-block-fields exprs block-id config)
     (let ((node-ids (config-get-subnode-type-ids block-id config 'field)))
       (map (lambda (node-id)
-	     (make-inode node-id
-			 (exprs->node-instances exprs block-id
-						node-id config)))
+	     (make-inode config-id: node-id
+			 instances: (exprs->node-instances exprs block-id
+							   node-id config)))
 	   node-ids)))
 
   ;;; parse the igroup blocks in the given MDMOD group node text into an inode
@@ -246,14 +247,15 @@
     (let ((node-ids (config-get-subnode-type-ids group-id config 'block)))
       (map (lambda (id)
 	     (make-inode
-	      id
+	      config-id: id
+	      instances:
 	      (let ((nodes (get-assignments exprs id)))
 		(map (lambda (node)
 		       (list (third node)
 			     (make-inode-instance
-			      (mod-parse-block-fields (last node)
-						      id config)
-			      (fourth node))))
+			      val: (mod-parse-block-fields (last node)
+							   id config)
+			      name: (fourth node))))
 		     nodes))))
 	   node-ids)))
 
@@ -262,15 +264,16 @@
     (let* ((group-ids (config-get-subnode-type-ids node-id config 'group))
 	   (group-nodes (map (lambda (id)
 			       (make-inode
-				id
+				config-id: id
+				instances:
 				(let ((nodes (get-assignments exprs id)))
 				  (map (lambda (node)
 					 (list
 					  (third node)
 					  (make-inode-instance
-					   (mod-parse-group (last node)
-							    id config)
-					   (fourth node))))
+					   val: (mod-parse-group (last node)
+								 id config)
+					   name: (fourth node))))
 				       nodes))))
 			     group-ids))
 	   (block-nodes (mod-parse-group-blocks exprs node-id config))
@@ -320,9 +323,10 @@
 		  config-id: cfg-name
 		  config: config
 		  global-node: (make-inode
-				'GLOBAL
+				config-id: 'GLOBAL
+				instances:
 				`((0 ,(make-inode-instance
-				       (mod-parse-group
-					mod-sexp 'GLOBAL config)))))))))))
+				       val: (mod-parse-group
+					     mod-sexp 'GLOBAL config)))))))))))
 
   ) ;; end module md-parser

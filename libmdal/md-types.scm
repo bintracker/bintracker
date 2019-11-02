@@ -14,44 +14,42 @@
   ;;; ## MDMOD: INPUT NODES
   ;; ---------------------------------------------------------------------------
 
-  ;;; val can be one of
+  ;;; The inode instance record type. {{val}} can be one of
   ;;;   () -> inactive node
   ;;;   a string of the actual value
   ;;;   a list of subnodes
-  (define-record-type inode-instance
-    (make-inode-instance-base val name)
-    node-instance?
-    (val inode-instance-val set-inode-instance-val!)
-    (name inode-instance-name set-inode-instance-name!))
+  (defstruct inode-instance
+    (val '())
+    (name ""))
 
-  (define (make-inode-instance val #!optional (name ""))
-    (make-inode-instance-base val name))
-
-  (define-record-printer (inode-instance i out)
-    (begin
-      (fprintf out "#<inode-instance>: ~A\n" (inode-instance-name i))
-      (fprintf out "~S\n" (inode-instance-val i))))
+  ;;; Printer for inode-instance records.
+  (define (display-inode-instance i)
+    (let ((instance-val (inode-instance-val i)))
+      (printf "#<inode-instance>: ~A " (inode-instance-name i))
+      (if (and (list? instance-val)
+	       (not (null-list? instance-val)))
+	  (begin (newline)
+		 (for-each display-inode instance-val))
+	  (printf "~S\n" instance-val))))
 
   ;;; return the subnode of the given id
   (define (get-subnode inode-instance subnode-id)
     (find (lambda (node)
-	    (eq? (inode-cfg-id node) subnode-id))
+	    (eq? (inode-config-id node) subnode-id))
 	  (inode-instance-val inode-instance)))
 
-  ;;; it might be desirable to have 'instances' be a hash map, and only turn it
-  ;;; into an alist which is then sorted on request
-  ;;; (eg inode-get-sorted-inst)
-  (define-record-type inode
-    (make-inode cfg-id instances)
-    inode?
-    (cfg-id inode-cfg-id set-inode-cfg-id!)
-    (instances inode-instances set-inode-instances!))
+  ;;; The inode record type.
+  (defstruct inode
+    config-id instances)
 
-  (define-record-printer (inode node out)
-    (begin
-      (fprintf out "#<inode: ~s>\n" (inode-cfg-id node))
-      (for-each (lambda (x) (fprintf out "instance ~S: ~S\n" (car x) (cdr x)))
-		(inode-instances node))))
+  ;;; Printer for inode records.
+  (define (display-inode node)
+    (printf "#<inode: ~s>\n" (inode-config-id node))
+    (for-each (lambda (x)
+		(printf "instance ~S: " (car x))
+		(display-inode-instance (cadr x))
+		(newline))
+	      (inode-instances node)))
 
   ;;; return the number of instances in the given inode
   (define (inode-count-instances node)
@@ -72,6 +70,11 @@
 	 (iota (length instances) from 1)
 	 instances))
 
+  ;;; Generate an inode-instance. Wrapper for make-inode-instance that can be
+  ;;; applied without specifying keywords.
+  (define (values->inode-instance #!optional (val '()) (name ""))
+    (make-inode-instance val: val name: name))
+
   ;;; Set the given instances in the given {{inode}}. {{instances}} must be an
   ;;; alist of (id value) or (id value name) lists, where *id* is the ID of the
   ;;; inode instance to set, *value* is the new inode instance value, and *name*
@@ -81,7 +84,7 @@
   (define (node-set! inode instances)
     (for-each (lambda (instance)
 		(alist-update! (car instance)
-			       (list (apply make-inode-instance
+			       (list (apply values->inode-instance
 					    (cdr instance)))
 			       (inode-instances inode)))
 	      instances))
@@ -93,7 +96,7 @@
     (let* ((new-instances (remove (lambda (i)
 				    (memq (car i) instances))
 				  (inode-instances inode))))
-      (set-inode-instances! inode
+      (inode-instances-set! inode
 			    (if renumber
 				(renumber-node-instances new-instances)
 				new-instances))))
@@ -106,12 +109,12 @@
     (let ((new-instances (merge (inode-instances inode)
 				(map (lambda (instance)
 				       (list (car instance)
-					     (apply make-inode-instance
+					     (apply values->inode-instance
 						    (cdr instance))))
 				     instances)
 				(lambda (x y)
 				  (<= (car x) (car y))))))
-      (set-inode-instances! inode
+      (inode-instances-set! inode
 			    (if renumber
 				(renumber-node-instances new-instances)
 				new-instances))))
@@ -142,7 +145,7 @@
     (if (= 2 (length pathlist))
 	(lambda (node)
 	  (find (lambda (subnode-id)
-		  (eq? (inode-cfg-id subnode-id)
+		  (eq? (inode-config-id subnode-id)
 		       (string->symbol (cadr pathlist))))
 		(inode-instance-val
 		 ((mod-get-node-instance (string->number (car pathlist)))
@@ -177,7 +180,7 @@
   ;;; second list will be the tail, including the node at split point.
   (define (mod-split-node-list-at node-id nodes)
     (receive (break (lambda (node)
-		      (eq? node-id (inode-cfg-id node)))
+		      (eq? node-id (inode-config-id node)))
 		    nodes)))
 
   ;;; split a list of inode instances into two seperate lists at the given node
@@ -192,12 +195,12 @@
   ;;; inode instance with the given new subnode
   (define (mod-replace-subnode parent-node-instance subnode)
     (let ((split-subnodes (mod-split-node-list-at
-			   (inode-cfg-id subnode)
+			   (inode-config-id subnode)
 			   (inode-instance-val parent-node-instance))))
       (make-inode-instance
-       (append (car split-subnodes)
+       val: (append (car split-subnodes)
 	       (cons subnode (cdadr split-subnodes)))
-       (inode-instance-name parent-node-instance))))
+       name: (inode-instance-name parent-node-instance))))
 
   ;;; replace the inode instance with the given id in the given inode with the
   ;;; given new inode instance
@@ -205,10 +208,10 @@
     (let ((split-instances (mod-split-instances-at
 			    inst-id (inode-instances inode))))
       (make-inode
-       (inode-cfg-id inode)
-       (append (car split-instances)
-	       (cons (list inst-id instance)
-		     (cdadr split-instances))))))
+       config-id: (inode-config-id inode)
+       instances: (append (car split-instances)
+			  (cons (list inst-id instance)
+				(cdadr split-instances))))))
 
   ;;; helper fn for mod-set-node
   (define (mod-make-node-setter path-lst nesting-level)
@@ -276,7 +279,7 @@
 		       block-instance-ids
 		       (remove (lambda (block-node)
 				 (symbol-contains
-				  (inode-cfg-id block-node)
+				  (inode-config-id block-node)
 				  "_ORDER"))
 			       (inode-instance-val group-instance))))))
 

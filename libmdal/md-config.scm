@@ -265,7 +265,7 @@
   ;;; return the command configuration associated with the given field node
   (define (get-node-command-cfg node config)
     (config-command-ref
-     (inode-config-cmd-id (config-inode-ref (inode-cfg-id node)
+     (inode-config-cmd-id (config-inode-ref (inode-config-id node)
 					    config))
      config))
 
@@ -814,16 +814,16 @@
 					 (cons last-set (cdr next-chunk))
 					 next-chunk)
 				     (make-list (- chunk-size actual-chunk-size)
-						(make-inode-instance '()))))
+						(make-inode-instance))))
 			(make-chunks (drop instances (length next-chunk))
 				     (get-last-set next-chunk last-set))))))))
-      (make-chunks inode-instances (make-inode-instance '()))))
+      (make-chunks inode-instances (make-inode-instance))))
 
   ;;; Resize instances of the given {{iblock}} to {{size}} by merging all
   ;;; instances according to {{order}}, then splitting into chunks. {{order}}
   ;;; must be a simple list of instance IDs.
   (define (resize-block-instances iblock size order config)
-    (let* ((field-ids (config-get-subnode-ids (inode-cfg-id iblock)
+    (let* ((field-ids (config-get-subnode-ids (inode-config-id iblock)
 					      (config-itree config)))
 	   (sorted-instances (map (lambda (pos)
 				    ((mod-get-node-instance pos) iblock))
@@ -848,35 +848,41 @@
 			  size)))
 		 merged-fields)))
       (make-inode
-       (inode-cfg-id iblock)
+       config-id: (inode-config-id iblock)
+       instances:
        (map (lambda (pos)
 	      (list pos (make-inode-instance
+			 val:
 			 (map (lambda (id)
 				(make-inode
-				 id (list-ref (car (alist-ref id split-fields))
-					      pos)))
+				 config-id: id
+				 instances:
+				 (list-ref (car (alist-ref id split-fields))
+					   pos)))
 			      field-ids))))
 	    (iota (length (cadar split-fields)))))))
 
   ;;; Generate an order inode corresponding to a resized igroup.
   (define (generate-order node-id length config)
     (make-inode
-     node-id
-     (list (list 0 (make-inode-instance
-		    (map (lambda (id)
-			   (make-inode
-			    id
-			    (map (lambda (id)
-				   (list id (make-inode-instance id)))
-				 (iota length))))
-			 (config-get-subnode-ids
-			  node-id (config-itree config))))))))
+     config-id: node-id
+     instances:
+     `((0 ,(make-inode-instance
+	    val: (map (lambda (id)
+			(make-inode
+			 config-id: id
+			 instances:
+			 (map (lambda (id)
+				(list id (make-inode-instance val: id)))
+			      (iota length))))
+		      (config-get-subnode-ids
+		       node-id (config-itree config))))))))
 
   ;;; Get all values of a block field node. This uses eval-field and transforms
   ;;; results accordingly.
   (define (get-column-values inode config)
     (let ((command-cfg (config-get-inode-source-command
-			(inode-cfg-id inode) config)))
+			(inode-config-id inode) config)))
       (map (lambda (instance-id)
 	     (eval-field instance-id inode command-cfg))
 	   (map car (inode-instances inode)))))
@@ -891,14 +897,14 @@
 			       parent-inode-id config 'block))
 	   (original-fields+groups
 	    (filter (lambda (subnode)
-		      (not (memq (inode-cfg-id subnode)
+		      (not (memq (inode-config-id subnode)
 				 block-subnode-ids)))
 		    (inode-instance-val parent-inode-instance)))
 	   (original-blocks
 	    (filter (lambda (subnode)
-		      (and (memq (inode-cfg-id subnode)
+		      (and (memq (inode-config-id subnode)
 				 block-subnode-ids)
-			   (not (eq? order-id (inode-cfg-id subnode)))))
+			   (not (eq? order-id (inode-config-id subnode)))))
 		    (inode-instance-val parent-inode-instance)))
 	   (original-order ((mod-get-node-instance 0)
 			    (get-subnode parent-inode-instance order-id)))
@@ -909,7 +915,7 @@
 		    (get-column-values
 		     (get-subnode original-order
 				  (symbol-append 'R_
-						 (inode-cfg-id block)))
+						 (inode-config-id block)))
 		     config)
 		    config))
 		 original-blocks))
@@ -917,8 +923,8 @@
 					    (length (inode-instances
 						     (car resized-blocks)))
 					    config))))
-      (make-inode-instance (append original-fields+groups resized-blocks
-				   new-order))))
+      (make-inode-instance val: (append original-fields+groups resized-blocks
+					new-order))))
 
   ;;; Helper function for make-oblock.
   ;; TODO should be merged with make-ofield. It's exactly the same code
@@ -992,7 +998,7 @@
 						       (car sources))))))
 			(make-subnode-list (cdr sources) (cdr order-pos)))))))
       (map (lambda (order-pos)
-	     (make-inode-instance (make-subnode-list sources order-pos)))
+	     (make-inode-instance val: (make-subnode-list sources order-pos)))
 	   (map cadr unique-order-combinations))))
 
   ;;; Helper for make-oblock. Resolve the oblock node value.

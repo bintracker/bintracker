@@ -129,7 +129,7 @@
 
  (test "get-subnode"
        (find (lambda (node)
-	       (eq? (inode-cfg-id node) 'PATTERNS))
+	       (eq? (inode-config-id node) 'PATTERNS))
 	     (inode-instance-val my-global-inode-instance))
        (get-subnode my-global-inode-instance 'PATTERNS))
 
@@ -165,10 +165,11 @@
 		   (get-node-command-cfg my-note1-inode my-cfg)))
 
  (define (make-test-inode instances)
-   (make-inode 'FOO (map (lambda (i)
-			   (list (car i)
-				 (make-inode-instance (cadr i))))
-			 instances)))
+   (make-inode config-id: 'FOO
+	       instances: (map (lambda (i)
+				 (list (car i)
+				       (make-inode-instance val: (cadr i))))
+			       instances)))
 
  (define my-mutable-inode
    (make-test-inode '((0 "n0") (1 "n1") (2 "n2"))))
@@ -227,83 +228,89 @@
  (define my-mod-expr (file->sexp "unittests/modules/huby-test.mdal"))
 
  (define my-drum-inode
-   (make-inode 'DRUM
-	       (zip (iota 16)
-		    (circular-list (make-inode-instance "on")
-				   (make-inode-instance '())
-				   (make-inode-instance '())
-				   (make-inode-instance '())))))
+   (make-inode config-id: 'DRUM
+	       instances: (zip (iota 16)
+			       (circular-list (make-inode-instance val: "on")
+					      (make-inode-instance)
+					      (make-inode-instance)
+					      (make-inode-instance)))))
 
  (define my-note1-inode
-   (make-inode 'NOTE1
-	       (list (list 0 (make-inode-instance "a3"))
-		     (list 1 (make-inode-instance '()))
-		     (list 2 (make-inode-instance "rest"))
-		     (list 3 (make-inode-instance '()))
-		     (list 4 (make-inode-instance "c4"))
-		     (list 5 (make-inode-instance '()))
-		     (list 6 (make-inode-instance "rest"))
-		     (list 7 (make-inode-instance '()))
-		     (list 8 (make-inode-instance "e4"))
-		     (list 9 (make-inode-instance '()))
-		     (list 10 (make-inode-instance "rest"))
-		     (list 11 (make-inode-instance '()))
-		     (list 12 (make-inode-instance "g4"))
-		     (list 13 (make-inode-instance '()))
-		     (list 14 (make-inode-instance "rest"))
-		     (list 15 (make-inode-instance '())))))
+   (make-inode config-id: 'NOTE1
+	       instances: `((0 ,(make-inode-instance val: "a3"))
+			    (1 ,(make-inode-instance))
+			    (2 ,(make-inode-instance val: "rest"))
+			    (3 ,(make-inode-instance))
+			    (4 ,(make-inode-instance val: "c4"))
+			    (5 ,(make-inode-instance))
+			    (6 ,(make-inode-instance val: "rest"))
+			    (7 ,(make-inode-instance))
+			    (8 ,(make-inode-instance val: "e4"))
+			    (9 ,(make-inode-instance))
+			    (10 ,(make-inode-instance val: "rest"))
+			    (11 ,(make-inode-instance))
+			    (12 ,(make-inode-instance val: "g4"))
+			    (13 ,(make-inode-instance))
+			    (14 ,(make-inode-instance val: "rest"))
+			    (15 ,(make-inode-instance)))))
 
  (define my-note2-inode0
-   (make-inode 'NOTE2
-	       (zip (iota 16)
-		    (cons (make-inode-instance "a2")
-			  (make-list 15 (make-inode-instance '()))))))
+   (make-inode config-id: 'NOTE2
+	       instances: (zip (iota 16)
+			       (cons (make-inode-instance val: "a2")
+				     (make-list 15 (make-inode-instance))))))
 
  (define my-note2-inode1
-   (make-inode 'NOTE2
-	       (zip (iota 16)
-		    (cons (make-inode-instance "e2")
-			  (make-list 15 (make-inode-instance '()))))))
+   (make-inode config-id: 'NOTE2
+	       instances: (zip (iota 16)
+			       (cons (make-inode-instance val: "e2")
+				     (make-list 15 (make-inode-instance))))))
 
  (define my-patterns-order-inode
    (make-inode
-    'PATTERNS_ORDER
-    (list (list 0 (make-inode-instance
-		   (list (make-inode
-			  'R_DRUMS
-			  (list (list 0 (make-inode-instance 0))
-				(list 1 (make-inode-instance '()))))
-			 (make-inode
-			  'R_CH1
-			  (list (list 0 (make-inode-instance 0))
-				(list 1 (make-inode-instance '()))))
-			 (make-inode
-			  'R_CH2
-			  (list (list 0 (make-inode-instance 0))
-				(list 1 (make-inode-instance 1))))))))))
+    config-id: 'PATTERNS_ORDER
+    instances:
+    `((0 ,(make-inode-instance
+	   val: (list (make-inode
+		       config-id: 'R_DRUMS
+		       instances: `((0 ,(make-inode-instance val: 0))
+				    (1 ,(make-inode-instance))))
+		      (make-inode
+		       config-id: 'R_CH1
+		       instances: `((0 ,(make-inode-instance val: 0))
+				    (1 ,(make-inode-instance))))
+		      (make-inode
+		       config-id: 'R_CH2
+		       instances: `((0 ,(make-inode-instance val: 0))
+				    (1 ,(make-inode-instance val: 1))))))))))
 
  (define my-patterns-subnodes
-   (list (make-inode 'DRUMS (list (list 0 (make-inode-instance
-					   (list my-drum-inode)
-					   "beat0"))))
-	 (make-inode 'CH1 (list (list 0 (make-inode-instance
-					 (list my-note1-inode)))))
-	 (make-inode 'CH2 (list (list 0 (make-inode-instance
-					 (list my-note2-inode0)))
-				(list 1 (make-inode-instance
-					 (list my-note2-inode1)))))
+   (list (make-inode config-id: 'DRUMS
+		     instances: `((0 ,(make-inode-instance
+				       val: (list my-drum-inode)
+				       name: "beat0"))))
+	 (make-inode config-id: 'CH1
+		     instances: `((0 ,(make-inode-instance
+				       val: (list my-note1-inode)))))
+	 (make-inode config-id: 'CH2
+		     instances: `((0 ,(make-inode-instance
+				       val: (list my-note2-inode0)))
+				  (1 ,(make-inode-instance
+				       val: (list my-note2-inode1)))))
 	 my-patterns-order-inode))
 
 
  (test "mod-parse-group-fields"
        (list
-	(make-inode 'AUTHOR (list (list 0 (make-inode-instance
-					   "utz"))))
-	(make-inode 'TITLE (list (list 0 (make-inode-instance
-					  "Huby Test"))))
-	(make-inode 'LICENSE (list (list 0 (make-inode-instance
-					    "Creative Commons CC0"))))
-	(make-inode 'BPM (list (list 0 (make-inode-instance 120)))))
+	(make-inode config-id: 'AUTHOR
+		    instances: `((0 ,(make-inode-instance val: "utz"))))
+	(make-inode config-id: 'TITLE
+		    instances: `((0 ,(make-inode-instance val: "Huby Test"))))
+	(make-inode config-id: 'LICENSE
+		    instances: `((0 ,(make-inode-instance
+				      val: "Creative Commons CC0"))))
+	(make-inode config-id: 'BPM
+		    instances: `((0 ,(make-inode-instance val: 120)))))
        (mod-parse-group-fields my-mod-expr 'GLOBAL my-cfg))
 
 
@@ -323,10 +330,9 @@
 
  (define my-global-subnodes
    (append (mod-parse-group-fields my-mod-expr 'GLOBAL my-cfg)
-	   (list (make-inode 'PATTERNS
-			     (list (list 0 (make-inode-instance
-					    my-patterns-subnodes
-					    "")))))))
+	   (list (make-inode config-id: 'PATTERNS
+			     instances: `((0 ,(make-inode-instance
+					       val: my-patterns-subnodes)))))))
 
  (test "mod-parse-group"
        my-global-subnodes
@@ -352,8 +358,9 @@
 	     (mod-string->number "#x40")))
 
  (test "file->mdmod"
-       (make-inode 'GLOBAL (list (list 0 (make-inode-instance
-					  my-global-subnodes))))
+       (make-inode config-id: 'GLOBAL
+		   instances: `((0 ,(make-inode-instance
+				     val: my-global-subnodes))))
        (mdmod-global-node
 	(file->mdmod "unittests/modules/huby-test.mdal"
 		     my-config-path)))
@@ -393,56 +400,58 @@
 
  (test "mod-split-instances-at"
        (list (zip (iota 5)
-		  (cons (make-inode-instance "a2")
-			(make-list 4 (make-inode-instance '()))))
+		  (cons (make-inode-instance val: "a2")
+			(make-list 4 (make-inode-instance))))
 	     (zip (iota 11 5)
-		  (make-list 11 (make-inode-instance '()))))
+		  (make-list 11 (make-inode-instance))))
        (mod-split-instances-at
 	5 (inode-instances ((node-path "0/PATTERNS/0/CH2/0/NOTE2")
 			    (mdmod-global-node my-mod)))))
 
  (test "mod-replace-subnode"
        (make-inode-instance
-	(list (make-inode 'NOTE1
-			  (zip (iota 4)
-			       (make-list
-				4 (make-inode-instance '()))))))
+	val: (list (make-inode config-id: 'NOTE1
+			       instances:
+			       (zip (iota 4)
+				    (make-list 4 (make-inode-instance))))))
        (mod-replace-subnode
 	((node-instance-path "0/PATTERNS/0/CH1/0")
 	 (mdmod-global-node my-mod))
-	(make-inode 'NOTE1
-		    (zip (iota 4)
-			 (make-list 4 (make-inode-instance '()))))))
+	(make-inode config-id: 'NOTE1
+		    instances: (zip (iota 4)
+				    (make-list 4 (make-inode-instance))))))
 
  (test "mod-replace-inode-instance"
-       (make-inode 'NOTE2
-		   (zip (iota 16)
-			(make-list 16 (make-inode-instance '()))))
+       (make-inode config-id: 'NOTE2
+		   instances: (zip (iota 16)
+				   (make-list 16 (make-inode-instance))))
        (mod-replace-inode-instance
 	((node-path "0/PATTERNS/0/CH2/0/NOTE2")
 	 (mdmod-global-node my-mod))
-	0 (make-inode-instance '())))
+	0 (make-inode-instance)))
 
  (test "mod-node-setter"
        (make-inode
-	'CH2
-	(list
-	 (list 0 (make-inode-instance
-		  (list (make-inode
-			 'NOTE2
-			 (zip (iota 16)
-			      (make-list 16 (make-inode-instance '())))))))
-	 (list 1 (make-inode-instance
-		  (list (make-inode
-			 'NOTE2
-			 (zip (iota 16)
-			      (cons (make-inode-instance "e2")
-				    (make-list
-				     15 (make-inode-instance '()))))))))))
+	config-id: 'CH2
+	instances:
+	`((0 ,(make-inode-instance
+	       val: (list (make-inode
+			   config-id: 'NOTE2
+			   instances:
+			   (zip (iota 16)
+				(make-list 16 (make-inode-instance)))))))
+	  (1 ,(make-inode-instance
+	       val: (list
+		     (make-inode
+		      config-id: 'NOTE2
+		      instances:
+		      (zip (iota 16)
+			   (cons (make-inode-instance val: "e2")
+				 (make-list 15 (make-inode-instance))))))))))
        ((mod-node-setter "0")
-	(make-inode 'NOTE2
-		    (zip (iota 16)
-			 (make-list 16 (make-inode-instance '()))))
+	(make-inode config-id: 'NOTE2
+		    instances: (zip (iota 16)
+				    (make-list 16 (make-inode-instance))))
 	((node-path "0/PATTERNS/0/CH2")
 	 (mdmod-global-node my-mod))))
 

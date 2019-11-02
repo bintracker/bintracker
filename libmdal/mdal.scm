@@ -115,10 +115,10 @@
   (define (write-node node indent-level config port)
     (let ((indent (indent-level->string indent-level))
 	  (node-type (inode-config-type (config-inode-ref
-					 (inode-cfg-id node) config))))
+					 (inode-config-id node) config))))
       (for-each (lambda (id/val)
 		  (write-node-instance (cadr id/val) (car id/val)
-				       (inode-cfg-id node)
+				       (inode-config-id node)
 				       indent-level config port))
 		(inode-instances node))))
 
@@ -202,24 +202,25 @@
 						 id)))))
 	  (order-node (symbol-contains node-id "_ORDER")))
       (make-inode-instance
-       (if (eq? 'field (get-node-type node-id))
-	   (if (or (symbol-contains parent-id "_ORDER")
-		   (eq? 'group (get-node-type parent-id)))
-	       (command-default (config-get-inode-source-command
-				 node-id config))
-	       '())
-	   (map (lambda (subnode-id)
-		  (make-inode
-		   subnode-id
-		   (map (lambda (instance-id)
-			  `(,instance-id ,(generate-new-inode-instance
-					   config subnode-id node-id
-					   block-length)))
-			(iota (if (or (eq? 'group (get-node-type node-id))
-				      (symbol-contains node-id "_ORDER"))
-				  1 block-length)))))
-		(config-get-subnode-ids node-id
-					(config-itree config)))))))
+       val: (if (eq? 'field (get-node-type node-id))
+		(if (or (symbol-contains parent-id "_ORDER")
+			(eq? 'group (get-node-type parent-id)))
+		    (command-default (config-get-inode-source-command
+				      node-id config))
+		    '())
+		(map (lambda (subnode-id)
+		       (make-inode
+			config-id: subnode-id
+			instances:
+			(map (lambda (instance-id)
+			       `(,instance-id ,(generate-new-inode-instance
+						config subnode-id node-id
+						block-length)))
+			     (iota (if (or (eq? 'group (get-node-type node-id))
+					   (symbol-contains node-id "_ORDER"))
+				       1 block-length)))))
+		     (config-get-subnode-ids node-id
+					     (config-itree config)))))))
 
   ;;; Generate a new, empty mdmod based on the config {{config}}. Generated
   ;;; blocks will have the length specified by {{block-length}}, unless other
@@ -227,7 +228,8 @@
   (define (generate-new-mdmod config-id config block-length)
     (make-mdmod config-id: config-id config: config
 		global-node:
-		(make-inode 'GLOBAL
+		(make-inode config-id: 'GLOBAL
+			    instances:
 			    `((0 ,(generate-new-inode-instance
 				   config 'GLOBAL #f block-length))))))
 
