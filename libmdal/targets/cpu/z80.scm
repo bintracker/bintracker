@@ -1,1 +1,1 @@
-(make-cpu "z80" 'little-endian)
+(cpu id: "z80" endianness: little-endian)

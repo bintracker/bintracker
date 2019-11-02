@@ -28,11 +28,8 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; **[RECORD]** CPU
-  (define-record-type cpu
-    (make-cpu id endianness)
-    cpu?
-    (id cpu-id)
-    (endianness cpu-endianness))
+  (defstruct cpu
+    id endianness)
 
   ;;; **[RECORD]** EXPORT-FORMAT
   (define-record-type export-format
@@ -191,16 +188,22 @@
     (let* ((eval-file (o eval car read-list open-input-file))
 	   (parameters
 	    (eval-file (string-append path-prefix "targets/" target-name
-				      ".scm"))))
-      (make-target (car parameters)
-		   (eval-file (string-append path-prefix "targets/cpu/"
-					     (second parameters) ".scm"))
-		   (third parameters)
-		   (map (lambda (target)
-			  (eval-file
-			   (string-append path-prefix "targets/export/"
-					  target ".scm")))
-			(fourth parameters)))))
+				      ".scm")))
+	   (target-decl (car (read-list
+			      (open-input-file
+			       (string-append path-prefix "targets/cpu/"
+					      (second parameters) ".scm"))))))
+      (if (eqv? 'cpu (car target-decl))
+	  (make-target (car parameters)
+		       (apply make-cpu (cdr target-decl))
+		       (third parameters)
+		       (map (lambda (target)
+			      (eval-file
+			       (string-append path-prefix "targets/export/"
+					      target ".scm")))
+			    (fourth parameters)))
+	  (error (string-append "Unsupported target "
+				(second parameters))))))
 
   ;;; return the ID of the parent of the given inode in the given inode tree
   (define (config-get-parent-node-id inode-id itree)
