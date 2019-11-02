@@ -52,20 +52,11 @@
   ;; ---------------------------------------------------------------------------
   ;; ## MDCONF: INPUT NODE CONFIGURATION
   ;; ---------------------------------------------------------------------------
-  ;; sub-nodes should be virtual (store id only)
-  ;; every node must have a unique id
 
   ;;; **[RECORD]** INSTANCE-RANGE
-  ;;; aux record type for tracking instantiation requirements of inode-config
-  (define-record-type instance-range
-    (make-instance-range min-instances max-instances)
-    instance-range?
-    (min-instances instance-range-min set-instance-range-min)
-    (max-instances instance-range-max set-instance-range-max))
-
-  ;;;
-  (define (make-single-instance)
-    (make-instance-range 1 1))
+  (defstruct instance-range
+    (min 1)
+    (max 1))
 
   (define-record-type inode-config
     (make-inode-config type instance-range cmd-id order-id)
@@ -92,7 +83,7 @@
   ;;; Returns #t if the given {{inode-config}} specifies that only one instance
   ;;; of this inode may exist.
   (define (single-instance-node? inode-config)
-    (equal? (make-single-instance)
+    (equal? (make-instance-range)
 	    (inode-config-instance-range inode-config)))
 
   ;;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID
@@ -435,13 +426,13 @@
   ;;; and the list of subnode configurations.
   (define (make-order-config-nodes group-id subnodes)
     (cons (list (symbol-append group-id '_ORDER)
-		(make-inode-config 'block (make-single-instance)
+		(make-inode-config 'block (make-instance-range)
 				   #f #f))
 	  (map (lambda (node)
 		 (let ((result-id (symbol-append 'R_ (car node))))
 		   (list result-id
 			 (make-inode-config
-			  'field (make-instance-range 1 #f)
+			  'field (make-instance-range max: #f)
 			  result-id #f))))
 	       (filter (lambda (node)
 			 (eq? 'block (inode-config-type (cadr node))))
@@ -466,16 +457,16 @@
   ;;; Determine the instance range of an inode config.
   (define (get-inode-range type min max instances parent-type)
     (cond (instances
-	   (make-instance-range instances instances))
+	   (make-instance-range min: instances max: instances))
 	  ((and min max)
-	   (make-instance-range min max))
-	  (min (make-instance-range min #f))
-	  (max (make-instance-range 1 #f))
-	  ((eqv? type 'group) (make-single-instance))
+	   (make-instance-range min: min max: max))
+	  (min (make-instance-range min: min max: #f))
+	  (max (make-instance-range max: #f))
+	  ((eqv? type 'group) (make-instance-range))
 	  ((and (eqv? type 'field)
 		(eqv? parent-type 'group))
-	   (make-single-instance))
-	  (else (make-instance-range 1 #f))))
+	   (make-instance-range))
+	  (else (make-instance-range max: #f))))
 
   ;;; Evaluate an input node config expression. {{parent-type}} is the type of
   ;;; the parent node. Returns an alist of the resulting inode config and its
@@ -530,13 +521,13 @@
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
   (define (make-default-inode-configs)
-    (list (list 'GLOBAL (make-inode-config 'group (make-single-instance)
+    (list (list 'GLOBAL (make-inode-config 'group (make-instance-range)
 					   #f #f))
-	  (list 'AUTHOR (make-inode-config 'field (make-single-instance)
+	  (list 'AUTHOR (make-inode-config 'field (make-instance-range)
 					   'AUTHOR #f))
-	  (list 'TITLE (make-inode-config 'field (make-single-instance)
+	  (list 'TITLE (make-inode-config 'field (make-instance-range)
 					  'TITLE #f))
-	  (list 'LICENSE (make-inode-config 'field (make-single-instance)
+	  (list 'LICENSE (make-inode-config 'field (make-instance-range)
 					    'LICENSE #f))))
 
   ;;; Compiler helper: Get the current origin (compile address).
