@@ -31,22 +31,14 @@
   (defstruct cpu
     id endianness)
 
-  ;;; **[RECORD]** EXPORT-FORMAT
-  (define-record-type export-format
-    (make-export-format id conversion-func)
-    export-format?
-    (id export-format-id)
-    (conversion-func export-format-conversion-func))
-
   ;;; **[RECORD]** TARGET
   ;;; Describe the target system of a sound driver.
   (define-record-type target-platform
-    (make-target id cpu clock-speed export-formats)
+    (make-target id cpu clock-speed)
     target?
     (id target-id)
     (cpu target-cpu)
-    (clock-speed target-clock-speed)
-    (export-formats target-export-formats))
+    (clock-speed target-clock-speed))
 
 
   ;; ---------------------------------------------------------------------------
@@ -180,12 +172,7 @@
       (if (eqv? 'cpu (car target-decl))
 	  (make-target (car parameters)
 		       (apply make-cpu (cdr target-decl))
-		       (third parameters)
-		       (map (lambda (target)
-			      (eval-file
-			       (string-append path-prefix "targets/export/"
-					      target ".scm")))
-			    (fourth parameters)))
+		       (third parameters))
 	  (error (string-append "Unsupported target "
 				(second parameters))))))
 
