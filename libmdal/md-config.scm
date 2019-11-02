@@ -67,15 +67,12 @@
   (define (make-single-instance)
     (make-instance-range 1 1))
 
-  ;; TODO: storing subnodes might be redundant since this is generally handled
-  ;;       through config-itree. Likewise for order-id
   (define-record-type inode-config
-    (make-inode-config type instance-range subnodes cmd-id order-id)
+    (make-inode-config type instance-range cmd-id order-id)
     inode-config?
     (type inode-config-type set-inode-config-type!)
     (instance-range inode-config-instance-range
                     set-inode-config-instance-range!)
-    (subnodes inode-config-subnodes set-inode-config-subnodes!)
     (cmd-id inode-config-cmd-id set-inode-config-cmd-id!)
     (order-id inode-config-order-id set-inode-config-order-id!))
 
@@ -90,10 +87,6 @@
 	(fprintf out "source command: ~S\n" (inode-config-cmd-id cfg)))
       (when (inode-config-order-id cfg)
 	(fprintf out "order node: ~S\n" (inode-config-order-id cfg)))
-      (when (inode-config-subnodes cfg)
-	(fprintf out "subnodes:\n")
-	(for-each (lambda (x) (fprintf out "~S\n" x))
-                  (inode-config-subnodes cfg)))
       (fprintf out ">")))
 
   ;;; Returns #t if the given {{inode-config}} specifies that only one instance
@@ -443,13 +436,13 @@
   (define (make-order-config-nodes group-id subnodes)
     (cons (list (symbol-append group-id '_ORDER)
 		(make-inode-config 'block (make-single-instance)
-				   #f #f #f))
+				   #f #f))
 	  (map (lambda (node)
 		 (let ((result-id (symbol-append 'R_ (car node))))
 		   (list result-id
 			 (make-inode-config
 			  'field (make-instance-range 1 #f)
-			  #f result-id #f))))
+			  result-id #f))))
 	       (filter (lambda (node)
 			 (eq? 'block (inode-config-type (cadr node))))
 		       subnodes))))
@@ -501,7 +494,7 @@
 			    type (get-inode-range
 				  type min-instances max-instances instances
 				  parent-type)
-			    #f from #f))
+			    from #f))
 		     (append subnodes order-nodes))))))
       (apply eval-node node-expr)))
 
@@ -537,14 +530,14 @@
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
   (define (make-default-inode-configs)
-    (list (list 'GLOBAL (make-inode-config
-			 'group (make-single-instance) #f #f #f))
-	  (list 'AUTHOR (make-inode-config
-			 'field (make-single-instance) #f 'AUTHOR #f))
-	  (list 'TITLE (make-inode-config
-			'field (make-single-instance) #f 'TITLE #f))
-	  (list 'LICENSE (make-inode-config
-			  'field (make-single-instance) #f 'LICENSE #f))))
+    (list (list 'GLOBAL (make-inode-config 'group (make-single-instance)
+					   #f #f))
+	  (list 'AUTHOR (make-inode-config 'field (make-single-instance)
+					   'AUTHOR #f))
+	  (list 'TITLE (make-inode-config 'field (make-single-instance)
+					  'TITLE #f))
+	  (list 'LICENSE (make-inode-config 'field (make-single-instance)
+					    'LICENSE #f))))
 
   ;;; Compiler helper: Get the current origin (compile address).
   ;;; Returns #f if current origin cannot be resolved.
