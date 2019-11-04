@@ -496,7 +496,7 @@
 				 cmd-id: 'TITLE))
       (LICENSE ,(make-inode-config type: 'field
 				   instance-range: (make-instance-range)
-				   'LICENSE))))
+				   cmd-id: 'LICENSE))))
 
   ;;; Compiler helper: Get the current origin (compile address).
   ;;; Returns #f if current origin cannot be resolved.
