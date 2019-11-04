@@ -45,27 +45,20 @@
     (min 1)
     (max 1))
 
-  (define-record-type inode-config
-    (make-inode-config type instance-range cmd-id order-id)
-    inode-config?
-    (type inode-config-type set-inode-config-type!)
-    (instance-range inode-config-instance-range
-                    set-inode-config-instance-range!)
-    (cmd-id inode-config-cmd-id set-inode-config-cmd-id!)
-    (order-id inode-config-order-id set-inode-config-order-id!))
+  (defstruct inode-config
+    type instance-range cmd-id order-id)
 
-  (define-record-printer (inode-config cfg out)
-    (begin
-      (fprintf out "#<inode-config\n")
-      (fprintf out "type: ~S\nmin-instances: ~S\nmax-instances: ~S\n"
-	       (inode-config-type cfg)
-               (instance-range-min (inode-config-instance-range cfg))
-               (instance-range-max (inode-config-instance-range cfg)))
-      (when (inode-config-cmd-id cfg)
-	(fprintf out "source command: ~S\n" (inode-config-cmd-id cfg)))
-      (when (inode-config-order-id cfg)
-	(fprintf out "order node: ~S\n" (inode-config-order-id cfg)))
-      (fprintf out ">")))
+  (define (display-inode-config cfg)
+    (printf "#<inode-config\n")
+    (printf "type: ~S\nmin-instances: ~S\nmax-instances: ~S\n"
+	     (inode-config-type cfg)
+             (instance-range-min (inode-config-instance-range cfg))
+             (instance-range-max (inode-config-instance-range cfg)))
+    (when (inode-config-cmd-id cfg)
+      (printf "source command: ~S\n" (inode-config-cmd-id cfg)))
+    (when (inode-config-order-id cfg)
+      (printf "order node: ~S\n" (inode-config-order-id cfg)))
+    (printf ">"))
 
   ;;; Returns #t if the given {{inode-config}} specifies that only one instance
   ;;; of this inode may exist.
@@ -410,14 +403,15 @@
   ;;; and the list of subnode configurations.
   (define (make-order-config-nodes group-id subnodes)
     (cons (list (symbol-append group-id '_ORDER)
-		(make-inode-config 'block (make-instance-range)
-				   #f #f))
+		(make-inode-config type: 'block
+				   instance-range: (make-instance-range)))
 	  (map (lambda (node)
 		 (let ((result-id (symbol-append 'R_ (car node))))
 		   (list result-id
 			 (make-inode-config
-			  'field (make-instance-range max: #f)
-			  result-id #f))))
+			  type: 'field
+			  instance-range: (make-instance-range max: #f)
+			  cmd-id: result-id))))
 	       (filter (lambda (node)
 			 (eq? 'block (inode-config-type (cadr node))))
 		       subnodes))))
@@ -466,10 +460,11 @@
 				     '())))
 	       (cons (list (if id id from)
 			   (make-inode-config
-			    type (get-inode-range
-				  type min-instances max-instances instances
-				  parent-type)
-			    from #f))
+			    type: type
+			    instance-range: (get-inode-range
+					     type min-instances max-instances
+					     instances parent-type)
+			    cmd-id: from))
 		     (append subnodes order-nodes))))))
       (apply eval-node node-expr)))
 
@@ -505,14 +500,17 @@
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
   (define (make-default-inode-configs)
-    (list (list 'GLOBAL (make-inode-config 'group (make-instance-range)
-					   #f #f))
-	  (list 'AUTHOR (make-inode-config 'field (make-instance-range)
-					   'AUTHOR #f))
-	  (list 'TITLE (make-inode-config 'field (make-instance-range)
-					  'TITLE #f))
-	  (list 'LICENSE (make-inode-config 'field (make-instance-range)
-					    'LICENSE #f))))
+    `((GLOBAL ,(make-inode-config type: 'group
+				  instance-range: (make-instance-range)))
+      (AUTHOR ,(make-inode-config type: 'field
+				  instance-range: (make-instance-range)
+				  cmd-id: 'AUTHOR))
+      (TITLE ,(make-inode-config type: 'field
+				 instance-range: (make-instance-range)
+				 cmd-id: 'TITLE))
+      (LICENSE ,(make-inode-config type: 'field
+				   instance-range: (make-instance-range)
+				   'LICENSE))))
 
   ;;; Compiler helper: Get the current origin (compile address).
   ;;; Returns #f if current origin cannot be resolved.
