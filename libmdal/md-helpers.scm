@@ -27,11 +27,8 @@
   ;;; Constructor: `(make-range minimum maximum)`
   ;;; Predicate: `range?`
   ;;; Getters: `range-min` `range-max`
-  (define-record-type range
-    (make-range minimum maximum)
-    range?
-    (minimum range-min)
-    (maximum range-max))
+  (defstruct range
+    min max)
 
   ;;;
   (define (in-range? val range)

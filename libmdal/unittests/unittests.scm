@@ -22,8 +22,8 @@
  "MD-Helpers"
 
  (test-assert "in-range?"
-   (and (in-range? 1 (make-range 0 2))
-	(not (in-range? 3 (make-range 0 2)))))
+   (and (in-range? 1 (make-range min: 0 max: 2))
+	(not (in-range? 3 (make-range min: 0 max: 2)))))
 
  (test "make-pairs" '((a 1) (b 2)) (make-pairs '(a 1 b 2)))
 

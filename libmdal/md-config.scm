@@ -20,8 +20,8 @@
   ;; MDAL: GLOBAL VARS
   ;; ---------------------------------------------------------------------------
 
-  (define *supported-config-versions* (make-range 2 2))
-  (define *supported-mdmod-versions* (make-range 2 2))
+  (define *supported-config-versions* (make-range min: 2 max: 2))
+  (define *supported-mdmod-versions* (make-range min: 2 max: 2))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDCONF: TARGETS
