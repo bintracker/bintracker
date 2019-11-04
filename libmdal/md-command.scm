@@ -30,18 +30,15 @@
   ;;; flags - list of command flags
   ;;; range - #f or an range object
   ;;; description - #f or a string
-  (define-record-type command
-    (make-command type bits default reference-to keys flags range
-                  description)
-    command?
-    (type command-type command-set-type!)
-    (bits command-bits command-set-bits!)
-    (default command-default command-set-default!)
-    (reference-to command-reference-to command-set-reference-to!)
-    (keys command-keys command-set-keys!)
-    (flags command-flags command-set-flags!)
-    (range command-range command-set-range!)
-    (description command-description command-set-description!))
+  (defstruct command
+    type
+    (bits 0)
+    (default "0")
+    reference-to
+    keys
+    (flags '())
+    range
+    description)
 
   ;;; check if the given command has the given flag
   (define (command-has-flag? cmd flag)
@@ -53,24 +50,23 @@
     (if (null? (command-flags cmd))
 	#f #t))
 
-  (define-record-printer (command cmd out)
-    (begin
-      (fprintf out "#<command>\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
-               (command-type cmd)
-               (command-bits cmd)
-               (command-default cmd))
-      (when (command-reference-to cmd)
-	(fprintf out "\nref:     ~S" (command-reference-to cmd)))
-      (when (command-keys cmd)
-	(fprintf out "\nkeys:    ~S" (command-keys cmd)))
-      (when (command-has-flags? cmd)
-	(fprintf out "\nflags:   ~S" (command-flags cmd)))
-      (when (command-range cmd)
-	(fprintf out "\nrange:   ~S - ~S"
-		 (range-min (command-range cmd))
-		 (range-max (command-range cmd))))
-      (when (command-description cmd)
-	(fprintf out "\ndescription:\n~A~!" (command-description cmd)))))
+  (define (display-command cmd)
+    (printf "#<command>\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
+            (command-type cmd)
+            (command-bits cmd)
+            (command-default cmd))
+    (when (command-reference-to cmd)
+      (printf "\nref:     ~S" (command-reference-to cmd)))
+    (when (command-keys cmd)
+      (printf "\nkeys:    ~S" (command-keys cmd)))
+    (when (command-has-flags? cmd)
+      (printf "\nflags:   ~S" (command-flags cmd)))
+    (when (command-range cmd)
+      (printf "\nrange:   ~S - ~S"
+	      (range-min (command-range cmd))
+	      (range-max (command-range cmd))))
+    (when (command-description cmd)
+      (printf "\ndescription:\n~A~!" (command-description cmd))))
 
   ;;; construct a hash table from a file containing key/value definitions
   ;; TODO currently unused, but should be useful
@@ -85,11 +81,9 @@
 
   ;;; construct an alist containing the default commands AUTHOR and TITLE
   (define (make-default-commands)
-    (list
-     (list 'AUTHOR (make-command 'string 0 "unknown" #f #f '() #f #f))
-     (list 'TITLE (make-command 'string 0 "untitled" #f #f '() #f #f))
-     (list 'LICENSE (make-command 'string 0 "All Rights Reserved" #f #f '()
-				  #f #f))))
+    `((AUTHOR ,(make-command type: 'string default: "unknown"))
+      (TITLE ,(make-command type: 'string "untitled"))
+      (LICENSE ,(make-command type: 'string "All Rights Reserved"))))
 
   ;;; basic error checks for mdalconfig command specification
   (define (check-command-spec id type bits default reference-to keys range)
@@ -129,24 +123,25 @@
       (check-command-spec id type bits default reference-to keys range)
       ;; TODO implement ranges, keymap files
       (list id (make-command
-		type
-		(match type
-		  ('string 0)
-		  ('trigger 1)
-		  (else bits))
-		default reference-to
-		(eval `(let ((make-dividers
-			      (lambda (cycles bits rest . shift)
-				(make-dividers ,cpu-speed cycles bits rest
-					       (if (null? shift)
-						   1 (car shift)))))
-			     (make-inverse-dividers
-			      (lambda (cycles bits rest . shift)
-				(make-inverse-dividers
-				 ,cpu-speed cycles bits rest
-				 (if (null? shift)
-				     1 (car shift))))))
-			 ,keys))
-		tags range description))))
+		type: type
+		bits: (match type
+			('string 0)
+			('trigger 1)
+			(else bits))
+		default: default
+		reference-to: reference-to
+		keys: (eval `(let ((make-dividers
+				    (lambda (cycles bits rest . shift)
+				      (make-dividers ,cpu-speed cycles bits rest
+						     (if (null? shift)
+							 1 (car shift)))))
+				   (make-inverse-dividers
+				    (lambda (cycles bits rest . shift)
+				      (make-inverse-dividers
+				       ,cpu-speed cycles bits rest
+				       (if (null? shift)
+					   1 (car shift))))))
+			       ,keys))
+		flags: tags range: range description: description))))
 
   )  ;; end module md-command

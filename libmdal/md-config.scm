@@ -98,10 +98,11 @@
     (alist->hash-table
      (map (lambda (x)
   	    (list x
-  		  (make-command 'reference 16 "0"
-  				(string->symbol (substring/shared
-  						 (symbol->string x) 2))
-  				#f '(use_last_set) #f #f)))
+  		  (make-command type: 'reference bits: 16
+  				reference-to: (string->symbol
+					       (substring/shared
+  						(symbol->string x) 2))
+  				flags: '(use_last_set))))
   	  (filter (lambda (x)
   		    (string-prefix? "R_" (symbol->string x)))
   		  (flatten itree)))))
