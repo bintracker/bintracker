@@ -35,22 +35,22 @@
     (and (>= val (range-min range))
 	 (<= val (range-max range))))
 
-  ;;; **[RECORD]** ASM-SYNTAX
-  ;;; Constructor: `(make-asm-syntax hex-prefix byte-op word-op dword-op)`
-  ;;; Predicate: `asm-syntax?`
-  ;;; Getters: `asm-syntax-hex-prefix` `md-asm-syntax-byte-op`
-  ;;;          `asm-syntax-word-op` `md-asm-dword-op`
-  (define-record-type asm-syntax
-    (make-asm-syntax hex-prefix byte-op word-op dword-op)
-    asm-syntax?
-    (hex-prefix asm-syntax-hex-prefix asm-syntax-set-hex-prefix!)
-    (byte-op asm-syntax-byte-op asm-syntax-set-byte-op!)
-    (word-op asm-syntax-word-op asm-syntax-set-word-op!)
-    (dword-op asm-syntax-dword-op asm-syntax-set-dword-op!))
+  ;; ;;; **[RECORD]** ASM-SYNTAX
+  ;; ;;; Constructor: `(make-asm-syntax hex-prefix byte-op word-op dword-op)`
+  ;; ;;; Predicate: `asm-syntax?`
+  ;; ;;; Getters: `asm-syntax-hex-prefix` `md-asm-syntax-byte-op`
+  ;; ;;;          `asm-syntax-word-op` `md-asm-dword-op`
+  ;; (define-record-type asm-syntax
+  ;;   (make-asm-syntax hex-prefix byte-op word-op dword-op)
+  ;;   asm-syntax?
+  ;;   (hex-prefix asm-syntax-hex-prefix asm-syntax-set-hex-prefix!)
+  ;;   (byte-op asm-syntax-byte-op asm-syntax-set-byte-op!)
+  ;;   (word-op asm-syntax-word-op asm-syntax-set-word-op!)
+  ;;   (dword-op asm-syntax-dword-op asm-syntax-set-dword-op!))
 
-  ;;;
-  (define (default-asm-syntax)
-    (make-asm-syntax "$" "db" "dw" "dl"))
+  ;; ;;;
+  ;; (define (default-asm-syntax)
+  ;;   (make-asm-syntax "$" "db" "dw" "dl"))
 
   ;;; pair elements in a list
   (define (make-pairs lst)
