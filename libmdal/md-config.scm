@@ -107,30 +107,22 @@
 
   ;; TODO: where to handle max-binsize?
 
-  (define-record-type config
-    (make-config target description commands itree inodes compiler)
-    config?
-    (target config-target config-set-target!)
-    (description config-description config-set-description!)
-    (commands config-commands config-set-commands!)
-    (itree config-itree config-set-itree)
-    (inodes config-inodes config-set-inodes!)
-    (compiler config-compiler config-set-compiler!))
+  (defstruct config
+    target description commands itree inodes compiler)
 
-  (define-record-printer (config cfg out)
-    (begin
-      (fprintf out "#<config>\n\n")
-      (when (config-description cfg)
-	(fprintf out "DESCRIPTION:\n~A\n\n" (config-description cfg)))
-      (fprintf out "COMMANDS:\n\n")
-      (for-each (lambda (x)
-                  (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
-		(hash-table->alist (config-commands cfg)))
-      (fprintf out "\nINODE TREE:\n~S\n\n" (config-itree cfg))
-      (fprintf out "\nINODES:\n\n")
-      (for-each (lambda (x)
-                  (fprintf out "~A: ~S\n\n" (car x) (cadr x)))
-		(hash-table->alist (config-inodes cfg)))))
+  (define (display-config cfg)
+    (printf "#<config>\n\n")
+    (when (config-description cfg)
+      (printf "DESCRIPTION:\n~A\n\n" (config-description cfg)))
+    (printf "COMMANDS:\n\n")
+    (for-each (lambda (x)
+                (printf "~A: ~S\n\n" (car x) (cadr x)))
+	      (hash-table->alist (config-commands cfg)))
+    (printf "\nINODE TREE:\n~S\n\n" (config-itree cfg))
+    (printf "\nINODES:\n\n")
+    (for-each (lambda (x)
+                (printf "~A: ~S\n\n" (car x) (cadr x)))
+	      (hash-table->alist (config-inodes cfg))))
 
   ;; internal helper
   (define (config-x-ref accessor id cfg)
@@ -1195,12 +1187,13 @@
 			    (make-default-inode-configs))))
 	   (proto-config
 	    (make-config
-	     _target "" (get-config-commands commands itree path-prefix
-					     _target)
-	     itree _input #f)))
-      (make-config _target description (config-commands proto-config)
-		   itree _input (make-compiler output proto-config
-					       path-prefix))))
+	     target: _target
+	     commands: (get-config-commands commands itree path-prefix _target)
+	     itree: itree inodes: _input)))
+      (make-config target: _target description: description
+		   commands: (config-commands proto-config)
+		   itree: itree inodes: _input
+		   compiler: (make-compiler output proto-config path-prefix))))
 
   ;;; Evaluate the given {{mdconf}} s-expression, and return a config record.
   (define (read-config mdconf path-prefix)
