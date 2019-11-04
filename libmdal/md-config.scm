@@ -265,29 +265,23 @@
   (define (is-set? inode-instance)
     (not (null? (inode-instance-val inode-instance))))
 
+
   ;; ---------------------------------------------------------------------------
   ;;; ## MDMOD: OUTPUT NODES
   ;; ---------------------------------------------------------------------------
 
-  (define-record-type onode
-    (make-onode type size val fn)
-    onode?
-    (type onode-type)
-    (size onode-size)
-    (val onode-val)
-    (fn onode-fn))
+  (defstruct onode
+    type size val fn)
 
   (define (onode-resolved? onode)
     (not (onode-fn onode)))
 
-  (define-record-printer (onode node out)
-    (begin
-      (fprintf out "#<onode: type ~S, size ~S, value "
-	       (onode-type node) (onode-size node))
-      (fprintf out "~S>\n"
-	       (if (onode-resolved? node)
-		   (onode-val node)
-		   "unresolved"))))
+  (define (display-onode node)
+    (printf "#<onode: type ~S, size ~S, value "
+	    (onode-type node) (onode-size node))
+    (printf "~S>\n" (if (onode-resolved? node)
+			(onode-val node)
+			"unresolved")))
 
   ;;; Compute the total size of the binary output of a list of onodes. Returns #f
   ;;; if any of the onodes does not have it's size argument resolved.
@@ -633,14 +627,14 @@
   ;;; `apply`ing it to an onode config expression.
   (define (make-osymbol proto-config path-prefix #!key id)
     (unless id (raise-local 'missing-onode-id))
-    (make-onode 'symbol 0 #f
-		(lambda (onode parent-inode config current-org md-symbols)
-		  (if current-org
-		      (list (make-onode 'symbol 0 #t #f)
-			    current-org
-			    (cons (list id current-org)
-				  md-symbols))
-		      (list onode #f md-symbols)))))
+    (make-onode type: 'symbol size: 0
+		fn: (lambda (onode parent-inode config current-org md-symbols)
+		      (if current-org
+			  (list (make-onode type: 'symbol size: 0 val: #t)
+				current-org
+				(cons (list id current-org)
+				      md-symbols))
+			  (list onode #f md-symbols)))))
 
   ;; TODO
   ;; 1. pass in current-org
@@ -654,7 +648,7 @@
 				   "unittests/config/Huby/huby.asm")
 		    "z80" 3 org: #x8000 path-prefix: path-prefix))
 	   (output-length (length output)))
-      (make-onode 'asm output-length output #f)))
+      (make-onode type: 'asm size: output-length val: output)))
 
   ;;; Extract required md-symbols from a compose expression
   (define (get-required-symbols compose-expr)
@@ -680,20 +674,19 @@
 	  (endianness (config-get-target-endianness proto-config))
 	  (required-symbols (get-required-symbols compose)))
       (make-onode
-       'field bytes #f
-       (lambda (onode parent-inode config current-org md-symbols)
-	 (list (if (have-required-symbols required-symbols md-symbols)
-		   (make-onode
-		    'field bytes (int->bytes
-				  (compose-proc 0 parent-inode md-symbols
-						config)
-				  bytes endianness)
-		    #f)
-		   onode)
-	       (if current-org
-		   (+ current-org bytes)
-		   #f)
-	       md-symbols)))))
+       type: 'field size: bytes
+       fn: (lambda (onode parent-inode config current-org md-symbols)
+	     (list (if (have-required-symbols required-symbols md-symbols)
+		       (make-onode
+			type: 'field size: bytes
+			val: (int->bytes (compose-proc 0 parent-inode md-symbols
+						       config)
+					 bytes endianness))
+		       onode)
+		   (if current-org
+		       (+ current-org bytes)
+		       #f)
+		   md-symbols)))))
 
   ;;; Returns a procedure that will transform a raw ref-matrix order (as
   ;;; emitted by group onodes) into the desired {{layout}}.
@@ -723,28 +716,29 @@
     (let ((transformer-proc (make-order-transformer layout base-index))
 	  (order-symbol (symbol-append '_mdal_order_ from)))
       (make-onode
-       'order #f #f
-       (lambda (onode parent-inode config current-org md-symbols)
-	 (if (alist-ref order-symbol md-symbols)
-	     (let* ((output
-		     (flatten
-		      (map (lambda (elem)
-			     (int->bytes elem element-size
-					 (config-get-target-endianness
-					  config)))
-			   (transformer-proc
-			    (car (alist-ref (symbol-append '_mdal_order_
-							   from)
-					    md-symbols))))))
-		    (output-length (length output)))
-	       (if (alist-ref order-symbol md-symbols)
-		   (list (make-onode 'order output-length output #f)
-			 (if current-org
-			     (+ current-org output-length)
-			     #f)
-			 md-symbols)
-		   (list onode #f md-symbols)))
-	     (list onode #f md-symbols))))))
+       type: 'order
+       fn: (lambda (onode parent-inode config current-org md-symbols)
+	     (if (alist-ref order-symbol md-symbols)
+		 (let* ((output
+			 (flatten
+			  (map (lambda (elem)
+				 (int->bytes elem element-size
+					     (config-get-target-endianness
+					      config)))
+			       (transformer-proc
+				(car (alist-ref (symbol-append '_mdal_order_
+							       from)
+						md-symbols))))))
+			(output-length (length output)))
+		   (if (alist-ref order-symbol md-symbols)
+		       (list (make-onode type: 'order size: output-length
+					 val: output)
+			     (if current-org
+				 (+ current-org output-length)
+				 #f)
+			     md-symbols)
+		       (list onode #f md-symbols)))
+		 (list onode #f md-symbols))))))
 
   ;;; Helper for resize-block-instances
   ;;; Takes a list of ifield instances and splits it into chunks of
@@ -895,14 +889,13 @@
     (let ((compose-proc (transform-compose-expr compose))
 	  (endianness (config-get-target-endianness proto-config)))
       (make-onode
-       'field bytes #f
+       type: 'field size: bytes fn:
        (lambda (onode parent-inode instance-id config current-org md-symbols)
 	 (list (make-onode
-		'field bytes
-		(int->bytes (compose-proc instance-id parent-inode
-					  md-symbols config)
-			    bytes endianness)
-		#f)
+		type: 'field size: bytes
+		val: (int->bytes (compose-proc instance-id parent-inode
+					       md-symbols config)
+				 bytes endianness))
 	       (if current-org
 		   (+ current-org bytes)
 		   #f)
@@ -1013,27 +1006,28 @@
 					   (cons proto-config (cdr node))))
 				  nodes)))
       (make-onode
-       'block #f #f
-       (lambda (onode parent-inode config current-org md-symbols)
-	 (let* ((parent (if resize
-			    (resize-blocks parent-inode parent-inode-id
-					   resize config)
-			    parent-inode))
-		(order-alist
-		 (make-order-alist (get-subnode parent order-id)
-				   from config))
-		(unique-order-combinations (delete-duplicates order-alist))
-		(result
-		 (resolve-oblock (make-pseudo-block-instances
-				  parent from unique-order-combinations)
-				 field-prototypes config current-org
-				 md-symbols)))
-	   (list (make-onode 'block (length (flatten (car result)))
-			     (car result) #f)
-		 (cadr result)
-		 (cons (list (symbol-append '_mdal_order_ id)
-			     (map car order-alist))
-		       md-symbols)))))))
+       type: 'block
+       fn: (lambda (onode parent-inode config current-org md-symbols)
+	     (let* ((parent (if resize
+				(resize-blocks parent-inode parent-inode-id
+					       resize config)
+				parent-inode))
+		    (order-alist
+		     (make-order-alist (get-subnode parent order-id)
+				       from config))
+		    (unique-order-combinations (delete-duplicates order-alist))
+		    (result
+		     (resolve-oblock (make-pseudo-block-instances
+				      parent from unique-order-combinations)
+				     field-prototypes config current-org
+				     md-symbols)))
+	       (list (make-onode type: 'block
+				 size: (length (flatten (car result)))
+				 val: (car result))
+		     (cadr result)
+		     (cons (list (symbol-append '_mdal_order_ id)
+				 (map car order-alist))
+			   md-symbols)))))))
 
   ;;; Determine the order symbol names that will be emitted by an ogroup's
   ;;; oblock members
@@ -1065,34 +1059,34 @@
 				      (car (alist-ref id syms)))
 				    (get-oblock-order-ids nodes)))))))
       (make-onode
-       'group #f #f
-       (lambda (onode parent-inode config current-org md-symbols)
-	 (let* ((subtree-result
-		 (compile-otree
-		  otree
-		  ;; TODO currently assuming there's only one instance, but
-		  ;;      actually must be done for every instance
-		  (car (alist-ref 0 (inode-instances
-				     (get-subnode parent-inode from))))
-		  config
-		  current-org md-symbols))
-		(subtree-size (apply + (map onode-size
-					    (car subtree-result))))
-		(new-symbols (third subtree-result)))
-	   (list (make-onode 'group subtree-size
-			     (map onode-val (car subtree-result))
-			     #f)
-		 (if current-org
-		     (+ current-org subtree-size)
-		     #f)
-		 (cons (generate-order new-symbols)
-		       new-symbols)))))))
+       type: 'group
+       fn: (lambda (onode parent-inode config current-org md-symbols)
+	     (let* ((subtree-result
+		     (compile-otree
+		      otree
+		      ;; TODO currently assuming there's only one instance, but
+		      ;;      actually must be done for every instance
+		      (car (alist-ref 0 (inode-instances
+					 (get-subnode parent-inode from))))
+		      config
+		      current-org md-symbols))
+		    (subtree-size (apply + (map onode-size
+						(car subtree-result))))
+		    (new-symbols (third subtree-result)))
+	       (list (make-onode type: 'group size: subtree-size
+				 val: (map onode-val (car subtree-result)))
+		     (if current-org
+			 (+ current-org subtree-size)
+			 #f)
+		     (cons (generate-order new-symbols)
+			   new-symbols)))))))
 
   ;;; dispatch output note config expressions to the appropriate onode
   ;;; generators
   (define (dispatch-onode-expr expr proto-config path-prefix)
     (apply (match (car expr)
-	     ('comment (lambda (proto-cfg c p) (make-onode 'comment 0 c #f)))
+	     ('comment (lambda (proto-cfg c p) (make-onode type: 'comment
+							   size: 0 val: c)))
 	     ('asm make-oasm)
 	     ('symbol make-osymbol)
 	     ('field make-ofield)
