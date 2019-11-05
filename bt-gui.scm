@@ -909,7 +909,8 @@
     (col 'tag 'configure 'reference foreground: (colors 'text-4))
     (col 'tag 'configure 'trigger foreground: (colors 'text-5))
     (col 'tag 'configure 'string foreground: (colors 'text-6))
-    (col 'tag 'configure 'modifier foreground: (colors 'text-7)))
+    (col 'tag 'configure 'modifier foreground: (colors 'text-7))
+    (col 'tag 'configure 'inactive foreground: (colors 'text-inactive)))
 
   ;;; Get the appropriate command type tag to set the item color for metatrees.
   (define (get-command-type-tag field-id)
@@ -1153,9 +1154,10 @@
 					   (metatree-mtstate mt)))))
 	      (metatree-columns mt)
 	      (iota (length (metatree-column-ids mt))))
-    ((metatree-rownums mt) 'tag method "cursor-y"
-     (nth-tree-item (metatree-rownums mt)
-		    (metatree-state-cursor-y (metatree-mtstate mt)))))
+    ;; ((metatree-rownums mt) 'tag method "cursor-y"
+    ;;  (nth-tree-item (metatree-rownums mt)
+    ;; 		    (metatree-state-cursor-y (metatree-mtstate mt))))
+    )
 
   ;;; Display the cursor of a metatree widget.
   (define (show-cursor mt)
@@ -1347,44 +1349,77 @@
       (update-row-numbers metatree (length (car block-values))
 			  3)))
 
+  ;; FIXME this is called twice on opening a module file
+  (define (update-blocks-row-numbers metatree order-values active-order-pos)
+    (for-each
+     (lambda (block-length order-pos)
+       (for-each
+	(lambda (row)
+	  ((metatree-rownums metatree) 'insert '{} 'end
+	   text: (string-pad (number->string row (app-settings-number-base
+						  *bintracker-settings*))
+			     ;; 4 digits for row numbers
+			     4 #\0)
+	   tags: (list (if (= order-pos active-order-pos)
+			   'dummy 'inactive))))
+	(iota block-length)))
+     (map (lambda (block-instance-id)
+	    (length (inode-instances
+		     ((node-path (string-append
+				  (get-current-instance-path
+				   (metatree-group-id metatree))
+				  (symbol->string
+				   (car (metatree-block-ids metatree)))
+				  "/" (number->string block-instance-id)
+				  "/" (symbol->string
+				       (car (metatree-column-ids metatree)))
+				  "/"))
+		      (mdmod-global-node (current-mod))))))
+	  (map car order-values))
+     (iota (length order-values))))
+
   ;;; Update a group's blocks view, based on the current position in the
   ;;; order or block list.
-  (define (update-blocks-view metatree order-pos)
+  (define (update-blocks-view metatree active-order-pos)
     (let* ((parent-group-instance (get-current-node-instance
-				   (metatree-group-id metatree)))
-	   (block-instance-ids
-	    (list-ref (mod-get-order-values (metatree-group-id metatree)
-					    parent-group-instance
-					    (current-config))
-		      order-pos))
-	   (block-values
-	    (concatenate
-	     (map (lambda (block-id instance-id)
-		    (mod-get-block-instance-values
-		     ((node-instance-path
-		       (string-append (get-current-instance-path
-				       (metatree-group-id metatree))
-				      (symbol->string block-id) "/"
-				      (number->string instance-id)))
-		      (mdmod-global-node (current-mod)))))
-		  (metatree-block-ids metatree)
-		  block-instance-ids))))
+				    (metatree-group-id metatree)))
+	   (order-values (mod-get-order-values (metatree-group-id metatree)
+					       parent-group-instance
+					       (current-config)))
+	   (get-block-values
+	    (lambda (block-instance-ids)
+	      (concatenate
+	       (map (lambda (block-id instance-id)
+		      (mod-get-block-instance-values
+		       ((node-instance-path
+			 (string-append (get-current-instance-path
+					 (metatree-group-id metatree))
+					(symbol->string block-id) "/"
+					(number->string instance-id)))
+			(mdmod-global-node (current-mod)))))
+		    (metatree-block-ids metatree)
+		    block-instance-ids)))))
       (clear-metatree metatree)
       (for-each
-       (lambda (column index values field-id)
-	 (for-each (lambda (value rownum)
-		     (column 'insert '{} 'end
-			     tags: (list (get-command-type-tag field-id))
-			     values:
-			     (list (normalize-field-value value field-id))))
-		   values (iota (length values)))
-	 (bind-column-events metatree index values))
-       (metatree-columns metatree)
-       (iota (length (metatree-columns metatree)))
-       block-values (metatree-column-ids metatree))
-      (update-row-numbers metatree (length (car block-values))
-			  ;; 4 digits for row numbers
-			  4)
+       (lambda (order-row order-index)
+	 (for-each
+	  (lambda (column index values field-id)
+	    (for-each (lambda (value rownum)
+			(column 'insert '{} 'end
+				tags: (list (if (= order-index active-order-pos)
+						(get-command-type-tag field-id)
+						'inactive))
+				values:
+				(list (normalize-field-value value field-id))))
+		      values (iota (length values)))
+	    (bind-column-events metatree index values))
+	  (metatree-columns metatree)
+	  (iota (length (metatree-columns metatree)))
+	  (get-block-values order-row)
+	  (metatree-column-ids metatree)))
+       order-values
+       (iota (length order-values)))
+      (update-blocks-row-numbers metatree order-values active-order-pos)
       (update-row-highlights metatree)))
 
   ;;; Display the blocks of a group instance.
