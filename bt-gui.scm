@@ -910,6 +910,9 @@
     (col 'tag 'configure 'trigger foreground: (colors 'text-5))
     (col 'tag 'configure 'string foreground: (colors 'text-6))
     (col 'tag 'configure 'modifier foreground: (colors 'text-7))
+    (col 'tag 'configure 'active font: (list (settings 'font-mono)
+					     (settings 'font-size)
+					     "bold"))
     (col 'tag 'configure 'inactive foreground: (colors 'text-inactive)))
 
   ;;; Get the appropriate command type tag to set the item color for metatrees.
@@ -1077,6 +1080,7 @@
 				yscrollcommand: `(,(metatree-yscroll mt) set)))
       		      (metatree-columns mt)))
       	 %h))
+      ;; TODO 1000 will not be enough on the long run. Needs to be dynamic.
       (canvas 'configure scrollregion:
 	      (list 0 0 (* 80 (length (metatree-columns mt)))
 		    1000))))
@@ -1361,7 +1365,7 @@
 			     ;; 4 digits for row numbers
 			     4 #\0)
 	   tags: (list (if (= order-pos active-order-pos)
-			   'dummy 'inactive))))
+			   'active 'inactive))))
 	(iota block-length)))
      (map (lambda (block-instance-id)
 	    (length (inode-instances
@@ -1406,9 +1410,10 @@
 	  (lambda (column index values field-id)
 	    (for-each (lambda (value rownum)
 			(column 'insert '{} 'end
-				tags: (list (if (= order-index active-order-pos)
-						(get-command-type-tag field-id)
-						'inactive))
+				tags: (if (= order-index active-order-pos)
+					  (list 'active
+						(get-command-type-tag field-id))
+					  (list 'inactive))
 				values:
 				(list (normalize-field-value value field-id))))
 		      values (iota (length values)))
