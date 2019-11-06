@@ -1229,6 +1229,32 @@
 	       (metatree-state-cursor-x (metatree-mtstate metatree))))
     (reset-status-text!))
 
+  ;;; Perform an edit action on {{metatree}}, setting the current active cell to
+  ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
+  ;;; mdmod structure.
+  (define (edit-current-metatree-cell metatree new-val)
+    (let* ((xpos (metatree-state-cursor-x (metatree-mtstate metatree)))
+	   (column (list-ref (metatree-columns metatree)
+			     xpos))
+	   (column-id (list-ref (metatree-column-ids metatree)
+				xpos))
+	   (block-id (config-get-parent-node-id
+		      column-id (config-itree (current-config))))
+	   (instance (metatree-state-cursor-y (metatree-mtstate metatree)))
+	   (path (string-append (get-current-instance-path block-id)
+				(symbol->string column-id) "/"))
+	   (action `(set ,path ((,instance ,new-val)))))
+      (push-undo (make-reverse-action action))
+      (apply-edit! action)
+      (column 'set (nth-tree-item column instance)
+	      "content" (normalize-field-value new-val column-id))
+      (tk/update)
+      (move-cursor metatree 'down)
+      (set-toolbar-button-state 'journal 'undo 'enabled)
+      (unless (state 'modified)
+	(set-state! 'modified #t)
+	(update-window-title!))))
+
   ;;; Bind events for a metatree column. As event handling depends on the
   ;;; items present in the column, this procedure must be called on updating
   ;;; the metatree, rather than on creation. {{index}} is the index of the
@@ -1237,28 +1263,7 @@
     (let* ((ui-zone (if (eq? 'block (metatree-type metatree))
 			'blocks 'order))
 	   (column (list-ref (metatree-columns metatree)
-			     index))
-	   (column-id (list-ref (metatree-column-ids metatree)
-				index))
-	   (block-id (config-get-parent-node-id
-		      column-id (config-itree (current-config))))
-	   (do-edit
-	    (lambda (new-val)
-	      (let* ((instance (metatree-state-cursor-y
-				(metatree-mtstate metatree)))
-		     (path (string-append (get-current-instance-path block-id)
-					  (symbol->string column-id) "/"))
-		     (action `(set ,path ((,instance ,new-val)))))
-		(push-undo (make-reverse-action action))
-		(apply-edit! action)
-		(column 'set (nth-tree-item column instance)
-			"content" (normalize-field-value new-val column-id))
-		(tk/update)
-		(move-cursor metatree 'down)
-		(set-toolbar-button-state 'journal 'undo 'enabled)
-		(unless (state 'modified)
-		  (set-state! 'modified #t)
-		  (update-window-title!))))))
+			     index)))
       (tk/bind column '<ButtonPress-1>
 	       `(,(lambda (y)
 		    (let ((ypos (treeview-ypos->item-index y)))
@@ -1269,11 +1274,13 @@
 				      (sub1 (length values))
 				      ypos))))
 		 %y))
-      (tk/bind column '<<ClearStep>> (lambda () (do-edit '())))
+      (tk/bind column '<<ClearStep>>
+	       (lambda () (edit-current-metatree-cell metatree '())))
       (tk/bind column '<<NoteEntry>>
 	       `(,(lambda (keysym)
 		    (let ((note-val (keypress->note keysym)))
-		      (when note-val (do-edit note-val))))
+		      (when note-val
+			(edit-current-metatree-cell metatree note-val))))
 		 %K))
       (reverse-binding-eval-order column)))
 
