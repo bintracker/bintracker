@@ -1242,14 +1242,23 @@
 				index))
 	   (block-id (config-get-parent-node-id
 		      column-id (config-itree (current-config))))
-	   (run-post-entry-actions
-	    (lambda ()
-	      (tk/update)
-	      (move-cursor metatree 'down)
-	      (set-toolbar-button-state 'journal 'undo 'enabled)
-	      (unless (state 'modified)
-		(set-state! 'modified #t)
-		(update-window-title!)))))
+	   (do-edit
+	    (lambda (new-val)
+	      (let* ((instance (metatree-state-cursor-y
+				(metatree-mtstate metatree)))
+		     (path (string-append (get-current-instance-path block-id)
+					  (symbol->string column-id) "/"))
+		     (action `(set ,path ((,instance ,new-val)))))
+		(push-undo (make-reverse-action action))
+		(apply-edit! action)
+		(column 'set (nth-tree-item column instance)
+			"content" (normalize-field-value new-val column-id))
+		(tk/update)
+		(move-cursor metatree 'down)
+		(set-toolbar-button-state 'journal 'undo 'enabled)
+		(unless (state 'modified)
+		  (set-state! 'modified #t)
+		  (update-window-title!))))))
       (tk/bind column '<ButtonPress-1>
 	       `(,(lambda (y)
 		    (let ((ypos (treeview-ypos->item-index y)))
@@ -1260,42 +1269,11 @@
 				      (sub1 (length values))
 				      ypos))))
 		 %y))
-      (tk/bind column '<<ClearStep>>
-	       (lambda ()
-		 (let* ((instance (metatree-state-cursor-y
-				   (metatree-mtstate metatree)))
-			(node-path (string-append
-				    (get-current-instance-path block-id)
-				    (symbol->string column-id) "/"))
-			(instance-path (string-append node-path
-						      (->string instance)
-						      "/")))
-		   (let ((action `(set ,node-path ((,instance ())))))
-		     (push-undo (make-reverse-action action))
-		     (apply-edit! action)
-		     (column 'set (nth-tree-item column instance)
-			     "content" (normalize-field-value '() column-id))
-		     (run-post-entry-actions)))))
+      (tk/bind column '<<ClearStep>> (lambda () (do-edit '())))
       (tk/bind column '<<NoteEntry>>
 	       `(,(lambda (keysym)
-		    (let* ((instance (metatree-state-cursor-y
-				      (metatree-mtstate metatree)))
-			   (node-path (string-append
-				       (get-current-instance-path block-id)
-				       (symbol->string column-id) "/"))
-			   (instance-path (string-append node-path
-							 (->string instance)
-							 "/"))
-			   (note-val (keypress->note keysym)))
-		      (when note-val
-			(let ((action `(set ,node-path ((,instance
-							 ,note-val)))))
-			  (push-undo (make-reverse-action action))
-			  (apply-edit! action)
-			  (column 'set (nth-tree-item column instance)
-				  "content"
-				  (normalize-field-value note-val column-id))
-			  (run-post-entry-actions)))))
+		    (let ((note-val (keypress->note keysym)))
+		      (when note-val (do-edit note-val))))
 		 %K))
       (reverse-binding-eval-order column)))
 
