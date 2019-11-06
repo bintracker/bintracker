@@ -1159,13 +1159,11 @@
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
   ;;; cursor.
   (define (cursor-do mt method)
-    (for-each (lambda (tree index)
-		(when (= index (metatree-state-cursor-x (metatree-mtstate mt)))
-		  (tree 'tag method "active-cell"
-			(nth-tree-item tree (metatree-state-cursor-y
-					     (metatree-mtstate mt))))))
-	      (metatree-columns mt)
-	      (iota (length (metatree-column-ids mt)))))
+    (let* ((state (metatree-mtstate mt))
+	   (tree (list-ref (metatree-columns mt)
+			   (metatree-state-cursor-x state))))
+      (tree 'tag method 'active-cell
+	    (nth-tree-item tree (metatree-state-cursor-y state)))))
 
   ;;; Display the cursor of a metatree widget.
   (define (show-cursor mt)
