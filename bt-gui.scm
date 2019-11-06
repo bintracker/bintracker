@@ -1169,8 +1169,7 @@
 		      (nth-tree-item tree (metatree-state-cursor-y
 					   (metatree-mtstate mt)))))
 	      (metatree-columns mt)
-	      (iota (length (metatree-column-ids mt))))
-    )
+	      (iota (length (metatree-column-ids mt)))))
 
   ;;; Display the cursor of a metatree widget.
   (define (show-cursor mt)
