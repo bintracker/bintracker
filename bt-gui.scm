@@ -1213,9 +1213,8 @@
 					current-xpos))
 			   current-ypos))
 	('right (set-cursor mt (if (>= (+ 1 current-xpos)
-				(length (metatree-columns mt)))
-				   0
-				   (add1 current-xpos))
+				       (length (metatree-columns mt)))
+				   0 (add1 current-xpos))
 			    current-ypos)))))
 
 
