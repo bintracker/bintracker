@@ -1128,7 +1128,11 @@
   ;;; *bintracker-app-state*.
   ;;; This procedure should be called *after* calling `update-row-numbers`.
   (define (update-row-highlights mt)
-    (let* ((item-indices (iota (metatree-length mt)))
+    (let* ((rownums (metatree-rownums mt))
+	   (item-indices (map (lambda (i)
+				(string->number (rownums 'item i text:)
+						(settings 'number-base)))
+			      (tree-item-list rownums)))
 	   (major-hl? (lambda (index)
 			(zero? (modulo index (state 'major-row-highlight)))))
 	   (minor-hl? (lambda (index)
