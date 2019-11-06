@@ -1241,7 +1241,15 @@
 	   (column-id (list-ref (metatree-column-ids metatree)
 				index))
 	   (block-id (config-get-parent-node-id
-		      column-id (config-itree (current-config)))))
+		      column-id (config-itree (current-config))))
+	   (run-post-entry-actions
+	    (lambda ()
+	      (tk/update)
+	      (move-cursor metatree 'down)
+	      (set-toolbar-button-state 'journal 'undo 'enabled)
+	      (unless (state 'modified)
+		(set-state! 'modified #t)
+		(update-window-title!)))))
       (tk/bind column '<ButtonPress-1>
 	       `(,(lambda (y)
 		    (let ((ypos (treeview-ypos->item-index y)))
@@ -1267,12 +1275,7 @@
 		     (apply-edit! action)
 		     (column 'set (nth-tree-item column instance)
 			     "content" (normalize-field-value '() column-id))
-		     (tk/update)
-		     (move-cursor metatree 'down)
-		     (set-toolbar-button-state 'journal 'undo 'enabled)
-		     (unless (state 'modified)
-		       (set-state! 'modified #t)
-		       (update-window-title!))))))
+		     (run-post-entry-actions)))))
       (tk/bind column '<<NoteEntry>>
 	       `(,(lambda (keysym)
 		    (let* ((instance (metatree-state-cursor-y
@@ -1292,12 +1295,7 @@
 			  (column 'set (nth-tree-item column instance)
 				  "content"
 				  (normalize-field-value note-val column-id))
-			  (tk/update)
-			  (move-cursor metatree 'down)
-			  (set-toolbar-button-state 'journal 'undo 'enabled)
-			  (unless (state 'modified)
-			    (set-state! 'modified #t)
-			    (update-window-title!))))))
+			  (run-post-entry-actions)))))
 		 %K))
       (reverse-binding-eval-order column)))
 
