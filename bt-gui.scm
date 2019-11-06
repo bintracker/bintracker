@@ -1250,8 +1250,7 @@
 				  (if (>= (add1 ypos)
 					  (length values))
 				      (sub1 (length values))
-				      ypos))
-		      (tk/focus column)))
+				      ypos))))
 		 %y))
       (tk/bind column '<<ClearStep>>
 	       (lambda ()
