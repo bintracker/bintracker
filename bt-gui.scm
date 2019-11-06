@@ -1170,9 +1170,6 @@
 					   (metatree-mtstate mt)))))
 	      (metatree-columns mt)
 	      (iota (length (metatree-column-ids mt))))
-    ;; ((metatree-rownums mt) 'tag method "cursor-y"
-    ;;  (nth-tree-item (metatree-rownums mt)
-    ;; 		    (metatree-state-cursor-y (metatree-mtstate mt))))
     )
 
   ;;; Display the cursor of a metatree widget.
