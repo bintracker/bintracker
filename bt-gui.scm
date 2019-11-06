@@ -1161,13 +1161,9 @@
   (define (cursor-do mt method)
     (for-each (lambda (tree index)
 		(when (= index (metatree-state-cursor-x (metatree-mtstate mt)))
-		  (tree 'tag method "cursor-x" (tree-item-list tree))
 		  (tree 'tag method "active-cell"
 			(nth-tree-item tree (metatree-state-cursor-y
-					     (metatree-mtstate mt)))))
-		(tree 'tag method "cursor-y"
-		      (nth-tree-item tree (metatree-state-cursor-y
-					   (metatree-mtstate mt)))))
+					     (metatree-mtstate mt))))))
 	      (metatree-columns mt)
 	      (iota (length (metatree-column-ids mt)))))
 
