@@ -1128,21 +1128,28 @@
   ;;; *bintracker-app-state*.
   ;;; This procedure should be called *after* calling `update-row-numbers`.
   (define (update-row-highlights mt)
-    (let ((item-indices (iota (metatree-length mt))))
-      (for-each
-       (lambda (tree)
-	 (for-each (lambda (item index)
-		     (tree 'tag 'remove 'rowhl-major item)
-		     (tree 'tag 'remove 'rowhl-minor item)
-		     (cond ((zero? (modulo index (state 'major-row-highlight)))
-			    (tree 'tag 'add 'rowhl-major item))
-			   ((zero? (modulo index (state 'minor-row-highlight)))
-			    (tree 'tag 'add 'rowhl-minor item))
-			   (else #t)))
-		   (tree-item-list tree)
-		   item-indices))
-       (cons (metatree-rownums mt)
-	     (metatree-columns mt)))))
+    (let* ((item-indices (iota (metatree-length mt)))
+	   (major-hl? (lambda (index)
+			(zero? (modulo index (state 'major-row-highlight)))))
+	   (minor-hl? (lambda (index)
+			(and (not (major-hl? index))
+			     (zero? (modulo index
+					    (state 'minor-row-highlight))))))
+	   (filter-items (lambda (items pred)
+			   (filter-map (lambda (item index)
+					 (and (pred index)
+					      item))
+				       items item-indices))))
+      (for-each (lambda (tree)
+		  (let* ((tree-items (tree-item-list tree))
+			 (major-hl-items (filter-items tree-items major-hl?))
+			 (minor-hl-items (filter-items tree-items minor-hl?)))
+		    (tree 'tag 'remove 'rowhl-major)
+		    (tree 'tag 'remove 'rowhl-minor)
+		    (tree 'tag 'add 'rowhl-major major-hl-items)
+		    (tree 'tag 'add 'rowhl-minor minor-hl-items)))
+		(cons (metatree-rownums mt)
+		      (metatree-columns mt)))))
 
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
