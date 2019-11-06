@@ -759,7 +759,8 @@
 			    bd: 0 highlightthickness: 0 insertborderwidth: 1
 			    justify: 'center
 			    font: (list family: (settings 'font-mono)
-					size: (settings 'font-size))))))
+					size: (settings 'font-size)
+					weight: 'bold)))))
 
   ;;; Display a `bt-field-widget`.
   (define (show-field-widget w group-instance-path)
