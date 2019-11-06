@@ -997,6 +997,70 @@
 			   	       columns)
 			     (rownums 'yview 'moveto (cadr args)))))))
 
+  ;;; Perform an edit action on {{metatree}}, setting the current active cell to
+  ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
+  ;;; mdmod structure.
+  (define (edit-current-metatree-cell metatree new-val)
+    (let* ((xpos (metatree-state-cursor-x (metatree-mtstate metatree)))
+	   (column (list-ref (metatree-columns metatree)
+			     xpos))
+	   (column-id (list-ref (metatree-column-ids metatree)
+				xpos))
+	   (block-id (config-get-parent-node-id
+		      column-id (config-itree (current-config))))
+	   (instance (metatree-state-cursor-y (metatree-mtstate metatree)))
+	   (path (string-append (get-current-instance-path block-id)
+				(symbol->string column-id) "/"))
+	   (action `(set ,path ((,instance ,new-val)))))
+      (push-undo (make-reverse-action action))
+      (apply-edit! action)
+      (column 'set (nth-tree-item column instance)
+	      "content" (normalize-field-value new-val column-id))
+      (tk/update)
+      (move-cursor metatree 'down)
+      (set-toolbar-button-state 'journal 'undo 'enabled)
+      (unless (state 'modified)
+	(set-state! 'modified #t)
+	(update-window-title!))))
+
+  ;;; Bind generic (static) events for a metatree column. This procedure must
+  ;;; be called when creating a metatree widget.
+  (define (bind-static-column-events metatree column)
+    (tk/bind column '<Down> (lambda () (move-cursor metatree 'down)))
+    (tk/bind column '<Up> (lambda () (move-cursor metatree 'up)))
+    (tk/bind column '<Left> (lambda () (move-cursor metatree 'left)))
+    (tk/bind column '<Right> (lambda () (move-cursor metatree 'right)))
+    (tk/bind column '<<ClearStep>>
+	     (lambda () (edit-current-metatree-cell metatree '())))
+    ;; TODO which entry type to bind depends on command type.
+    (tk/bind column '<<NoteEntry>>
+	     `(,(lambda (keysym)
+		  (let ((note-val (keypress->note keysym)))
+		    (when note-val
+		      (edit-current-metatree-cell metatree note-val))))
+	       %K))
+    (reverse-binding-eval-order column))
+
+  ;;; Bind dynamic events for a metatree column. As handling for these events
+  ;;; depends on the items present in the column, this procedure must be called
+  ;;; on updating the metatree, rather than on creation. {{index}} is the index
+  ;;; of the column to bind, and {{values}} are the column's item values.
+  (define (bind-dynamic-column-events metatree index values)
+    (let* ((ui-zone (if (eq? 'block (metatree-type metatree))
+			'blocks 'order))
+	   (column (list-ref (metatree-columns metatree)
+			     index)))
+      (tk/bind column '<ButtonPress-1>
+	       `(,(lambda (y)
+		    (let ((ypos (treeview-ypos->item-index y)))
+		      (switch-ui-zone-focus ui-zone)
+		      (set-cursor metatree index
+				  (if (>= (add1 ypos)
+					  (length values))
+				      (sub1 (length values))
+				      ypos))))
+		 %y))))
+
   ;;; Pack the given metatree-widget. This only sets up the structure, but does
   ;;; not add any data. You most likely do not want to call this procedure
   ;;; directly, but rather invoke it through `update-order-view` or
@@ -1037,14 +1101,7 @@
 		     (canvas 'create 'window
 			     (list xpos (+ init-ypos tree-rowheight))
 			     anchor: 'nw window: (car columns))
-		     (tk/bind (car columns) '<Down> (lambda ()
-						      (move-cursor mt 'down)))
-		     (tk/bind (car columns) '<Up> (lambda ()
-						    (move-cursor mt 'up)))
-		     (tk/bind (car columns) '<Left> (lambda ()
-						      (move-cursor mt 'left)))
-		     (tk/bind (car columns) '<Right>
-			      (lambda () (move-cursor mt 'right)))
+		     (bind-static-column-events mt (car columns))
 		     ((car columns) 'configure height: 32)
 		     (pack-columns (cdr columns)
 				   (cdr column-ids)
@@ -1229,61 +1286,6 @@
 	       (metatree-state-cursor-x (metatree-mtstate metatree))))
     (reset-status-text!))
 
-  ;;; Perform an edit action on {{metatree}}, setting the current active cell to
-  ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
-  ;;; mdmod structure.
-  (define (edit-current-metatree-cell metatree new-val)
-    (let* ((xpos (metatree-state-cursor-x (metatree-mtstate metatree)))
-	   (column (list-ref (metatree-columns metatree)
-			     xpos))
-	   (column-id (list-ref (metatree-column-ids metatree)
-				xpos))
-	   (block-id (config-get-parent-node-id
-		      column-id (config-itree (current-config))))
-	   (instance (metatree-state-cursor-y (metatree-mtstate metatree)))
-	   (path (string-append (get-current-instance-path block-id)
-				(symbol->string column-id) "/"))
-	   (action `(set ,path ((,instance ,new-val)))))
-      (push-undo (make-reverse-action action))
-      (apply-edit! action)
-      (column 'set (nth-tree-item column instance)
-	      "content" (normalize-field-value new-val column-id))
-      (tk/update)
-      (move-cursor metatree 'down)
-      (set-toolbar-button-state 'journal 'undo 'enabled)
-      (unless (state 'modified)
-	(set-state! 'modified #t)
-	(update-window-title!))))
-
-  ;;; Bind events for a metatree column. As event handling depends on the
-  ;;; items present in the column, this procedure must be called on updating
-  ;;; the metatree, rather than on creation. {{index}} is the index of the
-  ;;; column to bind, and {{values}} are the column's item values.
-  (define (bind-column-events metatree index values)
-    (let* ((ui-zone (if (eq? 'block (metatree-type metatree))
-			'blocks 'order))
-	   (column (list-ref (metatree-columns metatree)
-			     index)))
-      (tk/bind column '<ButtonPress-1>
-	       `(,(lambda (y)
-		    (let ((ypos (treeview-ypos->item-index y)))
-		      (switch-ui-zone-focus ui-zone)
-		      (set-cursor metatree index
-				  (if (>= (add1 ypos)
-					  (length values))
-				      (sub1 (length values))
-				      ypos))))
-		 %y))
-      (tk/bind column '<<ClearStep>>
-	       (lambda () (edit-current-metatree-cell metatree '())))
-      (tk/bind column '<<NoteEntry>>
-	       `(,(lambda (keysym)
-		    (let ((note-val (keypress->note keysym)))
-		      (when note-val
-			(edit-current-metatree-cell metatree note-val))))
-		 %K))
-      (reverse-binding-eval-order column)))
-
   ;;; Update a group's order/block list view.
   (define (update-order-view metatree)
     (letrec ((fill-empty-values
@@ -1306,7 +1308,7 @@
 				      (list (normalize-field-value value
 								   field-id))))
 			    values)
-		  (bind-column-events metatree index values))
+		  (bind-dynamic-column-events metatree index values))
 		(metatree-columns metatree)
 		(iota (length (metatree-columns metatree)))
 		(map (lambda (fields) (fill-empty-values fields '()))
@@ -1382,7 +1384,7 @@
 				values:
 				(list (normalize-field-value value field-id))))
 		      values (iota (length values)))
-	    (bind-column-events metatree index values))
+	    (bind-dynamic-column-events metatree index values))
 	  (metatree-columns metatree)
 	  (iota (length (metatree-columns metatree)))
 	  (get-block-values order-row)
