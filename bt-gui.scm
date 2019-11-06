@@ -1155,6 +1155,20 @@
 		(cons (metatree-rownums mt)
 		      (metatree-columns mt)))))
 
+  ;;;
+  (define (focus-metatree mt)
+    (show-cursor mt)
+    (tk/focus (list-ref (metatree-columns mt)
+			(metatree-state-cursor-x (metatree-mtstate mt))))
+    (when (eq? 'block (metatree-type mt))
+      (update-active-block-column-info mt)))
+
+  ;;;
+  (define (unfocus-metatree mt)
+    (delete-cursor mt)
+    (set-state! 'active-md-command-info "")
+    (reset-status-text!))
+
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
   ;;; cursor.
@@ -1173,68 +1187,36 @@
   (define (delete-cursor mt)
     (cursor-do mt 'remove))
 
-  ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
-  ;;; of `'up`, `'down`, `'left`, `'right`
-  (define (move-cursor mt direction)
-    (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
-	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt)))
-	  (set-focus! (lambda ()
-			(tk/focus (list-ref (metatree-columns mt)
-					    (metatree-state-cursor-x
-					     (metatree-mtstate mt)))))))
-      (delete-cursor mt)
-      (match direction
-	('up (metatree-state-cursor-y-set!
-	      (metatree-mtstate mt)
-	      (sub1 (if (= current-ypos 0)
-			(metatree-length mt)
-			current-ypos))))
-	('down (metatree-state-cursor-y-set!
-		(metatree-mtstate mt)
-		(let ((edit-step (if (zero? (state 'edit-step))
-				     1 (state 'edit-step))))
-		  (if (>= (+ current-ypos edit-step)
-			  (metatree-length mt))
-		      0 (+ current-ypos edit-step)))))
-	('left (begin (metatree-state-cursor-x-set!
-		       (metatree-mtstate mt)
-		       (sub1 (if (= current-xpos 0)
-				 (length (metatree-columns mt))
-				 current-xpos)))
-		      (set-focus!)))
-	('right (begin (metatree-state-cursor-x-set!
-			(metatree-mtstate mt)
-			(if (>= (+ 1 current-xpos)
-				(length (metatree-columns mt)))
-			    0
-			    (add1 current-xpos)))
-		       (set-focus!))))
-      (show-cursor mt)
-      (when (and (eq? 'block (metatree-type mt))
-		 (memq direction '(left right)))
-	(update-active-block-column-info mt))))
-
   (define (set-cursor mt xpos ypos)
     (delete-cursor mt)
     (metatree-state-cursor-x-set! (metatree-mtstate mt) xpos)
     (metatree-state-cursor-y-set! (metatree-mtstate mt) ypos)
-    (show-cursor mt)
-    (when (eq? 'block (metatree-type mt))
-      (update-active-block-column-info mt)))
+    (focus-metatree mt))
 
-  ;;;
-  (define (focus-metatree mt)
-    (show-cursor mt)
-    (tk/focus (list-ref (metatree-columns mt)
-			(metatree-state-cursor-x (metatree-mtstate mt))))
-    (when (eq? 'block (metatree-type mt))
-      (update-active-block-column-info mt)))
-
-  ;;;
-  (define (unfocus-metatree mt)
-    (delete-cursor mt)
-    (set-state! 'active-md-command-info "")
-    (reset-status-text!))
+  ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
+  ;;; of `'up`, `'down`, `'left`, `'right`
+  (define (move-cursor mt direction)
+    (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
+	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
+      (match direction
+	('up (set-cursor mt current-xpos (sub1 (if (= current-ypos 0)
+						   (metatree-length mt)
+						   current-ypos))))
+	('down (set-cursor mt current-xpos
+			   (let ((edit-step (if (zero? (state 'edit-step))
+						1 (state 'edit-step))))
+			     (if (>= (+ current-ypos edit-step)
+				     (metatree-length mt))
+				 0 (+ current-ypos edit-step)))))
+	('left (set-cursor mt (sub1 (if (= current-xpos 0)
+					(length (metatree-columns mt))
+					current-xpos))
+			   current-ypos))
+	('right (set-cursor mt (if (>= (+ 1 current-xpos)
+				(length (metatree-columns mt)))
+				   0
+				   (add1 current-xpos))
+			    current-ypos)))))
 
 
   ;; ---------------------------------------------------------------------------
