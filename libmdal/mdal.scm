@@ -168,12 +168,10 @@
 
   ;; ---------------------------------------------------------------------------
   ;;; ### additional accessors
-  ;; TODO currently unused, but should be useful in the future
   ;; ---------------------------------------------------------------------------
 
   ;;; returns the group instance's block nodes, except the order node, which can
   ;;; be retrieved with mod-get-group-instance-order instead
-  ;; TODO currently dead code, but should be useful
   (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
     (let ((subnode-ids
   	   (filter (lambda (id)
@@ -184,10 +182,25 @@
   	   subnode-ids)))
 
   ;;; returns the group instance's order node (instance 0)
-  ;; TODO currently dead code, but should be useful
+  ;; TODO currently dead code except in unittests
   (define (mod-get-group-instance-order igroup-instance igroup-id)
     ((mod-get-node-instance 0)
      (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
+
+  ;;; Returns the total number of all block rows in the given group node
+  ;;; instance. The containing group node must be ordered. The result is equal
+  ;;; to the length of the block nodes as if they were combined into a single
+  ;;; instance after being mapped onto the order node.
+  (define (get-ordered-group-length group-id group-instance config)
+    (let ((blocks (inode-instances
+		   (car (mod-get-group-instance-blocks group-instance
+						       group-id config)))))
+      (apply + (map (lambda (instance-id)
+		      (length (inode-instances
+			       (car (inode-instance-val
+				     (car (alist-ref instance-id blocks)))))))
+		    (map car (mod-get-order-values group-id group-instance
+						   config))))))
 
 
   ;; ---------------------------------------------------------------------------

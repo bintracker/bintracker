@@ -481,7 +481,21 @@
 	 (#f #f #f))
        (mod-get-block-values ((node-instance-path "0/PATTERNS/0")
 			      (mdmod-global-node my-mod))
-			     '(0 0 0))))
+			     '(0 0 0)))
+
+ (test "mod-get-group-instance-order"
+       ((node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
+	(mdmod-global-node my-mod))
+       (mod-get-group-instance-order ((node-instance-path "0/PATTERNS/0")
+				      (mdmod-global-node my-mod))
+				     'PATTERNS))
+
+ (test "get-ordered-group-length"
+       32
+       (get-ordered-group-length 'PATTERNS
+				 ((node-instance-path "0/PATTERNS/0")
+				  (mdmod-global-node my-mod))
+				 my-cfg)))
 
 (test-group
  "MD-Module/Compilation"
