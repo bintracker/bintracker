@@ -1411,8 +1411,9 @@
 	   (cons 'rowhl-minor tags))
 	  (else tags)))
 
-  ;;; Update the blocks view display window.
-  (define (blocks-view-display-items metatree active-order-pos)
+  ;;; Update a group's blocks view, based on the current position in the
+  ;;; order or block list.
+  (define (update-blocks-view metatree active-order-pos)
     (clear-metatree metatree)
     (for-each
      (lambda (item-pos)
@@ -1442,12 +1443,7 @@
 	  (metatree-columns metatree)
 	  (metatree-column-ids metatree)
 	  (cddr item-pos))))
-     (blocks-view-get-items-window metatree)))
-
-  ;;; Update a group's blocks view, based on the current position in the
-  ;;; order or block list.
-  (define (update-blocks-view metatree active-order-pos)
-    (blocks-view-display-items metatree active-order-pos)
+     (blocks-view-get-items-window metatree))
     ((metatree-yscroll metatree) 'set 0 (metatree-scrollbar-size metatree)))
   ;;     (tk/event 'generate (metatree-packframe metatree)
   ;;     		'<Configure> height: (metatree-frame-height metatree)
