@@ -1467,8 +1467,6 @@
   ;;; single instance.
   (defstruct bt-blocks-widget
     (tl-panedwindow : procedure)
-    (blocks-pane : procedure)
-    (order-pane : procedure)
     (blocks-view : (struct metatree))
     (order-view : (struct metatree)))
 
@@ -1482,18 +1480,16 @@
 				      orient: 'horizontal))
 		  (.blocks-pane (.tl 'create-widget 'frame))
 		  (.order-pane (.tl 'create-widget 'frame)))
+	     (.tl 'add .blocks-pane weight: 2)
+	     (.tl 'add .order-pane weight: 1)
 	     (make-bt-blocks-widget
 	      tl-panedwindow: .tl
-	      blocks-pane: .blocks-pane
-	      order-pane: .order-pane
 	      blocks-view: (init-metatree .blocks-pane 'block parent-node-id)
 	      order-view: (init-metatree .order-pane 'order parent-node-id))))))
 
   ;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
-      (top 'add (bt-blocks-widget-blocks-pane w) weight: 2)
-      (top 'add (bt-blocks-widget-order-pane w) weight: 1)
       (tk/pack top expand: 1 fill: 'both)
       (show-blocks-view (bt-blocks-widget-blocks-view w))
       (show-order-view (bt-blocks-widget-order-view w))))
