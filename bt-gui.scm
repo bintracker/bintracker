@@ -1481,28 +1481,26 @@
     (let ((block-ids (config-get-subnode-type-ids parent-node-id
 						  (current-config)
 						  'block)))
-      (if (null? block-ids)
-	  #f
-	  (let* ((.tl (parent-widget 'create-widget 'panedwindow
-				     orient: 'horizontal))
-		 (.blocks-pane (.tl 'create-widget 'frame))
-		 (.order-pane (.tl 'create-widget 'frame)))
-	    (make-bt-blocks-widget
-	     tl-panedwindow: .tl
-	     blocks-pane: .blocks-pane
-	     order-pane: .order-pane
-	     blocks-view: (init-metatree .blocks-pane 'block parent-node-id)
-	     order-view: (init-metatree .order-pane 'order parent-node-id))))))
+      (and (not (null? block-ids))
+	   (let* ((.tl (parent-widget 'create-widget 'panedwindow
+				      orient: 'horizontal))
+		  (.blocks-pane (.tl 'create-widget 'frame))
+		  (.order-pane (.tl 'create-widget 'frame)))
+	     (make-bt-blocks-widget
+	      tl-panedwindow: .tl
+	      blocks-pane: .blocks-pane
+	      order-pane: .order-pane
+	      blocks-view: (init-metatree .blocks-pane 'block parent-node-id)
+	      order-view: (init-metatree .order-pane 'order parent-node-id))))))
 
   ;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
-      (begin
-	(top 'add (bt-blocks-widget-blocks-pane w) weight: 2)
-	(top 'add (bt-blocks-widget-order-pane w) weight: 1)
-	(tk/pack top expand: 1 fill: 'both)
-	(show-blocks-view (bt-blocks-widget-blocks-view w))
-	(show-order-view (bt-blocks-widget-order-view w)))))
+      (top 'add (bt-blocks-widget-blocks-pane w) weight: 2)
+      (top 'add (bt-blocks-widget-order-pane w) weight: 1)
+      (tk/pack top expand: 1 fill: 'both)
+      (show-blocks-view (bt-blocks-widget-blocks-view w))
+      (show-order-view (bt-blocks-widget-order-view w))))
 
   ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
   ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
