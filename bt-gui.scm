@@ -1311,37 +1311,31 @@
     (reset-status-text!))
 
   ;;; Update a group's order/block list view.
+  ;;; TODO: only display items that can be displayed.
   (define (update-order-view metatree)
-    (letrec ((fill-empty-values
-	      (lambda (vals previous)
-		(if (null? vals)
-		    '()
-		    (let ((next-val (if (null? (car vals))
-					previous (car vals))))
-		      (cons next-val (fill-empty-values (cdr vals)
-							next-val))))))
-	     (block-values (mod-get-block-instance-values
-			    (get-current-node-instance
-			     (symbol-append (metatree-group-id metatree)
-					    '_ORDER)))))
+    (let ((order-values (mod-get-order-values
+			 (metatree-group-id metatree)
+			 (get-current-node-instance
+			  (metatree-group-id metatree))
+			 (current-config))))
       (clear-metatree metatree)
-      (for-each (lambda (column index values field-id)
-		  (for-each (lambda (value)
+      (for-each (lambda (index)
+		  ((metatree-rownums metatree) 'insert '{} 'end
+		   text: (string-pad (number->string index
+						     (app-settings-number-base
+						      *bintracker-settings*))
+				     3 #\0)))
+		(iota (length order-values)))
+      (for-each (lambda (order-pos)
+		  (for-each (lambda (column value field-id)
 			      (column 'insert '{} 'end tags: '(reference)
 				      values:
 				      (list (normalize-field-value value
 								   field-id))))
-			    values))
-		(metatree-columns metatree)
-		(iota (length (metatree-columns metatree)))
-		(map (lambda (fields) (fill-empty-values fields '()))
-		     block-values)
-		(config-get-subnode-ids
-		 (symbol-append (metatree-group-id metatree)
-				'_ORDER)
-		 (config-itree (current-config))))
-      (update-row-numbers metatree (length (car block-values))
-			  3)))
+			    (metatree-columns metatree)
+			    order-pos
+			    (metatree-column-ids metatree)))
+		order-values)))
 
   ;;; Returns an alist where the keys are numeric IDs referencing an order
   ;;; position, and the values are lists with a list of row numbers in car,
