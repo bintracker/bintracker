@@ -1519,21 +1519,20 @@
     (let ((sg-ids (config-get-subnode-type-ids parent-node-id
 					       (current-config)
 					       'group)))
-      (if (null? sg-ids)
-	  #f
-	  (let* ((tl-frame (parent-widget 'create-widget 'frame))
-		 (notebook (tl-frame 'create-widget 'notebook
-				     style: 'BT.TNotebook))
-		 (subgroup-frames (map (lambda (id)
-					 (notebook 'create-widget 'frame))
-				       sg-ids)))
-	    (make-bt-subgroups-widget
-	     toplevel-frame: tl-frame
-	     subgroup-ids: sg-ids
-	     tl-notebook: notebook
-	     notebook-frames: subgroup-frames
-	     subgroups: (map make-group-widget
-			     sg-ids subgroup-frames))))))
+      (and (not (null? sg-ids))
+	   (let* ((tl-frame (parent-widget 'create-widget 'frame))
+		  (notebook (tl-frame 'create-widget 'notebook
+				      style: 'BT.TNotebook))
+		  (subgroup-frames (map (lambda (id)
+					  (notebook 'create-widget 'frame))
+					sg-ids)))
+	     (make-bt-subgroups-widget
+	      toplevel-frame: tl-frame
+	      subgroup-ids: sg-ids
+	      tl-notebook: notebook
+	      notebook-frames: subgroup-frames
+	      subgroups: (map make-group-widget
+			      sg-ids subgroup-frames))))))
 
   ;;; Pack a bt-subgroups-widget to the display.
   (define (show-subgroups-widget w)
