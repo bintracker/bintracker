@@ -1049,43 +1049,53 @@
 	(set-state! 'modified #t)
 	(update-window-title!))))
 
-  ;;; Bind generic (static) events for a metatree column. This procedure must
-  ;;; be called when creating a metatree widget.
-  (define (bind-static-column-events metatree column)
-    (tk/bind column '<Down> (lambda () (move-cursor metatree 'down)))
-    (tk/bind column '<Up> (lambda () (move-cursor metatree 'up)))
-    (tk/bind column '<Left> (lambda () (move-cursor metatree 'left)))
-    (tk/bind column '<Right> (lambda () (move-cursor metatree 'right)))
-    (tk/bind column '<<ClearStep>>
-	     (lambda () (edit-current-metatree-cell metatree '())))
-    ;; TODO which entry type to bind depends on command type.
-    (tk/bind column '<<NoteEntry>>
-	     `(,(lambda (keysym)
-		  (let ((note-val (keypress->note keysym)))
-		    (when note-val
-		      (edit-current-metatree-cell metatree note-val))))
-	       %K))
-    (reverse-binding-eval-order column))
-
-  ;;; Bind dynamic events for a metatree column. As handling for these events
-  ;;; depends on the items present in the column, this procedure must be called
-  ;;; on updating the metatree, rather than on creation. {{index}} is the index
-  ;;; of the column to bind, and {{values}} are the column's item values.
-  (define (bind-dynamic-column-events metatree index values)
-    (let* ((ui-zone (if (eq? 'block (metatree-type metatree))
-			'blocks 'order))
-	   (column (list-ref (metatree-columns metatree)
-			     index)))
-      (tk/bind column '<ButtonPress-1>
-	       `(,(lambda (y)
-		    (let ((ypos (treeview-ypos->item-index y)))
-		      (switch-ui-zone-focus ui-zone)
-		      (set-cursor metatree index
-				  (if (>= (add1 ypos)
-					  (length values))
-				      (sub1 (length values))
-				      ypos))))
-		 %y))))
+  ;;; Bind events for a metatree. This procedure must be called when creating a
+  ;;; metatree widget.
+  (define (bind-metatree-events mt)
+    (let ((ui-zone (if (eq? 'block (metatree-type mt))
+		       'blocks 'order)))
+      (tk/bind (metatree-canvas mt)
+	       '<ButtonPress-1> (lambda () (switch-ui-zone-focus ui-zone)))
+      (tk/bind
+       (metatree-packframe mt) '<Configure>
+       `(,(lambda (h)
+      	    (for-each (lambda (column)
+			(column 'configure height:
+				(quotient
+				 (- h (* (treeview-rowheight)
+					 (if (eq? 'block (metatree-type mt))
+					     2 1)))
+				 (treeview-rowheight))
+				yscrollcommand: `(,(metatree-yscroll mt) set)))
+      		      (metatree-columns mt)))
+	 %h))
+      (for-each
+       (lambda (column index)
+	 (tk/bind column '<Down> (lambda () (move-cursor mt 'down)))
+	 (tk/bind column '<Up> (lambda () (move-cursor mt 'up)))
+	 (tk/bind column '<Left> (lambda () (move-cursor mt 'left)))
+	 (tk/bind column '<Right> (lambda () (move-cursor mt 'right)))
+	 (tk/bind column '<<ClearStep>>
+		  (lambda () (edit-current-metatree-cell mt '())))
+	 ;; TODO which entry type to bind depends on command type.
+	 (tk/bind column '<<NoteEntry>>
+		  `(,(lambda (keysym)
+		       (let ((note-val (keypress->note keysym)))
+			 (when note-val
+			   (edit-current-metatree-cell mt note-val))))
+		    %K))
+	 (tk/bind column '<ButtonPress-1>
+		  `(,(lambda (y)
+		       (let ((ypos (treeview-ypos->item-index y)))
+			 (switch-ui-zone-focus ui-zone)
+			 (set-cursor mt index (if (>= (add1 ypos)
+						      (tree-length column))
+						  (sub1 (tree-length column))
+						  ypos))))
+		    %y))
+	 (reverse-binding-eval-order column))
+       (metatree-columns mt)
+       (iota (length (metatree-columns mt))))))
 
   ;;; Pack the given metatree-widget. This only sets up the structure, but does
   ;;; not add any data. You most likely do not want to call this procedure
@@ -1127,7 +1137,6 @@
 		     (canvas 'create 'window
 			     (list xpos (+ init-ypos tree-rowheight))
 			     anchor: 'nw window: (car columns))
-		     (bind-static-column-events mt (car columns))
 		     ;; TODO this is probably wrong
 		     ((car columns) 'configure height: 32)
 		     (pack-columns (cdr columns)
@@ -1151,20 +1160,8 @@
       (pack-columns (metatree-columns mt)
 		    (metatree-column-ids mt)
 		    0)
+      (bind-metatree-events mt)
       (canvas 'configure xscrollcommand: (list (metatree-xscroll mt) 'set))
-      (tk/bind
-       (metatree-packframe mt) '<Configure>
-       `(,(lambda (h)
-      	    (for-each (lambda (column)
-			(column 'configure height:
-				(quotient
-				 (- h (* tree-rowheight
-					 (if (eq? 'block (metatree-type mt))
-					     2 1)))
-				 tree-rowheight)
-				yscrollcommand: `(,(metatree-yscroll mt) set)))
-      		      (metatree-columns mt)))
-      	 %h))
       ;; TODO 1000 will not be enough on the long run. Needs to be dynamic.
       (canvas 'configure scrollregion:
 	      (list 0 0 (* 80 (length (metatree-columns mt)))
@@ -1334,8 +1331,7 @@
 				      values:
 				      (list (normalize-field-value value
 								   field-id))))
-			    values)
-		  (bind-dynamic-column-events metatree index values))
+			    values))
 		(metatree-columns metatree)
 		(iota (length (metatree-columns metatree)))
 		(map (lambda (fields) (fill-empty-values fields '()))
@@ -1406,99 +1402,69 @@
 			 (cdr item-lst)))))
        all-items (get-start+end-positions 0 all-items))))
 
-  ;; FIXME this is called twice on opening a module file
-  (define (update-blocks-row-numbers metatree order-values active-order-pos)
+  ;;; Add highlight tags to the list of {{tags}}. Auxilliary proc for
+  ;;; `blocks-view-display-items`.
+  (define (add-highlight-tags tags index)
+    (cond ((= 0 (modulo index (state 'major-row-highlight)))
+	   (cons 'rowhl-major tags))
+	  ((= 0 (modulo index (state 'minor-row-highlight)))
+	   (cons 'rowhl-minor tags))
+	  (else tags)))
+
+  ;;; Update the blocks view display window.
+  (define (blocks-view-display-items metatree active-order-pos)
+    (clear-metatree metatree)
     (for-each
-     (lambda (block-length order-pos)
-       (for-each
-	(lambda (row)
-	  ((metatree-rownums metatree) 'insert '{} 'end
-	   text: (string-pad (number->string row (app-settings-number-base
-						  *bintracker-settings*))
-			     ;; 4 digits for row numbers
-			     4 #\0)
-	   tags: (list (if (= order-pos active-order-pos)
-			   'active 'inactive))))
-	(iota block-length)))
-     (map (lambda (block-instance-id)
-	    (length (inode-instances
-		     ((node-path (string-append
-				  (get-current-instance-path
-				   (metatree-group-id metatree))
-				  (symbol->string
-				   (car (metatree-block-ids metatree)))
-				  "/" (number->string block-instance-id)
-				  "/" (symbol->string
-				       (car (metatree-column-ids metatree)))
-				  "/"))
-		      (mdmod-global-node (current-mod))))))
-	  (map car order-values))
-     (iota (length order-values))))
+     (lambda (item-pos)
+       (let ((state-tags (list (if (= active-order-pos (car item-pos))
+				   'active 'inactive))))
+	 (for-each
+	  (lambda (rownum)
+	    ((metatree-rownums metatree) 'insert '{} 'end
+	     tags: (add-highlight-tags state-tags rownum)
+	     text: (string-pad (number->string rownum (app-settings-number-base
+						       *bintracker-settings*))
+			       ;; 4 digits for row numbers
+			       4 #\0)))
+	  (cadr item-pos))
+	 (for-each
+	  (lambda (tree field-id items)
+	    (let ((tag-list (if (= active-order-pos (car item-pos))
+				(cons (get-command-type-tag field-id)
+				      state-tags)
+				state-tags)))
+	      (for-each
+	       (lambda (item index)
+		 (tree 'insert '{} 'end
+		       tags: (add-highlight-tags tag-list index)
+		       values: (list (normalize-field-value item field-id))))
+	       items (cadr item-pos))))
+	  (metatree-columns metatree)
+	  (metatree-column-ids metatree)
+	  (cddr item-pos))))
+     (blocks-view-get-items-window metatree)))
 
   ;;; Update a group's blocks view, based on the current position in the
   ;;; order or block list.
   (define (update-blocks-view metatree active-order-pos)
-    (let* ((parent-group-instance (get-current-node-instance
-				    (metatree-group-id metatree)))
-	   (order-values (mod-get-order-values (metatree-group-id metatree)
-					       parent-group-instance
-					       (current-config)))
-	   (get-block-values
-	    (lambda (block-instance-ids)
-	      (concatenate
-	       (map (lambda (block-id instance-id)
-		      (mod-get-block-instance-values
-		       ((node-instance-path
-			 (string-append (get-current-instance-path
-					 (metatree-group-id metatree))
-					(symbol->string block-id) "/"
-					(number->string instance-id)))
-			(mdmod-global-node (current-mod)))))
-		    (metatree-block-ids metatree)
-		    block-instance-ids)))))
-      (clear-metatree metatree)
-      (for-each
-       (lambda (order-row order-index)
-	 (for-each
-	  (lambda (column index values field-id)
-	    (for-each (lambda (value rownum)
-			(column 'insert '{} 'end
-				tags: (if (= order-index active-order-pos)
-					  (list 'active
-						(get-command-type-tag field-id))
-					  (list 'inactive))
-				values:
-				(list (normalize-field-value value field-id))))
-		      values (iota (length values)))
-	    (bind-dynamic-column-events metatree index values))
-	  (metatree-columns metatree)
-	  (iota (length (metatree-columns metatree)))
-	  (get-block-values order-row)
-	  (metatree-column-ids metatree)))
-       order-values
-       (iota (length order-values)))
-      (update-blocks-row-numbers metatree order-values active-order-pos)
-      (update-row-highlights metatree)
-      ((metatree-yscroll metatree) 'set 0 (metatree-scrollbar-size metatree))
-      (tk/event 'generate (metatree-packframe metatree)
-      		'<Configure> height: (metatree-frame-height metatree)
-		when: 'tail)))
+    (blocks-view-display-items metatree active-order-pos)
+    ((metatree-yscroll metatree) 'set 0 (metatree-scrollbar-size metatree)))
+  ;;     (tk/event 'generate (metatree-packframe metatree)
+  ;;     		'<Configure> height: (metatree-frame-height metatree)
+  ;; 		when: 'tail)
 
   ;;; Display the blocks of a group instance.
   ;;; TODO this must read the order position, or the list of instances must be
   ;;; passed in.
   (define (show-blocks-view metatree)
     (show-metatree metatree)
-    (update-blocks-view metatree 0)
-    (tk/bind (metatree-canvas metatree)
-	     '<ButtonPress-1> (lambda () (switch-ui-zone-focus 'blocks))))
+    (update-blocks-view metatree 0))
 
   ;;; Display the order or block list of a group instance.
   (define (show-order-view metatree)
     (show-metatree metatree)
     (update-order-view metatree)
-    (tk/bind (metatree-canvas metatree)
-	     '<ButtonPress-1> (lambda () (switch-ui-zone-focus 'order))))
+    (tk/bind (metatree-canvas metatree)))
 
   ;;; A metawidget for displaying a group's block members and the corresponding
   ;;; order or block list.
