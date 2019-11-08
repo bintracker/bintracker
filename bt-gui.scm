@@ -1463,8 +1463,7 @@
   ;;; Display the order or block list of a group instance.
   (define (show-order-view metatree)
     (show-metatree metatree)
-    (update-order-view metatree)
-    (tk/bind (metatree-canvas metatree)))
+    (update-order-view metatree))
 
   ;;; A metawidget for displaying a group's block members and the corresponding
   ;;; order or block list.
