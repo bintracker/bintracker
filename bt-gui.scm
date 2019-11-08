@@ -1167,18 +1167,6 @@
 	      (list 0 0 (* 80 (length (metatree-columns mt)))
 		    1000))))
 
-  ;;; Auxilliary procedure for `update-order-view`/`update-blocks-view`,
-  ;;; displays {{len}} row numbers for the corresponding metatree display.
-  ;;; Row numbers are padded by {{padding}} digits.
-  (define (update-row-numbers metatree len padding)
-    (for-each (lambda (row)
-		((metatree-rownums metatree) 'insert '{} 'end
-		 text: (string-pad (number->string row
-						   (app-settings-number-base
-						    *bintracker-settings*))
-				   padding #\0)))
-	      (iota len)))
-
   ;;; Get the list of items in the given ttk::treeview. Items are returned as
   ;;; symbols.
   ;; TODO why return symbols?
