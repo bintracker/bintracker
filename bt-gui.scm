@@ -957,11 +957,14 @@
   ;;; fraction between 0.0 and 1.0.
   (define (metatree-scrollbar-size mt)
     (let* ((group-id (metatree-group-id mt))
+	   (group-instance (get-current-node-instance group-id))
 	   (size (exact->inexact
 		  (/ (metatree-visible-rows mt)
-		     (get-ordered-group-length
-		      group-id (get-current-node-instance group-id)
-		      (current-config))))))
+		     (if (eq? 'block (metatree-type mt))
+			 (get-ordered-group-length
+			  group-id group-instance (current-config))
+			 (length (mod-get-order-values group-id group-instance
+						       (current-config))))))))
       (if (>= size 1.0)
 	  1.0 size)))
 
