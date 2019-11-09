@@ -1238,6 +1238,23 @@
     (set-state! 'active-md-command-info "")
     (reset-status-text!))
 
+  (define (item-pos->order-pos items item-pos)
+    (let ((start+end-positions (blocks-view-get-start+end-positions 0 items)))
+      (list-index (lambda (chunk)
+		    (and (>= item-pos (car chunk))
+			 (<= item-pos (cadr chunk))))
+		  start+end-positions)))
+
+  ;;; Determine the current order position from the metatree's cursor position.
+  (define (metatree-cursor->order-pos mt)
+    (let* ((state (metatree-mtstate mt))
+	  (item-pos (+ (metatree-state-start-pos state)
+		       (metatree-state-cursor-y state))))
+      (if (eq? 'order (metatree-type mt))
+	  item-pos
+	  (item-pos->order-pos (blocks-view-get-all-items mt)
+			       item-pos))))
+
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
   ;;; cursor.
@@ -1257,10 +1274,14 @@
     (cursor-do mt 'remove))
 
   (define (set-cursor mt xpos ypos)
-    (delete-cursor mt)
-    (metatree-state-cursor-x-set! (metatree-mtstate mt) xpos)
-    (metatree-state-cursor-y-set! (metatree-mtstate mt) ypos)
-    (focus-metatree mt))
+    (let ((old-order-pos (metatree-cursor->order-pos mt)))
+      (delete-cursor mt)
+      (metatree-state-cursor-x-set! (metatree-mtstate mt) xpos)
+      (metatree-state-cursor-y-set! (metatree-mtstate mt) ypos)
+      (when (and (eq? 'block (metatree-type mt))
+		 (not (= old-order-pos (metatree-cursor->order-pos mt))))
+	(update-blocks-view mt (metatree-cursor->order-pos mt)))
+      (focus-metatree mt)))
 
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
   ;;; of `'up`, `'down`, `'left`, `'right`
@@ -1350,6 +1371,14 @@
 			   items))))
 	   order (iota (length order)))))
 
+  (define (blocks-view-get-start+end-positions current-pos items)
+    (if (null-list? items)
+	'()
+	(let ((len (length (cadr (car items)))))
+	  (cons (list current-pos (+ current-pos (sub1 len)))
+		(blocks-view-get-start+end-positions (+ current-pos len)
+						     (cdr items))))))
+
   ;;; Select a window of items from the list of all column items belonging to
   ;;; the given blocks view metatree. {{start}} defaults to the metatree's
   ;;; current start position, and {{end}} defaults to *start* + the maximum
@@ -1358,15 +1387,7 @@
 	   mt #!optional (start (metatree-state-start-pos
 				 (metatree-mtstate mt)))
 	   (end (+ start (metatree-visible-rows mt))))
-    (letrec* ((all-items (blocks-view-get-all-items mt))
-	      (get-start+end-positions
-	       (lambda (current-pos items)
-		 (if (null-list? items)
-		     '()
-		     (let ((len (length (cadr (car items)))))
-		       (cons (list current-pos (+ current-pos (sub1 len)))
-			     (get-start+end-positions (+ current-pos len)
-						      (cdr items))))))))
+    (let ((all-items (blocks-view-get-all-items mt)))
       (filter-map
        (lambda (item-lst start+end)
 	 (and (and (<= start (cadr start+end))
@@ -1382,7 +1403,7 @@
 						    start))
 				 drop-tail)))
 			 (cdr item-lst)))))
-       all-items (get-start+end-positions 0 all-items))))
+       all-items (blocks-view-get-start+end-positions 0 all-items))))
 
   ;;; Add highlight tags to the list of {{tags}}. Auxilliary proc for
   ;;; `blocks-view-display-items`.
