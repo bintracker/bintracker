@@ -6,11 +6,18 @@ ifdef RELEASE
  LIBFLAGS += -O3
 endif
 IMPORTFLAGS = -s -d0
+ifdef CHICKEN_REPOSITORY_PATH
+ CHICKEN_REPO_PATH = $(CHICKEN_REPOSITORY_PATH)
+else
+ CHICKEN_REPO_PATH = $(shell if [ ! -f "chicken-repository-path" ]; then\
+ find /usr /home/ -type d 2>/dev/null | grep -P "lib.*?\/chicken\/9" >chicken-repository-path; fi;\
+ head -n 1 chicken-repository-path)
+endif
 
 # build bintracker-core
 bintracker-core.so: bintracker-core.scm bt-state.import.so bt-types.import.so\
 	bt-gui.import.so libmdal/mdal.import.so
-	export CHICKEN_REPOSITORY_PATH=/home/heinz/chickens/5.0.0/lib/chicken/9:${PWD}/libmdal;\
+	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bintracker-core.scm -j bintracker-core
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
 
@@ -21,14 +28,14 @@ bt-types.import.so: bt-types.so
 	$(CSC) $(IMPORTFLAGS) bt-types.import.scm
 
 bt-state.so: bt-state.scm bt-types.import.so libmdal/mdal.import.so
-	export CHICKEN_REPOSITORY_PATH=/home/heinz/chickens/5.0.0/lib/chicken/9:${PWD}/libmdal;\
+	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-state.scm -j bt-state
 
 bt-state.import.so: bt-state.so
 	$(CSC) $(IMPORTFLAGS) bt-state.import.scm
 
 bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so
-	export CHICKEN_REPOSITORY_PATH=/home/heinz/chickens/5.0.0/lib/chicken/9:${PWD}/libmdal;\
+	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-gui.scm -j bt-gui
 
 bt-gui.import.so: bt-gui.so

@@ -15,3 +15,4 @@ cfg/
 *.import.*
 *.backup
 libmdal/unittests/modules/save-test.mdal
+chicken-repository-path
