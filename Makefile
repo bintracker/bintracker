@@ -13,10 +13,18 @@ else
  find /usr /home/ -type d 2>/dev/null | grep -P "lib.*?\/chicken\/9" >chicken-repository-path; fi;\
  head -n 1 chicken-repository-path)
 endif
+ALL_SOURCE_FILES = bt-types.scm bt-state.scm bt-gui.scm bintracker-core.scm\
+ libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-config.scm\
+ libmdal/md-command.scm libmdal/utils/md-note-table.scm libmdal/md-types.scm\
+ libmdal/md-helpers.scm libmdal/mdal.scm
+MAKE_ETAGS = yes
+ifeq ($(MAKE_ETAGS),yes)
+ DO_TAGS = TAGS
+endif
 
 # build bintracker-core
 bintracker-core.so: bintracker-core.scm bt-state.import.so bt-types.import.so\
-	bt-gui.import.so libmdal/mdal.import.so
+	bt-gui.import.so libmdal/mdal.import.so $(DO_TAGS)
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bintracker-core.scm -j bintracker-core
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
@@ -40,6 +48,9 @@ bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so
 
 bt-gui.import.so: bt-gui.so
 	$(CSC) $(IMPORTFLAGS) bt-gui.import.scm
+
+TAGS: $(ALL_SOURCE_FILES)
+	etags -r '"  (def.*? "' $(ALL_SOURCE_FILES)
 
 %.md: %.scm
 	$(DOCGEN) -i $< -o docs/generated/$@ -m

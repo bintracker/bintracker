@@ -16,3 +16,4 @@ cfg/
 *.backup
 libmdal/unittests/modules/save-test.mdal
 chicken-repository-path
+TAGS
