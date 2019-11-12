@@ -1,7 +1,7 @@
 CSC = csc
 DOCGEN = scm2wiki
 DOCS = mdal.md md-config.md md-helpers.md md-types.md md-parser.md\
- md-command.md utils/md-note-table.md
+ md-command.md schemta.md utils/md-note-table.md
 LIBFLAGS = -s -d3
 ifdef RELEASE
  LIBFLAGS += -O3
@@ -69,6 +69,7 @@ md-types.md: md-types.scm
 md-parser.md: md-parser.scm
 md-command.md: md-command.scm
 md-note-table.md: utils/md-note-table.scm
+schemta.md: schemta.scm
 
 docs: $(DOCS)
 
