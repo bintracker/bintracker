@@ -16,7 +16,6 @@
 	  typed-records matchable simple-exceptions pstk list-utils stack
 	  bt-types mdal)
 
-
   (define *bintracker-version* "0.2.0")
   (define *bintracker-state* (make-app-state))
   (define *bintracker-settings* (make-app-settings))
