@@ -1284,8 +1284,8 @@
   ;;; Determine the current order position from the metatree's cursor position.
   (define (metatree-cursor->order-pos mt)
     (let* ((state (metatree-mtstate mt))
-	  (item-pos (+ (metatree-state-start-pos state)
-		       (metatree-state-cursor-y state))))
+	   (item-pos (+ (metatree-state-start-pos state)
+			(metatree-state-cursor-y state))))
       (if (eq? 'order (metatree-type mt))
 	  item-pos
 	  (item-pos->order-pos (metatree-state-item-cache (metatree-mtstate mt))
