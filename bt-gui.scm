@@ -880,6 +880,7 @@
 
   ;;; child record that wraps display related state such as the cursor position.
   (defstruct metatree-state
+    ((accept-events #t) : boolean)
     ((cursor-x 0) : integer)
     ((cursor-y 0) : integer)
     ((start-pos 0) : integer))
@@ -1289,26 +1290,31 @@
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
   ;;; of `'up`, `'down`, `'left`, `'right`
   (define (move-cursor mt direction)
-    (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
-	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
-      (match direction
-	('up (set-cursor mt current-xpos (sub1 (if (= current-ypos 0)
-						   (metatree-length mt)
-						   current-ypos))))
-	('down (set-cursor mt current-xpos
-			   (let ((edit-step (if (zero? (state 'edit-step))
-						1 (state 'edit-step))))
-			     (if (>= (+ current-ypos edit-step)
-				     (metatree-length mt))
-				 0 (+ current-ypos edit-step)))))
-	('left (set-cursor mt (sub1 (if (= current-xpos 0)
-					(length (metatree-columns mt))
-					current-xpos))
-			   current-ypos))
-	('right (set-cursor mt (if (>= (+ 1 current-xpos)
-				       (length (metatree-columns mt)))
-				   0 (add1 current-xpos))
-			    current-ypos)))))
+    (when (metatree-state-accept-events (metatree-mtstate mt))
+      (metatree-state-accept-events-set! (metatree-mtstate mt)
+					 #f)
+      (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
+	    (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
+	(match direction
+	  ('up (set-cursor mt current-xpos (sub1 (if (= current-ypos 0)
+						     (metatree-length mt)
+						     current-ypos))))
+	  ('down (set-cursor mt current-xpos
+			     (let ((edit-step (if (zero? (state 'edit-step))
+						  1 (state 'edit-step))))
+			       (if (>= (+ current-ypos edit-step)
+				       (metatree-length mt))
+				   0 (+ current-ypos edit-step)))))
+	  ('left (set-cursor mt (sub1 (if (= current-xpos 0)
+					  (length (metatree-columns mt))
+					  current-xpos))
+			     current-ypos))
+	  ('right (set-cursor mt (if (>= (+ 1 current-xpos)
+					 (length (metatree-columns mt)))
+				     0 (add1 current-xpos))
+			      current-ypos))))
+      (metatree-state-accept-events-set! (metatree-mtstate mt)
+					 #t)))
 
 
   ;; ---------------------------------------------------------------------------
