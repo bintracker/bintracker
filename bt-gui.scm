@@ -1262,11 +1262,14 @@
 
   ;;;
   (define (focus-metatree mt)
-    (show-cursor mt)
-    (tk/focus (list-ref (metatree-columns mt)
-			(metatree-state-cursor-x (metatree-mtstate mt))))
-    (when (eq? 'block (metatree-type mt))
-      (update-active-block-column-info mt)))
+    (let ((xpos (metatree-state-cursor-x (metatree-mtstate mt))))
+      (show-cursor mt)
+      (tk/focus (list-ref (metatree-columns mt)
+			  xpos))
+      (when (eq? 'block (metatree-type mt))
+	(set-active-md-command-info! (list-ref (metatree-column-ids mt)
+					       xpos))
+	(reset-status-text!))))
 
   ;;;
   (define (unfocus-metatree mt)
@@ -1274,6 +1277,7 @@
     (set-state! 'active-md-command-info "")
     (reset-status-text!))
 
+  ;; TODO this shouldn't be here as it relies on blocks-view specific code.
   (define (item-pos->order-pos items item-pos)
     (let ((start+end-positions (blocks-view-get-start+end-positions 0 items)))
       (list-index (lambda (chunk)
@@ -1356,13 +1360,6 @@
   ;; ---------------------------------------------------------------------------
   ;;; ### Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
-
-  ;;; Update the status bar hint on the currently selected block field.
-  (define (update-active-block-column-info metatree)
-    (set-active-md-command-info!
-     (list-ref (metatree-column-ids metatree)
-	       (metatree-state-cursor-x (metatree-mtstate metatree))))
-    (reset-status-text!))
 
   ;;; Update a group's order/block list view.
   ;;; TODO: only display items that can be displayed.
