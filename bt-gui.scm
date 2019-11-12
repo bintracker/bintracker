@@ -1051,15 +1051,38 @@
 	 (cons (metatree-rownums mt)
 	       (metatree-columns mt))))
 
-  ;;; Update the metatree item cache.
+  ;;; Update the metatree item cache. For order metatrees, the cache is the list
+  ;;; of order values as returned by `mod-get-order-values`. For block
+  ;;; metatrees, the cache is an alist where the keys are numeric IDs
+  ;;; referencing an order position, and the values are lists with a list of row
+  ;;; numbers in car, and the list of row numbers and field instance values in
+  ;;; cdr.
   (define (metatree-update-item-cache mt)
     (let* ((group-id (metatree-group-id mt))
-	   (group-instance (get-current-node-instance group-id)))
+	   (group-instance (get-current-node-instance group-id))
+	   (order (mod-get-order-values group-id group-instance
+					(current-config))))
       (metatree-state-item-cache-set!
        (metatree-mtstate mt)
        (if (eq? 'order (metatree-type mt))
-	   (mod-get-order-values group-id group-instance (current-config))
-	   (blocks-view-get-all-items mt)))))
+	   order
+	   (let ((blocks (mod-get-group-instance-blocks group-instance group-id
+							(current-config))))
+	     (map (lambda (order-pos index)
+		    (let ((items
+			   (map (lambda (blk-inst-id block)
+				  (concatenate
+				   (map (lambda (field-node)
+					  (map (o inode-instance-val cadr)
+					       (inode-instances field-node)))
+					(inode-instance-val
+					 ((mod-get-node-instance blk-inst-id)
+					  block)))))
+				order-pos blocks)))
+		      (cons index
+			    (cons (iota (length (car items)))
+				  items))))
+		  order (iota (length order))))))))
 
   ;;; Perform an edit action on {{metatree}}, setting the current active cell to
   ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
@@ -1265,7 +1288,7 @@
 		       (metatree-state-cursor-y state))))
       (if (eq? 'order (metatree-type mt))
 	  item-pos
-	  (item-pos->order-pos (blocks-view-get-all-items mt)
+	  (item-pos->order-pos (metatree-state-item-cache (metatree-mtstate mt))
 			       item-pos))))
 
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
@@ -1366,31 +1389,7 @@
 			    (metatree-column-ids metatree)))
 		order-values)))
 
-  ;;; Returns an alist where the keys are numeric IDs referencing an order
-  ;;; position, and the values are lists with a list of row numbers in car,
-  ;;; and the lists row numbers and field instance values in cdr.
-  (define (blocks-view-get-all-items mt)
-    (let* ((group-id (metatree-group-id mt))
-	   (group-instance (get-current-node-instance group-id))
-	   (blocks (mod-get-group-instance-blocks group-instance group-id
-						  (current-config)))
-	   (order (mod-get-order-values group-id group-instance
-					(current-config))))
-      (map (lambda (order-pos index)
-	     (let ((items (map (lambda (blk-inst-id block)
-				 (concatenate
-				  (map (lambda (field-node)
-					 (map (o inode-instance-val cadr)
-					      (inode-instances field-node)))
-				       (inode-instance-val
-					((mod-get-node-instance blk-inst-id)
-					 block)))))
-			       order-pos blocks)))
-	       (cons index
-		     (cons (iota (length (car items)))
-			   items))))
-	   order (iota (length order)))))
-
+  ;;;
   (define (blocks-view-get-start+end-positions current-pos items)
     (if (null-list? items)
 	'()
