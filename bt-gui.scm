@@ -41,6 +41,12 @@
 
   ;;; Various general-purpose dialogue procedures.
 
+  ;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
+  ;;; that is safe to execute as a callback from Tk. Does not yet work with the
+  ;;; extended form `(,(lambda args body) substitution-pattern).
+  (define (tk/bind* tag sequence proc)
+    (tk/bind tag sequence (lambda () (tk-with-lock proc))))
+
   ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
   ;;; tk/get-save-file that block the main application window  while the pop-up
   ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
@@ -386,22 +392,18 @@
 				       (begin (set-state! statevar new-val)
 					      (when action (action)))
 				       (spinbox 'set (state statevar))))))
-      (tk/bind spinbox '<<Increment>>
-      	       (lambda ()
-		 (tk-with-lock
-		  (lambda ()
-      		    (validate-new-value
-		     (add1 (string->number (spinbox 'get))))))))
-      (tk/bind spinbox '<<Decrement>>
-      	       (lambda ()
-		 (tk-with-lock
-		  (lambda ()
-      		    (validate-new-value
-		     (sub1 (string->number (spinbox 'get))))))))
-      (tk/bind spinbox '<Return>
-	       (lambda () (validate-new-value (string->number (spinbox 'get)))))
-      (tk/bind spinbox '<FocusOut>
-	       (lambda () (validate-new-value (string->number (spinbox 'get)))))
+      (tk/bind* spinbox '<<Increment>>
+      		(lambda ()
+      		  (validate-new-value (add1 (string->number (spinbox 'get))))))
+      (tk/bind* spinbox '<<Decrement>>
+      		(lambda ()
+      		  (validate-new-value (sub1 (string->number (spinbox 'get))))))
+      (tk/bind* spinbox '<Return>
+		(lambda ()
+		  (validate-new-value (string->number (spinbox 'get)))))
+      (tk/bind* spinbox '<FocusOut>
+		(lambda ()
+		  (validate-new-value (string->number (spinbox 'get)))))
       spinbox))
 
   ;;; The list of edit setting widgets. Each element in the list must be a list
@@ -1137,22 +1139,12 @@
 	 %h))
       (for-each
        (lambda (column index)
-	 (tk/bind column '<Down>
-		  (lambda ()
-		    (tk-with-lock (lambda () (move-cursor mt 'down)))))
-	 (tk/bind column '<Up>
-		  (lambda ()
-		    (tk-with-lock (lambda () (move-cursor mt 'up)))))
-	 (tk/bind column '<Left>
-		  (lambda ()
-		    (tk-with-lock (lambda () (move-cursor mt 'left)))))
-	 (tk/bind column '<Right>
-		  (lambda ()
-		    (tk-with-lock (lambda () (move-cursor mt 'right)))))
-	 (tk/bind column '<<ClearStep>>
-		  (lambda ()
-		    (tk-with-lock (lambda ()
-				    (edit-current-metatree-cell mt '())))))
+	 (tk/bind* column '<Down> (lambda () (move-cursor mt 'down)))
+	 (tk/bind* column '<Up> (lambda () (move-cursor mt 'up)))
+	 (tk/bind* column '<Left> (lambda () (move-cursor mt 'left)))
+	 (tk/bind* column '<Right> (lambda () (move-cursor mt 'right)))
+	 (tk/bind* column '<<ClearStep>>
+		   (lambda () (edit-current-metatree-cell mt '())))
 	 ;; TODO which entry type to bind depends on command type.
 	 (tk/bind column '<<NoteEntry>>
 		  `(,(lambda (keysym)
