@@ -1425,12 +1425,11 @@
 	      (cons (car item-lst)
 		    (map (lambda (vals)
 			   (let ((drop-tail
-				  (if (>= end (cadr start+end))
+				  (if (> end (cadr start+end))
 				      vals
 				      (take vals (- end (car start+end))))))
 			     (if (> start (car start+end))
-				 (drop drop-tail (- (car start+end)
-						    start))
+				 (drop drop-tail (- start (car start+end)))
 				 drop-tail)))
 			 (cdr item-lst)))))
        all-items (blocks-view-get-start+end-positions 0 all-items))))
