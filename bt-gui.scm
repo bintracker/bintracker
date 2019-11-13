@@ -392,12 +392,12 @@
 				       (begin (set-state! statevar new-val)
 					      (when action (action)))
 				       (spinbox 'set (state statevar))))))
-      (tk/bind* spinbox '<<Increment>>
-      		(lambda ()
-      		  (validate-new-value (add1 (string->number (spinbox 'get))))))
-      (tk/bind* spinbox '<<Decrement>>
-      		(lambda ()
-      		  (validate-new-value (sub1 (string->number (spinbox 'get))))))
+      ;; (tk/bind* spinbox '<<Increment>>
+      ;; 		(lambda ()
+      ;; 		  (validate-new-value (add1 (string->number (spinbox 'get))))))
+      ;; (tk/bind* spinbox '<<Decrement>>
+      ;; 		(lambda ()
+      ;; 		  (validate-new-value (sub1 (string->number (spinbox 'get))))))
       (tk/bind* spinbox '<Return>
 		(lambda ()
 		  (validate-new-value (string->number (spinbox 'get)))))
