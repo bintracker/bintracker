@@ -44,7 +44,7 @@
   ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
   ;;; tk/get-save-file that block the main application window  while the pop-up
   ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
-  ;;; once they lose focus.
+  ;;; once they lose focus. tk-with-lock does not help in these cases.
   (define (tk/safe-dialogue type . args)
     (tk-eval "tk busy .")
     (tk/update)
@@ -386,12 +386,18 @@
 				       (begin (set-state! statevar new-val)
 					      (when action (action)))
 				       (spinbox 'set (state statevar))))))
-      ;; (tk/bind spinbox '<<Increment>>
-      ;; 	       (lambda ()
-      ;; 		 (validate-new-value (add1 (string->number (spinbox 'get))))))
-      ;; (tk/bind spinbox '<<Decrement>>
-      ;; 	       (lambda ()
-      ;; 		 (validate-new-value (sub1 (string->number (spinbox 'get))))))
+      (tk/bind spinbox '<<Increment>>
+      	       (lambda ()
+		 (tk-with-lock
+		  (lambda ()
+      		    (validate-new-value
+		     (add1 (string->number (spinbox 'get))))))))
+      (tk/bind spinbox '<<Decrement>>
+      	       (lambda ()
+		 (tk-with-lock
+		  (lambda ()
+      		    (validate-new-value
+		     (sub1 (string->number (spinbox 'get))))))))
       (tk/bind spinbox '<Return>
 	       (lambda () (validate-new-value (string->number (spinbox 'get)))))
       (tk/bind spinbox '<FocusOut>
@@ -891,7 +897,6 @@
 
   ;;; child record that wraps display related state such as the cursor position.
   (defstruct metatree-state
-    ((accept-events #t) : boolean)
     ((item-cache '()) : list)
     ((cursor-x 0) : integer)
     ((cursor-y 0) : integer)
@@ -1132,28 +1137,42 @@
 	 %h))
       (for-each
        (lambda (column index)
-	 (tk/bind column '<Down> (lambda () (move-cursor mt 'down)))
-	 (tk/bind column '<Up> (lambda () (move-cursor mt 'up)))
-	 (tk/bind column '<Left> (lambda () (move-cursor mt 'left)))
-	 (tk/bind column '<Right> (lambda () (move-cursor mt 'right)))
+	 (tk/bind column '<Down>
+		  (lambda ()
+		    (tk-with-lock (lambda () (move-cursor mt 'down)))))
+	 (tk/bind column '<Up>
+		  (lambda ()
+		    (tk-with-lock (lambda () (move-cursor mt 'up)))))
+	 (tk/bind column '<Left>
+		  (lambda ()
+		    (tk-with-lock (lambda () (move-cursor mt 'left)))))
+	 (tk/bind column '<Right>
+		  (lambda ()
+		    (tk-with-lock (lambda () (move-cursor mt 'right)))))
 	 (tk/bind column '<<ClearStep>>
-		  (lambda () (edit-current-metatree-cell mt '())))
+		  (lambda ()
+		    (tk-with-lock (lambda ()
+				    (edit-current-metatree-cell mt '())))))
 	 ;; TODO which entry type to bind depends on command type.
 	 (tk/bind column '<<NoteEntry>>
 		  `(,(lambda (keysym)
-		       (let ((note-val (keypress->note keysym)))
-			 (when note-val
-			   (edit-current-metatree-cell mt note-val))))
+		       (tk-with-lock
+			(lambda ()
+			  (let ((note-val (keypress->note keysym)))
+			    (when note-val
+			      (edit-current-metatree-cell mt note-val))))))
 		    %K))
 	 (tk/bind column '<ButtonPress-1>
 		  `(,(lambda (y)
-		       (let ((ypos (treeview-ypos->item-index y)))
-			 (switch-ui-zone-focus ui-zone)
-			 (set-cursor mt index
-				     (if (>= (add1 ypos)
-					     (metatree-visible-rows mt))
-					 (sub1 (metatree-visible-rows mt))
-					 ypos))))
+		       (tk-with-lock
+			(lambda ()
+			  (let ((ypos (treeview-ypos->item-index y)))
+			    (switch-ui-zone-focus ui-zone)
+			    (set-cursor mt index
+					(if (>= (add1 ypos)
+						(metatree-visible-rows mt))
+					    (sub1 (metatree-visible-rows mt))
+					    ypos))))))
 		    %y))
 	 (reverse-binding-eval-order column))
        (metatree-columns mt)
@@ -1326,35 +1345,30 @@
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
   ;;; of `'up`, `'down`, `'left`, `'right`
   (define (move-cursor mt direction)
-    (when (metatree-state-accept-events (metatree-mtstate mt))
-      (metatree-state-accept-events-set! (metatree-mtstate mt)
-					 #f)
-      (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
-	    (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
-	(match direction
-	  ('up (set-cursor mt current-xpos (sub1 (if (= current-ypos 0)
-						     (metatree-visible-rows mt)
-						     current-ypos))))
-	  ('down (set-cursor
-		  mt current-xpos
-		  (let ((edit-step (if (or (zero? (state 'edit-step))
-					   (eq? 'order (metatree-type mt)))
-				       1 (state 'edit-step))))
-		    (if (or (>= (+ current-ypos edit-step)
-				(metatree-visible-rows mt))
-			    (>= (+ current-ypos edit-step)
-				(metatree-total-length mt)))
-			0 (+ current-ypos edit-step)))))
-	  ('left (set-cursor mt (sub1 (if (= current-xpos 0)
-					  (length (metatree-columns mt))
-					  current-xpos))
-			     current-ypos))
-	  ('right (set-cursor mt (if (>= (+ 1 current-xpos)
-					 (length (metatree-columns mt)))
-				     0 (add1 current-xpos))
-			      current-ypos))))
-      (metatree-state-accept-events-set! (metatree-mtstate mt)
-					 #t)))
+    (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
+	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
+      (match direction
+	('up (set-cursor mt current-xpos (sub1 (if (= current-ypos 0)
+						   (metatree-visible-rows mt)
+						   current-ypos))))
+	('down (set-cursor
+		mt current-xpos
+		(let ((edit-step (if (or (zero? (state 'edit-step))
+					 (eq? 'order (metatree-type mt)))
+				     1 (state 'edit-step))))
+		  (if (or (>= (+ current-ypos edit-step)
+			      (metatree-visible-rows mt))
+			  (>= (+ current-ypos edit-step)
+			      (metatree-total-length mt)))
+		      0 (+ current-ypos edit-step)))))
+	('left (set-cursor mt (sub1 (if (= current-xpos 0)
+					(length (metatree-columns mt))
+					current-xpos))
+			   current-ypos))
+	('right (set-cursor mt (if (>= (+ 1 current-xpos)
+				       (length (metatree-columns mt)))
+				   0 (add1 current-xpos))
+			    current-ypos)))))
 
 
   ;; ---------------------------------------------------------------------------
