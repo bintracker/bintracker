@@ -45,16 +45,14 @@
   ;;; that is safe to execute as a callback from Tk.
   (define-syntax tk/bind*
     (syntax-rules ()
-      ((_ tag sequence (quasiquote ((unquote (lambda args body)) subst ...)))
-       (tk/bind tag sequence
-		(quasiquote ((unquote (lambda args
-					(tk-with-lock (lambda () body))))
-			     subst ...))))
+      ((_ tag sequence (x ((y (lambda args body)) subst ...)))
+       (tk/bind tag sequence `(,(lambda args
+				  (tk-with-lock (lambda () body)))
+			       subst ...)))
       ((_ tag sequence (list (lambda args body) subst ...))
-       (tk/bind tag sequence
-		(quasiquote ((unquote (lambda args
-					(tk-with-lock (lambda () body))))
-			     subst ...))))
+       (tk/bind tag sequence `(,(lambda args
+				  (tk-with-lock (lambda () body)))
+			       subst ...)))
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
