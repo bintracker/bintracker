@@ -42,10 +42,21 @@
   ;;; Various general-purpose dialogue procedures.
 
   ;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
-  ;;; that is safe to execute as a callback from Tk. Does not yet work with the
-  ;;; extended form `(,(lambda args body) substitution-pattern).
-  (define (tk/bind* tag sequence proc)
-    (tk/bind tag sequence (lambda () (tk-with-lock proc))))
+  ;;; that is safe to execute as a callback from Tk.
+  (define-syntax tk/bind*
+    (syntax-rules ()
+      ((_ tag sequence (quasiquote ((unquote (lambda args body)) subst ...)))
+       (tk/bind tag sequence
+		(quasiquote ((unquote (lambda args
+					(tk-with-lock (lambda () body))))
+			     subst ...))))
+      ((_ tag sequence (list (lambda args body) subst ...))
+       (tk/bind tag sequence
+		(quasiquote ((unquote (lambda args
+					(tk-with-lock (lambda () body))))
+			     subst ...))))
+      ((_ tag sequence thunk)
+       (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
   ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
   ;;; tk/get-save-file that block the main application window  while the pop-up
@@ -473,9 +484,8 @@
 	     (string-append "Bintracker " *bintracker-version*
 			    "\n(c) 2019 utz/irrlicht project\n"
 			    "Ready.\n"))
-    (tk/bind console '<ButtonPress-1>
-	     (lambda ()
-	       (switch-ui-zone-focus 'console))))
+    (tk/bind* console '<ButtonPress-1>
+	      (lambda () (switch-ui-zone-focus 'console))))
 
   (define (clear-console)
     (console 'delete 0.0 'end))
@@ -565,9 +575,9 @@
   ;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
   ;;; remove the given info {{text}} in the status bar.
   (define (bind-info-status widget text)
-    (tk/bind widget '<Enter>
-	     (lambda () (display-action-info-status! text)))
-    (tk/bind widget '<Leave> reset-status-text!))
+    (tk/bind* widget '<Enter>
+	      (lambda () (display-action-info-status! text)))
+    (tk/bind* widget '<Leave> reset-status-text!))
 
   ;;; Construct an info string for the key binding of the given action in the
   ;;; given key-group
@@ -834,19 +844,19 @@
       (for-each (lambda (field-widget index)
 		  (let ((bind-tk-widget-button-press
 			 (lambda (widget)
-			   (tk/bind widget '<ButtonPress-1>
-				    (lambda ()
-				      (unfocus-field-widget
-				       (list-ref (bt-fields-widget-fields w)
-						 (bt-fields-widget-active-index
-						  w)))
-				      (bt-fields-widget-active-index-set!
-				       w index)
-				      (switch-ui-zone-focus 'fields)))))
+			   (tk/bind* widget '<ButtonPress-1>
+				     (lambda ()
+				       (unfocus-field-widget
+					(list-ref (bt-fields-widget-fields w)
+						  (bt-fields-widget-active-index
+						   w)))
+				       (bt-fields-widget-active-index-set!
+					w index)
+				       (switch-ui-zone-focus 'fields)))))
 			(val-entry (bt-field-widget-val-entry field-widget)))
 		    (show-field-widget field-widget group-instance-path)
-		    (tk/bind val-entry '<Tab> (lambda ()
-						(select-next-field w)))
+		    (tk/bind* val-entry '<Tab> (lambda ()
+						 (select-next-field w)))
 		    (reverse-binding-eval-order val-entry)
 		    (bind-tk-widget-button-press val-entry)
 		    (bind-tk-widget-button-press
@@ -855,9 +865,9 @@
 		     (bt-field-widget-toplevel-frame field-widget))))
 		(bt-fields-widget-fields w)
 		(iota (length (bt-fields-widget-fields w))))
-      (tk/bind (bt-fields-widget-toplevel-frame w)
-	       '<ButtonPress-1> (lambda ()
-				  (switch-ui-zone-focus 'fields)))))
+      (tk/bind* (bt-fields-widget-toplevel-frame w)
+		'<ButtonPress-1> (lambda ()
+				   (switch-ui-zone-focus 'fields)))))
 
   (define (focus-fields-widget w)
     (focus-field-widget (list-ref (bt-fields-widget-fields w)
@@ -1322,23 +1332,22 @@
   (define (bind-metatree-events mt)
     (let ((ui-zone (if (eq? 'block (metatree-type mt))
 		       'blocks 'order)))
-      (tk/bind (metatree-canvas mt)
-	       '<ButtonPress-1> (lambda () (switch-ui-zone-focus ui-zone)))
-      (tk/bind
-       ;; TODO we no longer configure height and set scroll, but instead
-       ;; drop/add items and set scrollbar manually
-       (metatree-packframe mt) '<Configure>
-       `(,(lambda (h)
-      	    (for-each
-	     (lambda (column)
-	       (column 'configure height:
-		       (quotient (- h (* (treeview-rowheight)
-					 (if (eq? 'block (metatree-type mt))
-					     2 1)))
-				 (treeview-rowheight))
-		       yscrollcommand: `(,(metatree-yscroll mt) set)))
-      	     (metatree-columns mt)))
-	 %h))
+      (tk/bind* (metatree-canvas mt)
+		'<ButtonPress-1> (lambda () (switch-ui-zone-focus ui-zone)))
+      ;; TODO we no longer configure height and set scroll, but instead
+      ;; drop/add items and set scrollbar manually
+      (tk/bind* (metatree-packframe mt) '<Configure>
+		`(,(lambda (h)
+		     (display "current height:\n")
+		     (tk/winfo 'height (metatree-packframe mt))
+		     (newline)
+		     (display "new height:\n")
+		     (display h)
+		     (newline)
+		     ;; (metatree-update mt)
+		     ;; (metatree-set-scrollbar mt)
+		     )
+		  %h))
       (for-each
        (lambda (column index)
 	 (tk/bind* column '<Down> (lambda () (move-cursor mt 'down)))
@@ -1348,26 +1357,22 @@
 	 (tk/bind* column '<<ClearStep>>
 		   (lambda () (edit-current-metatree-cell mt '())))
 	 ;; TODO which entry type to bind depends on command type.
-	 (tk/bind column '<<NoteEntry>>
-		  `(,(lambda (keysym)
-		       (tk-with-lock
-			(lambda ()
-			  (let ((note-val (keypress->note keysym)))
-			    (when note-val
-			      (edit-current-metatree-cell mt note-val))))))
-		    %K))
-	 (tk/bind column '<ButtonPress-1>
-		  `(,(lambda (y)
-		       (tk-with-lock
-			(lambda ()
-			  (let ((ypos (treeview-ypos->item-index y)))
-			    (switch-ui-zone-focus ui-zone)
-			    (set-cursor mt index
-					(if (>= (add1 ypos)
-						(metatree-visible-rows mt))
-					    (sub1 (metatree-visible-rows mt))
-					    ypos))))))
-		    %y))
+	 (tk/bind* column '<<NoteEntry>>
+		   `(,(lambda (keysym)
+			(let ((note-val (keypress->note keysym)))
+			  (when note-val
+			    (edit-current-metatree-cell mt note-val))))
+		     %K))
+	 (tk/bind* column '<ButtonPress-1>
+		   `(,(lambda (y)
+			(let ((ypos (treeview-ypos->item-index y)))
+			  (switch-ui-zone-focus ui-zone)
+			  (set-cursor mt index
+				      (if (>= (add1 ypos)
+					      (metatree-visible-rows mt))
+					  (sub1 (metatree-visible-rows mt))
+					  ypos))))
+		     %y))
 	 (reverse-binding-eval-order column))
        (metatree-columns mt)
        (iota (length (metatree-columns mt))))))
