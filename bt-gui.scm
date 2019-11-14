@@ -1111,7 +1111,7 @@
 				   (to (+ from (metatree-visible-rows mt))))
     (let ((all-items (metatree-state-item-cache (metatree-mtstate mt)))
 	  (to (if (>= to (metatree-total-length mt))
-		  (sub1 (metatree-total-length mt))
+		  (metatree-total-length mt)
 		  to)))
       (if (eq? 'block (metatree-type mt))
 	  (filter-map
@@ -1129,8 +1129,7 @@
 				     drop-tail)))
 			     (cdr item-lst)))))
 	   all-items (metatree-items-start+end-positions all-items))
-	  (drop (take all-items (- (length all-items)
-				   (sub1 to)))
+	  (drop (take all-items to)
 		from))))
 
   ;;; Add highlight tags to the list of {{tags}}. Auxilliary proc for
@@ -1558,21 +1557,48 @@
   ;;; of `'up`, `'down`, `'left`, `'right`
   (define (move-cursor mt direction)
     (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
-	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt))))
+	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt)))
+	  (current-start-pos (metatree-state-start-pos (metatree-mtstate mt))))
       (match direction
-	('up (set-cursor mt current-xpos (sub1 (if (= current-ypos 0)
-						   (metatree-visible-rows mt)
-						   current-ypos))))
-	('down (set-cursor
-		mt current-xpos
-		(let ((edit-step (if (or (zero? (state 'edit-step))
-					 (eq? 'order (metatree-type mt)))
-				     1 (state 'edit-step))))
-		  (if (or (>= (+ current-ypos edit-step)
-			      (metatree-visible-rows mt))
-			  (>= (+ current-ypos edit-step)
-			      (metatree-total-length mt)))
-		      0 (+ current-ypos edit-step)))))
+	('up (if (= 0 current-ypos)
+		 (if (= 0 current-start-pos)
+		     (let* ((total-length (metatree-total-length mt))
+			    (visible-rows (metatree-visible-rows mt))
+			    (all-rows-visible? (>= (metatree-visible-rows mt)
+						   (metatree-total-length mt))))
+		       (unless all-rows-visible?
+			 (metatree-state-start-pos-set!
+			  (metatree-mtstate mt)
+			  (- total-length visible-rows))
+			 (metatree-update mt))
+		       (set-cursor mt current-xpos
+				   (if all-rows-visible?
+				       (sub1 total-length)
+				       (sub1 visible-rows))))
+		     (metatree-shift-item-window mt -1))
+		 (set-cursor mt current-xpos (sub1 current-ypos))))
+	('down (let ((edit-step (if (or (zero? (state 'edit-step))
+					(eq? 'order (metatree-type mt)))
+				    1 (state 'edit-step))))
+		 (if (> (+ current-start-pos current-ypos edit-step)
+			(sub1 (metatree-total-length mt)))
+		     (begin
+		       (unless (>= (metatree-visible-rows mt)
+				   (metatree-total-length mt))
+			 (metatree-state-start-pos-set! (metatree-mtstate mt)
+							0)
+			 (metatree-update mt))
+		       (set-cursor mt current-xpos 0))
+		     (if (< (+ current-ypos edit-step)
+			    (sub1 (metatree-visible-rows mt)))
+			 (set-cursor mt current-xpos (+ current-ypos edit-step))
+			 (begin
+			   (metatree-shift-item-window
+			    mt
+			    (- (+ 1 current-ypos edit-step)
+			       (metatree-visible-rows mt)))
+			   (set-cursor mt current-xpos
+				       (sub1 (metatree-visible-rows mt))))))))
 	('left (set-cursor mt (sub1 (if (= current-xpos 0)
 					(length (metatree-columns mt))
 					current-xpos))
