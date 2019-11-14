@@ -599,8 +599,8 @@
     (let ((action (pop-undo)))
       (when action
 	(apply-edit! action)
-	(update-order-view (current-order-view))
-	(update-blocks-view (current-blocks-view))
+	(metatree-update (current-order-view))
+	(metatree-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'redo 'enabled)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
@@ -611,8 +611,8 @@
     (let ((action (pop-redo)))
       (when action
 	(apply-edit! action)
-	(update-order-view (current-order-view))
-	(update-blocks-view (current-blocks-view))
+	(metatree-update (current-order-view))
+	(metatree-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'undo 'enabled)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
@@ -1101,7 +1101,10 @@
 				   (from (metatree-state-start-pos
 					  (metatree-mtstate mt)))
 				   (to (+ from (metatree-visible-rows mt))))
-    (let ((all-items (metatree-state-item-cache (metatree-mtstate mt))))
+    (let ((all-items (metatree-state-item-cache (metatree-mtstate mt)))
+	  (to (if (>= to (metatree-total-length mt))
+		  (sub1 (metatree-total-length mt))
+		  to)))
       (if (eq? 'block (metatree-type mt))
 	  (filter-map
 	   (lambda (item-lst start+end)
@@ -1119,7 +1122,7 @@
 			     (cdr item-lst)))))
 	   all-items (metatree-items-start+end-positions all-items))
 	  (drop (take all-items (- (length all-items)
-				   to))
+				   (sub1 to)))
 		from))))
 
   ;;; Add highlight tags to the list of {{tags}}. Auxilliary proc for
@@ -1131,15 +1134,35 @@
 	   (cons 'rowhl-minor tags))
 	  (else tags)))
 
-  ;;; Insert the item window {{from}}..{{to}} into the display of the metatree
-  ;;; {{mt}}. The optional {{at}} argument shall be a treeview index, or 'end.
-  ;;; Defaults to 'end.
-  ;; TODO currently only works for 'block metatree type
-  (define (metatree-insert-slice mt #!optional
-				 (from (metatree-state-start-pos
-					(metatree-mtstate mt)))
-				 (to (+ from (metatree-visible-rows mt)))
-				 (at 'end))
+  ;;; Helper proc for metatree-insert-slice. Insert the item slice
+  ;;; {{from}}..{{to}} into an order type metatree.
+  (define (metatree-insert-order-slice mt slice at)
+    (let ((rownums (iota (length slice)
+			 (metatree-state-start-pos (metatree-mtstate mt)))))
+      (for-each (lambda (index)
+		  ((metatree-rownums mt) 'insert '{} at
+		   text: (string-pad (number->string index
+						     (app-settings-number-base
+						      *bintracker-settings*))
+				     3 #\0)))
+		(if (eq? 'end at)
+		    rownums (reverse rownums)))
+      (for-each (lambda (order-pos)
+		  (for-each (lambda (column value field-id)
+			      (column 'insert '{} at
+				      tags: '(reference)
+				      values:
+				      (list (normalize-field-value value
+								   field-id))))
+			    (metatree-columns mt)
+			    order-pos
+			    (metatree-column-ids mt)))
+		(if (eq? 'end at)
+		    slice (reverse slice)))))
+
+  ;;; Helper proc for metatree-insert-slice. Insert the item slice
+  ;;; {{from}}..{{to}} into an order type metatree.
+  (define (metatree-insert-block-slice mt slice at)
     (let ((active-order-pos (metatree-cursor->order-pos mt)))
       (for-each
        (lambda (item-pos)
@@ -1175,7 +1198,21 @@
 	    (metatree-columns mt)
 	    (metatree-column-ids mt)
 	    (cddr item-pos))))
-       (metatree-get-item-slice mt from to))))
+       slice)))
+
+  ;;; Insert the item slice {{from}}..{{to}} into the display of the metatree
+  ;;; {{mt}}. The optional {{at}} argument shall be a treeview index, or 'end.
+  ;;; Defaults to 'end.
+  ;; TODO currently only works for 'block metatree type
+  (define (metatree-insert-slice mt #!optional
+				 (from (metatree-state-start-pos
+					(metatree-mtstate mt)))
+				 (to (+ from (metatree-visible-rows mt)))
+				 (at 'end))
+    (let ((slice (metatree-get-item-slice mt from to)))
+      (if (eq? 'order (metatree-type mt))
+	  (metatree-insert-order-slice mt slice at)
+	  (metatree-insert-block-slice mt slice at))))
 
   ;;; Shift the window of items that are displayed in the metatree {{mt}} by
   ;;; {{offset}} positions.
@@ -1200,8 +1237,8 @@
 	(if (> (abs actual-offset)
 	       (quotient visible-rows 2))
 	    (if (eq? 'block (metatree-type mt))
-		(update-blocks-view mt)
-		(update-order-view mt))
+		(metatree-update mt)
+		(metatree-update mt))
 	    (if (negative? actual-offset)
 		(begin
 		  (metatree-delete-slice mt
@@ -1335,10 +1372,7 @@
        (metatree-columns mt)
        (iota (length (metatree-columns mt))))))
 
-  ;;; Pack the given metatree-widget. This only sets up the structure, but does
-  ;;; not add any data. You most likely do not want to call this procedure
-  ;;; directly, but rather invoke it through `update-order-view` or
-  ;;; `update-blocks-view`.
+  ;;; Pack the given metatree-widget and update it.
   (define (show-metatree mt)
     (letrec* ((canvas (metatree-canvas mt))
 	      (tree-rowheight (treeview-rowheight))
@@ -1405,7 +1439,8 @@
       ;; TODO 1000 will not be enough on the long run. Needs to be dynamic.
       (canvas 'configure scrollregion:
 	      (list 0 0 (* 80 (length (metatree-columns mt)))
-		    1000))))
+		    1000))
+      (metatree-update mt)))
 
   ;;; Update row highlight tags according to the current settings in
   ;;; *bintracker-app-state*.
@@ -1513,7 +1548,7 @@
       (metatree-state-cursor-y-set! (metatree-mtstate mt) ypos)
       (when (and (eq? 'block (metatree-type mt))
 		 (not (= old-order-pos (metatree-cursor->order-pos mt))))
-	(update-blocks-view mt))
+	(metatree-update mt))
       (focus-metatree mt)))
 
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
@@ -1544,55 +1579,16 @@
 				   0 (add1 current-xpos))
 			    current-ypos)))))
 
+  ;;; Update the metatree's item cache and display.
+  (define (metatree-update mt)
+    (clear-metatree mt)
+    (metatree-update-item-cache mt)
+    (metatree-insert-slice mt)
+    (metatree-set-scrollbar mt))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
-
-  ;;; Update a group's order/block list view.
-  ;;; TODO: only display items that can be displayed.
-  (define (update-order-view metatree)
-    (metatree-update-item-cache metatree)
-    (let ((order-values (metatree-state-item-cache
-			 (metatree-mtstate metatree))))
-      (clear-metatree metatree)
-      (for-each (lambda (index)
-		  ((metatree-rownums metatree) 'insert '{} 'end
-		   text: (string-pad (number->string index
-						     (app-settings-number-base
-						      *bintracker-settings*))
-				     3 #\0)))
-		(iota (length order-values)))
-      (for-each (lambda (order-pos)
-		  (for-each (lambda (column value field-id)
-			      (column 'insert '{} 'end tags: '(reference)
-				      values:
-				      (list (normalize-field-value value
-								   field-id))))
-			    (metatree-columns metatree)
-			    order-pos
-			    (metatree-column-ids metatree)))
-		order-values)))
-
-  ;;; Update a group's blocks view, based on the current position in the
-  ;;; order or block list.
-  (define (update-blocks-view metatree)
-    (clear-metatree metatree)
-    (metatree-update-item-cache metatree)
-    (metatree-insert-slice metatree)
-    (metatree-set-scrollbar metatree))
-
-  ;;; Display the blocks of a group instance.
-  ;;; TODO this must read the order position, or the list of instances must be
-  ;;; passed in.
-  (define (show-blocks-view metatree)
-    (show-metatree metatree)
-    (update-blocks-view metatree))
-
-  ;;; Display the order or block list of a group instance.
-  (define (show-order-view metatree)
-    (show-metatree metatree)
-    (update-order-view metatree))
 
   ;;; A metawidget for displaying a group's block members and the corresponding
   ;;; order or block list.
@@ -1624,8 +1620,8 @@
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (tk/pack top expand: 1 fill: 'both)
-      (show-blocks-view (bt-blocks-widget-blocks-view w))
-      (show-order-view (bt-blocks-widget-order-view w))))
+      (show-metatree (bt-blocks-widget-blocks-view w))
+      (show-metatree (bt-blocks-widget-order-view w))))
 
   ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
   ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
