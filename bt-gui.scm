@@ -34,7 +34,6 @@
 			    progressbar combobox separator scale sizegrip
 			    spinbox treeview))
 
-
   ;; ---------------------------------------------------------------------------
   ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
@@ -906,7 +905,8 @@
     ((item-cache '()) : list)
     ((cursor-x 0) : integer)
     ((cursor-y 0) : integer)
-    ((start-pos 0) : integer))
+    ((start-pos 0) : integer)
+    (frame-height : (or boolean integer)))
 
   ;;; The main metatree structure.
   (defstruct metatree
@@ -1010,27 +1010,33 @@
 		 ;; scroll ... units
 		 (metatree-shift-item-window mt (cadr args))))))))
 
-  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This assumes that
-  ;;; the Treeview style has already been configured to use
-  ;;; `(settings 'font-mono)` with `(settings 'font-size)`.
-  ;;; This is necessary because Tk's `style lookup` command is broken, producing
-  ;;; no result ca. 50% of the time.
+  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This contains a very
+  ;;; ugly hack
   (define (treeview-rowheight)
-    (+ 4 (string->number
-	  (tk-eval (string-append "font metrics {-family \""
-				  (settings 'font-mono) "\" -size "
-				  (number->string (settings 'font-size))
-				  "} -linespace")))))
+    (tk-eval "flush stdout")
+    (let ((line-height (tk-eval
+			(string-append "font metrics {-family \""
+				       (settings 'font-mono) "\" -size "
+				       (number->string (settings 'font-size))
+				       "} -linespace"))))
+      (if (or (not (string? line-height))
+	      (not (number? (string->number line-height))))
+	  (+ 4 (state 'font-height-cached))
+	  (let ((font-height (string->number line-height)))
+	    (set-state! 'font-height-cached font-height)
+	    (+ 4 font-height)))))
 
   ;;; Get the current height of the metatree display frame.
   (define (metatree-frame-height mt)
-    (string->number (tk/winfo 'height (metatree-packframe mt))))
+    (or (metatree-state-frame-height (metatree-mtstate mt))
+	(string->number (tk/winfo 'height (metatree-packframe mt)))))
 
   ;;; Get the number of rows that the metatree can display at it's current
   ;;; frame height.
-  (define (metatree-visible-rows mt)
+  (define (metatree-visible-rows mt #!optional
+				 (frame-height (metatree-frame-height mt)))
     (let ((rowheight (treeview-rowheight)))
-      (quotient (- (metatree-frame-height mt)
+      (quotient (- frame-height
 		   (* rowheight (if (eq? 'block (metatree-type mt))
 				    2 1)))
 		rowheight)))
@@ -1095,6 +1101,7 @@
 
   ;;; Delete all items of the metatree
   (define (clear-metatree mt)
+    (tk-eval "flush stdout")
     (for-each (lambda (tree)
 		(tree 'delete
 		      (string-split (string-delete #\" (tree 'children '{})))))
@@ -1334,16 +1341,20 @@
       ;; TODO we no longer configure height and set scroll, but instead
       ;; drop/add items and set scrollbar manually
       (tk/bind* (metatree-packframe mt) '<Configure>
-		`(,(lambda (h)
-		     (display "current height:\n")
-		     (tk/winfo 'height (metatree-packframe mt))
-		     (newline)
-		     (display "new height:\n")
-		     (display h)
-		     (newline)
-		     ;; (metatree-update mt)
-		     ;; (metatree-set-scrollbar mt)
-		     )
+		`(,(lambda (new-height)
+		     (let* ((state (metatree-mtstate mt))
+			    (old-height (metatree-state-frame-height state)))
+		       (metatree-state-frame-height-set! state new-height)
+		       (unless (or (not old-height)
+				   (= (metatree-visible-rows mt old-height)
+				      (metatree-visible-rows mt)))
+			   (metatree-update mt)
+			   (when (>= (metatree-state-cursor-y state)
+				     (metatree-visible-rows mt))
+			     (set-cursor mt (metatree-state-cursor-x state)
+					 (sub1 (metatree-visible-rows mt))))
+			   (focus-metatree mt))
+		       (metatree-set-scrollbar mt)))
 		  %h))
       (for-each
        (lambda (column index)

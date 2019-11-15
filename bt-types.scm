@@ -31,6 +31,7 @@
     ((current-instances '()) : list)
     ((active-md-command-info "") : string)
     (modified : boolean)
+    ((font-height-cached 10) : fixnum)
     ((journal (make-app-journal)) : (struct app-journal)))
 
   ;;; Record type that wraps GUI element colors.
