@@ -1308,21 +1308,21 @@
   ;;; Perform an edit action on {{metatree}}, setting the current active cell to
   ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
   ;;; mdmod structure.
+  ;;; TODO also update fields in inactive patterns
   (define (edit-current-metatree-cell metatree new-val)
     (let* ((xpos (metatree-state-cursor-x (metatree-mtstate metatree)))
+	   (ypos (metatree-state-cursor-y (metatree-mtstate metatree)))
 	   (column (list-ref (metatree-columns metatree)
 			     xpos))
 	   (column-id (list-ref (metatree-column-ids metatree)
 				xpos))
-	   (block-id (config-get-parent-node-id
-		      column-id (config-itree (current-config))))
-	   (instance (metatree-state-cursor-y (metatree-mtstate metatree)))
-	   (path (string-append (get-current-instance-path block-id)
-				(symbol->string column-id) "/"))
+	   (instance (metatree-cursor->field-instance-id metatree))
+	   (path (metatree-cursor->field-node-path metatree))
 	   (action `(set ,path ((,instance ,new-val)))))
       (push-undo (make-reverse-action action))
       (apply-edit! action)
-      (column 'set (nth-tree-item column instance)
+      (metatree-update-item-cache metatree)
+      (column 'set (nth-tree-item column ypos)
 	      "content" (normalize-field-value new-val column-id))
       (tk/update)
       (move-cursor metatree 'down)
@@ -1535,6 +1535,47 @@
 	   (item-pos (+ (metatree-state-start-pos state)
 			(metatree-state-cursor-y state))))
       (metatree-item-pos->order-pos mt item-pos)))
+
+  ;;; Determine the current block ID from the metatree's cursor position.
+  (define (metatree-cursor->block-id mt)
+    (if (eq? 'order (metatree-type mt))
+	(symbol-append (metatree-group-id mt)
+		       '_ORDER)
+	(config-get-parent-node-id
+	 (list-ref (metatree-column-ids mt)
+		   (metatree-state-cursor-x (metatree-mtstate mt)))
+	 (config-itree (current-config)))))
+
+  ;;; Determine the current instance ID of the block under cursor.
+  (define (metatree-cursor->block-instance-id mt)
+    (let ((group-id (metatree-group-id mt)))
+      (if (eq? 'order (metatree-type mt))
+	  0
+	  (list-ref (list-ref (mod-get-order-values
+			       group-id
+			       (get-current-node-instance group-id)
+			       (current-config))
+			      (metatree-cursor->order-pos mt))
+		    (list-index (lambda (id)
+				  (eq? id (metatree-cursor->block-id mt)))
+				(metatree-block-ids mt))))))
+
+  (define (metatree-cursor->field-instance-id mt)
+    (string->number ((metatree-rownums mt) 'item
+		     (nth-tree-item (metatree-rownums mt)
+				    (metatree-state-cursor-y
+				     (metatree-mtstate mt)))
+		     text:)
+		    (settings 'number-base)))
+
+  (define (metatree-cursor->field-node-path mt)
+    (string-append (get-current-instance-path (metatree-group-id mt))
+		   "/" (symbol->string (metatree-cursor->block-id mt))
+		   "/" (->string (metatree-cursor->block-instance-id mt))
+		   "/" (symbol->string (list-ref (metatree-column-ids mt)
+						 (metatree-state-cursor-x
+						  (metatree-mtstate mt))))
+		   "/"))
 
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
