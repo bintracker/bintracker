@@ -923,7 +923,7 @@
     (yscroll : procedure)
     ((mtstate (make-metatree-state)) : (struct metatree-state)))
 
-  ;;; Auxiliary procedure for `init-metatree`. Configure cell tags.
+  ;;; Auxiliary procedure for `metatree-init`. Configure cell tags.
   (define (metatree-column-set-tags col)
     (col 'tag 'configure 'active-cell background: (colors 'cursor))
     (col 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
@@ -942,7 +942,7 @@
     (col 'tag 'configure 'inactive foreground: (colors 'text-inactive)))
 
   ;;; {{type}} - either 'block (show an igroup's blocks) or 'order (show iorder)
-  (define (init-metatree parent type group-id)
+  (define (metatree-init parent type group-id)
     (let* ((packframe (parent 'create-widget 'frame))
 	   (rownums-packframe (packframe 'create-widget 'frame))
 	   (canvas (packframe 'create-widget 'canvas
@@ -1100,7 +1100,7 @@
 		    (metatree-columns mt))))
 
   ;;; Delete all items of the metatree
-  (define (clear-metatree mt)
+  (define (metatree-clear mt)
     (tk-eval "flush stdout")
     (for-each (lambda (tree)
 		(tree 'delete
@@ -1245,7 +1245,7 @@
       ;; when shifting more than half the current length of the treeviews, it's
       ;; faster to regenerate all items.
       (unless (= 0 actual-offset)
-	(delete-cursor mt)
+	(metatree-cursor-delete mt)
 	(metatree-state-start-pos-set! mtstate
 				       (+ current-start-pos actual-offset))
 	(if (> (abs actual-offset)
@@ -1325,7 +1325,7 @@
       (column 'set (nth-tree-item column ypos)
 	      "content" (normalize-field-value new-val column-id))
       (tk/update)
-      (move-cursor metatree 'down)
+      (metatree-cursor-move metatree 'down)
       (set-toolbar-button-state 'journal 'undo 'enabled)
       (unless (state 'modified)
 	(set-state! 'modified #t)
@@ -1333,7 +1333,7 @@
 
   ;;; Bind events for a metatree. This procedure must be called when creating a
   ;;; metatree widget.
-  (define (bind-metatree-events mt)
+  (define (metatree-bind-events mt)
     (let ((ui-zone (if (eq? 'block (metatree-type mt))
 		       'blocks 'order)))
       (tk/bind* (metatree-canvas mt)
@@ -1348,20 +1348,21 @@
 		       (unless (or (not old-height)
 				   (= (metatree-visible-rows mt old-height)
 				      (metatree-visible-rows mt)))
-			   (metatree-update mt)
-			   (when (>= (metatree-state-cursor-y state)
-				     (metatree-visible-rows mt))
-			     (set-cursor mt (metatree-state-cursor-x state)
-					 (sub1 (metatree-visible-rows mt))))
-			   (focus-metatree mt))
+			 (metatree-update mt)
+			 (when (>= (metatree-state-cursor-y state)
+				   (metatree-visible-rows mt))
+			   (metatree-cursor-set
+			    mt (metatree-state-cursor-x state)
+			    (sub1 (metatree-visible-rows mt))))
+			 (focus-metatree mt))
 		       (metatree-set-scrollbar mt)))
 		  %h))
       (for-each
        (lambda (column index)
-	 (tk/bind* column '<Down> (lambda () (move-cursor mt 'down)))
-	 (tk/bind* column '<Up> (lambda () (move-cursor mt 'up)))
-	 (tk/bind* column '<Left> (lambda () (move-cursor mt 'left)))
-	 (tk/bind* column '<Right> (lambda () (move-cursor mt 'right)))
+	 (tk/bind* column '<Down> (lambda () (metatree-cursor-move mt 'down)))
+	 (tk/bind* column '<Up> (lambda () (metatree-cursor-move mt 'up)))
+	 (tk/bind* column '<Left> (lambda () (metatree-cursor-move mt 'left)))
+	 (tk/bind* column '<Right> (lambda () (metatree-cursor-move mt 'right)))
 	 (tk/bind* column '<<ClearStep>>
 		   (lambda () (edit-current-metatree-cell mt '())))
 	 ;; TODO which entry type to bind depends on command type.
@@ -1375,18 +1376,19 @@
 		   `(,(lambda (y)
 			(let ((ypos (treeview-ypos->item-index y)))
 			  (switch-ui-zone-focus ui-zone)
-			  (set-cursor mt index
-				      (if (>= (add1 ypos)
-					      (metatree-visible-rows mt))
-					  (sub1 (metatree-visible-rows mt))
-					  ypos))))
+			  (metatree-cursor-set
+			   mt index
+			   (if (>= (add1 ypos)
+				   (metatree-visible-rows mt))
+			       (sub1 (metatree-visible-rows mt))
+			       ypos))))
 		     %y))
 	 (reverse-binding-eval-order column))
        (metatree-columns mt)
        (iota (length (metatree-columns mt))))))
 
   ;;; Pack the given metatree-widget and update it.
-  (define (show-metatree mt)
+  (define (metatree-show mt)
     (letrec* ((canvas (metatree-canvas mt))
 	      (tree-rowheight (treeview-rowheight))
 	      (header-font (list family: (settings 'font-mono)
@@ -1447,7 +1449,7 @@
       (pack-columns (metatree-columns mt)
 		    (metatree-column-ids mt)
 		    0)
-      (bind-metatree-events mt)
+      (metatree-bind-events mt)
       (canvas 'configure xscrollcommand: (list (metatree-xscroll mt) 'set))
       ;; TODO 1000 will not be enough on the long run. Needs to be dynamic.
       (canvas 'configure scrollregion:
@@ -1488,7 +1490,7 @@
   ;;;
   (define (focus-metatree mt)
     (let ((xpos (metatree-state-cursor-x (metatree-mtstate mt))))
-      (show-cursor mt)
+      (metatree-cursor-show mt)
       (tk/focus (list-ref (metatree-columns mt)
 			  xpos))
       (when (eq? 'block (metatree-type mt))
@@ -1498,7 +1500,7 @@
 
   ;;;
   (define (unfocus-metatree mt)
-    (delete-cursor mt)
+    (metatree-cursor-delete mt)
     (set-state! 'active-md-command-info "")
     (reset-status-text!))
 
@@ -1580,7 +1582,7 @@
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
   ;;; cursor.
-  (define (cursor-do mt method)
+  (define (metatree-cursor-do mt method)
     (let* ((state (metatree-mtstate mt))
 	   (tree (list-ref (metatree-columns mt)
 			   (metatree-state-cursor-x state))))
@@ -1588,16 +1590,16 @@
 	    (nth-tree-item tree (metatree-state-cursor-y state)))))
 
   ;;; Display the cursor of a metatree widget.
-  (define (show-cursor mt)
-    (cursor-do mt 'add))
+  (define (metatree-cursor-show mt)
+    (metatree-cursor-do mt 'add))
 
   ;;; Remove the cursor of a metatree widget.
-  (define (delete-cursor mt)
-    (cursor-do mt 'remove))
+  (define (metatree-cursor-delete mt)
+    (metatree-cursor-do mt 'remove))
 
-  (define (set-cursor mt xpos ypos)
+  (define (metatree-cursor-set mt xpos ypos)
     (let ((old-order-pos (metatree-cursor->order-pos mt)))
-      (delete-cursor mt)
+      (metatree-cursor-delete mt)
       (metatree-state-cursor-x-set! (metatree-mtstate mt) xpos)
       (metatree-state-cursor-y-set! (metatree-mtstate mt) ypos)
       (when (and (eq? 'block (metatree-type mt))
@@ -1607,7 +1609,7 @@
 
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
   ;;; of `'up`, `'down`, `'left`, `'right`
-  (define (move-cursor mt direction)
+  (define (metatree-cursor-move mt direction)
     (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
 	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt)))
 	  (current-start-pos (metatree-state-start-pos (metatree-mtstate mt))))
@@ -1623,12 +1625,12 @@
 			  (metatree-mtstate mt)
 			  (- total-length visible-rows))
 			 (metatree-update mt))
-		       (set-cursor mt current-xpos
-				   (if all-rows-visible?
-				       (sub1 total-length)
-				       (sub1 visible-rows))))
+		       (metatree-cursor-set mt current-xpos
+					    (if all-rows-visible?
+						(sub1 total-length)
+						(sub1 visible-rows))))
 		     (metatree-shift-item-window mt -1))
-		 (set-cursor mt current-xpos (sub1 current-ypos))))
+		 (metatree-cursor-set mt current-xpos (sub1 current-ypos))))
 	('down (let ((edit-step (if (or (zero? (state 'edit-step))
 					(eq? 'order (metatree-type mt)))
 				    1 (state 'edit-step))))
@@ -1640,29 +1642,31 @@
 			 (metatree-state-start-pos-set! (metatree-mtstate mt)
 							0)
 			 (metatree-update mt))
-		       (set-cursor mt current-xpos 0))
+		       (metatree-cursor-set mt current-xpos 0))
 		     (if (< (+ current-ypos edit-step)
 			    (sub1 (metatree-visible-rows mt)))
-			 (set-cursor mt current-xpos (+ current-ypos edit-step))
+			 (metatree-cursor-set mt current-xpos
+					      (+ current-ypos edit-step))
 			 (begin
 			   (metatree-shift-item-window
 			    mt
 			    (- (+ 1 current-ypos edit-step)
 			       (metatree-visible-rows mt)))
-			   (set-cursor mt current-xpos
-				       (sub1 (metatree-visible-rows mt))))))))
-	('left (set-cursor mt (sub1 (if (= current-xpos 0)
-					(length (metatree-columns mt))
-					current-xpos))
-			   current-ypos))
-	('right (set-cursor mt (if (>= (+ 1 current-xpos)
-				       (length (metatree-columns mt)))
-				   0 (add1 current-xpos))
-			    current-ypos)))))
+			   (metatree-cursor-set
+			    mt current-xpos
+			    (sub1 (metatree-visible-rows mt))))))))
+	('left (metatree-cursor-set mt (sub1 (if (= current-xpos 0)
+						 (length (metatree-columns mt))
+						 current-xpos))
+				    current-ypos))
+	('right (metatree-cursor-set mt (if (>= (+ 1 current-xpos)
+						(length (metatree-columns mt)))
+					    0 (add1 current-xpos))
+				     current-ypos)))))
 
   ;;; Update the metatree's item cache and display.
   (define (metatree-update mt)
-    (clear-metatree mt)
+    (metatree-clear mt)
     (metatree-update-item-cache mt)
     (metatree-insert-slice mt)
     (metatree-set-scrollbar mt))
@@ -1694,15 +1698,15 @@
 	     (.tl 'add .order-pane weight: 1)
 	     (make-bt-blocks-widget
 	      tl-panedwindow: .tl
-	      blocks-view: (init-metatree .blocks-pane 'block parent-node-id)
-	      order-view: (init-metatree .order-pane 'order parent-node-id))))))
+	      blocks-view: (metatree-init .blocks-pane 'block parent-node-id)
+	      order-view: (metatree-init .order-pane 'order parent-node-id))))))
 
   ;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (tk/pack top expand: 1 fill: 'both)
-      (show-metatree (bt-blocks-widget-blocks-view w))
-      (show-metatree (bt-blocks-widget-order-view w))))
+      (metatree-show (bt-blocks-widget-blocks-view w))
+      (metatree-show (bt-blocks-widget-order-view w))))
 
   ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
   ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
