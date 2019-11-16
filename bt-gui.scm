@@ -1570,7 +1570,7 @@
 
   (define (metatree-cursor->field-node-path mt)
     (string-append (get-current-instance-path (metatree-group-id mt))
-		   "/" (symbol->string (metatree-cursor->block-id mt))
+		   (symbol->string (metatree-cursor->block-id mt))
 		   "/" (->string (metatree-cursor->block-instance-id mt))
 		   "/" (symbol->string (list-ref (metatree-column-ids mt)
 						 (metatree-state-cursor-x
