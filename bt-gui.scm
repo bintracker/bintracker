@@ -901,7 +901,7 @@
   ;;; scrolled horizontally).
 
   ;;; child record that wraps display related state such as the cursor position.
-  (defstruct metatree-state
+  (defstruct metatree-internal-state
     ((item-cache '()) : list)
     ((cursor-x 0) : integer)
     ((cursor-y 0) : integer)
@@ -921,7 +921,21 @@
     (rownums : procedure)
     (xscroll : procedure)
     (yscroll : procedure)
-    ((mtstate (make-metatree-state)) : (struct metatree-state)))
+    ((mtstate (make-metatree-internal-state))
+     : (struct metatree-internal-state)))
+
+  ;;; Accessor for the metatree's internal state.
+  (define (metatree-state mt #!optional param)
+    (if param
+	((eval (symbol-append 'metatree-internal-state- param))
+	 (metatree-mtstate mt))
+	(metatree-mtstate mt)))
+
+  ;;; Setter for the metatree's internal state.
+  (define (metatree-state-set! mt param val)
+    ((eval (symbol-append 'metatree-internal-state- param '-set!))
+     (metatree-mtstate mt)
+     val))
 
   ;;; Auxiliary procedure for `metatree-init`. Configure cell tags.
   (define (metatree-column-set-tags col)
@@ -1028,7 +1042,7 @@
 
   ;;; Get the current height of the metatree display frame.
   (define (metatree-frame-height mt)
-    (or (metatree-state-frame-height (metatree-mtstate mt))
+    (or (metatree-state mt 'frame-height)
 	(string->number (tk/winfo 'height (metatree-packframe mt)))))
 
   ;;; Get the number of rows that the metatree can display at it's current
@@ -1043,7 +1057,7 @@
 
   ;;; Get the total number of rows in the metatree.
   (define (metatree-total-length mt)
-    (let ((item-cache (metatree-state-item-cache (metatree-mtstate mt))))
+    (let ((item-cache (metatree-state mt 'item-cache)))
       (if (eq? 'order (metatree-type mt))
 	  (length item-cache)
 	  (apply + (map (o length cadr)
@@ -1052,7 +1066,7 @@
   ;;; Get the appropriate size of the metatree's vertical scrollbar, as a
   ;;; fraction between 0.0 and 1.0.
   (define (metatree-scrollbar-size mt)
-    (if (null-list? (metatree-state-item-cache (metatree-mtstate mt)))
+    (if (null-list? (metatree-state mt 'item-cache))
 	1.0
 	(let ((size (exact->inexact (/ (metatree-visible-rows mt)
 				       (metatree-total-length mt)))))
@@ -1061,9 +1075,8 @@
 
   ;;; Set the metatree's vertical scrollbar.
   (define (metatree-set-scrollbar mt)
-    (let ((start-pos (exact->inexact
-		      (/ (metatree-state-start-pos (metatree-mtstate mt))
-			 (metatree-total-length mt)))))
+    (let ((start-pos (exact->inexact (/ (metatree-state mt 'start-pos)
+					(metatree-total-length mt)))))
       ((metatree-yscroll mt) 'set start-pos (+ start-pos
 					       (metatree-scrollbar-size mt)))))
 
@@ -1113,10 +1126,9 @@
   ;;; position, and {{end}} defaults to *start* + the maximum number of rows
   ;;; that the metatree widget can currently display.
   (define (metatree-get-item-slice mt #!optional
-				   (from (metatree-state-start-pos
-					  (metatree-mtstate mt)))
+				   (from (metatree-state mt 'start-pos))
 				   (to (+ from (metatree-visible-rows mt))))
-    (let ((all-items (metatree-state-item-cache (metatree-mtstate mt)))
+    (let ((all-items (metatree-state mt 'item-cache))
 	  (to (if (>= to (metatree-total-length mt))
 		  (metatree-total-length mt)
 		  to)))
@@ -1152,7 +1164,7 @@
   ;;; {{from}}..{{to}} into an order type metatree.
   (define (metatree-insert-order-slice mt slice at)
     (let ((rownums (iota (length slice)
-			 (metatree-state-start-pos (metatree-mtstate mt)))))
+			 (metatree-state mt 'start-pos))))
       (for-each (lambda (index)
 		  ((metatree-rownums mt) 'insert '{} at
 		   text: (string-pad (number->string index
@@ -1219,8 +1231,7 @@
   ;;; Defaults to 'end.
   ;; TODO currently only works for 'block metatree type
   (define (metatree-insert-slice mt #!optional
-				 (from (metatree-state-start-pos
-					(metatree-mtstate mt)))
+				 (from (metatree-state mt 'start-pos))
 				 (to (+ from (metatree-visible-rows mt)))
 				 (at 'end))
     (let ((slice (metatree-get-item-slice mt from to)))
@@ -1231,8 +1242,7 @@
   ;;; Shift the window of items that are displayed in the metatree {{mt}} by
   ;;; {{offset}} positions.
   (define (metatree-shift-item-window mt offset)
-    (let* ((mtstate (metatree-mtstate mt))
-	   (current-start-pos (metatree-state-start-pos mtstate))
+    (let* ((current-start-pos (metatree-state mt 'start-pos))
 	   (visible-rows (metatree-visible-rows mt))
 	   (tree-length (metatree-total-length mt))
 	   (last-valid-start-pos (- tree-length visible-rows))
@@ -1246,8 +1256,7 @@
       ;; faster to regenerate all items.
       (unless (= 0 actual-offset)
 	(metatree-cursor-delete mt)
-	(metatree-state-start-pos-set! mtstate
-				       (+ current-start-pos actual-offset))
+	(metatree-state-set! mt 'start-pos (+ current-start-pos actual-offset))
 	(if (> (abs actual-offset)
 	       (quotient visible-rows 2))
 	    (if (eq? 'block (metatree-type mt))
@@ -1258,11 +1267,9 @@
 		  (metatree-delete-slice mt
 					 (- visible-rows 1 (abs actual-offset))
 					 (- visible-rows 1))
-		  (metatree-insert-slice mt
-					 (metatree-state-start-pos mtstate)
+		  (metatree-insert-slice mt (metatree-state mt 'start-pos)
 		  			 (+ (abs actual-offset)
-		  			    (metatree-state-start-pos
-		  			     mtstate))
+		  			    (metatree-state mt 'start-pos))
 		  			 0))
 		(begin
 		  (metatree-delete-slice mt 0 actual-offset)
@@ -1283,8 +1290,7 @@
 	   (group-instance (get-current-node-instance group-id))
 	   (order (mod-get-order-values group-id group-instance
 					(current-config))))
-      (metatree-state-item-cache-set!
-       (metatree-mtstate mt)
+      (metatree-state-set! mt 'item-cache
        (if (eq? 'order (metatree-type mt))
 	   order
 	   (let ((blocks (mod-get-group-instance-blocks group-instance group-id
@@ -1310,8 +1316,8 @@
   ;;; mdmod structure.
   ;;; TODO also update fields in inactive patterns
   (define (edit-current-metatree-cell metatree new-val)
-    (let* ((xpos (metatree-state-cursor-x (metatree-mtstate metatree)))
-	   (ypos (metatree-state-cursor-y (metatree-mtstate metatree)))
+    (let* ((xpos (metatree-state metatree 'cursor-x))
+	   (ypos (metatree-state metatree 'cursor-y))
 	   (column (list-ref (metatree-columns metatree)
 			     xpos))
 	   (column-id (list-ref (metatree-column-ids metatree)
@@ -1342,17 +1348,16 @@
       ;; drop/add items and set scrollbar manually
       (tk/bind* (metatree-packframe mt) '<Configure>
 		`(,(lambda (new-height)
-		     (let* ((state (metatree-mtstate mt))
-			    (old-height (metatree-state-frame-height state)))
-		       (metatree-state-frame-height-set! state new-height)
+		     (let ((old-height (metatree-state mt 'frame-height)))
+		       (metatree-state-set! mt 'frame-height new-height)
 		       (unless (or (not old-height)
 				   (= (metatree-visible-rows mt old-height)
 				      (metatree-visible-rows mt)))
 			 (metatree-update mt)
-			 (when (>= (metatree-state-cursor-y state)
+			 (when (>= (metatree-state mt 'cursor-y)
 				   (metatree-visible-rows mt))
 			   (metatree-cursor-set
-			    mt (metatree-state-cursor-x state)
+			    mt (metatree-state mt 'cursor-x)
 			    (sub1 (metatree-visible-rows mt))))
 			 (focus-metatree mt))
 		       (metatree-set-scrollbar mt)))
@@ -1489,7 +1494,7 @@
 
   ;;;
   (define (focus-metatree mt)
-    (let ((xpos (metatree-state-cursor-x (metatree-mtstate mt))))
+    (let ((xpos (metatree-state mt 'cursor-x)))
       (metatree-cursor-show mt)
       (tk/focus (list-ref (metatree-columns mt)
 			  xpos))
@@ -1523,7 +1528,7 @@
   (define (metatree-item-pos->order-pos mt item-pos)
     (if (eq? 'order (metatree-type mt))
 	item-pos
-	(let* ((items (metatree-state-item-cache (metatree-mtstate mt)))
+	(let* ((items (metatree-state mt 'item-cache))
 	       (start+end-positions
 		(metatree-items-start+end-positions items)))
 	  (list-index (lambda (chunk)
@@ -1533,10 +1538,8 @@
 
   ;;; Determine the current order position from the metatree's cursor position.
   (define (metatree-cursor->order-pos mt)
-    (let* ((state (metatree-mtstate mt))
-	   (item-pos (+ (metatree-state-start-pos state)
-			(metatree-state-cursor-y state))))
-      (metatree-item-pos->order-pos mt item-pos)))
+    (metatree-item-pos->order-pos mt (+ (metatree-state mt 'start-pos)
+					(metatree-state mt 'cursor-y))))
 
   ;;; Determine the current block ID from the metatree's cursor position.
   (define (metatree-cursor->block-id mt)
@@ -1545,7 +1548,7 @@
 		       '_ORDER)
 	(config-get-parent-node-id
 	 (list-ref (metatree-column-ids mt)
-		   (metatree-state-cursor-x (metatree-mtstate mt)))
+		   (metatree-state mt 'cursor-x))
 	 (config-itree (current-config)))))
 
   ;;; Determine the current instance ID of the block under cursor.
@@ -1565,8 +1568,7 @@
   (define (metatree-cursor->field-instance-id mt)
     (string->number ((metatree-rownums mt) 'item
 		     (nth-tree-item (metatree-rownums mt)
-				    (metatree-state-cursor-y
-				     (metatree-mtstate mt)))
+				    (metatree-state mt 'cursor-y))
 		     text:)
 		    (settings 'number-base)))
 
@@ -1575,19 +1577,17 @@
 		   (symbol->string (metatree-cursor->block-id mt))
 		   "/" (->string (metatree-cursor->block-instance-id mt))
 		   "/" (symbol->string (list-ref (metatree-column-ids mt)
-						 (metatree-state-cursor-x
-						  (metatree-mtstate mt))))
+						 (metatree-state mt 'cursor-x)))
 		   "/"))
 
   ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
   ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
   ;;; cursor.
   (define (metatree-cursor-do mt method)
-    (let* ((state (metatree-mtstate mt))
-	   (tree (list-ref (metatree-columns mt)
-			   (metatree-state-cursor-x state))))
+    (let ((tree (list-ref (metatree-columns mt)
+			  (metatree-state mt 'cursor-x))))
       (tree 'tag method 'active-cell
-	    (nth-tree-item tree (metatree-state-cursor-y state)))))
+	    (nth-tree-item tree (metatree-state mt 'cursor-y)))))
 
   ;;; Display the cursor of a metatree widget.
   (define (metatree-cursor-show mt)
@@ -1600,8 +1600,8 @@
   (define (metatree-cursor-set mt xpos ypos)
     (let ((old-order-pos (metatree-cursor->order-pos mt)))
       (metatree-cursor-delete mt)
-      (metatree-state-cursor-x-set! (metatree-mtstate mt) xpos)
-      (metatree-state-cursor-y-set! (metatree-mtstate mt) ypos)
+      (metatree-state-set! mt 'cursor-x xpos)
+      (metatree-state-set! mt 'cursor-y ypos)
       (when (and (eq? 'block (metatree-type mt))
 		 (not (= old-order-pos (metatree-cursor->order-pos mt))))
 	(metatree-update mt))
@@ -1610,9 +1610,9 @@
   ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
   ;;; of `'up`, `'down`, `'left`, `'right`
   (define (metatree-cursor-move mt direction)
-    (let ((current-xpos (metatree-state-cursor-x (metatree-mtstate mt)))
-	  (current-ypos (metatree-state-cursor-y (metatree-mtstate mt)))
-	  (current-start-pos (metatree-state-start-pos (metatree-mtstate mt))))
+    (let ((current-xpos (metatree-state mt 'cursor-x))
+	  (current-ypos (metatree-state mt 'cursor-y))
+	  (current-start-pos (metatree-state mt 'start-pos)))
       (match direction
 	('up (if (= 0 current-ypos)
 		 (if (= 0 current-start-pos)
@@ -1621,9 +1621,8 @@
 			    (all-rows-visible? (>= (metatree-visible-rows mt)
 						   (metatree-total-length mt))))
 		       (unless all-rows-visible?
-			 (metatree-state-start-pos-set!
-			  (metatree-mtstate mt)
-			  (- total-length visible-rows))
+			 (metatree-state-set! mt 'start-pos
+					      (- total-length visible-rows))
 			 (metatree-update mt))
 		       (metatree-cursor-set mt current-xpos
 					    (if all-rows-visible?
@@ -1639,8 +1638,7 @@
 		     (begin
 		       (unless (>= (metatree-visible-rows mt)
 				   (metatree-total-length mt))
-			 (metatree-state-start-pos-set! (metatree-mtstate mt)
-							0)
+			 (metatree-state-set! mt 'start-pos 0)
 			 (metatree-update mt))
 		       (metatree-cursor-set mt current-xpos 0))
 		     (if (< (+ current-ypos edit-step)
