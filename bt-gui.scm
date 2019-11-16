@@ -1315,23 +1315,23 @@
   ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
   ;;; mdmod structure.
   ;;; TODO also update fields in inactive patterns
-  (define (edit-current-metatree-cell metatree new-val)
-    (let* ((xpos (metatree-state metatree 'cursor-x))
-	   (ypos (metatree-state metatree 'cursor-y))
-	   (column (list-ref (metatree-columns metatree)
+  (define (metatree-edit-current-cell mt new-val)
+    (let* ((xpos (metatree-state mt 'cursor-x))
+	   (ypos (metatree-state mt 'cursor-y))
+	   (column (list-ref (metatree-columns mt)
 			     xpos))
-	   (column-id (list-ref (metatree-column-ids metatree)
+	   (column-id (list-ref (metatree-column-ids mt)
 				xpos))
-	   (instance (metatree-cursor->field-instance-id metatree))
-	   (path (metatree-cursor->field-node-path metatree))
+	   (instance (metatree-cursor->field-instance-id mt))
+	   (path (metatree-cursor->field-node-path mt))
 	   (action `(set ,path ((,instance ,new-val)))))
       (push-undo (make-reverse-action action))
       (apply-edit! action)
-      (metatree-update-item-cache metatree)
+      (metatree-update-item-cache mt)
       (column 'set (nth-tree-item column ypos)
 	      "content" (normalize-field-value new-val column-id))
       (tk/update)
-      (metatree-cursor-move metatree 'down)
+      (metatree-cursor-move mt 'down)
       (set-toolbar-button-state 'journal 'undo 'enabled)
       (unless (state 'modified)
 	(set-state! 'modified #t)
@@ -1369,13 +1369,13 @@
 	 (tk/bind* column '<Left> (lambda () (metatree-cursor-move mt 'left)))
 	 (tk/bind* column '<Right> (lambda () (metatree-cursor-move mt 'right)))
 	 (tk/bind* column '<<ClearStep>>
-		   (lambda () (edit-current-metatree-cell mt '())))
+		   (lambda () (metatree-edit-current-cell mt '())))
 	 ;; TODO which entry type to bind depends on command type.
 	 (tk/bind* column '<<NoteEntry>>
 		   `(,(lambda (keysym)
 			(let ((note-val (keypress->note keysym)))
 			  (when note-val
-			    (edit-current-metatree-cell mt note-val))))
+			    (metatree-edit-current-cell mt note-val))))
 		     %K))
 	 (tk/bind* column '<ButtonPress-1>
 		   `(,(lambda (y)
