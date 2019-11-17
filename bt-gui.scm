@@ -532,7 +532,9 @@
 
     (console 'configure bg: (colors 'background))
     (console 'configure fg: (colors 'text))
-    (console 'configure insertbackground: (colors 'text)))
+    (console 'configure insertbackground: (colors 'text))
+    (console 'configure font: (list family: (settings 'font-mono)
+				    size: (settings 'font-size))))
 
 
   ;; ---------------------------------------------------------------------------
