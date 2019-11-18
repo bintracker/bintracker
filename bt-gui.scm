@@ -937,10 +937,11 @@
     (header-frame : procedure)
     (packframe : procedure)
     (rownum-frame : procedure)
+    (rownum-header : procedure)
+    (rownums : procedure)
     (content-frame : procedure)
     (content-header : procedure)
     (grid : procedure)
-    (rownums : procedure)
     (xscroll : procedure)
     (yscroll : procedure)
     ((istate (make-blockview-internal-state))
@@ -985,6 +986,7 @@
        type: type group-id: group-id block-ids: block-ids field-ids: field-ids
        header-frame: header-frame packframe: packframe
        rownum-frame: rownum-frame content-frame: content-frame
+       rownum-header: (rownum-frame 'create-widget 'text bg: "#ff00ff")
        rownums: (rownum-frame 'create-widget 'text bg: "#ff0000")
        content-header: (content-frame 'create-widget 'text bg: "#0000ff")
        grid: grid
@@ -996,15 +998,24 @@
 
   ;;; Pack the blockview widget {{b}} to the screen.
   (define (blockview-show b)
-    (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
-    (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
-    (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
-    (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
-    (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
-    (tk/pack (blockview-rownum-frame b) fill: 'y side: 'right)
-    (tk/pack (blockview-rownums b) fill: 'y side: 'top)
-    (tk/pack (blockview-content-header b) fill: 'x side: 'top)
-    (tk/pack (blockview-grid b) expand: 1 fill: 'both side: 'top))
+    (let ((block-type? (eq? 'block (blockview-type b)))
+	  (rownums (blockview-rownums b))
+	  (rownum-header (blockview-rownum-header b))
+	  (content-header (blockview-content-header b)))
+      (rownums 'configure state: 'disabled width: (if block-type? 6 5))
+      (rownum-header 'configure state: 'disabled height: (if block-type? 2 1)
+		     width: (if block-type? 6 5))
+      (content-header 'configure state: 'disabled height: (if block-type? 2 1))
+      (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
+      (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
+      (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
+      (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
+      (tk/pack (blockview-rownum-frame b) fill: 'y side: 'left)
+      (tk/pack rownum-header side: 'top)
+      (tk/pack rownums fill: 'y side: 'top)
+      (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
+      (tk/pack (blockview-content-header b) fill: 'x side: 'top)
+      (tk/pack (blockview-grid b) expand: 1 fill: 'both side: 'top)))
 
 
   ;; ---------------------------------------------------------------------------
