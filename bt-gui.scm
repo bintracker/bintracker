@@ -893,6 +893,121 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ### TextGrid
+  ;; ---------------------------------------------------------------------------
+
+  ;;; A TextGrid is a Tk Text widget with default bindings removed and/or
+  ;;; replaces with Bintracker-specific bindings. TextGrids form the basis of
+  ;;; Bintrackers blockview metawidget, which is used to display sets of blocks
+  ;;; or order lists. A number of abstractions are provided to facilitate this.
+
+  ;;; Create a TextGrid as slave of the Tk widget {{parent}}.
+  (define (textgrid-create parent)
+    (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
+		       ;; bg: (colors 'background)
+		       bg: "#00ff00"
+		       fg: (colors 'text-inactive)
+		       insertbackground: (colors 'text)
+		       font: (list family: (settings 'font-mono)
+				   size: (settings 'font-size))))
+	   (id (tg 'get-id)))
+      (tk-eval (string-append "bindtags " id " {all . " id "}"))
+      tg))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### BlockView
+  ;; ---------------------------------------------------------------------------
+
+  ;;; The BlockView metawidget is a generic widget that implements a spreadsheet
+  ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
+  ;;; tables, etc.) and the corresponding order or list view.
+
+  (defstruct blockview-internal-state
+    ((item-cache '()) : list)
+    ((cursor-x 0) : integer)
+    ((cursor-y 0) : integer)
+    ((start-pos 0) : integer))
+
+  (defstruct blockview
+    (type : symbol)
+    (group-id : symbol)
+    (block-ids : (list-of symbol))
+    (field-ids : (list-of symbol))
+    (header-frame : procedure)
+    (packframe : procedure)
+    (rownum-frame : procedure)
+    (content-frame : procedure)
+    (content-header : procedure)
+    (grid : procedure)
+    (rownums : procedure)
+    (xscroll : procedure)
+    (yscroll : procedure)
+    ((istate (make-blockview-internal-state))
+     : (struct blockview-internal-state)))
+
+  ;;; Accessor for the blockview's internal state.
+  (define (blockview-state mt #!optional param)
+    (if param
+	((eval (symbol-append 'blockview-internal-state- param))
+	 (blockview-istate mt))
+	(blockview-istate mt)))
+
+  ;;; Setter for the blockview's internal state.
+  (define (blockview-state-set! mt param val)
+    ((eval (symbol-append 'blockview-internal-state- param '-set!))
+     (blockview-istate mt)
+     val))
+
+  ;;;
+  (define (blockview-create parent type group-id)
+    (let* ((header-frame (parent 'create-widget 'frame))
+	   (packframe (parent 'create-widget 'frame))
+  	   (rownum-frame (packframe 'create-widget 'frame))
+	   (content-frame (packframe 'create-widget 'frame))
+  	   (block-ids
+  	    (and (eq? type 'block)
+  		 (remove (lambda (id)
+  			   (eq? id (symbol-append group-id '_ORDER)))
+  			 (config-get-subnode-type-ids group-id (current-config)
+  						      'block))))
+  	   (field-ids (if (eq? type 'block)
+  			   (flatten (map (lambda (block-id)
+  					   (config-get-subnode-ids
+  					    block-id
+  					    (config-itree (current-config))))
+  					 block-ids))
+  			   (config-get-subnode-ids
+  			    (symbol-append group-id '_ORDER)
+  			    (config-itree (current-config)))))
+	   (grid (textgrid-create content-frame)))
+      (make-blockview
+       type: type group-id: group-id block-ids: block-ids field-ids: field-ids
+       header-frame: header-frame packframe: packframe
+       rownum-frame: rownum-frame content-frame: content-frame
+       rownums: (rownum-frame 'create-widget 'text bg: "#ff0000")
+       content-header: (content-frame 'create-widget 'text bg: "#0000ff")
+       grid: grid
+       xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
+  			command: `(,grid xview))
+       yscroll: (packframe 'create-widget 'scrollbar orient: 'vertical
+			   command: `(,grid yview)))))
+
+
+  ;;; Pack the blockview widget {{b}} to the screen.
+  (define (blockview-show b)
+    (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
+    (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
+    (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
+    (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
+    (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
+    (tk/pack (blockview-rownum-frame b) fill: 'y side: 'right)
+    (tk/pack (blockview-rownums b) fill: 'y side: 'top)
+    (tk/pack (blockview-content-header b) fill: 'x side: 'top)
+    (tk/pack (blockview-grid b) expand: 1 fill: 'both side: 'top))
+
+
+  ;; ---------------------------------------------------------------------------
 ;;; ### The metatree widget
   ;; ---------------------------------------------------------------------------
 
@@ -1702,17 +1817,16 @@
 	     (.tl 'add .order-pane weight: 1)
 	     (make-bt-blocks-widget
 	      tl-panedwindow: .tl
-	      ;; blocks-view: (metatree-init .blocks-pane 'block parent-node-id)
-	      ;; order-view: (metatree-init .order-pane 'order parent-node-id)
-	      )))))
+	      blocks-view: (blockview-create .blocks-pane 'block parent-node-id)
+	      order-view: (blockview-create .order-pane 'order
+					    parent-node-id))))))
 
 ;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (tk/pack top expand: 1 fill: 'both)
-      ;; (metatree-show (bt-blocks-widget-blocks-view w))
-      ;; (metatree-show (bt-blocks-widget-order-view w))
-      ))
+      (blockview-show (bt-blocks-widget-blocks-view w))
+      (blockview-show (bt-blocks-widget-order-view w))))
 
 ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
 ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
