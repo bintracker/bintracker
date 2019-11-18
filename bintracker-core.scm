@@ -67,7 +67,7 @@
 	  (lambda () (set-play-buttons 'enabled))
 	  init-instances-record! show-module
 	  reset-status-text! update-window-title!
-	  (lambda () (focus-metatree (current-blocks-view)))
+	  ;; (lambda () (focus-metatree (current-blocks-view)))
 	  enable-edit-settings!))
 
   ;;; Load an MDAL module file.

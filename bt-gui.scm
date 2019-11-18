@@ -17,11 +17,11 @@
 	  bt-state bt-types mdal)
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### PS/Tk Initialization
+;;; ### PS/Tk Initialization
   ;; ---------------------------------------------------------------------------
 
-  ;;; Init pstk and fire up Tcl/Tk runtime.
-  ;;; This must be done prior to defining anything that depends on Tk.
+;;; Init pstk and fire up Tcl/Tk runtime.
+;;; This must be done prior to defining anything that depends on Tk.
 
   (tk-start)
 
@@ -35,13 +35,13 @@
 			    spinbox treeview))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Dialogues
+;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
 
-  ;;; Various general-purpose dialogue procedures.
+;;; Various general-purpose dialogue procedures.
 
-  ;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
-  ;;; that is safe to execute as a callback from Tk.
+;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
+;;; that is safe to execute as a callback from Tk.
   (define-syntax tk/bind*
     (syntax-rules ()
       ((_ tag sequence (x ((y (lambda args body)) subst ...)))
@@ -55,10 +55,10 @@
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
-  ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
-  ;;; tk/get-save-file that block the main application window  while the pop-up
-  ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
-  ;;; once they lose focus. tk-with-lock does not help in these cases.
+;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
+;;; tk/get-save-file that block the main application window  while the pop-up
+;;; is alive. This is a work-around for tk dialogue procedures getting stuck
+;;; once they lose focus. tk-with-lock does not help in these cases.
   (define (tk/safe-dialogue type . args)
     (tk-eval "tk busy .")
     (tk/update)
@@ -66,19 +66,19 @@
       (tk-eval "tk busy forget .")
       result))
 
-  ;;; Crash-safe variant of tk/message-box.
+;;; Crash-safe variant of tk/message-box.
   (define (tk/message-box* . args)
     (apply tk/safe-dialogue (cons tk/message-box args)))
 
-  ;;; Crash-safe variant of tk/get-open-file.
+;;; Crash-safe variant of tk/get-open-file.
   (define (tk/get-open-file* . args)
     (apply tk/safe-dialogue (cons tk/get-open-file args)))
 
-    ;;; Crash-safe variant of tk/get-save-file.
+;;; Crash-safe variant of tk/get-save-file.
   (define (tk/get-save-file* . args)
     (apply tk/safe-dialogue (cons tk/get-save-file args)))
 
-  ;;; Display the "About Bintracker" message.
+;;; Display the "About Bintracker" message.
   (define (about-message)
     (tk/message-box* title: "About"
 		     message: (string-append "Bintracker\nversion "
@@ -86,9 +86,9 @@
 		     detail: "Dedicated to Ján Deák"
 		     type: 'ok))
 
-  ;;; Display a message box that asks the user whether to save unsaved changes
-  ;;; before exiting or closing. **exit-or-closing** should be the string
-  ;;; `"exit"` or `"closing"`, respectively.
+;;; Display a message box that asks the user whether to save unsaved changes
+;;; before exiting or closing. **exit-or-closing** should be the string
+;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
     (tk/message-box* title: (string-append "Save before "
 					   exit-or-closing "?")
@@ -102,11 +102,11 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Events
+;;; ### Events
   ;; ---------------------------------------------------------------------------
 
-  ;;; Create default virtual events for Bintracker. This procedure only needs
-  ;;; to be called on startup, or after updating key bindings.
+;;; Create default virtual events for Bintracker. This procedure only needs
+;;; to be called on startup, or after updating key bindings.
   (define (create-virtual-events)
     (apply tk/event (append '(add <<NoteEntry>>)
 			    (map car
@@ -115,10 +115,10 @@
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row)))
 
-  ;;; Reverse the evaluation order for tk bindings, so that global bindings are
-  ;;; evaluated before the local bindings of {{widget}}. This is necessary to
-  ;;; prevent keypresses that are handled globally being passed through to the
-  ;;; widget.
+;;; Reverse the evaluation order for tk bindings, so that global bindings are
+;;; evaluated before the local bindings of {{widget}}. This is necessary to
+;;; prevent keypresses that are handled globally being passed through to the
+;;; widget.
   (define (reverse-binding-eval-order widget)
     (let ((widget-id (widget 'get-id)))
       (tk-eval (string-append "bindtags " widget-id " {all . "
@@ -126,37 +126,37 @@
 			      " " widget-id "}"))))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Images
+;;; ### Images
   ;; ---------------------------------------------------------------------------
 
-  ;;; Auxilliary image handling procedures.
+;;; Auxilliary image handling procedures.
 
-  ;;; Create a tk image resource from a given PNG file.
+;;; Create a tk image resource from a given PNG file.
   (define (tk/icon filename)
     (tk/image 'create 'photo format: "PNG"
 	      file: (string-append "resources/icons/" filename)))
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Menus
+;;; ### Menus
   ;; ---------------------------------------------------------------------------
 
-  ;;; `submenus` shall be an alist, where keys are unique identifiers, and
-  ;;; values are the actual tk menus.
+;;; `submenus` shall be an alist, where keys are unique identifiers, and
+;;; values are the actual tk menus.
   (defstruct menu
     ((widget (tk 'create-widget 'menu)) : procedure)
     ((items '()) : list))
 
-  ;;; Destructively add an item to menu-struct **menu** according to
-  ;;; **item-spec**. **item-spec** must be a list containing either
-  ;;; ('separator)
-  ;;; ('command id label underline accelerator command)
-  ;;; ('submenu id label underline items-list)
-  ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
-  ;;; name that will be shown in the menu for this item, and its underline
-  ;;; position; *accelerator* is a string naming a keyboard shortcut for the
-  ;;; item, command is a procedure to be associated with the item, and
-  ;;; items-list is a list of item-specs.
+;;; Destructively add an item to menu-struct **menu** according to
+;;; **item-spec**. **item-spec** must be a list containing either
+;;; ('separator)
+;;; ('command id label underline accelerator command)
+;;; ('submenu id label underline items-list)
+;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
+;;; name that will be shown in the menu for this item, and its underline
+;;; position; *accelerator* is a string naming a keyboard shortcut for the
+;;; item, command is a procedure to be associated with the item, and
+;;; items-list is a list of item-specs.
   ;; TODO add at position (insert)
   (define (add-menu-item! menu item-spec)
     (let ((append-to-item-list!
@@ -193,10 +193,10 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Top Level Layout
+;;; ## Top Level Layout
   ;; ---------------------------------------------------------------------------
 
-  ;;; The core widgets that make up Bintracker's GUI.
+;;; The core widgets that make up Bintracker's GUI.
 
   (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
 
@@ -226,22 +226,22 @@
       (main-panes 'add console-frame weight: 2)))
 
   ;; TODO take into account which zones are actually active
-  ;;; The list of all ui zones that can be focussed. The list consists of a list
-  ;;; for each zone, which contains the focus procedure in car, and the unfocus
-  ;;; procedure in cadr.
+;;; The list of all ui zones that can be focussed. The list consists of a list
+;;; for each zone, which contains the focus procedure in car, and the unfocus
+;;; procedure in cadr.
   (define ui-zones
     `((fields ,(lambda () (focus-fields-widget (current-fields-view)))
 	      ,(lambda () (unfocus-fields-widget (current-fields-view))))
-      (blocks ,(lambda () (focus-metatree (current-blocks-view)))
-	      ,(lambda () (unfocus-metatree (current-blocks-view))))
-      (order ,(lambda () (focus-metatree (current-order-view)))
-	     ,(lambda () (unfocus-metatree (current-order-view))))
+      ;; (blocks ,(lambda () (focus-metatree (current-blocks-view)))
+      ;; 	      ,(lambda () (unfocus-metatree (current-blocks-view))))
+      ;; (order ,(lambda () (focus-metatree (current-order-view)))
+      ;; 	     ,(lambda () (unfocus-metatree (current-order-view))))
       (console ,(lambda () (tk/focus console))
 	       ,(lambda () '()))))
 
-  ;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
-  ;;; index to the `ui-zones` list, or a symbol naming an entry in
-  ;;; that list.
+;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
+;;; index to the `ui-zones` list, or a symbol naming an entry in
+;;; that list.
   (define (switch-ui-zone-focus new-zone)
     (let ((new-zone-index (or (and (integer? new-zone)
 				   new-zone)
@@ -255,16 +255,16 @@
       (set-state! 'current-ui-zone new-zone-index)
       ((second (list-ref ui-zones new-zone-index)))))
 
-  ;;; Unfocus the currently active UI zone, and focus the next one listed in
-  ;;; ui-zones.
+;;; Unfocus the currently active UI zone, and focus the next one listed in
+;;; ui-zones.
   (define (focus-next-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (next-zone (if (= current-zone (sub1 (length ui-zones)))
 			  0 (+ 1 current-zone))))
       (switch-ui-zone-focus next-zone)))
 
-  ;;; Unfocus the currently active UI zone, and focus the previous one listed in
-  ;;; ui-zones.
+;;; Unfocus the currently active UI zone, and focus the previous one listed in
+;;; ui-zones.
   (define (focus-previous-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (prev-zone (if (= current-zone 0)
@@ -274,20 +274,20 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Toolbar
+;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
-  ;;; Create a toolbar button widget.
+;;; Create a toolbar button widget.
   (define (toolbar-button icon #!optional (init-state 'disabled))
     (toolbar-frame 'create-widget 'button image: (tk/icon icon)
   		   state: init-state style: "Toolbutton"))
 
-  ;;; The list of buttons in the main toolbar. It is a nested alist. The main
-  ;;; keys name button groups, where the associated values are another alist
-  ;;; containing the button names as keys. The key names must correspond to
-  ;;; the names of the procedure that the buttons will call.
-  ;;; The cdr of the button alist contains a button widget created with
-  ;;; `toolbar-button` in car, and a short description in cadr.
+;;; The list of buttons in the main toolbar. It is a nested alist. The main
+;;; keys name button groups, where the associated values are another alist
+;;; containing the button names as keys. The key names must correspond to
+;;; the names of the procedure that the buttons will call.
+;;; The cdr of the button alist contains a button widget created with
+;;; `toolbar-button` in car, and a short description in cadr.
   (define toolbar-button-groups
     `((file (new-file ,(toolbar-button "new.png" 'enabled)
 		      "New File")
@@ -324,19 +324,19 @@
       		 (show-settings ,(toolbar-button "settings.png" 'enabled)
       				"Settings..."))))
 
-  ;;; Returns the entry associated with {{id}} in the given toolbar
-  ;;; button {{group}}.
+;;; Returns the entry associated with {{id}} in the given toolbar
+;;; button {{group}}.
   (define (toolbar-button-ref group-id button-id)
     (let ((group (alist-ref group-id toolbar-button-groups)))
       (and group (alist-ref button-id group))))
 
-  ;;; Associate the procedure {{command}} with a toolbar button.
+;;; Associate the procedure {{command}} with a toolbar button.
   (define (set-toolbar-button-command group-id button-id command)
     ((car (toolbar-button-ref group-id button-id))
      'configure command: command))
 
-  ;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
-  ;;; status bar.
+;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
+;;; status bar.
   (define (bind-toolbar-button-info group-id button-id)
     (let ((button-entry (toolbar-button-ref group-id button-id)))
       (bind-info-status (car button-entry)
@@ -344,19 +344,19 @@
 				       " "
 				       (key-binding->info 'global button-id)))))
 
-  ;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
+;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
   (define (set-toolbar-button-state group-id button-id state)
     ((car (toolbar-button-ref group-id button-id))
      'configure 'state: state))
 
-  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
-  ;;; `'disabled`.
+;;; Set the state of the play button. {{state}} must be either `'enabled` or
+;;; `'disabled`.
   (define (set-play-buttons state)
     (for-each (lambda (button)
 		((cadr button) 'configure state: state))
 	      (alist-ref 'play toolbar-button-groups)))
 
-  ;;; construct and display the main toolbar
+;;; construct and display the main toolbar
   (define (show-toolbar)
     (for-each (lambda (button-group)
   		(for-each (lambda (button-entry)
@@ -372,19 +372,19 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Edit Settings Display
+;;; ## Edit Settings Display
   ;; ---------------------------------------------------------------------------
 
-  ;;; Display a label widget as description of an edit setting spinbox
+;;; Display a label widget as description of an edit setting spinbox
   (define (pack-edit-settings-label text description)
     (let ((label (edit-settings-frame 'create-widget 'label text: text)))
       (tk/pack label side: 'left padx: 5)
       (bind-info-status label description)))
 
-  ;;; Create a spinbox in the edit settings toolbar.
-  ;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
-  ;;; specifies the relevant field in `app-state`, and {{action}} specifies
-  ;;; an additional procedure to call on validation.
+;;; Create a spinbox in the edit settings toolbar.
+;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
+;;; specifies the relevant field in `app-state`, and {{action}} specifies
+;;; an additional procedure to call on validation.
   ;; TODO <<Increment>>/<<Decrement>> events are buggy, events are
   ;; sometimes generated repeatedly
   ;; see https://wiki.tcl-lang.org/page/ttk::spinbox
@@ -414,10 +414,10 @@
 		  (validate-new-value (string->number (spinbox 'get)))))
       spinbox))
 
-  ;;; The list of edit setting widgets. Each element in the list must be a list
-  ;;; containing an identifier, a label string, a documentation string, a field
-  ;;; in `app-settings` from which to draw the default value, and a spinbox
-  ;;; widget which should be created with `make-edit-settings-spinbox`.
+;;; The list of edit setting widgets. Each element in the list must be a list
+;;; containing an identifier, a label string, a documentation string, a field
+;;; in `app-settings` from which to draw the default value, and a spinbox
+;;; widget which should be created with `make-edit-settings-spinbox`.
   (define edit-settings
     `((edit-step "Step" "Set the edit step" default-edit-step
 		 ,(make-edit-settings-spinbox 0 64 'edit-step #f))
@@ -428,30 +428,34 @@
 		       ,(make-edit-settings-spinbox
 			 2 64 'major-row-highlight
 			 (lambda ()
-			   (update-row-highlights (current-blocks-view)))))
+			   #f
+			   ;; (update-row-highlights (current-blocks-view))
+			   )))
       (minor-highlight "Minor Row" "Set the minor row highlight"
 		       default-minor-row-highlight
 		       ,(make-edit-settings-spinbox
 			 2 32 'minor-row-highlight
 			 (lambda ()
-			   (update-row-highlights (current-blocks-view)))))))
+			   #f
+			   ;; (update-row-highlights (current-blocks-view))
+			   )))))
 
-  ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
-  ;;; either `'enabled` or `'disabled`.
+;;; Set the state of the edit settings spinboxes to {{state}}, which must be
+;;; either `'enabled` or `'disabled`.
   (define (set-edit-settings-state! state)
     (for-each (lambda (setting)
 		((fifth setting) 'configure state: state))
 	      edit-settings))
 
-  ;;; Enable the edit settings spinboxes.
+;;; Enable the edit settings spinboxes.
   (define (enable-edit-settings!)
     (set-edit-settings-state! 'enabled))
 
-  ;;; Disable the edit settings spinboxes.
+;;; Disable the edit settings spinboxes.
   (define (disable-edit-settings!)
     (set-edit-settings-state! 'disabled))
 
-  ;;; Display the edit settings in the main GUI.
+;;; Display the edit settings in the main GUI.
   (define (show-edit-settings)
     (for-each (lambda (setting)
 		(pack-edit-settings-label (cadr setting) (third setting))
@@ -461,7 +465,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Console
+;;; ## Console
   ;; ---------------------------------------------------------------------------
 
   (define console-wrapper (console-frame 'create-widget 'frame))
@@ -489,12 +493,12 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; Style updates
+;;; Style updates
   ;; ---------------------------------------------------------------------------
 
-  ;;; A work-around for the treeview tag configuration bug that affects
-  ;;; Tk 8.6.9 under Linux, based on
-  ;;; https://core.tcl-lang.org/tk/tktview?name=509cafafae
+;;; A work-around for the treeview tag configuration bug that affects
+;;; Tk 8.6.9 under Linux, based on
+;;; https://core.tcl-lang.org/tk/tktview?name=509cafafae
   (define (patch-tcltk-8.6.9-treeview)
     (when (string= "8.6.9" (tk-eval "info patchlevel"))
       (ttk/style 'map 'Metatree.Treeview foreground:
@@ -502,14 +506,14 @@
 		 background: '(disabled SystemButtonFace selected
 					SystemHighlightText))))
 
-  ;;; Configure Tk widget styles
+;;; Configure Tk widget styles
   (define (update-style!)
-    (ttk/style 'configure 'Metatree.Treeview background: (colors 'background)
-	       fieldbackground: (colors 'background)
-	       foreground: (colors 'text)
-	       font: (list family: (settings 'font-mono)
-			   size: (settings 'font-size))
-	       rowheight: (treeview-rowheight))
+    ;; (ttk/style 'configure 'Metatree.Treeview background: (colors 'background)
+    ;; 	       fieldbackground: (colors 'background)
+    ;; 	       foreground: (colors 'text)
+    ;; 	       font: (list family: (settings 'font-mono)
+    ;; 			   size: (settings 'font-size))
+    ;; 	       rowheight: (treeview-rowheight))
 
     ;; hide treeview borders
     (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
@@ -538,10 +542,10 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Status Bar
+;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
 
-  ;;; Initialize the status bar at the bottom of the main window.
+;;; Initialize the status bar at the bottom of the main window.
   (define (init-status-bar)
     (let ((status-label (status-frame 'create-widget 'label
 				      textvariable: (tk-var "status-text"))))
@@ -549,8 +553,8 @@
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
-  ;;; Returns a string containing the current target platform and MDAL config
-  ;;; name, separated by a pipe.
+;;; Returns a string containing the current target platform and MDAL config
+;;; name, separated by a pipe.
   (define (get-module-info-text)
     (string-append (if (current-mod)
 		       (string-append
@@ -559,27 +563,27 @@
 		       "No module loaded.")
 		   " | "))
 
-  ;;; Set the message in the status to either a combination of the current
-  ;;; module's target platform and configuration name, or the string
-  ;;; "No module loaded."
+;;; Set the message in the status to either a combination of the current
+;;; module's target platform and configuration name, or the string
+;;; "No module loaded."
   (define (reset-status-text!)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      (state 'active-md-command-info))))
 
-  ;;; Display {{msg}} in the status bar, extending the current info string.
+;;; Display {{msg}} in the status bar, extending the current info string.
   (define (display-action-info-status! msg)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      msg)))
 
-  ;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
-  ;;; remove the given info {{text}} in the status bar.
+;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
+;;; remove the given info {{text}} in the status bar.
   (define (bind-info-status widget text)
     (tk/bind* widget '<Enter>
 	      (lambda () (display-action-info-status! text)))
     (tk/bind* widget '<Leave> reset-status-text!))
 
-  ;;; Construct an info string for the key binding of the given action in the
-  ;;; given key-group
+;;; Construct an info string for the key binding of the given action in the
+;;; given key-group
   (define (key-binding->info key-group action)
     (let ((binding (inverse-key-binding key-group action)))
       (if binding
@@ -588,11 +592,11 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Editing
+;;; ## Editing
   ;; ---------------------------------------------------------------------------
 
-  ;;; Apply an edit action. See the Journal section in the documentation of
-  ;;; bt-state for a description of the `action` format.
+;;; Apply an edit action. See the Journal section in the documentation of
+;;; bt-state for a description of the `action` format.
   (define (apply-edit! action)
     (match (car action)
       ('set (node-set! ((node-path (cadr action))
@@ -602,26 +606,26 @@
       ('insert '())
       ('compound (for-each apply-edit! (cdr action)))))
 
-  ;;; Undo the latest edit action, by retrieving the latest action from the undo
-  ;;; stack, applying it, updating the redo stack, and refreshing the display.
+;;; Undo the latest edit action, by retrieving the latest action from the undo
+;;; stack, applying it, updating the redo stack, and refreshing the display.
   (define (undo)
     (let ((action (pop-undo)))
       (when action
 	(apply-edit! action)
-	(metatree-update (current-order-view))
-	(metatree-update (current-blocks-view))
+	;; (metatree-update (current-order-view))
+	;; (metatree-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'redo 'enabled)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
 	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
 
-  ;;; Redo the latest undo action.
+;;; Redo the latest undo action.
   (define (redo)
     (let ((action (pop-redo)))
       (when action
 	(apply-edit! action)
-	(metatree-update (current-order-view))
-	(metatree-update (current-blocks-view))
+	;; (metatree-update (current-order-view))
+	;; (metatree-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'undo 'enabled)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
@@ -629,49 +633,49 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Module Display Related Widgets and Procedures
+;;; ## Module Display Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
-  ;;; The module display is constructed as follows:
-  ;;;
-  ;;; Within the module display frame provided by Bintracker's top level layout,
-  ;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
-  ;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
-  ;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
-  ;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
-  ;;; subgroups, respectively.
-  ;;;
-  ;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
-  ;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
-  ;;; that contains a label displaying the field ID, and an input field for the
-  ;;; associated value. `bt-fields-widget` and its children are only used for
-  ;;; group fields, block fields are handled differently.
-  ;;;
-  ;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
-  ;;; The first pane contains the actual block display (all of the parent
-  ;;; group's block members except the order block displayed next to each
-  ;;; other), and the second pane contains the order or block list display.
-  ;;; Both the block display and the order display are based on the `metatree`
-  ;;; meta-widget, which is documented below.
-  ;;;
-  ;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
-  ;;; notebook (tab view), with tabs for each of the parent node's subgroups.
-  ;;; A Tk frame is created in each of the tabs. For each subgroup, a
-  ;;; `bt-group-widget` is created as a child of the corresponding tab frame.
-  ;;; This allows for infinite nested groups, as required by MDAL.
-  ;;;
-  ;;; All `bt-*` widgets should be created by calling the corresponding
-  ;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
-  ;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
-  ;;; calling the corresponding `show-*-widget` procedures.
+;;; The module display is constructed as follows:
+;;;
+;;; Within the module display frame provided by Bintracker's top level layout,
+;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
+;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
+;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
+;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
+;;; subgroups, respectively.
+;;;
+;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
+;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
+;;; that contains a label displaying the field ID, and an input field for the
+;;; associated value. `bt-fields-widget` and its children are only used for
+;;; group fields, block fields are handled differently.
+;;;
+;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
+;;; The first pane contains the actual block display (all of the parent
+;;; group's block members except the order block displayed next to each
+;;; other), and the second pane contains the order or block list display.
+;;; Both the block display and the order display are based on the `metatree`
+;;; meta-widget, which is documented below.
+;;;
+;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
+;;; notebook (tab view), with tabs for each of the parent node's subgroups.
+;;; A Tk frame is created in each of the tabs. For each subgroup, a
+;;; `bt-group-widget` is created as a child of the corresponding tab frame.
+;;; This allows for infinite nested groups, as required by MDAL.
+;;;
+;;; All `bt-*` widgets should be created by calling the corresponding
+;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
+;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
+;;; calling the corresponding `show-*-widget` procedures.
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Auxilliary procedures used by various BT meta-widgets
+;;; ### Auxilliary procedures used by various BT meta-widgets
   ;; ---------------------------------------------------------------------------
 
-  ;;; Determine how many characters are needed to print values of a given
-  ;;; command.
+;;; Determine how many characters are needed to print values of a given
+;;; command.
   ;; TODO results should be cached
   (define (value-display-size command-config)
     (match (command-type command-config)
@@ -690,9 +694,9 @@
       ('trigger 1)
       ('string 32)))
 
-  ;;; Transform an ifield value from MDAL format to tracker display format.
-  ;;; Replaces empty values with dots, changes numbers depending on number
-  ;;; format setting, and turns everything into a string.
+;;; Transform an ifield value from MDAL format to tracker display format.
+;;; Replaces empty values with dots, changes numbers depending on number
+;;; format setting, and turns everything into a string.
   (define (normalize-field-value val field-id)
     (let ((command-config (config-get-inode-source-command
   			   field-id (current-config))))
@@ -711,7 +715,7 @@
 	    ('trigger "x")
 	    ('string val)))))
 
-  ;;; Get the RGB color string associated with the field's command type.
+;;; Get the RGB color string associated with the field's command type.
   (define (get-field-color field-id)
     (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
@@ -726,8 +730,8 @@
 	    ('modifier (colors 'text-7))
 	    (else (colors 'text))))))
 
-  ;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
-  ;;; MDAL note name.
+;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
+;;; MDAL note name.
   (define (keypress->note key)
     (let ((entry-spec (alist-ref (string->symbol
 				  (string-append "<Key-" (->string key)
@@ -746,7 +750,7 @@
 			   (string-append (car entry-spec)
 					  (->string mod-octave)))))))))
 
-  ;;; Get the appropriate command type tag to set the item color.
+;;; Get the appropriate command type tag to set the item color.
   (define (get-command-type-tag field-id)
     (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
@@ -759,17 +763,17 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Field-Related Widgets and Procedures
+;;; ### Field-Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
-  ;;; A meta widget for displaying an MDAL group field.
+;;; A meta widget for displaying an MDAL group field.
   (defstruct bt-field-widget
     (toplevel-frame : procedure)
     (id-label : procedure)
     (val-entry : procedure)
     (node-id : symbol))
 
-  ;;; Create a `bt-field-widget`.
+;;; Create a `bt-field-widget`.
   (define (make-field-widget node-id parent-widget)
     (let ((tl-frame (parent-widget 'create-widget 'frame style: 'BT.TFrame))
 	  (color (get-field-color node-id)))
@@ -786,7 +790,7 @@
 					size: (settings 'font-size)
 					weight: 'bold)))))
 
-  ;;; Display a `bt-field-widget`.
+;;; Display a `bt-field-widget`.
   (define (show-field-widget w group-instance-path)
     (tk/pack (bt-field-widget-toplevel-frame w)
 	     side: 'left)
@@ -812,14 +816,14 @@
     ((bt-field-widget-val-entry w) 'configure
      bg: (colors 'row-highlight-minor)))
 
-  ;;; A meta widget for displaying an MDAL group's field members.
+;;; A meta widget for displaying an MDAL group's field members.
   (defstruct bt-fields-widget
     (toplevel-frame : procedure)
     (parent-node-id : symbol)
     ((fields '()) : (list-of (struct bt-field-widget)))
     ((active-index 0) : fixnum))
 
-  ;;; Create a `bt-fields-widget`.
+;;; Create a `bt-fields-widget`.
   (define (make-fields-widget parent-node-id parent-widget)
     (let ((subnode-ids (config-get-subnode-type-ids parent-node-id
 						    (current-config)
@@ -835,7 +839,7 @@
 			    (make-field-widget id tl-frame))
 			  subnode-ids))))))
 
-  ;;; Show a group fields widget.
+;;; Show a group fields widget.
   (define (show-fields-widget w group-instance-path)
     (begin
       (tk/pack (bt-fields-widget-toplevel-frame w)
@@ -889,20 +893,20 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### The metatree widget
+;;; ### The metatree widget
   ;; ---------------------------------------------------------------------------
 
-  ;;; The `metatree` widget is a generic widget that implements a spreadsheet
-  ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
-  ;;; tables, etc.) and the corresponding order or list view.
-  ;;;
-  ;;; Metatrees are implemented as a set of single-column `ttk::treeview`s on
-  ;;; a canvas. The canvas takes care of horizontal scrolling, while the
-  ;;; treeviews handle the vertical scrolling. Optionally, a row number column
-  ;;; can be displayed, which is not part of the canvas (since it should not be
-  ;;; scrolled horizontally).
+;;; The `metatree` widget is a generic widget that implements a spreadsheet
+;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
+;;; tables, etc.) and the corresponding order or list view.
+;;;
+;;; Metatrees are implemented as a set of single-column `ttk::treeview`s on
+;;; a canvas. The canvas takes care of horizontal scrolling, while the
+;;; treeviews handle the vertical scrolling. Optionally, a row number column
+;;; can be displayed, which is not part of the canvas (since it should not be
+;;; scrolled horizontally).
 
-  ;;; child record that wraps display related state such as the cursor position.
+;;; child record that wraps display related state such as the cursor position.
   (defstruct metatree-internal-state
     ((item-cache '()) : list)
     ((cursor-x 0) : integer)
@@ -910,7 +914,7 @@
     ((start-pos 0) : integer)
     (frame-height : (or boolean integer)))
 
-  ;;; The main metatree structure.
+;;; The main metatree structure.
   (defstruct metatree
     (group-id : symbol)
     (type : symbol)
@@ -926,765 +930,765 @@
     ((mtstate (make-metatree-internal-state))
      : (struct metatree-internal-state)))
 
-  ;;; Accessor for the metatree's internal state.
+;;; Accessor for the metatree's internal state.
   (define (metatree-state mt #!optional param)
     (if param
 	((eval (symbol-append 'metatree-internal-state- param))
 	 (metatree-mtstate mt))
 	(metatree-mtstate mt)))
 
-  ;;; Setter for the metatree's internal state.
+;;; Setter for the metatree's internal state.
   (define (metatree-state-set! mt param val)
     ((eval (symbol-append 'metatree-internal-state- param '-set!))
      (metatree-mtstate mt)
      val))
 
-  ;;; Auxiliary procedure for `metatree-init`. Configure cell tags.
-  (define (metatree-column-set-tags col)
-    (col 'tag 'configure 'active-cell background: (colors 'cursor))
-    (col 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
-    (col 'tag 'configure 'rowhl-major
-	 background: (colors 'row-highlight-major))
-    (col 'tag 'configure 'note foreground: (colors 'text-1))
-    (col 'tag 'configure 'int foreground: (colors 'text-2))
-    (col 'tag 'configure 'key foreground: (colors 'text-3))
-    (col 'tag 'configure 'reference foreground: (colors 'text-4))
-    (col 'tag 'configure 'trigger foreground: (colors 'text-5))
-    (col 'tag 'configure 'string foreground: (colors 'text-6))
-    (col 'tag 'configure 'modifier foreground: (colors 'text-7))
-    (col 'tag 'configure 'active font: (list (settings 'font-mono)
-					     (settings 'font-size)
-					     "bold"))
-    (col 'tag 'configure 'inactive foreground: (colors 'text-inactive)))
+  ;; ;;; Auxiliary procedure for `metatree-init`. Configure cell tags.
+  ;; (define (metatree-column-set-tags col)
+  ;;   (col 'tag 'configure 'active-cell background: (colors 'cursor))
+  ;;   (col 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
+  ;;   (col 'tag 'configure 'rowhl-major
+  ;; 	 background: (colors 'row-highlight-major))
+  ;;   (col 'tag 'configure 'note foreground: (colors 'text-1))
+  ;;   (col 'tag 'configure 'int foreground: (colors 'text-2))
+  ;;   (col 'tag 'configure 'key foreground: (colors 'text-3))
+  ;;   (col 'tag 'configure 'reference foreground: (colors 'text-4))
+  ;;   (col 'tag 'configure 'trigger foreground: (colors 'text-5))
+  ;;   (col 'tag 'configure 'string foreground: (colors 'text-6))
+  ;;   (col 'tag 'configure 'modifier foreground: (colors 'text-7))
+  ;;   (col 'tag 'configure 'active font: (list (settings 'font-mono)
+  ;; 					     (settings 'font-size)
+  ;; 					     "bold"))
+  ;;   (col 'tag 'configure 'inactive foreground: (colors 'text-inactive)))
 
-  ;;; {{type}} - either 'block (show an igroup's blocks) or 'order (show iorder)
-  (define (metatree-init parent type group-id)
-    (let* ((packframe (parent 'create-widget 'frame))
-	   (rownums-packframe (packframe 'create-widget 'frame))
-	   (canvas (packframe 'create-widget 'canvas
-			      scrollregion: "0 0 1000 1000"
-			      bg: (colors 'background)
-			      bd: 0 highlightthickness: 0))
-	   (block-ids
-	    (and (eq? type 'block)
-		 (remove (lambda (id)
-			   (eq? id (symbol-append group-id '_ORDER)))
-			 (config-get-subnode-type-ids group-id (current-config)
-						      'block))))
-	   (column-ids (if (eq? type 'block)
-			   (flatten (map (lambda (block-id)
-					   (config-get-subnode-ids
-					    block-id
-					    (config-itree (current-config))))
-					 block-ids))
-			   (config-get-subnode-ids
-			    (symbol-append group-id '_ORDER)
-			    (config-itree (current-config)))))
-	   (rownums (rownums-packframe 'create-widget 'treeview
-				       selectmode: 'none
-				       show: 'tree style: 'Metatree.Treeview))
-	   (columns (map (lambda (id)
-			   (let ((tree (canvas 'create-widget 'treeview
-					       columns: 'content
-					       selectmode: 'none show: '()
-					       style: 'Metatree.Treeview)))
-			     (tree 'column "#1" width: 80 anchor: 'center)
-			     (metatree-column-set-tags tree)
-			     tree))
-			 column-ids)))
-      (metatree-column-set-tags rownums)
-      (make-metatree
-       group-id: group-id type: type packframe: packframe
-       rownums-packframe: rownums-packframe
-       canvas: canvas
-       block-ids: block-ids column-ids: column-ids
-       columns: columns rownums: rownums
-       xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
-			command: `(,canvas xview))
-       yscroll: (packframe 'create-widget 'scrollbar orient: 'vertical))))
+  ;; ;;; {{type}} - either 'block (show an igroup's blocks) or 'order (show iorder)
+  ;; (define (metatree-init parent type group-id)
+  ;;   (let* ((packframe (parent 'create-widget 'frame))
+  ;; 	   (rownums-packframe (packframe 'create-widget 'frame))
+  ;; 	   (canvas (packframe 'create-widget 'canvas
+  ;; 			      scrollregion: "0 0 1000 1000"
+  ;; 			      bg: (colors 'background)
+  ;; 			      bd: 0 highlightthickness: 0))
+  ;; 	   (block-ids
+  ;; 	    (and (eq? type 'block)
+  ;; 		 (remove (lambda (id)
+  ;; 			   (eq? id (symbol-append group-id '_ORDER)))
+  ;; 			 (config-get-subnode-type-ids group-id (current-config)
+  ;; 						      'block))))
+  ;; 	   (column-ids (if (eq? type 'block)
+  ;; 			   (flatten (map (lambda (block-id)
+  ;; 					   (config-get-subnode-ids
+  ;; 					    block-id
+  ;; 					    (config-itree (current-config))))
+  ;; 					 block-ids))
+  ;; 			   (config-get-subnode-ids
+  ;; 			    (symbol-append group-id '_ORDER)
+  ;; 			    (config-itree (current-config)))))
+  ;; 	   (rownums (rownums-packframe 'create-widget 'treeview
+  ;; 				       selectmode: 'none
+  ;; 				       show: 'tree style: 'Metatree.Treeview))
+  ;; 	   (columns (map (lambda (id)
+  ;; 			   (let ((tree (canvas 'create-widget 'treeview
+  ;; 					       columns: 'content
+  ;; 					       selectmode: 'none show: '()
+  ;; 					       style: 'Metatree.Treeview)))
+  ;; 			     (tree 'column "#1" width: 80 anchor: 'center)
+  ;; 			     (metatree-column-set-tags tree)
+  ;; 			     tree))
+  ;; 			 column-ids)))
+  ;;     (metatree-column-set-tags rownums)
+  ;;     (make-metatree
+  ;;      group-id: group-id type: type packframe: packframe
+  ;;      rownums-packframe: rownums-packframe
+  ;;      canvas: canvas
+  ;;      block-ids: block-ids column-ids: column-ids
+  ;;      columns: columns rownums: rownums
+  ;;      xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
+  ;; 			command: `(,canvas xview))
+  ;;      yscroll: (packframe 'create-widget 'scrollbar orient: 'vertical))))
 
-  ;;; Create a scrollbar command for the given metatree's vertical scrollbar.
-  (define (metatree-make-yscroll-handler mt)
-    (lambda args
-      ;; moving bar: args = moveto frac
-      ;; clicking on trough: scroll 1 pages
-      ;; clicking on arrow: scroll 1 units
-      (tk-with-lock
-       (lambda ()
-	 (display "yscroll args: ")
-	 (display args)
-	 (newline)
-	 (if (eq? 'moveto (car args))
-	     (begin (display "moveto")
-		    (newline))
-	     ;; "scroll"
-	     (if (eq? 'pages (third args))
-		 ;; scroll ... pages
-		 (metatree-shift-item-window
-		  mt (* (cadr args)
-			(sub1 (metatree-visible-rows mt))))
-		 ;; scroll ... units
-		 (metatree-shift-item-window mt (cadr args))))))))
+  ;; ;;; Create a scrollbar command for the given metatree's vertical scrollbar.
+  ;; (define (metatree-make-yscroll-handler mt)
+  ;;   (lambda args
+  ;;     ;; moving bar: args = moveto frac
+  ;;     ;; clicking on trough: scroll 1 pages
+  ;;     ;; clicking on arrow: scroll 1 units
+  ;;     (tk-with-lock
+  ;;      (lambda ()
+  ;; 	 (display "yscroll args: ")
+  ;; 	 (display args)
+  ;; 	 (newline)
+  ;; 	 (if (eq? 'moveto (car args))
+  ;; 	     (begin (display "moveto")
+  ;; 		    (newline))
+  ;; 	     ;; "scroll"
+  ;; 	     (if (eq? 'pages (third args))
+  ;; 		 ;; scroll ... pages
+  ;; 		 (metatree-shift-item-window
+  ;; 		  mt (* (cadr args)
+  ;; 			(sub1 (metatree-visible-rows mt))))
+  ;; 		 ;; scroll ... units
+  ;; 		 (metatree-shift-item-window mt (cadr args))))))))
 
-  ;;; Deduces the "rowheight" setting of `ttk::treeview`. This contains a very
-  ;;; ugly hack
-  (define (treeview-rowheight)
-    (tk-eval "flush stdout")
-    (let ((line-height (tk-eval
-			(string-append "font metrics {-family \""
-				       (settings 'font-mono) "\" -size "
-				       (number->string (settings 'font-size))
-				       "} -linespace"))))
-      (if (or (not (string? line-height))
-	      (not (number? (string->number line-height))))
-	  (+ 4 (state 'font-height-cached))
-	  (let ((font-height (string->number line-height)))
-	    (set-state! 'font-height-cached font-height)
-	    (+ 4 font-height)))))
+  ;; ;;; Deduces the "rowheight" setting of `ttk::treeview`. This contains a very
+  ;; ;;; ugly hack
+  ;; (define (treeview-rowheight)
+  ;;   (tk-eval "flush stdout")
+  ;;   (let ((line-height (tk-eval
+  ;; 			(string-append "font metrics {-family \""
+  ;; 				       (settings 'font-mono) "\" -size "
+  ;; 				       (number->string (settings 'font-size))
+  ;; 				       "} -linespace"))))
+  ;;     (if (or (not (string? line-height))
+  ;; 	      (not (number? (string->number line-height))))
+  ;; 	  (+ 4 (state 'font-height-cached))
+  ;; 	  (let ((font-height (string->number line-height)))
+  ;; 	    (set-state! 'font-height-cached font-height)
+  ;; 	    (+ 4 font-height)))))
 
-  ;;; Get the current height of the metatree display frame.
-  (define (metatree-frame-height mt)
-    (or (metatree-state mt 'frame-height)
-	(string->number (tk/winfo 'height (metatree-packframe mt)))))
+  ;; ;;; Get the current height of the metatree display frame.
+  ;; (define (metatree-frame-height mt)
+  ;;   (or (metatree-state mt 'frame-height)
+  ;; 	(string->number (tk/winfo 'height (metatree-packframe mt)))))
 
-  ;;; Get the number of rows that the metatree can display at it's current
-  ;;; frame height.
-  (define (metatree-visible-rows mt #!optional
-				 (frame-height (metatree-frame-height mt)))
-    (let ((rowheight (treeview-rowheight)))
-      (quotient (- frame-height
-		   (* rowheight (if (eq? 'block (metatree-type mt))
-				    2 1)))
-		rowheight)))
+  ;; ;;; Get the number of rows that the metatree can display at it's current
+  ;; ;;; frame height.
+  ;; (define (metatree-visible-rows mt #!optional
+  ;; 				 (frame-height (metatree-frame-height mt)))
+  ;;   (let ((rowheight (treeview-rowheight)))
+  ;;     (quotient (- frame-height
+  ;; 		   (* rowheight (if (eq? 'block (metatree-type mt))
+  ;; 				    2 1)))
+  ;; 		rowheight)))
 
-  ;;; Get the total number of rows in the metatree.
-  (define (metatree-total-length mt)
-    (let ((item-cache (metatree-state mt 'item-cache)))
-      (if (eq? 'order (metatree-type mt))
-	  (length item-cache)
-	  (apply + (map (o length cadr)
-			item-cache)))))
+  ;; ;;; Get the total number of rows in the metatree.
+  ;; (define (metatree-total-length mt)
+  ;;   (let ((item-cache (metatree-state mt 'item-cache)))
+  ;;     (if (eq? 'order (metatree-type mt))
+  ;; 	  (length item-cache)
+  ;; 	  (apply + (map (o length cadr)
+  ;; 			item-cache)))))
 
-  ;;; Get the appropriate size of the metatree's vertical scrollbar, as a
-  ;;; fraction between 0.0 and 1.0.
-  (define (metatree-scrollbar-size mt)
-    (if (null-list? (metatree-state mt 'item-cache))
-	1.0
-	(let ((size (exact->inexact (/ (metatree-visible-rows mt)
-				       (metatree-total-length mt)))))
-	  (if (>= size 1.0)
-	      1.0 size))))
+  ;; ;;; Get the appropriate size of the metatree's vertical scrollbar, as a
+  ;; ;;; fraction between 0.0 and 1.0.
+  ;; (define (metatree-scrollbar-size mt)
+  ;;   (if (null-list? (metatree-state mt 'item-cache))
+  ;; 	1.0
+  ;; 	(let ((size (exact->inexact (/ (metatree-visible-rows mt)
+  ;; 				       (metatree-total-length mt)))))
+  ;; 	  (if (>= size 1.0)
+  ;; 	      1.0 size))))
 
-  ;;; Set the metatree's vertical scrollbar.
-  (define (metatree-set-scrollbar mt)
-    (let ((start-pos (exact->inexact (/ (metatree-state mt 'start-pos)
-					(metatree-total-length mt)))))
-      ((metatree-yscroll mt) 'set start-pos (+ start-pos
-					       (metatree-scrollbar-size mt)))))
+  ;; ;;; Set the metatree's vertical scrollbar.
+  ;; (define (metatree-set-scrollbar mt)
+  ;;   (let ((start-pos (exact->inexact (/ (metatree-state mt 'start-pos)
+  ;; 					(metatree-total-length mt)))))
+  ;;     ((metatree-yscroll mt) 'set start-pos (+ start-pos
+  ;; 					       (metatree-scrollbar-size mt)))))
 
-  ;;; Determine the index of the treeview item that has been clicked from a
-  ;;; mouse pointer y value (as generated by Tk events)
-  (define (treeview-ypos->item-index y)
-    (quotient y (treeview-rowheight)))
+  ;; ;;; Determine the index of the treeview item that has been clicked from a
+  ;; ;;; mouse pointer y value (as generated by Tk events)
+  ;; (define (treeview-ypos->item-index y)
+  ;;   (quotient y (treeview-rowheight)))
 
-  ;;; Get the list of items in the given ttk::treeview. Items are returned as
-  ;;; symbols.
-  ;; TODO why return symbols?
-  (define (tree-item-list tree)
-    (map string->symbol (string-split (tree 'children '{}))))
+  ;; ;;; Get the list of items in the given ttk::treeview. Items are returned as
+  ;; ;;; symbols.
+  ;; ;; TODO why return symbols?
+  ;; (define (tree-item-list tree)
+  ;;   (map string->symbol (string-split (tree 'children '{}))))
 
-  ;;; Get the item at {{index}} in the given ttk::treeview.
-  (define (nth-tree-item tree index)
-    (list-ref (tree-item-list tree) index))
+  ;; ;;; Get the item at {{index}} in the given ttk::treeview.
+  ;; (define (nth-tree-item tree index)
+  ;;   (list-ref (tree-item-list tree) index))
 
-  ;;; Get the slice of treeview items from index {{from}} up to and including
-  ;;; {{to}}. If {{to}} is omitted, it defaults to the length of the item list.
-  (define (tree-item-list-slice tree from #!optional to)
-    (let* ((items (tree-item-list tree))
-	   (actual-to (or to (length items))))
-      (drop (take (tree-item-list tree)
-		  actual-to)
-	    from)))
+  ;; ;;; Get the slice of treeview items from index {{from}} up to and including
+  ;; ;;; {{to}}. If {{to}} is omitted, it defaults to the length of the item list.
+  ;; (define (tree-item-list-slice tree from #!optional to)
+  ;;   (let* ((items (tree-item-list tree))
+  ;; 	   (actual-to (or to (length items))))
+  ;;     (drop (take (tree-item-list tree)
+  ;; 		  actual-to)
+  ;; 	    from)))
 
-  ;;; Delete a slice of items from the metatree display. {{from}} and {{to}}
-  ;;; must be indices to the visible rows (not the metatree item cache).
-  (define (metatree-delete-slice mt from to)
-    (for-each (lambda (tree)
-		(tree 'delete (tree-item-list-slice tree from to)))
-	      (cons (metatree-rownums mt)
-		    (metatree-columns mt))))
+  ;; ;;; Delete a slice of items from the metatree display. {{from}} and {{to}}
+  ;; ;;; must be indices to the visible rows (not the metatree item cache).
+  ;; (define (metatree-delete-slice mt from to)
+  ;;   (for-each (lambda (tree)
+  ;; 		(tree 'delete (tree-item-list-slice tree from to)))
+  ;; 	      (cons (metatree-rownums mt)
+  ;; 		    (metatree-columns mt))))
 
-  ;;; Delete all items of the metatree
-  (define (metatree-clear mt)
-    (tk-eval "flush stdout")
-    (for-each (lambda (tree)
-		(tree 'delete
-		      (string-split (string-delete #\" (tree 'children '{})))))
-	      (cons (metatree-rownums mt)
-		    (metatree-columns mt))))
+  ;; ;;; Delete all items of the metatree
+  ;; (define (metatree-clear mt)
+  ;;   (tk-eval "flush stdout")
+  ;;   (for-each (lambda (tree)
+  ;; 		(tree 'delete
+  ;; 		      (string-split (string-delete #\" (tree 'children '{})))))
+  ;; 	      (cons (metatree-rownums mt)
+  ;; 		    (metatree-columns mt))))
 
-    ;;; Select a slice of items from the list of all column items belonging to
-  ;;; the given metatree. {{start}} defaults to the metatree's current start
-  ;;; position, and {{end}} defaults to *start* + the maximum number of rows
-  ;;; that the metatree widget can currently display.
-  (define (metatree-get-item-slice mt #!optional
-				   (from (metatree-state mt 'start-pos))
-				   (to (+ from (metatree-visible-rows mt))))
-    (let ((all-items (metatree-state mt 'item-cache))
-	  (to (if (>= to (metatree-total-length mt))
-		  (metatree-total-length mt)
-		  to)))
-      (if (eq? 'block (metatree-type mt))
-	  (filter-map
-	   (lambda (item-lst start+end)
-	     (and (and (<= from (cadr start+end))
-		       (> to (car start+end)))
-		  (cons (car item-lst)
-			(map (lambda (vals)
-			       (let ((drop-tail
-				      (if (> to (cadr start+end))
-					  vals
-					  (take vals (- to (car start+end))))))
-				 (if (> from (car start+end))
-				     (drop drop-tail (- from (car start+end)))
-				     drop-tail)))
-			     (cdr item-lst)))))
-	   all-items (metatree-items-start+end-positions all-items))
-	  (drop (take all-items to)
-		from))))
+  ;;   ;;; Select a slice of items from the list of all column items belonging to
+  ;; ;;; the given metatree. {{start}} defaults to the metatree's current start
+  ;; ;;; position, and {{end}} defaults to *start* + the maximum number of rows
+  ;; ;;; that the metatree widget can currently display.
+  ;; (define (metatree-get-item-slice mt #!optional
+  ;; 				   (from (metatree-state mt 'start-pos))
+  ;; 				   (to (+ from (metatree-visible-rows mt))))
+  ;;   (let ((all-items (metatree-state mt 'item-cache))
+  ;; 	  (to (if (>= to (metatree-total-length mt))
+  ;; 		  (metatree-total-length mt)
+  ;; 		  to)))
+  ;;     (if (eq? 'block (metatree-type mt))
+  ;; 	  (filter-map
+  ;; 	   (lambda (item-lst start+end)
+  ;; 	     (and (and (<= from (cadr start+end))
+  ;; 		       (> to (car start+end)))
+  ;; 		  (cons (car item-lst)
+  ;; 			(map (lambda (vals)
+  ;; 			       (let ((drop-tail
+  ;; 				      (if (> to (cadr start+end))
+  ;; 					  vals
+  ;; 					  (take vals (- to (car start+end))))))
+  ;; 				 (if (> from (car start+end))
+  ;; 				     (drop drop-tail (- from (car start+end)))
+  ;; 				     drop-tail)))
+  ;; 			     (cdr item-lst)))))
+  ;; 	   all-items (metatree-items-start+end-positions all-items))
+  ;; 	  (drop (take all-items to)
+  ;; 		from))))
 
-  ;;; Add highlight tags to the list of {{tags}}. Auxilliary proc for
-  ;;; `blocks-view-display-items`.
-  (define (add-highlight-tags tags index)
-    (cond ((= 0 (modulo index (state 'major-row-highlight)))
-	   (cons 'rowhl-major tags))
-	  ((= 0 (modulo index (state 'minor-row-highlight)))
-	   (cons 'rowhl-minor tags))
-	  (else tags)))
+  ;; ;;; Add highlight tags to the list of {{tags}}. Auxilliary proc for
+  ;; ;;; `blocks-view-display-items`.
+  ;; (define (add-highlight-tags tags index)
+  ;;   (cond ((= 0 (modulo index (state 'major-row-highlight)))
+  ;; 	   (cons 'rowhl-major tags))
+  ;; 	  ((= 0 (modulo index (state 'minor-row-highlight)))
+  ;; 	   (cons 'rowhl-minor tags))
+  ;; 	  (else tags)))
 
-  ;;; Helper proc for metatree-insert-slice. Insert the item slice
-  ;;; {{from}}..{{to}} into an order type metatree.
-  (define (metatree-insert-order-slice mt slice at)
-    (let ((rownums (iota (length slice)
-			 (metatree-state mt 'start-pos))))
-      (for-each (lambda (index)
-		  ((metatree-rownums mt) 'insert '{} at
-		   text: (string-pad (number->string index
-						     (app-settings-number-base
-						      *bintracker-settings*))
-				     3 #\0)))
-		(if (eq? 'end at)
-		    rownums (reverse rownums)))
-      (for-each (lambda (order-pos)
-		  (for-each (lambda (column value field-id)
-			      (column 'insert '{} at
-				      tags: '(reference)
-				      values:
-				      (list (normalize-field-value value
-								   field-id))))
-			    (metatree-columns mt)
-			    order-pos
-			    (metatree-column-ids mt)))
-		(if (eq? 'end at)
-		    slice (reverse slice)))))
+  ;; ;;; Helper proc for metatree-insert-slice. Insert the item slice
+  ;; ;;; {{from}}..{{to}} into an order type metatree.
+  ;; (define (metatree-insert-order-slice mt slice at)
+  ;;   (let ((rownums (iota (length slice)
+  ;; 			 (metatree-state mt 'start-pos))))
+  ;;     (for-each (lambda (index)
+  ;; 		  ((metatree-rownums mt) 'insert '{} at
+  ;; 		   text: (string-pad (number->string index
+  ;; 						     (app-settings-number-base
+  ;; 						      *bintracker-settings*))
+  ;; 				     3 #\0)))
+  ;; 		(if (eq? 'end at)
+  ;; 		    rownums (reverse rownums)))
+  ;;     (for-each (lambda (order-pos)
+  ;; 		  (for-each (lambda (column value field-id)
+  ;; 			      (column 'insert '{} at
+  ;; 				      tags: '(reference)
+  ;; 				      values:
+  ;; 				      (list (normalize-field-value value
+  ;; 								   field-id))))
+  ;; 			    (metatree-columns mt)
+  ;; 			    order-pos
+  ;; 			    (metatree-column-ids mt)))
+  ;; 		(if (eq? 'end at)
+  ;; 		    slice (reverse slice)))))
 
-  ;;; Helper proc for metatree-insert-slice. Insert the item slice
-  ;;; {{from}}..{{to}} into an order type metatree.
-  (define (metatree-insert-block-slice mt slice at)
-    (let ((active-order-pos (metatree-cursor->order-pos mt)))
-      (for-each
-       (lambda (item-pos)
-	 (let ((state-tags (list (if (= active-order-pos (car item-pos))
-				     'active 'inactive))))
-	   (for-each
-	    (lambda (rownum)
-	      ((metatree-rownums mt) 'insert '{} at
-	       tags: (add-highlight-tags state-tags rownum)
-	       text: (string-pad (number->string rownum
-						 (app-settings-number-base
-						  *bintracker-settings*))
-				 ;; 4 digits for row numbers
-				 4 #\0)))
-	    (if (eq? 'end at)
-		(cadr item-pos)
-		(reverse (cadr item-pos))))
-	   (for-each
-	    (lambda (tree field-id items)
-	      (let ((tag-list (if (= active-order-pos (car item-pos))
-				  (cons (get-command-type-tag field-id)
-					state-tags)
-				  state-tags)))
-		(for-each
-		 (lambda (item index insertpos)
-		   (tree 'insert '{} insertpos
-			 tags: (add-highlight-tags tag-list index)
-			 values: (list (normalize-field-value item field-id))))
-		 items (cadr item-pos)
-		 (if (eq? 'end at)
-		     (make-list (length items) 'end)
-		     (iota (length items) at)))))
-	    (metatree-columns mt)
-	    (metatree-column-ids mt)
-	    (cddr item-pos))))
-       slice)))
+  ;; ;;; Helper proc for metatree-insert-slice. Insert the item slice
+  ;; ;;; {{from}}..{{to}} into an order type metatree.
+  ;; (define (metatree-insert-block-slice mt slice at)
+  ;;   (let ((active-order-pos (metatree-cursor->order-pos mt)))
+  ;;     (for-each
+  ;;      (lambda (item-pos)
+  ;; 	 (let ((state-tags (list (if (= active-order-pos (car item-pos))
+  ;; 				     'active 'inactive))))
+  ;; 	   (for-each
+  ;; 	    (lambda (rownum)
+  ;; 	      ((metatree-rownums mt) 'insert '{} at
+  ;; 	       tags: (add-highlight-tags state-tags rownum)
+  ;; 	       text: (string-pad (number->string rownum
+  ;; 						 (app-settings-number-base
+  ;; 						  *bintracker-settings*))
+  ;; 				 ;; 4 digits for row numbers
+  ;; 				 4 #\0)))
+  ;; 	    (if (eq? 'end at)
+  ;; 		(cadr item-pos)
+  ;; 		(reverse (cadr item-pos))))
+  ;; 	   (for-each
+  ;; 	    (lambda (tree field-id items)
+  ;; 	      (let ((tag-list (if (= active-order-pos (car item-pos))
+  ;; 				  (cons (get-command-type-tag field-id)
+  ;; 					state-tags)
+  ;; 				  state-tags)))
+  ;; 		(for-each
+  ;; 		 (lambda (item index insertpos)
+  ;; 		   (tree 'insert '{} insertpos
+  ;; 			 tags: (add-highlight-tags tag-list index)
+  ;; 			 values: (list (normalize-field-value item field-id))))
+  ;; 		 items (cadr item-pos)
+  ;; 		 (if (eq? 'end at)
+  ;; 		     (make-list (length items) 'end)
+  ;; 		     (iota (length items) at)))))
+  ;; 	    (metatree-columns mt)
+  ;; 	    (metatree-column-ids mt)
+  ;; 	    (cddr item-pos))))
+  ;;      slice)))
 
-  ;;; Insert the item slice {{from}}..{{to}} into the display of the metatree
-  ;;; {{mt}}. The optional {{at}} argument shall be a treeview index, or 'end.
-  ;;; Defaults to 'end.
-  ;; TODO currently only works for 'block metatree type
-  (define (metatree-insert-slice mt #!optional
-				 (from (metatree-state mt 'start-pos))
-				 (to (+ from (metatree-visible-rows mt)))
-				 (at 'end))
-    (let ((slice (metatree-get-item-slice mt from to)))
-      (if (eq? 'order (metatree-type mt))
-	  (metatree-insert-order-slice mt slice at)
-	  (metatree-insert-block-slice mt slice at))))
+  ;; ;;; Insert the item slice {{from}}..{{to}} into the display of the metatree
+  ;; ;;; {{mt}}. The optional {{at}} argument shall be a treeview index, or 'end.
+  ;; ;;; Defaults to 'end.
+  ;; ;; TODO currently only works for 'block metatree type
+  ;; (define (metatree-insert-slice mt #!optional
+  ;; 				 (from (metatree-state mt 'start-pos))
+  ;; 				 (to (+ from (metatree-visible-rows mt)))
+  ;; 				 (at 'end))
+  ;;   (let ((slice (metatree-get-item-slice mt from to)))
+  ;;     (if (eq? 'order (metatree-type mt))
+  ;; 	  (metatree-insert-order-slice mt slice at)
+  ;; 	  (metatree-insert-block-slice mt slice at))))
 
-  ;;; Shift the window of items that are displayed in the metatree {{mt}} by
-  ;;; {{offset}} positions.
-  (define (metatree-shift-item-window mt offset)
-    (let* ((current-start-pos (metatree-state mt 'start-pos))
-	   (visible-rows (metatree-visible-rows mt))
-	   (tree-length (metatree-total-length mt))
-	   (last-valid-start-pos (- tree-length visible-rows))
-	   (actual-offset (cond ((> (+ current-start-pos offset)
-				    last-valid-start-pos)
-				 (- last-valid-start-pos current-start-pos))
-				((negative? (+ current-start-pos offset))
-				 (- current-start-pos))
-				(else offset))))
-      ;; when shifting more than half the current length of the treeviews, it's
-      ;; faster to regenerate all items.
-      (unless (= 0 actual-offset)
-	(metatree-cursor-delete mt)
-	(metatree-state-set! mt 'start-pos (+ current-start-pos actual-offset))
-	(if (> (abs actual-offset)
-	       (quotient visible-rows 2))
-	    (if (eq? 'block (metatree-type mt))
-		(metatree-update mt)
-		(metatree-update mt))
-	    (if (negative? actual-offset)
-		(begin
-		  (metatree-delete-slice mt
-					 (- visible-rows 1 (abs actual-offset))
-					 (- visible-rows 1))
-		  (metatree-insert-slice mt (metatree-state mt 'start-pos)
-		  			 (+ (abs actual-offset)
-		  			    (metatree-state mt 'start-pos))
-		  			 0))
-		(begin
-		  (metatree-delete-slice mt 0 actual-offset)
-		  (metatree-insert-slice mt (+ current-start-pos visible-rows)
-					 (+ current-start-pos actual-offset
-					    visible-rows)))))
-	(metatree-set-scrollbar mt)
-	(focus-metatree mt))))
+  ;; ;;; Shift the window of items that are displayed in the metatree {{mt}} by
+  ;; ;;; {{offset}} positions.
+  ;; (define (metatree-shift-item-window mt offset)
+  ;;   (let* ((current-start-pos (metatree-state mt 'start-pos))
+  ;; 	   (visible-rows (metatree-visible-rows mt))
+  ;; 	   (tree-length (metatree-total-length mt))
+  ;; 	   (last-valid-start-pos (- tree-length visible-rows))
+  ;; 	   (actual-offset (cond ((> (+ current-start-pos offset)
+  ;; 				    last-valid-start-pos)
+  ;; 				 (- last-valid-start-pos current-start-pos))
+  ;; 				((negative? (+ current-start-pos offset))
+  ;; 				 (- current-start-pos))
+  ;; 				(else offset))))
+  ;;     ;; when shifting more than half the current length of the treeviews, it's
+  ;;     ;; faster to regenerate all items.
+  ;;     (unless (= 0 actual-offset)
+  ;; 	(metatree-cursor-delete mt)
+  ;; 	(metatree-state-set! mt 'start-pos (+ current-start-pos actual-offset))
+  ;; 	(if (> (abs actual-offset)
+  ;; 	       (quotient visible-rows 2))
+  ;; 	    (if (eq? 'block (metatree-type mt))
+  ;; 		(metatree-update mt)
+  ;; 		(metatree-update mt))
+  ;; 	    (if (negative? actual-offset)
+  ;; 		(begin
+  ;; 		  (metatree-delete-slice mt
+  ;; 					 (- visible-rows 1 (abs actual-offset))
+  ;; 					 (- visible-rows 1))
+  ;; 		  (metatree-insert-slice mt (metatree-state mt 'start-pos)
+  ;; 		  			 (+ (abs actual-offset)
+  ;; 		  			    (metatree-state mt 'start-pos))
+  ;; 		  			 0))
+  ;; 		(begin
+  ;; 		  (metatree-delete-slice mt 0 actual-offset)
+  ;; 		  (metatree-insert-slice mt (+ current-start-pos visible-rows)
+  ;; 					 (+ current-start-pos actual-offset
+  ;; 					    visible-rows)))))
+  ;; 	(metatree-set-scrollbar mt)
+  ;; 	(focus-metatree mt))))
 
-  ;;; Update the metatree item cache. For order metatrees, the cache is the list
-  ;;; of order values as returned by `mod-get-order-values`. For block
-  ;;; metatrees, the cache is an alist where the keys are numeric IDs
-  ;;; referencing an order position, and the values are lists with a list of row
-  ;;; numbers in car, and the list of row numbers and field instance values in
-  ;;; cdr.
-  (define (metatree-update-item-cache mt)
-    (let* ((group-id (metatree-group-id mt))
-	   (group-instance (get-current-node-instance group-id))
-	   (order (mod-get-order-values group-id group-instance
-					(current-config))))
-      (metatree-state-set! mt 'item-cache
-       (if (eq? 'order (metatree-type mt))
-	   order
-	   (let ((blocks (mod-get-group-instance-blocks group-instance group-id
-							(current-config))))
-	     (map (lambda (order-pos index)
-		    (let ((items
-			   (map (lambda (blk-inst-id block)
-				  (concatenate
-				   (map (lambda (field-node)
-					  (map (o inode-instance-val cadr)
-					       (inode-instances field-node)))
-					(inode-instance-val
-					 ((mod-get-node-instance blk-inst-id)
-					  block)))))
-				order-pos blocks)))
-		      (cons index
-			    (cons (iota (length (car items)))
-				  items))))
-		  order (iota (length order))))))))
+  ;; ;;; Update the metatree item cache. For order metatrees, the cache is the list
+  ;; ;;; of order values as returned by `mod-get-order-values`. For block
+  ;; ;;; metatrees, the cache is an alist where the keys are numeric IDs
+  ;; ;;; referencing an order position, and the values are lists with a list of row
+  ;; ;;; numbers in car, and the list of row numbers and field instance values in
+  ;; ;;; cdr.
+  ;; (define (metatree-update-item-cache mt)
+  ;;   (let* ((group-id (metatree-group-id mt))
+  ;; 	   (group-instance (get-current-node-instance group-id))
+  ;; 	   (order (mod-get-order-values group-id group-instance
+  ;; 					(current-config))))
+  ;;     (metatree-state-set! mt 'item-cache
+  ;;      (if (eq? 'order (metatree-type mt))
+  ;; 	   order
+  ;; 	   (let ((blocks (mod-get-group-instance-blocks group-instance group-id
+  ;; 							(current-config))))
+  ;; 	     (map (lambda (order-pos index)
+  ;; 		    (let ((items
+  ;; 			   (map (lambda (blk-inst-id block)
+  ;; 				  (concatenate
+  ;; 				   (map (lambda (field-node)
+  ;; 					  (map (o inode-instance-val cadr)
+  ;; 					       (inode-instances field-node)))
+  ;; 					(inode-instance-val
+  ;; 					 ((mod-get-node-instance blk-inst-id)
+  ;; 					  block)))))
+  ;; 				order-pos blocks)))
+  ;; 		      (cons index
+  ;; 			    (cons (iota (length (car items)))
+  ;; 				  items))))
+  ;; 		  order (iota (length order))))))))
 
-  ;;; Perform an edit action on {{metatree}}, setting the current active cell to
-  ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
-  ;;; mdmod structure.
-  ;;; TODO also update fields in inactive patterns
-  (define (metatree-edit-current-cell mt new-val)
-    (let* ((xpos (metatree-state mt 'cursor-x))
-	   (ypos (metatree-state mt 'cursor-y))
-	   (column (list-ref (metatree-columns mt)
-			     xpos))
-	   (column-id (list-ref (metatree-column-ids mt)
-				xpos))
-	   (instance (metatree-cursor->field-instance-id mt))
-	   (path (metatree-cursor->field-node-path mt))
-	   (action `(set ,path ((,instance ,new-val)))))
-      (push-undo (make-reverse-action action))
-      (apply-edit! action)
-      (metatree-update-item-cache mt)
-      (column 'set (nth-tree-item column ypos)
-	      "content" (normalize-field-value new-val column-id))
-      (tk/update)
-      (metatree-cursor-move mt 'down)
-      (set-toolbar-button-state 'journal 'undo 'enabled)
-      (unless (state 'modified)
-	(set-state! 'modified #t)
-	(update-window-title!))))
+  ;; ;;; Perform an edit action on {{metatree}}, setting the current active cell to
+  ;; ;;; {{new-val}}. This will update the GUI, undo stack, and the underlying
+  ;; ;;; mdmod structure.
+  ;; ;;; TODO also update fields in inactive patterns
+  ;; (define (metatree-edit-current-cell mt new-val)
+  ;;   (let* ((xpos (metatree-state mt 'cursor-x))
+  ;; 	   (ypos (metatree-state mt 'cursor-y))
+  ;; 	   (column (list-ref (metatree-columns mt)
+  ;; 			     xpos))
+  ;; 	   (column-id (list-ref (metatree-column-ids mt)
+  ;; 				xpos))
+  ;; 	   (instance (metatree-cursor->field-instance-id mt))
+  ;; 	   (path (metatree-cursor->field-node-path mt))
+  ;; 	   (action `(set ,path ((,instance ,new-val)))))
+  ;;     (push-undo (make-reverse-action action))
+  ;;     (apply-edit! action)
+  ;;     (metatree-update-item-cache mt)
+  ;;     (column 'set (nth-tree-item column ypos)
+  ;; 	      "content" (normalize-field-value new-val column-id))
+  ;;     (tk/update)
+  ;;     (metatree-cursor-move mt 'down)
+  ;;     (set-toolbar-button-state 'journal 'undo 'enabled)
+  ;;     (unless (state 'modified)
+  ;; 	(set-state! 'modified #t)
+  ;; 	(update-window-title!))))
 
-  ;;; Bind events for a metatree. This procedure must be called when creating a
-  ;;; metatree widget.
-  (define (metatree-bind-events mt)
-    (let ((ui-zone (if (eq? 'block (metatree-type mt))
-		       'blocks 'order)))
-      (tk/bind* (metatree-canvas mt)
-		'<ButtonPress-1> (lambda () (switch-ui-zone-focus ui-zone)))
-      ;; TODO we no longer configure height and set scroll, but instead
-      ;; drop/add items and set scrollbar manually
-      (tk/bind* (metatree-packframe mt) '<Configure>
-		`(,(lambda (new-height)
-		     (let ((old-height (metatree-state mt 'frame-height)))
-		       (metatree-state-set! mt 'frame-height new-height)
-		       (unless (or (not old-height)
-				   (= (metatree-visible-rows mt old-height)
-				      (metatree-visible-rows mt)))
-			 (metatree-update mt)
-			 (when (>= (metatree-state mt 'cursor-y)
-				   (metatree-visible-rows mt))
-			   (metatree-cursor-set
-			    mt (metatree-state mt 'cursor-x)
-			    (sub1 (metatree-visible-rows mt))))
-			 (focus-metatree mt))
-		       (metatree-set-scrollbar mt)))
-		  %h))
-      (for-each
-       (lambda (column index)
-	 (tk/bind* column '<Down> (lambda () (metatree-cursor-move mt 'down)))
-	 (tk/bind* column '<Up> (lambda () (metatree-cursor-move mt 'up)))
-	 (tk/bind* column '<Left> (lambda () (metatree-cursor-move mt 'left)))
-	 (tk/bind* column '<Right> (lambda () (metatree-cursor-move mt 'right)))
-	 (tk/bind* column '<<ClearStep>>
-		   (lambda () (metatree-edit-current-cell mt '())))
-	 ;; TODO which entry type to bind depends on command type.
-	 (tk/bind* column '<<NoteEntry>>
-		   `(,(lambda (keysym)
-			(let ((note-val (keypress->note keysym)))
-			  (when note-val
-			    (metatree-edit-current-cell mt note-val))))
-		     %K))
-	 (tk/bind* column '<ButtonPress-1>
-		   `(,(lambda (y)
-			(let ((ypos (treeview-ypos->item-index y)))
-			  (switch-ui-zone-focus ui-zone)
-			  (metatree-cursor-set
-			   mt index
-			   (if (>= (add1 ypos)
-				   (metatree-visible-rows mt))
-			       (sub1 (metatree-visible-rows mt))
-			       ypos))))
-		     %y))
-	 (reverse-binding-eval-order column))
-       (metatree-columns mt)
-       (iota (length (metatree-columns mt))))))
+  ;; ;;; Bind events for a metatree. This procedure must be called when creating a
+  ;; ;;; metatree widget.
+  ;; (define (metatree-bind-events mt)
+  ;;   (let ((ui-zone (if (eq? 'block (metatree-type mt))
+  ;; 		       'blocks 'order)))
+  ;;     (tk/bind* (metatree-canvas mt)
+  ;; 		'<ButtonPress-1> (lambda () (switch-ui-zone-focus ui-zone)))
+  ;;     ;; TODO we no longer configure height and set scroll, but instead
+  ;;     ;; drop/add items and set scrollbar manually
+  ;;     (tk/bind* (metatree-packframe mt) '<Configure>
+  ;; 		`(,(lambda (new-height)
+  ;; 		     (let ((old-height (metatree-state mt 'frame-height)))
+  ;; 		       (metatree-state-set! mt 'frame-height new-height)
+  ;; 		       (unless (or (not old-height)
+  ;; 				   (= (metatree-visible-rows mt old-height)
+  ;; 				      (metatree-visible-rows mt)))
+  ;; 			 (metatree-update mt)
+  ;; 			 (when (>= (metatree-state mt 'cursor-y)
+  ;; 				   (metatree-visible-rows mt))
+  ;; 			   (metatree-cursor-set
+  ;; 			    mt (metatree-state mt 'cursor-x)
+  ;; 			    (sub1 (metatree-visible-rows mt))))
+  ;; 			 (focus-metatree mt))
+  ;; 		       (metatree-set-scrollbar mt)))
+  ;; 		  %h))
+  ;;     (for-each
+  ;;      (lambda (column index)
+  ;; 	 (tk/bind* column '<Down> (lambda () (metatree-cursor-move mt 'down)))
+  ;; 	 (tk/bind* column '<Up> (lambda () (metatree-cursor-move mt 'up)))
+  ;; 	 (tk/bind* column '<Left> (lambda () (metatree-cursor-move mt 'left)))
+  ;; 	 (tk/bind* column '<Right> (lambda () (metatree-cursor-move mt 'right)))
+  ;; 	 (tk/bind* column '<<ClearStep>>
+  ;; 		   (lambda () (metatree-edit-current-cell mt '())))
+  ;; 	 ;; TODO which entry type to bind depends on command type.
+  ;; 	 (tk/bind* column '<<NoteEntry>>
+  ;; 		   `(,(lambda (keysym)
+  ;; 			(let ((note-val (keypress->note keysym)))
+  ;; 			  (when note-val
+  ;; 			    (metatree-edit-current-cell mt note-val))))
+  ;; 		     %K))
+  ;; 	 (tk/bind* column '<ButtonPress-1>
+  ;; 		   `(,(lambda (y)
+  ;; 			(let ((ypos (treeview-ypos->item-index y)))
+  ;; 			  (switch-ui-zone-focus ui-zone)
+  ;; 			  (metatree-cursor-set
+  ;; 			   mt index
+  ;; 			   (if (>= (add1 ypos)
+  ;; 				   (metatree-visible-rows mt))
+  ;; 			       (sub1 (metatree-visible-rows mt))
+  ;; 			       ypos))))
+  ;; 		     %y))
+  ;; 	 (reverse-binding-eval-order column))
+  ;;      (metatree-columns mt)
+  ;;      (iota (length (metatree-columns mt))))))
 
-  ;;; Pack the given metatree-widget and update it.
-  (define (metatree-show mt)
-    (letrec* ((canvas (metatree-canvas mt))
-	      (tree-rowheight (treeview-rowheight))
-	      (header-font (list family: (settings 'font-mono)
-				 size: (settings 'font-size)
-				 weight: 'bold))
-	      (pack-block-headers
-	       (lambda (ids xpos)
-		 (unless (null? ids)
-		   (let ((header-width
-			  (* 80 (length (config-get-subnode-ids
-					 (car ids)
-					 (config-itree (current-config)))))))
-		     (canvas 'create 'text
-			     (list (+ xpos (quotient header-width 2))
-				   0)
-			     anchor: 'n width: header-width fill: (colors 'text)
-			     font: header-font
-			     text: (symbol->string (car ids)))
-		     (pack-block-headers (cdr ids)
-					 (+ xpos header-width))))))
-	      (pack-columns
-	       (lambda (columns column-ids xpos)
-		 (unless (null? columns)
-		   (let ((init-ypos (if (eq? 'block (metatree-type mt))
-					tree-rowheight 0)))
-		     (canvas 'create 'text (list (+ xpos 40) init-ypos)
-			     anchor: 'n width: 80 font: header-font
-			     fill: (get-field-color (car column-ids))
-			     text:
-			     (let ((id (symbol->string (car column-ids))))
-			       (if (eq? 'block (metatree-type mt))
-				   id (string-drop id 2))))
-		     (canvas 'create 'window
-			     (list xpos (+ init-ypos tree-rowheight))
-			     anchor: 'nw window: (car columns))
-		     ;; TODO this is probably wrong
-		     ((car columns) 'configure height: 32)
-		     (pack-columns (cdr columns)
-				   (cdr column-ids)
-				   (+ xpos 80)))))))
-      ((metatree-yscroll mt) 'configure
-       command: (metatree-make-yscroll-handler mt))
-      (tk/pack (metatree-xscroll mt) expand: 0 fill: 'x side: 'bottom)
-      (tk/pack (metatree-packframe mt) expand: 1 fill: 'both)
-      ((metatree-rownums mt) 'column "#0" width: 80)
-      (tk/pack (metatree-yscroll mt) fill: 'y side: 'right)
-      (tk/pack (metatree-rownums-packframe mt) fill: 'y side: 'left)
-      (tk/pack ((metatree-rownums-packframe mt) 'create-widget 'frame
-		height: (if (eq? 'block (metatree-type mt))
-			    (* 2 tree-rowheight)
-			    tree-rowheight)
-		style: 'BT.TFrame)
-	       side: 'top fill: 'x)
-      (tk/pack (metatree-rownums mt) fill: 'y expand: 1 side: 'top)
-      (tk/pack canvas expand: 1 fill: 'both side: 'left)
-      (when (eq? 'block (metatree-type mt))
-	(pack-block-headers (metatree-block-ids mt) 0))
-      (pack-columns (metatree-columns mt)
-		    (metatree-column-ids mt)
-		    0)
-      (metatree-bind-events mt)
-      (canvas 'configure xscrollcommand: (list (metatree-xscroll mt) 'set))
-      ;; TODO 1000 will not be enough on the long run. Needs to be dynamic.
-      (canvas 'configure scrollregion:
-	      (list 0 0 (* 80 (length (metatree-columns mt)))
-		    1000))
-      (metatree-update mt)))
+  ;; ;;; Pack the given metatree-widget and update it.
+  ;; (define (metatree-show mt)
+  ;;   (letrec* ((canvas (metatree-canvas mt))
+  ;; 	      (tree-rowheight (treeview-rowheight))
+  ;; 	      (header-font (list family: (settings 'font-mono)
+  ;; 				 size: (settings 'font-size)
+  ;; 				 weight: 'bold))
+  ;; 	      (pack-block-headers
+  ;; 	       (lambda (ids xpos)
+  ;; 		 (unless (null? ids)
+  ;; 		   (let ((header-width
+  ;; 			  (* 80 (length (config-get-subnode-ids
+  ;; 					 (car ids)
+  ;; 					 (config-itree (current-config)))))))
+  ;; 		     (canvas 'create 'text
+  ;; 			     (list (+ xpos (quotient header-width 2))
+  ;; 				   0)
+  ;; 			     anchor: 'n width: header-width fill: (colors 'text)
+  ;; 			     font: header-font
+  ;; 			     text: (symbol->string (car ids)))
+  ;; 		     (pack-block-headers (cdr ids)
+  ;; 					 (+ xpos header-width))))))
+  ;; 	      (pack-columns
+  ;; 	       (lambda (columns column-ids xpos)
+  ;; 		 (unless (null? columns)
+  ;; 		   (let ((init-ypos (if (eq? 'block (metatree-type mt))
+  ;; 					tree-rowheight 0)))
+  ;; 		     (canvas 'create 'text (list (+ xpos 40) init-ypos)
+  ;; 			     anchor: 'n width: 80 font: header-font
+  ;; 			     fill: (get-field-color (car column-ids))
+  ;; 			     text:
+  ;; 			     (let ((id (symbol->string (car column-ids))))
+  ;; 			       (if (eq? 'block (metatree-type mt))
+  ;; 				   id (string-drop id 2))))
+  ;; 		     (canvas 'create 'window
+  ;; 			     (list xpos (+ init-ypos tree-rowheight))
+  ;; 			     anchor: 'nw window: (car columns))
+  ;; 		     ;; TODO this is probably wrong
+  ;; 		     ((car columns) 'configure height: 32)
+  ;; 		     (pack-columns (cdr columns)
+  ;; 				   (cdr column-ids)
+  ;; 				   (+ xpos 80)))))))
+  ;;     ((metatree-yscroll mt) 'configure
+  ;;      command: (metatree-make-yscroll-handler mt))
+  ;;     (tk/pack (metatree-xscroll mt) expand: 0 fill: 'x side: 'bottom)
+  ;;     (tk/pack (metatree-packframe mt) expand: 1 fill: 'both)
+  ;;     ((metatree-rownums mt) 'column "#0" width: 80)
+  ;;     (tk/pack (metatree-yscroll mt) fill: 'y side: 'right)
+  ;;     (tk/pack (metatree-rownums-packframe mt) fill: 'y side: 'left)
+  ;;     (tk/pack ((metatree-rownums-packframe mt) 'create-widget 'frame
+  ;; 		height: (if (eq? 'block (metatree-type mt))
+  ;; 			    (* 2 tree-rowheight)
+  ;; 			    tree-rowheight)
+  ;; 		style: 'BT.TFrame)
+  ;; 	       side: 'top fill: 'x)
+  ;;     (tk/pack (metatree-rownums mt) fill: 'y expand: 1 side: 'top)
+  ;;     (tk/pack canvas expand: 1 fill: 'both side: 'left)
+  ;;     (when (eq? 'block (metatree-type mt))
+  ;; 	(pack-block-headers (metatree-block-ids mt) 0))
+  ;;     (pack-columns (metatree-columns mt)
+  ;; 		    (metatree-column-ids mt)
+  ;; 		    0)
+  ;;     (metatree-bind-events mt)
+  ;;     (canvas 'configure xscrollcommand: (list (metatree-xscroll mt) 'set))
+  ;;     ;; TODO 1000 will not be enough on the long run. Needs to be dynamic.
+  ;;     (canvas 'configure scrollregion:
+  ;; 	      (list 0 0 (* 80 (length (metatree-columns mt)))
+  ;; 		    1000))
+  ;;     (metatree-update mt)))
 
-  ;;; Update row highlight tags according to the current settings in
-  ;;; *bintracker-app-state*.
-  (define (update-row-highlights mt)
-    (let* ((rownums (metatree-rownums mt))
-	   (item-indices (map (lambda (i)
-				(string->number (rownums 'item i text:)
-						(settings 'number-base)))
-			      (tree-item-list rownums)))
-	   (major-hl? (lambda (index)
-			(zero? (modulo index (state 'major-row-highlight)))))
-	   (minor-hl? (lambda (index)
-			(and (not (major-hl? index))
-			     (zero? (modulo index
-					    (state 'minor-row-highlight))))))
-	   (filter-items (lambda (items pred)
-			   (filter-map (lambda (item index)
-					 (and (pred index)
-					      item))
-				       items item-indices))))
-      (for-each (lambda (tree)
-		  (let* ((tree-items (tree-item-list tree))
-			 (major-hl-items (filter-items tree-items major-hl?))
-			 (minor-hl-items (filter-items tree-items minor-hl?)))
-		    (tree 'tag 'remove 'rowhl-major)
-		    (tree 'tag 'remove 'rowhl-minor)
-		    (tree 'tag 'add 'rowhl-major major-hl-items)
-		    (tree 'tag 'add 'rowhl-minor minor-hl-items)))
-		(cons (metatree-rownums mt)
-		      (metatree-columns mt)))))
+  ;; ;;; Update row highlight tags according to the current settings in
+  ;; ;;; *bintracker-app-state*.
+  ;; (define (update-row-highlights mt)
+  ;;   (let* ((rownums (metatree-rownums mt))
+  ;; 	   (item-indices (map (lambda (i)
+  ;; 				(string->number (rownums 'item i text:)
+  ;; 						(settings 'number-base)))
+  ;; 			      (tree-item-list rownums)))
+  ;; 	   (major-hl? (lambda (index)
+  ;; 			(zero? (modulo index (state 'major-row-highlight)))))
+  ;; 	   (minor-hl? (lambda (index)
+  ;; 			(and (not (major-hl? index))
+  ;; 			     (zero? (modulo index
+  ;; 					    (state 'minor-row-highlight))))))
+  ;; 	   (filter-items (lambda (items pred)
+  ;; 			   (filter-map (lambda (item index)
+  ;; 					 (and (pred index)
+  ;; 					      item))
+  ;; 				       items item-indices))))
+  ;;     (for-each (lambda (tree)
+  ;; 		  (let* ((tree-items (tree-item-list tree))
+  ;; 			 (major-hl-items (filter-items tree-items major-hl?))
+  ;; 			 (minor-hl-items (filter-items tree-items minor-hl?)))
+  ;; 		    (tree 'tag 'remove 'rowhl-major)
+  ;; 		    (tree 'tag 'remove 'rowhl-minor)
+  ;; 		    (tree 'tag 'add 'rowhl-major major-hl-items)
+  ;; 		    (tree 'tag 'add 'rowhl-minor minor-hl-items)))
+  ;; 		(cons (metatree-rownums mt)
+  ;; 		      (metatree-columns mt)))))
 
-  ;;;
-  (define (focus-metatree mt)
-    (let ((xpos (metatree-state mt 'cursor-x)))
-      (metatree-cursor-show mt)
-      (tk/focus (list-ref (metatree-columns mt)
-			  xpos))
-      (when (eq? 'block (metatree-type mt))
-	(set-active-md-command-info! (list-ref (metatree-column-ids mt)
-					       xpos))
-	(reset-status-text!))))
+  ;; ;;;
+  ;; (define (focus-metatree mt)
+  ;;   (let ((xpos (metatree-state mt 'cursor-x)))
+  ;;     (metatree-cursor-show mt)
+  ;;     (tk/focus (list-ref (metatree-columns mt)
+  ;; 			  xpos))
+  ;;     (when (eq? 'block (metatree-type mt))
+  ;; 	(set-active-md-command-info! (list-ref (metatree-column-ids mt)
+  ;; 					       xpos))
+  ;; 	(reset-status-text!))))
 
-  ;;;
-  (define (unfocus-metatree mt)
-    (metatree-cursor-delete mt)
-    (set-state! 'active-md-command-info "")
-    (reset-status-text!))
+  ;; ;;;
+  ;; (define (unfocus-metatree mt)
+  ;;   (metatree-cursor-delete mt)
+  ;;   (set-state! 'active-md-command-info "")
+  ;;   (reset-status-text!))
 
-  ;;; Given a list of metatree items, determine the start and end positions of
-  ;;; each item block. This only works with item lists from metatrees of type
-  ;;; 'block.
-  (define (metatree-items-start+end-positions items)
-    (letrec* ((get-positions
-	       (lambda (current-pos items)
-		 (if (null-list? items)
-		     '()
-		     (let ((len (length (cadr (car items)))))
-		       (cons (list current-pos (+ current-pos (sub1 len)))
-			     (get-positions (+ current-pos len)
-					    (cdr items))))))))
-      (get-positions 0 items)))
+  ;; ;;; Given a list of metatree items, determine the start and end positions of
+  ;; ;;; each item block. This only works with item lists from metatrees of type
+  ;; ;;; 'block.
+  ;; (define (metatree-items-start+end-positions items)
+  ;;   (letrec* ((get-positions
+  ;; 	       (lambda (current-pos items)
+  ;; 		 (if (null-list? items)
+  ;; 		     '()
+  ;; 		     (let ((len (length (cadr (car items)))))
+  ;; 		       (cons (list current-pos (+ current-pos (sub1 len)))
+  ;; 			     (get-positions (+ current-pos len)
+  ;; 					    (cdr items))))))))
+  ;;     (get-positions 0 items)))
 
-  ;;; Determine the current order position from the item at {{item-pos}} in the
-  ;;; list of metatree items.
-  (define (metatree-item-pos->order-pos mt item-pos)
-    (if (eq? 'order (metatree-type mt))
-	item-pos
-	(let* ((items (metatree-state mt 'item-cache))
-	       (start+end-positions
-		(metatree-items-start+end-positions items)))
-	  (list-index (lambda (chunk)
-			(and (>= item-pos (car chunk))
-			     (<= item-pos (cadr chunk))))
-		      start+end-positions))))
+  ;; ;;; Determine the current order position from the item at {{item-pos}} in the
+  ;; ;;; list of metatree items.
+  ;; (define (metatree-item-pos->order-pos mt item-pos)
+  ;;   (if (eq? 'order (metatree-type mt))
+  ;; 	item-pos
+  ;; 	(let* ((items (metatree-state mt 'item-cache))
+  ;; 	       (start+end-positions
+  ;; 		(metatree-items-start+end-positions items)))
+  ;; 	  (list-index (lambda (chunk)
+  ;; 			(and (>= item-pos (car chunk))
+  ;; 			     (<= item-pos (cadr chunk))))
+  ;; 		      start+end-positions))))
 
-  ;;; Determine the current order position from the metatree's cursor position.
-  (define (metatree-cursor->order-pos mt)
-    (metatree-item-pos->order-pos mt (+ (metatree-state mt 'start-pos)
-					(metatree-state mt 'cursor-y))))
+  ;; ;;; Determine the current order position from the metatree's cursor position.
+  ;; (define (metatree-cursor->order-pos mt)
+  ;;   (metatree-item-pos->order-pos mt (+ (metatree-state mt 'start-pos)
+  ;; 					(metatree-state mt 'cursor-y))))
 
-  ;;; Determine the current block ID from the metatree's cursor position.
-  (define (metatree-cursor->block-id mt)
-    (if (eq? 'order (metatree-type mt))
-	(symbol-append (metatree-group-id mt)
-		       '_ORDER)
-	(config-get-parent-node-id
-	 (list-ref (metatree-column-ids mt)
-		   (metatree-state mt 'cursor-x))
-	 (config-itree (current-config)))))
+  ;; ;;; Determine the current block ID from the metatree's cursor position.
+  ;; (define (metatree-cursor->block-id mt)
+  ;;   (if (eq? 'order (metatree-type mt))
+  ;; 	(symbol-append (metatree-group-id mt)
+  ;; 		       '_ORDER)
+  ;; 	(config-get-parent-node-id
+  ;; 	 (list-ref (metatree-column-ids mt)
+  ;; 		   (metatree-state mt 'cursor-x))
+  ;; 	 (config-itree (current-config)))))
 
-  ;;; Determine the current instance ID of the block under cursor.
-  (define (metatree-cursor->block-instance-id mt)
-    (let ((group-id (metatree-group-id mt)))
-      (if (eq? 'order (metatree-type mt))
-	  0
-	  (list-ref (list-ref (mod-get-order-values
-			       group-id
-			       (get-current-node-instance group-id)
-			       (current-config))
-			      (metatree-cursor->order-pos mt))
-		    (list-index (lambda (id)
-				  (eq? id (metatree-cursor->block-id mt)))
-				(metatree-block-ids mt))))))
+  ;; ;;; Determine the current instance ID of the block under cursor.
+  ;; (define (metatree-cursor->block-instance-id mt)
+  ;;   (let ((group-id (metatree-group-id mt)))
+  ;;     (if (eq? 'order (metatree-type mt))
+  ;; 	  0
+  ;; 	  (list-ref (list-ref (mod-get-order-values
+  ;; 			       group-id
+  ;; 			       (get-current-node-instance group-id)
+  ;; 			       (current-config))
+  ;; 			      (metatree-cursor->order-pos mt))
+  ;; 		    (list-index (lambda (id)
+  ;; 				  (eq? id (metatree-cursor->block-id mt)))
+  ;; 				(metatree-block-ids mt))))))
 
-  (define (metatree-cursor->field-instance-id mt)
-    (string->number ((metatree-rownums mt) 'item
-		     (nth-tree-item (metatree-rownums mt)
-				    (metatree-state mt 'cursor-y))
-		     text:)
-		    (settings 'number-base)))
+  ;; (define (metatree-cursor->field-instance-id mt)
+  ;;   (string->number ((metatree-rownums mt) 'item
+  ;; 		     (nth-tree-item (metatree-rownums mt)
+  ;; 				    (metatree-state mt 'cursor-y))
+  ;; 		     text:)
+  ;; 		    (settings 'number-base)))
 
-  (define (metatree-cursor->field-node-path mt)
-    (string-append (get-current-instance-path (metatree-group-id mt))
-		   (symbol->string (metatree-cursor->block-id mt))
-		   "/" (->string (metatree-cursor->block-instance-id mt))
-		   "/" (symbol->string (list-ref (metatree-column-ids mt)
-						 (metatree-state mt 'cursor-x)))
-		   "/"))
+  ;; (define (metatree-cursor->field-node-path mt)
+  ;;   (string-append (get-current-instance-path (metatree-group-id mt))
+  ;; 		   (symbol->string (metatree-cursor->block-id mt))
+  ;; 		   "/" (->string (metatree-cursor->block-instance-id mt))
+  ;; 		   "/" (symbol->string (list-ref (metatree-column-ids mt)
+  ;; 						 (metatree-state mt 'cursor-x)))
+  ;; 		   "/"))
 
-  ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
-  ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
-  ;;; cursor.
-  (define (metatree-cursor-do mt method)
-    (let ((tree (list-ref (metatree-columns mt)
-			  (metatree-state mt 'cursor-x))))
-      (tree 'tag method 'active-cell
-	    (nth-tree-item tree (metatree-state mt 'cursor-y)))))
+  ;; ;;; Apply {{method}} to the cursor of the given metatree {{mt}}. {{method}}
+  ;; ;;; shall be one of `'add` or `'remove`, which deletes resp. displays the
+  ;; ;;; cursor.
+  ;; (define (metatree-cursor-do mt method)
+  ;;   (let ((tree (list-ref (metatree-columns mt)
+  ;; 			  (metatree-state mt 'cursor-x))))
+  ;;     (tree 'tag method 'active-cell
+  ;; 	    (nth-tree-item tree (metatree-state mt 'cursor-y)))))
 
-  ;;; Display the cursor of a metatree widget.
-  (define (metatree-cursor-show mt)
-    (metatree-cursor-do mt 'add))
+  ;; ;;; Display the cursor of a metatree widget.
+  ;; (define (metatree-cursor-show mt)
+  ;;   (metatree-cursor-do mt 'add))
 
-  ;;; Remove the cursor of a metatree widget.
-  (define (metatree-cursor-delete mt)
-    (metatree-cursor-do mt 'remove))
+  ;; ;;; Remove the cursor of a metatree widget.
+  ;; (define (metatree-cursor-delete mt)
+  ;;   (metatree-cursor-do mt 'remove))
 
-  (define (metatree-cursor-set mt xpos ypos)
-    (let ((old-order-pos (metatree-cursor->order-pos mt)))
-      (metatree-cursor-delete mt)
-      (metatree-state-set! mt 'cursor-x xpos)
-      (metatree-state-set! mt 'cursor-y ypos)
-      (when (and (eq? 'block (metatree-type mt))
-		 (not (= old-order-pos (metatree-cursor->order-pos mt))))
-	(metatree-update mt))
-      (focus-metatree mt)))
+  ;; (define (metatree-cursor-set mt xpos ypos)
+  ;;   (let ((old-order-pos (metatree-cursor->order-pos mt)))
+  ;;     (metatree-cursor-delete mt)
+  ;;     (metatree-state-set! mt 'cursor-x xpos)
+  ;;     (metatree-state-set! mt 'cursor-y ypos)
+  ;;     (when (and (eq? 'block (metatree-type mt))
+  ;; 		 (not (= old-order-pos (metatree-cursor->order-pos mt))))
+  ;; 	(metatree-update mt))
+  ;;     (focus-metatree mt)))
 
-  ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
-  ;;; of `'up`, `'down`, `'left`, `'right`
-  (define (metatree-cursor-move mt direction)
-    (let ((current-xpos (metatree-state mt 'cursor-x))
-	  (current-ypos (metatree-state mt 'cursor-y))
-	  (current-start-pos (metatree-state mt 'start-pos)))
-      (match direction
-	('up (if (= 0 current-ypos)
-		 (if (= 0 current-start-pos)
-		     (let* ((total-length (metatree-total-length mt))
-			    (visible-rows (metatree-visible-rows mt))
-			    (all-rows-visible? (>= (metatree-visible-rows mt)
-						   (metatree-total-length mt))))
-		       (unless all-rows-visible?
-			 (metatree-state-set! mt 'start-pos
-					      (- total-length visible-rows))
-			 (metatree-update mt))
-		       (metatree-cursor-set mt current-xpos
-					    (if all-rows-visible?
-						(sub1 total-length)
-						(sub1 visible-rows))))
-		     (metatree-shift-item-window mt -1))
-		 (metatree-cursor-set mt current-xpos (sub1 current-ypos))))
-	('down (let ((edit-step (if (or (zero? (state 'edit-step))
-					(eq? 'order (metatree-type mt)))
-				    1 (state 'edit-step))))
-		 (if (> (+ current-start-pos current-ypos edit-step)
-			(sub1 (metatree-total-length mt)))
-		     (begin
-		       (unless (>= (metatree-visible-rows mt)
-				   (metatree-total-length mt))
-			 (metatree-state-set! mt 'start-pos 0)
-			 (metatree-update mt))
-		       (metatree-cursor-set mt current-xpos 0))
-		     (if (< (+ current-ypos edit-step)
-			    (sub1 (metatree-visible-rows mt)))
-			 (metatree-cursor-set mt current-xpos
-					      (+ current-ypos edit-step))
-			 (begin
-			   (metatree-shift-item-window
-			    mt
-			    (- (+ 1 current-ypos edit-step)
-			       (metatree-visible-rows mt)))
-			   (metatree-cursor-set
-			    mt current-xpos
-			    (sub1 (metatree-visible-rows mt))))))))
-	('left (metatree-cursor-set mt (sub1 (if (= current-xpos 0)
-						 (length (metatree-columns mt))
-						 current-xpos))
-				    current-ypos))
-	('right (metatree-cursor-set mt (if (>= (+ 1 current-xpos)
-						(length (metatree-columns mt)))
-					    0 (add1 current-xpos))
-				     current-ypos)))))
+  ;; ;;; Move the cursor of the metatree {{mt}} in {{direction}}, which must be one
+  ;; ;;; of `'up`, `'down`, `'left`, `'right`
+  ;; (define (metatree-cursor-move mt direction)
+  ;;   (let ((current-xpos (metatree-state mt 'cursor-x))
+  ;; 	  (current-ypos (metatree-state mt 'cursor-y))
+  ;; 	  (current-start-pos (metatree-state mt 'start-pos)))
+  ;;     (match direction
+  ;; 	('up (if (= 0 current-ypos)
+  ;; 		 (if (= 0 current-start-pos)
+  ;; 		     (let* ((total-length (metatree-total-length mt))
+  ;; 			    (visible-rows (metatree-visible-rows mt))
+  ;; 			    (all-rows-visible? (>= (metatree-visible-rows mt)
+  ;; 						   (metatree-total-length mt))))
+  ;; 		       (unless all-rows-visible?
+  ;; 			 (metatree-state-set! mt 'start-pos
+  ;; 					      (- total-length visible-rows))
+  ;; 			 (metatree-update mt))
+  ;; 		       (metatree-cursor-set mt current-xpos
+  ;; 					    (if all-rows-visible?
+  ;; 						(sub1 total-length)
+  ;; 						(sub1 visible-rows))))
+  ;; 		     (metatree-shift-item-window mt -1))
+  ;; 		 (metatree-cursor-set mt current-xpos (sub1 current-ypos))))
+  ;; 	('down (let ((edit-step (if (or (zero? (state 'edit-step))
+  ;; 					(eq? 'order (metatree-type mt)))
+  ;; 				    1 (state 'edit-step))))
+  ;; 		 (if (> (+ current-start-pos current-ypos edit-step)
+  ;; 			(sub1 (metatree-total-length mt)))
+  ;; 		     (begin
+  ;; 		       (unless (>= (metatree-visible-rows mt)
+  ;; 				   (metatree-total-length mt))
+  ;; 			 (metatree-state-set! mt 'start-pos 0)
+  ;; 			 (metatree-update mt))
+  ;; 		       (metatree-cursor-set mt current-xpos 0))
+  ;; 		     (if (< (+ current-ypos edit-step)
+  ;; 			    (sub1 (metatree-visible-rows mt)))
+  ;; 			 (metatree-cursor-set mt current-xpos
+  ;; 					      (+ current-ypos edit-step))
+  ;; 			 (begin
+  ;; 			   (metatree-shift-item-window
+  ;; 			    mt
+  ;; 			    (- (+ 1 current-ypos edit-step)
+  ;; 			       (metatree-visible-rows mt)))
+  ;; 			   (metatree-cursor-set
+  ;; 			    mt current-xpos
+  ;; 			    (sub1 (metatree-visible-rows mt))))))))
+  ;; 	('left (metatree-cursor-set mt (sub1 (if (= current-xpos 0)
+  ;; 						 (length (metatree-columns mt))
+  ;; 						 current-xpos))
+  ;; 				    current-ypos))
+  ;; 	('right (metatree-cursor-set mt (if (>= (+ 1 current-xpos)
+  ;; 						(length (metatree-columns mt)))
+  ;; 					    0 (add1 current-xpos))
+  ;; 				     current-ypos)))))
 
-  ;;; Update the metatree's item cache and display.
-  (define (metatree-update mt)
-    (metatree-clear mt)
-    (metatree-update-item-cache mt)
-    (metatree-insert-slice mt)
-    (metatree-set-scrollbar mt))
+  ;; ;;; Update the metatree's item cache and display.
+  ;; (define (metatree-update mt)
+  ;;   (metatree-clear mt)
+  ;;   (metatree-update-item-cache mt)
+  ;;   (metatree-insert-slice mt)
+  ;;   (metatree-set-scrollbar mt))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Block Related Widgets and Procedures
+;;; ### Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
-  ;;; A metawidget for displaying a group's block members and the corresponding
-  ;;; order or block list.
-  ;;; TODO MDAL defines order/block lists as optional if blocks are
-  ;;; single instance.
+;;; A metawidget for displaying a group's block members and the corresponding
+;;; order or block list.
+;;; TODO MDAL defines order/block lists as optional if blocks are
+;;; single instance.
   (defstruct bt-blocks-widget
     (tl-panedwindow : procedure)
     (blocks-view : (struct metatree))
     (order-view : (struct metatree)))
 
-  ;;; Create a `bt-blocks-widget`.
+;;; Create a `bt-blocks-widget`.
   (define (make-blocks-widget parent-node-id parent-widget)
     (let ((block-ids (config-get-subnode-type-ids parent-node-id
 						  (current-config)
@@ -1698,21 +1702,23 @@
 	     (.tl 'add .order-pane weight: 1)
 	     (make-bt-blocks-widget
 	      tl-panedwindow: .tl
-	      blocks-view: (metatree-init .blocks-pane 'block parent-node-id)
-	      order-view: (metatree-init .order-pane 'order parent-node-id))))))
+	      ;; blocks-view: (metatree-init .blocks-pane 'block parent-node-id)
+	      ;; order-view: (metatree-init .order-pane 'order parent-node-id)
+	      )))))
 
-  ;;; Display a `bt-blocks-widget`.
+;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (tk/pack top expand: 1 fill: 'both)
-      (metatree-show (bt-blocks-widget-blocks-view w))
-      (metatree-show (bt-blocks-widget-order-view w))))
+      ;; (metatree-show (bt-blocks-widget-blocks-view w))
+      ;; (metatree-show (bt-blocks-widget-order-view w))
+      ))
 
-  ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
-  ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
-  ;;; bt-group-widget, which is useful for subgroups that have subgroups
-  ;;; themselves.
-  ;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
+;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
+;;; a notebook (tabs) tk widget. It can be indirectly nested through a
+;;; bt-group-widget, which is useful for subgroups that have subgroups
+;;; themselves.
+;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
   (defstruct bt-subgroups-widget
     (toplevel-frame : procedure)
     (subgroup-ids : (list-of symbol))
@@ -1720,7 +1726,7 @@
     (notebook-frames : (list-of procedure))
     (subgroups : (list-of (struct bt-group-widget))))
 
-  ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
+;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
   (define (make-subgroups-widget parent-node-id parent-widget)
     (let ((sg-ids (config-get-subnode-type-ids parent-node-id
 					       (current-config)
@@ -1740,7 +1746,7 @@
 	      subgroups: (map make-group-widget
 			      sg-ids subgroup-frames))))))
 
-  ;;; Pack a bt-subgroups-widget to the display.
+;;; Pack a bt-subgroups-widget to the display.
   (define (show-subgroups-widget w)
     (tk/pack (bt-subgroups-widget-toplevel-frame w)
 	     expand: 1 fill: 'both)
@@ -1803,13 +1809,13 @@
     (show-group-widget (state 'module-widget)))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Accessors
+;;; ## Accessors
   ;; ---------------------------------------------------------------------------
 
   (define (current-fields-view)
     (bt-group-widget-fields-widget (state 'module-widget)))
 
-  ;;; Returns the currently visible blocks metatree
+;;; Returns the currently visible blocks metatree
   ;; TODO assumes first subgroup is shown, check actual state
   (define (current-blocks-view)
     (bt-blocks-widget-blocks-view
@@ -1817,7 +1823,7 @@
       (car (bt-subgroups-widget-subgroups
 	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
 
-  ;;; Returns the currently visible order metatree
+;;; Returns the currently visible order metatree
   ;; TODO assumes first subgroup is shown, check actual state
   (define (current-order-view)
     (bt-blocks-widget-order-view
@@ -1827,17 +1833,17 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Utilities
+;;; ## Utilities
   ;; ---------------------------------------------------------------------------
 
-  ;;; Disable automatic keyboard traversal. Needed because it messes with key
-  ;;; binding involving Tab.
+;;; Disable automatic keyboard traversal. Needed because it messes with key
+;;; binding involving Tab.
   (define (disable-keyboard-traversal)
     (tk/event 'delete '<<NextWindow>>)
     (tk/event 'delete '<<PrevWindow>>))
 
-  ;;; update window title by looking at current file name and 'modified'
-  ;;; property
+;;; update window title by looking at current file name and 'modified'
+;;; property
   (define (update-window-title!)
     (tk/wm 'title tk (if (state 'current-file)
 			 (string-append (pathname-file (state 'current-file))
