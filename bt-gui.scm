@@ -17,11 +17,11 @@
 	  bt-state bt-types mdal)
 
   ;; ---------------------------------------------------------------------------
-;;; ### PS/Tk Initialization
+  ;;; ### PS/Tk Initialization
   ;; ---------------------------------------------------------------------------
 
-;;; Init pstk and fire up Tcl/Tk runtime.
-;;; This must be done prior to defining anything that depends on Tk.
+  ;;; Init pstk and fire up Tcl/Tk runtime.
+  ;;; This must be done prior to defining anything that depends on Tk.
 
   (tk-start)
 
@@ -35,13 +35,13 @@
 			    spinbox treeview))
 
   ;; ---------------------------------------------------------------------------
-;;; ### Dialogues
+  ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
 
-;;; Various general-purpose dialogue procedures.
+  ;;; Various general-purpose dialogue procedures.
 
-;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
-;;; that is safe to execute as a callback from Tk.
+  ;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
+  ;;; that is safe to execute as a callback from Tk.
   (define-syntax tk/bind*
     (syntax-rules ()
       ((_ tag sequence (x ((y (lambda args body)) subst ...)))
@@ -55,10 +55,10 @@
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
-;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
-;;; tk/get-save-file that block the main application window  while the pop-up
-;;; is alive. This is a work-around for tk dialogue procedures getting stuck
-;;; once they lose focus. tk-with-lock does not help in these cases.
+  ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
+  ;;; tk/get-save-file that block the main application window  while the pop-up
+  ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
+  ;;; once they lose focus. tk-with-lock does not help in these cases.
   (define (tk/safe-dialogue type . args)
     (tk-eval "tk busy .")
     (tk/update)
@@ -66,19 +66,19 @@
       (tk-eval "tk busy forget .")
       result))
 
-;;; Crash-safe variant of tk/message-box.
+  ;;; Crash-safe variant of tk/message-box.
   (define (tk/message-box* . args)
     (apply tk/safe-dialogue (cons tk/message-box args)))
 
-;;; Crash-safe variant of tk/get-open-file.
+  ;;; Crash-safe variant of tk/get-open-file.
   (define (tk/get-open-file* . args)
     (apply tk/safe-dialogue (cons tk/get-open-file args)))
 
-;;; Crash-safe variant of tk/get-save-file.
+  ;;; Crash-safe variant of tk/get-save-file.
   (define (tk/get-save-file* . args)
     (apply tk/safe-dialogue (cons tk/get-save-file args)))
 
-;;; Display the "About Bintracker" message.
+  ;;; Display the "About Bintracker" message.
   (define (about-message)
     (tk/message-box* title: "About"
 		     message: (string-append "Bintracker\nversion "
@@ -86,9 +86,9 @@
 		     detail: "Dedicated to Ján Deák"
 		     type: 'ok))
 
-;;; Display a message box that asks the user whether to save unsaved changes
-;;; before exiting or closing. **exit-or-closing** should be the string
-;;; `"exit"` or `"closing"`, respectively.
+  ;;; Display a message box that asks the user whether to save unsaved changes
+  ;;; before exiting or closing. **exit-or-closing** should be the string
+  ;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
     (tk/message-box* title: (string-append "Save before "
 					   exit-or-closing "?")
@@ -102,11 +102,11 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ### Events
+  ;;; ### Events
   ;; ---------------------------------------------------------------------------
 
-;;; Create default virtual events for Bintracker. This procedure only needs
-;;; to be called on startup, or after updating key bindings.
+  ;;; Create default virtual events for Bintracker. This procedure only needs
+  ;;; to be called on startup, or after updating key bindings.
   (define (create-virtual-events)
     (apply tk/event (append '(add <<NoteEntry>>)
 			    (map car
@@ -115,10 +115,10 @@
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row)))
 
-;;; Reverse the evaluation order for tk bindings, so that global bindings are
-;;; evaluated before the local bindings of {{widget}}. This is necessary to
-;;; prevent keypresses that are handled globally being passed through to the
-;;; widget.
+  ;;; Reverse the evaluation order for tk bindings, so that global bindings are
+  ;;; evaluated before the local bindings of {{widget}}. This is necessary to
+  ;;; prevent keypresses that are handled globally being passed through to the
+  ;;; widget.
   (define (reverse-binding-eval-order widget)
     (let ((widget-id (widget 'get-id)))
       (tk-eval (string-append "bindtags " widget-id " {all . "
@@ -126,37 +126,37 @@
 			      " " widget-id "}"))))
 
   ;; ---------------------------------------------------------------------------
-;;; ### Images
+  ;;; ### Images
   ;; ---------------------------------------------------------------------------
 
-;;; Auxilliary image handling procedures.
+  ;;; Auxilliary image handling procedures.
 
-;;; Create a tk image resource from a given PNG file.
+  ;;; Create a tk image resource from a given PNG file.
   (define (tk/icon filename)
     (tk/image 'create 'photo format: "PNG"
 	      file: (string-append "resources/icons/" filename)))
 
 
   ;; ---------------------------------------------------------------------------
-;;; ### Menus
+  ;;; ### Menus
   ;; ---------------------------------------------------------------------------
 
-;;; `submenus` shall be an alist, where keys are unique identifiers, and
-;;; values are the actual tk menus.
+  ;;; `submenus` shall be an alist, where keys are unique identifiers, and
+  ;;; values are the actual tk menus.
   (defstruct menu
     ((widget (tk 'create-widget 'menu)) : procedure)
     ((items '()) : list))
 
-;;; Destructively add an item to menu-struct **menu** according to
-;;; **item-spec**. **item-spec** must be a list containing either
-;;; ('separator)
-;;; ('command id label underline accelerator command)
-;;; ('submenu id label underline items-list)
-;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
-;;; name that will be shown in the menu for this item, and its underline
-;;; position; *accelerator* is a string naming a keyboard shortcut for the
-;;; item, command is a procedure to be associated with the item, and
-;;; items-list is a list of item-specs.
+  ;;; Destructively add an item to menu-struct **menu** according to
+  ;;; **item-spec**. **item-spec** must be a list containing either
+  ;;; ('separator)
+  ;;; ('command id label underline accelerator command)
+  ;;; ('submenu id label underline items-list)
+  ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
+  ;;; name that will be shown in the menu for this item, and its underline
+  ;;; position; *accelerator* is a string naming a keyboard shortcut for the
+  ;;; item, command is a procedure to be associated with the item, and
+  ;;; items-list is a list of item-specs.
   ;; TODO add at position (insert)
   (define (add-menu-item! menu item-spec)
     (let ((append-to-item-list!
@@ -193,10 +193,10 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Top Level Layout
+  ;;; ## Top Level Layout
   ;; ---------------------------------------------------------------------------
 
-;;; The core widgets that make up Bintracker's GUI.
+  ;;; The core widgets that make up Bintracker's GUI.
 
   (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
 
@@ -226,9 +226,9 @@
       (main-panes 'add console-frame weight: 2)))
 
   ;; TODO take into account which zones are actually active
-;;; The list of all ui zones that can be focussed. The list consists of a list
-;;; for each zone, which contains the focus procedure in car, and the unfocus
-;;; procedure in cadr.
+  ;;; The list of all ui zones that can be focussed. The list consists of a list
+  ;;; for each zone, which contains the focus procedure in car, and the unfocus
+  ;;; procedure in cadr.
   (define ui-zones
     `((fields ,(lambda () (focus-fields-widget (current-fields-view)))
 	      ,(lambda () (unfocus-fields-widget (current-fields-view))))
@@ -239,9 +239,9 @@
       (console ,(lambda () (tk/focus console))
 	       ,(lambda () '()))))
 
-;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
-;;; index to the `ui-zones` list, or a symbol naming an entry in
-;;; that list.
+  ;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
+  ;;; index to the `ui-zones` list, or a symbol naming an entry in
+  ;;; that list.
   (define (switch-ui-zone-focus new-zone)
     (let ((new-zone-index (or (and (integer? new-zone)
 				   new-zone)
@@ -255,16 +255,16 @@
       (set-state! 'current-ui-zone new-zone-index)
       ((second (list-ref ui-zones new-zone-index)))))
 
-;;; Unfocus the currently active UI zone, and focus the next one listed in
-;;; ui-zones.
+  ;;; Unfocus the currently active UI zone, and focus the next one listed in
+  ;;; ui-zones.
   (define (focus-next-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (next-zone (if (= current-zone (sub1 (length ui-zones)))
 			  0 (+ 1 current-zone))))
       (switch-ui-zone-focus next-zone)))
 
-;;; Unfocus the currently active UI zone, and focus the previous one listed in
-;;; ui-zones.
+  ;;; Unfocus the currently active UI zone, and focus the previous one listed in
+  ;;; ui-zones.
   (define (focus-previous-ui-zone)
     (let* ((current-zone (state 'current-ui-zone))
 	   (prev-zone (if (= current-zone 0)
@@ -274,20 +274,20 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Toolbar
+  ;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
-;;; Create a toolbar button widget.
+  ;;; Create a toolbar button widget.
   (define (toolbar-button icon #!optional (init-state 'disabled))
     (toolbar-frame 'create-widget 'button image: (tk/icon icon)
   		   state: init-state style: "Toolbutton"))
 
-;;; The list of buttons in the main toolbar. It is a nested alist. The main
-;;; keys name button groups, where the associated values are another alist
-;;; containing the button names as keys. The key names must correspond to
-;;; the names of the procedure that the buttons will call.
-;;; The cdr of the button alist contains a button widget created with
-;;; `toolbar-button` in car, and a short description in cadr.
+  ;;; The list of buttons in the main toolbar. It is a nested alist. The main
+  ;;; keys name button groups, where the associated values are another alist
+  ;;; containing the button names as keys. The key names must correspond to
+  ;;; the names of the procedure that the buttons will call.
+  ;;; The cdr of the button alist contains a button widget created with
+  ;;; `toolbar-button` in car, and a short description in cadr.
   (define toolbar-button-groups
     `((file (new-file ,(toolbar-button "new.png" 'enabled)
 		      "New File")
@@ -324,19 +324,19 @@
       		 (show-settings ,(toolbar-button "settings.png" 'enabled)
       				"Settings..."))))
 
-;;; Returns the entry associated with {{id}} in the given toolbar
-;;; button {{group}}.
+  ;;; Returns the entry associated with {{id}} in the given toolbar
+  ;;; button {{group}}.
   (define (toolbar-button-ref group-id button-id)
     (let ((group (alist-ref group-id toolbar-button-groups)))
       (and group (alist-ref button-id group))))
 
-;;; Associate the procedure {{command}} with a toolbar button.
+  ;;; Associate the procedure {{command}} with a toolbar button.
   (define (set-toolbar-button-command group-id button-id command)
     ((car (toolbar-button-ref group-id button-id))
      'configure command: command))
 
-;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
-;;; status bar.
+  ;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
+  ;;; status bar.
   (define (bind-toolbar-button-info group-id button-id)
     (let ((button-entry (toolbar-button-ref group-id button-id)))
       (bind-info-status (car button-entry)
@@ -344,19 +344,19 @@
 				       " "
 				       (key-binding->info 'global button-id)))))
 
-;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
+  ;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
   (define (set-toolbar-button-state group-id button-id state)
     ((car (toolbar-button-ref group-id button-id))
      'configure 'state: state))
 
-;;; Set the state of the play button. {{state}} must be either `'enabled` or
-;;; `'disabled`.
+  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
+  ;;; `'disabled`.
   (define (set-play-buttons state)
     (for-each (lambda (button)
 		((cadr button) 'configure state: state))
 	      (alist-ref 'play toolbar-button-groups)))
 
-;;; construct and display the main toolbar
+  ;;; construct and display the main toolbar
   (define (show-toolbar)
     (for-each (lambda (button-group)
   		(for-each (lambda (button-entry)
@@ -372,19 +372,19 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Edit Settings Display
+  ;;; ## Edit Settings Display
   ;; ---------------------------------------------------------------------------
 
-;;; Display a label widget as description of an edit setting spinbox
+  ;;; Display a label widget as description of an edit setting spinbox
   (define (pack-edit-settings-label text description)
     (let ((label (edit-settings-frame 'create-widget 'label text: text)))
       (tk/pack label side: 'left padx: 5)
       (bind-info-status label description)))
 
-;;; Create a spinbox in the edit settings toolbar.
-;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
-;;; specifies the relevant field in `app-state`, and {{action}} specifies
-;;; an additional procedure to call on validation.
+  ;;; Create a spinbox in the edit settings toolbar.
+  ;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
+  ;;; specifies the relevant field in `app-state`, and {{action}} specifies
+  ;;; an additional procedure to call on validation.
   ;; TODO <<Increment>>/<<Decrement>> events are buggy, events are
   ;; sometimes generated repeatedly
   ;; see https://wiki.tcl-lang.org/page/ttk::spinbox
@@ -414,10 +414,10 @@
 		  (validate-new-value (string->number (spinbox 'get)))))
       spinbox))
 
-;;; The list of edit setting widgets. Each element in the list must be a list
-;;; containing an identifier, a label string, a documentation string, a field
-;;; in `app-settings` from which to draw the default value, and a spinbox
-;;; widget which should be created with `make-edit-settings-spinbox`.
+  ;;; The list of edit setting widgets. Each element in the list must be a list
+  ;;; containing an identifier, a label string, a documentation string, a field
+  ;;; in `app-settings` from which to draw the default value, and a spinbox
+  ;;; widget which should be created with `make-edit-settings-spinbox`.
   (define edit-settings
     `((edit-step "Step" "Set the edit step" default-edit-step
 		 ,(make-edit-settings-spinbox 0 64 'edit-step #f))
@@ -440,22 +440,22 @@
 			   ;; (update-row-highlights (current-blocks-view))
 			   )))))
 
-;;; Set the state of the edit settings spinboxes to {{state}}, which must be
-;;; either `'enabled` or `'disabled`.
+  ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
+  ;;; either `'enabled` or `'disabled`.
   (define (set-edit-settings-state! state)
     (for-each (lambda (setting)
 		((fifth setting) 'configure state: state))
 	      edit-settings))
 
-;;; Enable the edit settings spinboxes.
+  ;;; Enable the edit settings spinboxes.
   (define (enable-edit-settings!)
     (set-edit-settings-state! 'enabled))
 
-;;; Disable the edit settings spinboxes.
+  ;;; Disable the edit settings spinboxes.
   (define (disable-edit-settings!)
     (set-edit-settings-state! 'disabled))
 
-;;; Display the edit settings in the main GUI.
+  ;;; Display the edit settings in the main GUI.
   (define (show-edit-settings)
     (for-each (lambda (setting)
 		(pack-edit-settings-label (cadr setting) (third setting))
@@ -465,7 +465,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Console
+  ;;; ## Console
   ;; ---------------------------------------------------------------------------
 
   (define console-wrapper (console-frame 'create-widget 'frame))
@@ -493,12 +493,12 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; Style updates
+  ;;; Style updates
   ;; ---------------------------------------------------------------------------
 
-;;; A work-around for the treeview tag configuration bug that affects
-;;; Tk 8.6.9 under Linux, based on
-;;; https://core.tcl-lang.org/tk/tktview?name=509cafafae
+  ;;; A work-around for the treeview tag configuration bug that affects
+  ;;; Tk 8.6.9 under Linux, based on
+  ;;; https://core.tcl-lang.org/tk/tktview?name=509cafafae
   (define (patch-tcltk-8.6.9-treeview)
     (when (string= "8.6.9" (tk-eval "info patchlevel"))
       (ttk/style 'map 'Metatree.Treeview foreground:
@@ -506,7 +506,7 @@
 		 background: '(disabled SystemButtonFace selected
 					SystemHighlightText))))
 
-;;; Configure Tk widget styles
+  ;;; Configure Tk widget styles
   (define (update-style!)
     ;; (ttk/style 'configure 'Metatree.Treeview background: (colors 'background)
     ;; 	       fieldbackground: (colors 'background)
@@ -542,10 +542,10 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Status Bar
+  ;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
 
-;;; Initialize the status bar at the bottom of the main window.
+  ;;; Initialize the status bar at the bottom of the main window.
   (define (init-status-bar)
     (let ((status-label (status-frame 'create-widget 'label
 				      textvariable: (tk-var "status-text"))))
@@ -553,8 +553,8 @@
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
-;;; Returns a string containing the current target platform and MDAL config
-;;; name, separated by a pipe.
+  ;;; Returns a string containing the current target platform and MDAL config
+  ;;; name, separated by a pipe.
   (define (get-module-info-text)
     (string-append (if (current-mod)
 		       (string-append
@@ -563,27 +563,27 @@
 		       "No module loaded.")
 		   " | "))
 
-;;; Set the message in the status to either a combination of the current
-;;; module's target platform and configuration name, or the string
-;;; "No module loaded."
+  ;;; Set the message in the status to either a combination of the current
+  ;;; module's target platform and configuration name, or the string
+  ;;; "No module loaded."
   (define (reset-status-text!)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      (state 'active-md-command-info))))
 
-;;; Display {{msg}} in the status bar, extending the current info string.
+  ;;; Display {{msg}} in the status bar, extending the current info string.
   (define (display-action-info-status! msg)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      msg)))
 
-;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
-;;; remove the given info {{text}} in the status bar.
+  ;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
+  ;;; remove the given info {{text}} in the status bar.
   (define (bind-info-status widget text)
     (tk/bind* widget '<Enter>
 	      (lambda () (display-action-info-status! text)))
     (tk/bind* widget '<Leave> reset-status-text!))
 
-;;; Construct an info string for the key binding of the given action in the
-;;; given key-group
+  ;;; Construct an info string for the key binding of the given action in the
+  ;;; given key-group
   (define (key-binding->info key-group action)
     (let ((binding (inverse-key-binding key-group action)))
       (if binding
@@ -592,11 +592,11 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Editing
+  ;;; ## Editing
   ;; ---------------------------------------------------------------------------
 
-;;; Apply an edit action. See the Journal section in the documentation of
-;;; bt-state for a description of the `action` format.
+  ;;; Apply an edit action. See the Journal section in the documentation of
+  ;;; bt-state for a description of the `action` format.
   (define (apply-edit! action)
     (match (car action)
       ('set (node-set! ((node-path (cadr action))
@@ -606,8 +606,8 @@
       ('insert '())
       ('compound (for-each apply-edit! (cdr action)))))
 
-;;; Undo the latest edit action, by retrieving the latest action from the undo
-;;; stack, applying it, updating the redo stack, and refreshing the display.
+  ;;; Undo the latest edit action, by retrieving the latest action from the undo
+  ;;; stack, applying it, updating the redo stack, and refreshing the display.
   (define (undo)
     (let ((action (pop-undo)))
       (when action
@@ -619,7 +619,7 @@
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
 	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
 
-;;; Redo the latest undo action.
+  ;;; Redo the latest undo action.
   (define (redo)
     (let ((action (pop-redo)))
       (when action
@@ -633,49 +633,49 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Module Display Related Widgets and Procedures
+  ;;; ## Module Display Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
-;;; The module display is constructed as follows:
-;;;
-;;; Within the module display frame provided by Bintracker's top level layout,
-;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
-;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
-;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
-;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
-;;; subgroups, respectively.
-;;;
-;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
-;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
-;;; that contains a label displaying the field ID, and an input field for the
-;;; associated value. `bt-fields-widget` and its children are only used for
-;;; group fields, block fields are handled differently.
-;;;
-;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
-;;; The first pane contains the actual block display (all of the parent
-;;; group's block members except the order block displayed next to each
-;;; other), and the second pane contains the order or block list display.
-;;; Both the block display and the order display are based on the `metatree`
-;;; meta-widget, which is documented below.
-;;;
-;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
-;;; notebook (tab view), with tabs for each of the parent node's subgroups.
-;;; A Tk frame is created in each of the tabs. For each subgroup, a
-;;; `bt-group-widget` is created as a child of the corresponding tab frame.
-;;; This allows for infinite nested groups, as required by MDAL.
-;;;
-;;; All `bt-*` widgets should be created by calling the corresponding
-;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
-;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
-;;; calling the corresponding `show-*-widget` procedures.
+  ;;; The module display is constructed as follows:
+  ;;;
+  ;;; Within the module display frame provided by Bintracker's top level layout,
+  ;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
+  ;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
+  ;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
+  ;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
+  ;;; subgroups, respectively.
+  ;;;
+  ;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
+  ;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
+  ;;; that contains a label displaying the field ID, and an input field for the
+  ;;; associated value. `bt-fields-widget` and its children are only used for
+  ;;; group fields, block fields are handled differently.
+  ;;;
+  ;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
+  ;;; The first pane contains the actual block display (all of the parent
+  ;;; group's block members except the order block displayed next to each
+  ;;; other), and the second pane contains the order or block list display.
+  ;;; Both the block display and the order display are based on the `metatree`
+  ;;; meta-widget, which is documented below.
+  ;;;
+  ;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
+  ;;; notebook (tab view), with tabs for each of the parent node's subgroups.
+  ;;; A Tk frame is created in each of the tabs. For each subgroup, a
+  ;;; `bt-group-widget` is created as a child of the corresponding tab frame.
+  ;;; This allows for infinite nested groups, as required by MDAL.
+  ;;;
+  ;;; All `bt-*` widgets should be created by calling the corresponding
+  ;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
+  ;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
+  ;;; calling the corresponding `show-*-widget` procedures.
 
 
   ;; ---------------------------------------------------------------------------
-;;; ### Auxilliary procedures used by various BT meta-widgets
+  ;;; ### Auxilliary procedures used by various BT meta-widgets
   ;; ---------------------------------------------------------------------------
 
-;;; Determine how many characters are needed to print values of a given
-;;; command.
+  ;;; Determine how many characters are needed to print values of a given
+  ;;; command.
   ;; TODO results should be cached
   (define (value-display-size command-config)
     (match (command-type command-config)
@@ -694,9 +694,9 @@
       ('trigger 1)
       ('string 32)))
 
-;;; Transform an ifield value from MDAL format to tracker display format.
-;;; Replaces empty values with dots, changes numbers depending on number
-;;; format setting, and turns everything into a string.
+  ;;; Transform an ifield value from MDAL format to tracker display format.
+  ;;; Replaces empty values with dots, changes numbers depending on number
+  ;;; format setting, and turns everything into a string.
   (define (normalize-field-value val field-id)
     (let ((command-config (config-get-inode-source-command
   			   field-id (current-config))))
@@ -750,11 +750,11 @@
 			   (string-append (car entry-spec)
 					  (->string mod-octave)))))))))
 
-;;; Get the appropriate command type tag to set the item color.
+  ;;; Get the appropriate command type tag to set the item color.
   (define (get-command-type-tag field-id)
     (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
-      (if (memq 'note (command-flags command-config))
+      (if (memq 'is_note (command-flags command-config))
 	  'note
 	  (match (command-type command-config)
 	    ((or 'int 'uint) 'int)
@@ -790,7 +790,7 @@
 					size: (settings 'font-size)
 					weight: 'bold)))))
 
-;;; Display a `bt-field-widget`.
+  ;;; Display a `bt-field-widget`.
   (define (show-field-widget w group-instance-path)
     (tk/pack (bt-field-widget-toplevel-frame w)
 	     side: 'left)
@@ -839,7 +839,7 @@
 			    (make-field-widget id tl-frame))
 			  subnode-ids))))))
 
-;;; Show a group fields widget.
+  ;;; Show a group fields widget.
   (define (show-fields-widget w group-instance-path)
     (begin
       (tk/pack (bt-fields-widget-toplevel-frame w)
@@ -1802,19 +1802,19 @@
   ;;   (metatree-set-scrollbar mt))
 
   ;; ---------------------------------------------------------------------------
-;;; ### Block Related Widgets and Procedures
+  ;;; ### Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
-;;; A metawidget for displaying a group's block members and the corresponding
-;;; order or block list.
-;;; TODO MDAL defines order/block lists as optional if blocks are
-;;; single instance.
+  ;;; A metawidget for displaying a group's block members and the corresponding
+  ;;; order or block list.
+  ;;; TODO MDAL defines order/block lists as optional if blocks are
+  ;;; single instance.
   (defstruct bt-blocks-widget
     (tl-panedwindow : procedure)
     (blocks-view : (struct metatree))
     (order-view : (struct metatree)))
 
-;;; Create a `bt-blocks-widget`.
+  ;;; Create a `bt-blocks-widget`.
   (define (make-blocks-widget parent-node-id parent-widget)
     (let ((block-ids (config-get-subnode-type-ids parent-node-id
 						  (current-config)
@@ -1832,18 +1832,18 @@
 	      order-view: (blockview-create .order-pane 'order
 					    parent-node-id))))))
 
-;;; Display a `bt-blocks-widget`.
+  ;;; Display a `bt-blocks-widget`.
   (define (show-blocks-widget w)
     (let ((top (bt-blocks-widget-tl-panedwindow w)))
       (tk/pack top expand: 1 fill: 'both)
       (blockview-show (bt-blocks-widget-blocks-view w))
       (blockview-show (bt-blocks-widget-order-view w))))
 
-;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
-;;; a notebook (tabs) tk widget. It can be indirectly nested through a
-;;; bt-group-widget, which is useful for subgroups that have subgroups
-;;; themselves.
-;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
+  ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
+  ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
+  ;;; bt-group-widget, which is useful for subgroups that have subgroups
+  ;;; themselves.
+  ;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
   (defstruct bt-subgroups-widget
     (toplevel-frame : procedure)
     (subgroup-ids : (list-of symbol))
@@ -1851,7 +1851,7 @@
     (notebook-frames : (list-of procedure))
     (subgroups : (list-of (struct bt-group-widget))))
 
-;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
+  ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
   (define (make-subgroups-widget parent-node-id parent-widget)
     (let ((sg-ids (config-get-subnode-type-ids parent-node-id
 					       (current-config)
@@ -1871,7 +1871,7 @@
 	      subgroups: (map make-group-widget
 			      sg-ids subgroup-frames))))))
 
-;;; Pack a bt-subgroups-widget to the display.
+  ;;; Pack a bt-subgroups-widget to the display.
   (define (show-subgroups-widget w)
     (tk/pack (bt-subgroups-widget-toplevel-frame w)
 	     expand: 1 fill: 'both)
@@ -1905,7 +1905,7 @@
        blocks-widget: (make-blocks-widget node-id tl-frame)
        subgroups-widget: (make-subgroups-widget node-id tl-frame))))
 
-  ;; Display the group widget (using pack geometry manager).
+  ;;; Display the group widget (using pack geometry manager).
   (define (show-group-widget w)
     (let ((instance-path (get-current-instance-path
 			  (bt-group-widget-node-id w))))
@@ -1934,13 +1934,13 @@
     (show-group-widget (state 'module-widget)))
 
   ;; ---------------------------------------------------------------------------
-;;; ## Accessors
+  ;;; ## Accessors
   ;; ---------------------------------------------------------------------------
 
   (define (current-fields-view)
     (bt-group-widget-fields-widget (state 'module-widget)))
 
-;;; Returns the currently visible blocks metatree
+  ;;; Returns the currently visible blocks metatree
   ;; TODO assumes first subgroup is shown, check actual state
   (define (current-blocks-view)
     (bt-blocks-widget-blocks-view
@@ -1948,7 +1948,7 @@
       (car (bt-subgroups-widget-subgroups
 	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
 
-;;; Returns the currently visible order metatree
+  ;;; Returns the currently visible order metatree
   ;; TODO assumes first subgroup is shown, check actual state
   (define (current-order-view)
     (bt-blocks-widget-order-view
@@ -1958,17 +1958,17 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## Utilities
+  ;;; ## Utilities
   ;; ---------------------------------------------------------------------------
 
-;;; Disable automatic keyboard traversal. Needed because it messes with key
-;;; binding involving Tab.
+  ;;; Disable automatic keyboard traversal. Needed because it messes with key
+  ;;; binding involving Tab.
   (define (disable-keyboard-traversal)
     (tk/event 'delete '<<NextWindow>>)
     (tk/event 'delete '<<PrevWindow>>))
 
-;;; update window title by looking at current file name and 'modified'
-;;; property
+  ;;; update window title by looking at current file name and 'modified'
+  ;;; property
   (define (update-window-title!)
     (tk/wm 'title tk (if (state 'current-file)
 			 (string-append (pathname-file (state 'current-file))
