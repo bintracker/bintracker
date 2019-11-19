@@ -715,23 +715,27 @@
 	    ('trigger "x")
 	    ('string val)))))
 
-;;; Get the RGB color string associated with the field's command type.
-  (define (get-field-color field-id)
+  ;;; Get the color tag asscociated with the field's command type.
+  (define (get-field-color-tag field-id)
     (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
-      (if (memq 'note (command-flags command-config))
-	  (colors 'text-1)
+      (if (memq 'is_note (command-flags command-config))
+	  'text-1
 	  (match (command-type command-config)
-	    ((or 'int 'uint) (colors 'text-2))
-	    ((or 'key 'ukey) (colors 'text-3))
-	    ('reference (colors 'text-4))
-	    ('trigger (colors 'text-5))
-	    ('string (colors 'text-6))
-	    ('modifier (colors 'text-7))
-	    (else (colors 'text))))))
+	    ((or 'int 'uint) 'text-2)
+	    ((or 'key 'ukey) 'text-3)
+	    ('reference 'text-4)
+	    ('trigger 'text-5)
+	    ('string 'text-6)
+	    ('modifier 'text-7)
+	    (else 'text)))))
 
-;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
-;;; MDAL note name.
+  ;;; Get the RGB color string associated with the field's command type.
+  (define (get-field-color field-id)
+    (colors (get-field-color-tag field-id)))
+
+  ;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
+  ;;; MDAL note name.
   (define (keypress->note key)
     (let ((entry-spec (alist-ref (string->symbol
 				  (string-append "<Key-" (->string key)
@@ -762,18 +766,33 @@
 	    (else (command-type command-config))))))
 
 
+  ;;; Generate an abbrevation of {{len}} characters from the given MDAL inode
+  ;;; identifier {{id}}. Returns the abbrevation as a string. The string is
+  ;;; padded to {{len}} characters if necessary.
+  (define (node-id-abbreviate id len)
+    (let ((chars (string->list (symbol->string id))))
+      (if (>= len (length chars))
+	  (string-pad-right (list->string chars)
+			    len)
+	  (match len
+	    (1 (->string (car chars)))
+	    (2 (list->string (list (car chars) (car (reverse chars)))))
+	    (else (list->string (append (take chars (- len 2))
+					(list #\. (car (reverse chars))))))))))
+
+
   ;; ---------------------------------------------------------------------------
-;;; ### Field-Related Widgets and Procedures
+  ;;; ### Field-Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
-;;; A meta widget for displaying an MDAL group field.
+  ;;; A meta widget for displaying an MDAL group field.
   (defstruct bt-field-widget
     (toplevel-frame : procedure)
     (id-label : procedure)
     (val-entry : procedure)
     (node-id : symbol))
 
-;;; Create a `bt-field-widget`.
+  ;;; Create a `bt-field-widget`.
   (define (make-field-widget node-id parent-widget)
     (let ((tl-frame (parent-widget 'create-widget 'frame style: 'BT.TFrame))
 	  (color (get-field-color node-id)))
@@ -816,14 +835,14 @@
     ((bt-field-widget-val-entry w) 'configure
      bg: (colors 'row-highlight-minor)))
 
-;;; A meta widget for displaying an MDAL group's field members.
+  ;;; A meta widget for displaying an MDAL group's field members.
   (defstruct bt-fields-widget
     (toplevel-frame : procedure)
     (parent-node-id : symbol)
     ((fields '()) : (list-of (struct bt-field-widget)))
     ((active-index 0) : fixnum))
 
-;;; Create a `bt-fields-widget`.
+  ;;; Create a `bt-fields-widget`.
   (define (make-fields-widget parent-node-id parent-widget)
     (let ((subnode-ids (config-get-subnode-type-ids parent-node-id
 						    (current-config)
@@ -901,18 +920,53 @@
   ;;; Bintrackers blockview metawidget, which is used to display sets of blocks
   ;;; or order lists. A number of abstractions are provided to facilitate this.
 
-  ;;; Create a TextGrid as slave of the Tk widget {{parent}}.
-  (define (textgrid-create parent)
+  ;;; Configure TextGrid widget tags.
+  (define (textgrid-configure-tags tg)
+    (tg 'tag 'configure 'active-cell background: (colors 'cursor))
+    (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
+    (tg 'tag 'configure 'rowhl-major background: (colors 'row-highlight-major))
+    (tg 'tag 'configure 'txt foreground: (colors 'text))
+    (tg 'tag 'configure 'note foreground: (colors 'text-1))
+    (tg 'tag 'configure 'int foreground: (colors 'text-2))
+    (tg 'tag 'configure 'key foreground: (colors 'text-3))
+    (tg 'tag 'configure 'reference foreground: (colors 'text-4))
+    (tg 'tag 'configure 'trigger foreground: (colors 'text-5))
+    (tg 'tag 'configure 'string foreground: (colors 'text-6))
+    (tg 'tag 'configure 'modifier foreground: (colors 'text-7))
+    (tg 'tag 'configure 'active font: (list (settings 'font-mono)
+  					     (settings 'font-size)
+  					     "bold")))
+
+  ;;; Abstraction over Tk's `textwidget tag add` command.
+  ;;; Contrary to Tk's convention, {{line}} uses 0-based indexing.
+  ;;; {{tags}} may be a single tag, or a list of tags.
+  (define (textgrid-add-tag tg tags line #!optional (start 0) (end 'end))
+    (let ((.tags (if (pair? tags)
+		     tags (list tags)))
+	  (add-tag (lambda (tag)
+		     (tg 'tag 'add tag (string-append (->string (+ 1 line))
+						      "." (->string start))
+			 (string-append (->string (+ 1 line))
+					"." (->string end))))))
+      (for-each add-tag .tags)))
+
+  ;;; Create a TextGrid as slave of the Tk widget {{parent}}. Returns a Tk Text
+  ;;; widget with class bindings removed.
+  (define (textgrid-create-basic parent)
     (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
-		       ;; bg: (colors 'background)
-		       bg: "#00ff00"
+		       bg: (colors 'background)
 		       fg: (colors 'text-inactive)
 		       insertbackground: (colors 'text)
 		       font: (list family: (settings 'font-mono)
-				   size: (settings 'font-size))))
+				   size: (settings 'font-size))
+		       cursor: '""))
 	   (id (tg 'get-id)))
       (tk-eval (string-append "bindtags " id " {all . " id "}"))
+      (textgrid-configure-tags tg)
       tg))
+
+  (define (textgrid-create parent)
+    (textgrid-create-basic parent))
 
 
   ;; ---------------------------------------------------------------------------
@@ -929,11 +983,19 @@
     ((cursor-y 0) : integer)
     ((start-pos 0) : integer))
 
+  (defstruct bv-field-config
+    (type-tag : symbol)
+    (width : fixnum)
+    (start : fixnum)
+    (cursor-width : fixnum)
+    (cursor-digits : fixnum))
+
   (defstruct blockview
     (type : symbol)
     (group-id : symbol)
     (block-ids : (list-of symbol))
     (field-ids : (list-of symbol))
+    (field-configs : list)
     (header-frame : procedure)
     (packframe : procedure)
     (rownum-frame : procedure)
@@ -941,7 +1003,7 @@
     (rownums : procedure)
     (content-frame : procedure)
     (content-header : procedure)
-    (grid : procedure)
+    (content-grid : procedure)
     (xscroll : procedure)
     (yscroll : procedure)
     ((istate (make-blockview-internal-state))
@@ -960,6 +1022,68 @@
      (blockview-istate mt)
      val))
 
+  ;;; TODO incorrect for key/ukey commands: should be length of longest key
+  (define (field-id->cursor-size field-id)
+    (let ((cmd-config (config-get-inode-source-command field-id
+						       (current-config))))
+      (if (memq 'is_note (command-flags cmd-config))
+	  3 1)))
+
+  ;;; TODO incorrect for key/ukey commands
+  (define (field-id->cursor-digits field-id)
+    (let ((cmd-config (config-get-inode-source-command field-id
+						       (current-config))))
+      (if (memq 'is_note (command-flags cmd-config))
+	  1 (value-display-size cmd-config))))
+
+  ;;; Add type tags to the given row in {{textgrid}}. If {{textgrid}} is not
+  ;;; given, it defaults to the blockview's content-grid.
+  (define (blockview-add-type-tags b row #!optional
+				   (textgrid (blockview-content-grid b)))
+    (for-each (lambda (field-config)
+		(let ((start (bv-field-config-start field-config)))
+		  (textgrid-add-tag textgrid
+				    (bv-field-config-type-tag field-config)
+				    row start (+ start (bv-field-config-width
+							field-config)))))
+	      (map cadr (blockview-field-configs b))))
+
+  ;;; Generate the alist of bv-field-configs.
+  (define (blockview-make-field-configs block-ids field-ids)
+    (letrec* ((type-tags (map get-command-type-tag field-ids))
+	      (sizes (map (lambda (id)
+	      		    (value-display-size (config-get-inode-source-command
+	      					 id (current-config))))
+	      		  field-ids))
+	      (cursor-widths (map field-id->cursor-size field-ids))
+	      (cursor-ds (map field-id->cursor-digits field-ids))
+	      (tail-fields
+	       (map (lambda (id)
+	      	      (car (reverse (config-get-subnode-ids
+				     id (config-itree (current-config))))))
+	      	    (drop-right block-ids 1)))
+	      (convert-sizes
+	       (lambda (sizes start)
+		 (if (null-list? sizes)
+		     '()
+		     (cons start
+			   (convert-sizes (cdr sizes)
+					  (+ start (car sizes)))))))
+	      (start-positions (convert-sizes
+	      			(map (lambda (id size)
+	      			       (if (memq id tail-fields)
+	      				   (+ size 2)
+	      				   (+ size 1)))
+	      			     field-ids sizes)
+	      			0)))
+      (map (lambda (field-id type-tag size start c-width c-digits)
+	     (list field-id (make-bv-field-config type-tag: type-tag
+						  width: size start: start
+						  cursor-width: c-width
+						  cursor-digits: c-digits)))
+	   field-ids type-tags sizes start-positions cursor-widths
+	   cursor-ds)))
+
   ;;;
   (define (blockview-create parent type group-id)
     (let* ((header-frame (parent 'create-widget 'frame))
@@ -973,28 +1097,88 @@
   			 (config-get-subnode-type-ids group-id (current-config)
   						      'block))))
   	   (field-ids (if (eq? type 'block)
-  			   (flatten (map (lambda (block-id)
-  					   (config-get-subnode-ids
-  					    block-id
-  					    (config-itree (current-config))))
-  					 block-ids))
-  			   (config-get-subnode-ids
-  			    (symbol-append group-id '_ORDER)
-  			    (config-itree (current-config)))))
+  			  (flatten (map (lambda (block-id)
+  					  (config-get-subnode-ids
+  					   block-id
+  					   (config-itree (current-config))))
+  					block-ids))
+  			  (config-get-subnode-ids
+  			   (symbol-append group-id '_ORDER)
+  			   (config-itree (current-config)))))
 	   (grid (textgrid-create content-frame)))
       (make-blockview
        type: type group-id: group-id block-ids: block-ids field-ids: field-ids
+       field-configs: (blockview-make-field-configs
+		       (or block-ids (list (symbol-append group-id '_ORDER)))
+       		       field-ids)
        header-frame: header-frame packframe: packframe
        rownum-frame: rownum-frame content-frame: content-frame
-       rownum-header: (rownum-frame 'create-widget 'text bg: "#ff00ff")
-       rownums: (rownum-frame 'create-widget 'text bg: "#ff0000")
-       content-header: (content-frame 'create-widget 'text bg: "#0000ff")
-       grid: grid
+       rownum-header: (textgrid-create-basic rownum-frame)
+       rownums: (textgrid-create-basic rownum-frame)
+       content-header: (textgrid-create-basic content-frame)
+       content-grid: grid
        xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
   			command: `(,grid xview))
        yscroll: (packframe 'create-widget 'scrollbar orient: 'vertical
 			   command: `(,grid yview)))))
 
+  ;;; Convert the list of row {{values}} into a string that can be inserted into
+  ;;; the blockview's content-grid or header-grid. Each entry in {{values}} must
+  ;;; correspond to a field column in the blockview's content-grid.
+  (define (blockview-values->row-string b values)
+    (letrec ((construct-string
+	      (lambda (str vals configs)
+		(if (null-list? vals)
+		    str
+		    (let ((next-chunk
+			   (string-append
+			    str
+			    (list->string
+			     (make-list (- (bv-field-config-start (car configs))
+					   (string-length str))
+					#\space))
+			    (->string (car vals)))))
+		      (construct-string next-chunk (cdr vals)
+					(cdr configs)))))))
+      (construct-string "" values (map cadr (blockview-field-configs b)))))
+
+  ;;; Set up the column and block header display.
+  (define (blockview-init-content-header b)
+    (let* ((header (blockview-content-header b))
+  	   (block? (eq? 'block (blockview-type b)))
+  	   (field-ids (blockview-field-ids b)))
+      (when block?
+  	(header 'insert 'end
+		(string-append/shared
+		 (string-intersperse
+		  (map (lambda (id)
+			 (node-id-abbreviate
+			  id
+			  (apply + (map (o add1 bv-field-config-width cadr)
+					(filter
+					 (lambda (field-config)
+					   (memq (car field-config)
+						 (config-get-subnode-ids
+						  id (config-itree
+						      (current-config)))))
+					 (blockview-field-configs b))))))
+		       (blockview-block-ids b)))
+  		 "\n"))
+  	(textgrid-add-tag header '(active txt) 0))
+      (header 'insert 'end
+	      (blockview-values->row-string
+	       b (map node-id-abbreviate
+		      (if block?
+			  field-ids
+			  (map (lambda (id)
+				 (string->symbol
+				  (string-drop (symbol->string id) 2)))
+			       field-ids))
+		      (map (o bv-field-config-width cadr)
+			   (blockview-field-configs b)))))
+      (textgrid-add-tag header 'active (if block? 1 0))
+      (blockview-add-type-tags b (if block? 1 0)
+      				(blockview-content-header b))))
 
   ;;; Pack the blockview widget {{b}} to the screen.
   (define (blockview-show b)
@@ -1002,72 +1186,75 @@
 	  (rownums (blockview-rownums b))
 	  (rownum-header (blockview-rownum-header b))
 	  (content-header (blockview-content-header b)))
-      (rownums 'configure state: 'disabled width: (if block-type? 6 5))
-      (rownum-header 'configure state: 'disabled height: (if block-type? 2 1)
+      (rownums 'configure width: (if block-type? 6 5))
+      (rownum-header 'configure height: (if block-type? 2 1)
 		     width: (if block-type? 6 5))
-      (content-header 'configure state: 'disabled height: (if block-type? 2 1))
+      (content-header 'configure height: (if block-type? 2 1))
       (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
       (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
       (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
       (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
       (tk/pack (blockview-rownum-frame b) fill: 'y side: 'left)
-      (tk/pack rownum-header side: 'top)
-      (tk/pack rownums fill: 'y side: 'top)
+      (tk/pack rownum-header side: 'top ipadx: 4 ipady: 4)
+      (tk/pack rownums expand: 1 fill: 'y ipadx: 4 ipady: 4 side: 'top)
       (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
-      (tk/pack (blockview-content-header b) fill: 'x side: 'top)
-      (tk/pack (blockview-grid b) expand: 1 fill: 'both side: 'top)))
+      (tk/pack (blockview-content-header b)
+	       fill: 'x ipadx: 4 ipady: 4 side: 'top)
+      (blockview-init-content-header b)
+      (tk/pack (blockview-content-grid b)
+	       expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)))
 
 
   ;; ---------------------------------------------------------------------------
-;;; ### The metatree widget
+  ;;; ### The metatree widget
   ;; ---------------------------------------------------------------------------
 
-;;; The `metatree` widget is a generic widget that implements a spreadsheet
-;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
-;;; tables, etc.) and the corresponding order or list view.
-;;;
-;;; Metatrees are implemented as a set of single-column `ttk::treeview`s on
-;;; a canvas. The canvas takes care of horizontal scrolling, while the
-;;; treeviews handle the vertical scrolling. Optionally, a row number column
-;;; can be displayed, which is not part of the canvas (since it should not be
-;;; scrolled horizontally).
+  ;;; The `metatree` widget is a generic widget that implements a spreadsheet
+  ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
+  ;;; tables, etc.) and the corresponding order or list view.
+  ;;;
+  ;;; Metatrees are implemented as a set of single-column `ttk::treeview`s on
+  ;;; a canvas. The canvas takes care of horizontal scrolling, while the
+  ;;; treeviews handle the vertical scrolling. Optionally, a row number column
+  ;;; can be displayed, which is not part of the canvas (since it should not be
+  ;;; scrolled horizontally).
 
-;;; child record that wraps display related state such as the cursor position.
-  (defstruct metatree-internal-state
-    ((item-cache '()) : list)
-    ((cursor-x 0) : integer)
-    ((cursor-y 0) : integer)
-    ((start-pos 0) : integer)
-    (frame-height : (or boolean integer)))
+  ;; ;;; child record that wraps display related state such as the cursor position.
+  ;; (defstruct metatree-internal-state
+  ;;   ((item-cache '()) : list)
+  ;;   ((cursor-x 0) : integer)
+  ;;   ((cursor-y 0) : integer)
+  ;;   ((start-pos 0) : integer)
+  ;;   (frame-height : (or boolean integer)))
 
-;;; The main metatree structure.
-  (defstruct metatree
-    (group-id : symbol)
-    (type : symbol)
-    (packframe : procedure)
-    (rownums-packframe : procedure)
-    (canvas : procedure)
-    (block-ids : (list-of symbol))
-    (column-ids : (list-of symbol))
-    (columns : (list-of procedure))
-    (rownums : procedure)
-    (xscroll : procedure)
-    (yscroll : procedure)
-    ((mtstate (make-metatree-internal-state))
-     : (struct metatree-internal-state)))
+  ;; ;;; The main metatree structure.
+  ;; (defstruct metatree
+  ;;   (group-id : symbol)
+  ;;   (type : symbol)
+  ;;   (packframe : procedure)
+  ;;   (rownums-packframe : procedure)
+  ;;   (canvas : procedure)
+  ;;   (block-ids : (list-of symbol))
+  ;;   (column-ids : (list-of symbol))
+  ;;   (columns : (list-of procedure))
+  ;;   (rownums : procedure)
+  ;;   (xscroll : procedure)
+  ;;   (yscroll : procedure)
+  ;;   ((mtstate (make-metatree-internal-state))
+  ;;    : (struct metatree-internal-state)))
 
-;;; Accessor for the metatree's internal state.
-  (define (metatree-state mt #!optional param)
-    (if param
-	((eval (symbol-append 'metatree-internal-state- param))
-	 (metatree-mtstate mt))
-	(metatree-mtstate mt)))
+  ;; ;;; Accessor for the metatree's internal state.
+  ;; (define (metatree-state mt #!optional param)
+  ;;   (if param
+  ;; 	((eval (symbol-append 'metatree-internal-state- param))
+  ;; 	 (metatree-mtstate mt))
+  ;; 	(metatree-mtstate mt)))
 
-;;; Setter for the metatree's internal state.
-  (define (metatree-state-set! mt param val)
-    ((eval (symbol-append 'metatree-internal-state- param '-set!))
-     (metatree-mtstate mt)
-     val))
+  ;; ;;; Setter for the metatree's internal state.
+  ;; (define (metatree-state-set! mt param val)
+  ;;   ((eval (symbol-append 'metatree-internal-state- param '-set!))
+  ;;    (metatree-mtstate mt)
+  ;;    val))
 
   ;; ;;; Auxiliary procedure for `metatree-init`. Configure cell tags.
   ;; (define (metatree-column-set-tags col)
