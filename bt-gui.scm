@@ -938,17 +938,18 @@
   					     "bold")))
 
   ;;; Abstraction over Tk's `textwidget tag add` command.
-  ;;; Contrary to Tk's convention, {{line}} uses 0-based indexing.
+  ;;; Contrary to Tk's convention, {{row}} uses 0-based indexing.
   ;;; {{tags}} may be a single tag, or a list of tags.
-  (define (textgrid-add-tag tg tags line #!optional (start 0) (end 'end))
-    (let ((.tags (if (pair? tags)
-		     tags (list tags)))
-	  (add-tag (lambda (tag)
-		     (tg 'tag 'add tag (string-append (->string (+ 1 line))
-						      "." (->string start))
-			 (string-append (->string (+ 1 line))
-					"." (->string end))))))
-      (for-each add-tag .tags)))
+  (define (textgrid-add-tag tg tags first-row #!optional
+			    (first-col 0) (last-col 'end) (last-row #f))
+    (for-each (lambda (tag)
+		(tg 'tag 'add tag
+		    (string-append (->string (+ 1 first-row))
+				   "." (->string first-col))
+		    (string-append (->string (+ 1 (or last-row first-row)))
+				   "." (->string last-col))))
+	      (if (pair? tags)
+		  tags (list tags))))
 
   ;;; Create a TextGrid as slave of the Tk widget {{parent}}. Returns a Tk Text
   ;;; widget with class bindings removed.
@@ -1220,6 +1221,48 @@
 		 (mod-get-block-values group-instance order-pos))
 	       order))))
 
+  ;;; Determine the start and end positions of each item chunk in the
+  ;;; blockview's item cache.
+  (define (blockview-start+end-positions b)
+    (letrec* ((get-positions
+  	       (lambda (current-pos items)
+  		 (if (null-list? items)
+  		     '()
+  		     (let ((len (length (car items))))
+  		       (cons (list current-pos (+ current-pos (sub1 len)))
+  			     (get-positions (+ current-pos len)
+  					    (cdr items))))))))
+      (get-positions 0 (blockview-state b 'item-cache))))
+
+  ;;; Returns the active blockview zone as a list containing the first and last
+  ;;; row in car and cadr, respectively.
+  (define (blockview-get-active-zone b)
+    (let ((start+end-positions (blockview-start+end-positions b))
+	  (cursor-x (blockview-state b 'cursor-x)))
+      (list-ref start+end-positions
+		(list-index (lambda (start+end)
+			      (and (>= cursor-x (car start+end))
+				   (<= cursor-x (cadr start+end))))
+			    start+end-positions))))
+
+  ;;; Apply type tags and the 'active tag to the current active zone of the
+  ;;; blockview {{b}}.
+  (define (blockview-tag-active-zone b)
+    (let ((zone-limits (blockview-get-active-zone b)))
+      (textgrid-add-tag (blockview-rownums b)
+			'(active txt)
+			(car zone-limits)
+			0 'end (cadr zone-limits))
+      (textgrid-add-tag (blockview-content-grid b)
+			'active (car zone-limits)
+			0 'end (cadr zone-limits))
+      (for-each (lambda (row)
+		  (blockview-add-type-tags b row))
+		(iota (- (cadr zone-limits)
+			 (sub1 (car zone-limits)))
+		      (car zone-limits) 1))))
+
+  ;;; Update the blockview row numbers according to the current item cache.
   (define (blockview-update-row-numbers b)
     (for-each
      (lambda (chunk)
@@ -1234,6 +1277,7 @@
 	(iota (length chunk))))
      (blockview-state b 'item-cache)))
 
+  ;;; Update the blockview content grid according to the current item cache.
   (define (blockview-update-content-grid b)
     (for-each (lambda (row)
 		((blockview-content-grid b) 'insert 'end
@@ -1245,13 +1289,14 @@
 				"\n")))
 	      (concatenate (blockview-state b 'item-cache))))
 
-  ;;;
+  ;;; Update the blockview display.
   (define (blockview-update b)
     (let ((new-item-list (blockview-get-item-list b)))
       (unless (equal? new-item-list (blockview-state b 'item-cache))
 	(blockview-state-set! b 'item-cache new-item-list)
 	(blockview-update-content-grid b)
-	(blockview-update-row-numbers b))))
+	(blockview-update-row-numbers b)
+	(blockview-tag-active-zone b))))
 
 
   ;; ---------------------------------------------------------------------------
