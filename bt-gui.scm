@@ -940,16 +940,22 @@
   ;;; Abstraction over Tk's `textwidget tag add` command.
   ;;; Contrary to Tk's convention, {{row}} uses 0-based indexing.
   ;;; {{tags}} may be a single tag, or a list of tags.
-  (define (textgrid-add-tag tg tags first-row #!optional
+  (define (textgrid-do-tags method tg tags first-row #!optional
 			    (first-col 0) (last-col 'end) (last-row #f))
     (for-each (lambda (tag)
-		(tg 'tag 'add tag
+		(tg 'tag method tag
 		    (string-append (->string (+ 1 first-row))
 				   "." (->string first-col))
 		    (string-append (->string (+ 1 (or last-row first-row)))
 				   "." (->string last-col))))
 	      (if (pair? tags)
 		  tags (list tags))))
+
+  (define (textgrid-add-tags . args)
+    (apply textgrid-do-tags (cons 'add args)))
+
+  (define (textgrid-remove-tags . args)
+    (apply textgrid-do-tags (cons 'remove args)))
 
   ;;; Create a TextGrid as slave of the Tk widget {{parent}}. Returns a Tk Text
   ;;; widget with class bindings removed.
@@ -1043,7 +1049,7 @@
 				   (textgrid (blockview-content-grid b)))
     (for-each (lambda (field-config)
 		(let ((start (bv-field-config-start field-config)))
-		  (textgrid-add-tag textgrid
+		  (textgrid-add-tags textgrid
 				    (bv-field-config-type-tag field-config)
 				    row start (+ start (bv-field-config-width
 							field-config)))))
@@ -1168,7 +1174,7 @@
 					 (blockview-field-configs b))))))
 		       (blockview-block-ids b)))
   		 "\n"))
-  	(textgrid-add-tag header '(active txt) 0))
+  	(textgrid-add-tags header '(active txt) 0))
       (header 'insert 'end
 	      (blockview-values->row-string
 	       b (map node-id-abbreviate
@@ -1180,7 +1186,7 @@
 			       field-ids))
 		      (map (o bv-field-config-width cadr)
 			   (blockview-field-configs b)))))
-      (textgrid-add-tag header 'active (if block? 1 0))
+      (textgrid-add-tags header 'active (if block? 1 0))
       (blockview-add-type-tags b (if block? 1 0)
       				(blockview-content-header b))))
 
@@ -1256,11 +1262,11 @@
   ;;; blockview {{b}}.
   (define (blockview-tag-active-zone b)
     (let ((zone-limits (blockview-get-active-zone b)))
-      (textgrid-add-tag (blockview-rownums b)
+      (textgrid-add-tags (blockview-rownums b)
 			'(active txt)
 			(car zone-limits)
 			0 'end (cadr zone-limits))
-      (textgrid-add-tag (blockview-content-grid b)
+      (textgrid-add-tags (blockview-content-grid b)
 			'active (car zone-limits)
 			0 'end (cadr zone-limits))
       (for-each (lambda (row)
@@ -1269,18 +1275,52 @@
 			 (sub1 (car zone-limits)))
 		      (car zone-limits) 1))))
 
+  ;;; Get the total number of rows of the blockview's contents.
+  (define (blockview-get-total-length b)
+    (apply + (map length (blockview-state b 'item-cache))))
+
+  (define (blockview-update-row-highlights b)
+    (let* ((total-length (blockview-get-total-length b))
+	   (major-hl-rows (iota (quotient total-length
+					  (state 'major-row-highlight))
+				0 (state 'major-row-highlight)))
+	   (minor-hl-rows (filter (lambda (i)
+				    (not (member i major-hl-rows)))
+				  (iota (quotient total-length
+						  (state 'minor-row-highlight))
+					0 (state 'minor-row-highlight))))
+	   (rownums (blockview-rownums b))
+	   (content (blockview-content-grid b)))
+      (textgrid-remove-tags rownums '(rowhl-major rowhl-minor)
+      			    0 0 'end (sub1 total-length))
+      (textgrid-remove-tags content '(rowhl-major rowhl-minor)
+      			    0 0 'end (sub1 total-length))
+      (for-each (lambda (row)
+		  (textgrid-add-tags rownums 'rowhl-major row)
+		  (textgrid-add-tags content 'rowhl-major row))
+		major-hl-rows)
+      (for-each (lambda (row)
+      		  (textgrid-add-tags rownums 'rowhl-minor row)
+      		  (textgrid-add-tags content 'rowhl-minor row))
+      		minor-hl-rows)))
+
   ;;; Update the blockview row numbers according to the current item cache.
+  ;;; TODO remove tags first
   (define (blockview-update-row-numbers b)
     (for-each
      (lambda (chunk)
        (for-each
 	(lambda (i)
 	  ((blockview-rownums b) 'insert 'end
-	   (string-append (string-pad (number->string i (settings 'number-base))
-				      (if (eq? 'block (blockview-type b))
-					  4 3)
-				      #\0)
-			  "\n")))
+	   (string-append
+	    (string-pad-right
+	     (string-pad (number->string i (settings 'number-base))
+			 (if (eq? 'block (blockview-type b))
+			     4 3)
+			 #\0)
+	     (if (eq? 'block (blockview-type b))
+		 6 5))
+	    "\n")))
 	(iota (length chunk))))
      (blockview-state b 'item-cache)))
 
@@ -1303,7 +1343,9 @@
 	(blockview-state-set! b 'item-cache new-item-list)
 	(blockview-update-content-grid b)
 	(blockview-update-row-numbers b)
-	(blockview-tag-active-zone b))))
+	(blockview-tag-active-zone b)
+	(when (eq? 'block (blockview-type b))
+	  (blockview-update-row-highlights b)))))
 
 
   ;; ---------------------------------------------------------------------------
