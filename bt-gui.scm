@@ -700,7 +700,7 @@
   (define (normalize-field-value val field-id)
     (let ((command-config (config-get-inode-source-command
   			   field-id (current-config))))
-      (if (null? val)
+      (if (or (not val) (null? val))
 	  (list->string (make-list (value-display-size command-config)
   	  			   #\.))
   	  (match (command-type command-config)
@@ -979,9 +979,9 @@
 
   (defstruct blockview-internal-state
     ((item-cache '()) : list)
+    ((block-length-cache '()) : list)
     ((cursor-x 0) : integer)
-    ((cursor-y 0) : integer)
-    ((start-pos 0) : integer))
+    ((cursor-y 0) : integer))
 
   (defstruct bv-field-config
     (type-tag : symbol)
@@ -1202,7 +1202,56 @@
 	       fill: 'x ipadx: 4 ipady: 4 side: 'top)
       (blockview-init-content-header b)
       (tk/pack (blockview-content-grid b)
-	       expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)))
+	       expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
+      (blockview-update b)))
+
+  ;;; Get the up-to-date list of items to display. The list is nested. The first
+  ;;; nesting level corresponds to an order position. The second nesting level
+  ;;; corresponds to a row of fields. For order nodes, there is only one element
+  ;;; at the first nesting level.
+  (define (blockview-get-item-list b)
+    (let* ((group-id (blockview-group-id b))
+  	   (group-instance (get-current-node-instance group-id))
+  	   (order (mod-get-order-values group-id group-instance
+  					(current-config))))
+      (if (eq? 'order (blockview-type b))
+  	  (list order)
+	  (map (lambda (order-pos)
+		 (mod-get-block-values group-instance order-pos))
+	       order))))
+
+  (define (blockview-update-row-numbers b)
+    (for-each
+     (lambda (chunk)
+       (for-each
+	(lambda (i)
+	  ((blockview-rownums b) 'insert 'end
+	   (string-append (string-pad (number->string i (settings 'number-base))
+				      (if (eq? 'block (blockview-type b))
+					  4 3)
+				      #\0)
+			  "\n")))
+	(iota (length chunk))))
+     (blockview-state b 'item-cache)))
+
+  (define (blockview-update-content-grid b)
+    (for-each (lambda (row)
+		((blockview-content-grid b) 'insert 'end
+		 (string-append (blockview-values->row-string
+				 b
+				 (map (lambda (val id)
+					(normalize-field-value val id))
+				      row (blockview-field-ids b)))
+				"\n")))
+	      (concatenate (blockview-state b 'item-cache))))
+
+  ;;;
+  (define (blockview-update b)
+    (let ((new-item-list (blockview-get-item-list b)))
+      (unless (equal? new-item-list (blockview-state b 'item-cache))
+	(blockview-state-set! b 'item-cache new-item-list)
+	(blockview-update-content-grid b)
+	(blockview-update-row-numbers b))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -1998,8 +2047,8 @@
   ;;; single instance.
   (defstruct bt-blocks-widget
     (tl-panedwindow : procedure)
-    (blocks-view : (struct metatree))
-    (order-view : (struct metatree)))
+    (blocks-view : (struct blockview))
+    (order-view : (struct blockview)))
 
   ;;; Create a `bt-blocks-widget`.
   (define (make-blocks-widget parent-node-id parent-widget)
