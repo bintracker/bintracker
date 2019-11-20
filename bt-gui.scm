@@ -960,7 +960,7 @@
 		       insertbackground: (colors 'text)
 		       font: (list family: (settings 'font-mono)
 				   size: (settings 'font-size))
-		       cursor: '""))
+		       cursor: '"" wrap: 'none))
 	   (id (tg 'get-id)))
       (tk-eval (string-append "bindtags " id " {all . " id "}"))
       (textgrid-configure-tags tg)
@@ -1106,6 +1106,7 @@
   			  (config-get-subnode-ids
   			   (symbol-append group-id '_ORDER)
   			   (config-itree (current-config)))))
+	   (rownums (textgrid-create-basic rownum-frame))
 	   (grid (textgrid-create content-frame)))
       (make-blockview
        type: type group-id: group-id block-ids: block-ids field-ids: field-ids
@@ -1115,13 +1116,15 @@
        header-frame: header-frame packframe: packframe
        rownum-frame: rownum-frame content-frame: content-frame
        rownum-header: (textgrid-create-basic rownum-frame)
-       rownums: (textgrid-create-basic rownum-frame)
+       rownums: rownums
        content-header: (textgrid-create-basic content-frame)
        content-grid: grid
        xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
   			command: `(,grid xview))
        yscroll: (packframe 'create-widget 'scrollbar orient: 'vertical
-			   command: `(,grid yview)))))
+			   command: (lambda args
+				      (apply grid (cons 'yview args))
+				      (apply rownums (cons 'yview args)))))))
 
   ;;; Convert the list of row {{values}} into a string that can be inserted into
   ;;; the blockview's content-grid or header-grid. Each entry in {{values}} must
@@ -1187,7 +1190,8 @@
 	  (rownums (blockview-rownums b))
 	  (rownum-header (blockview-rownum-header b))
 	  (content-header (blockview-content-header b)))
-      (rownums 'configure width: (if block-type? 6 5))
+      (rownums 'configure width: (if block-type? 6 5)
+	       yscrollcommand: `(,(blockview-yscroll b) set))
       (rownum-header 'configure height: (if block-type? 2 1)
 		     width: (if block-type? 6 5))
       (content-header 'configure height: (if block-type? 2 1))
@@ -1204,6 +1208,9 @@
       (blockview-init-content-header b)
       (tk/pack (blockview-content-grid b)
 	       expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
+      ((blockview-content-grid b) 'configure
+       xscrollcommand: `(,(blockview-xscroll b) set)
+       yscrollcommand: `(,(blockview-yscroll b) set))
       (blockview-update b)))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
