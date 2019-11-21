@@ -429,17 +429,15 @@
 		       ,(make-edit-settings-spinbox
 			 2 64 'major-row-highlight
 			 (lambda ()
-			   #f
-			   ;; (update-row-highlights (current-blocks-view))
-			   )))
+			   (blockview-update-row-highlights
+			    (current-blocks-view)))))
       (minor-highlight "Minor Row" "Set the minor row highlight"
 		       default-minor-row-highlight
 		       ,(make-edit-settings-spinbox
 			 2 32 'minor-row-highlight
 			 (lambda ()
-			   #f
-			   ;; (update-row-highlights (current-blocks-view))
-			   )))))
+			   (blockview-update-row-highlights
+			    (current-blocks-view)))))))
 
   ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
   ;;; either `'enabled` or `'disabled`.
@@ -1283,6 +1281,8 @@
 			 (sub1 (car zone-limits)))
 		      (car zone-limits) 1))))
 
+  ;;; Update the row highlights of the blockview.
+  ;; TODO do it properly per chunk.
   (define (blockview-update-row-highlights b)
     (let* ((total-length (blockview-get-total-length b))
 	   (major-hl-rows (iota (quotient total-length
