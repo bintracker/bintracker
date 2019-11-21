@@ -408,7 +408,8 @@
       ;; 		  (validate-new-value (sub1 (string->number (spinbox 'get))))))
       (tk/bind* spinbox '<Return>
 		(lambda ()
-		  (validate-new-value (string->number (spinbox 'get)))))
+		  (validate-new-value (string->number (spinbox 'get)))
+		  (switch-ui-zone-focus (state 'current-ui-zone))))
       (tk/bind* spinbox '<FocusOut>
 		(lambda ()
 		  (validate-new-value (string->number (spinbox 'get)))))
