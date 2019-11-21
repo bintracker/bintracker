@@ -232,10 +232,10 @@
   (define ui-zones
     `((fields ,(lambda () (focus-fields-widget (current-fields-view)))
 	      ,(lambda () (unfocus-fields-widget (current-fields-view))))
-      ;; (blocks ,(lambda () (focus-metatree (current-blocks-view)))
-      ;; 	      ,(lambda () (unfocus-metatree (current-blocks-view))))
-      ;; (order ,(lambda () (focus-metatree (current-order-view)))
-      ;; 	     ,(lambda () (unfocus-metatree (current-order-view))))
+      (blocks ,(lambda () (blockview-focus (current-blocks-view)))
+      	      ,(lambda () (blockview-unfocus (current-blocks-view))))
+      (order ,(lambda () (blockview-focus (current-order-view)))
+      	     ,(lambda () (blockview-unfocus (current-order-view))))
       (console ,(lambda () (tk/focus console))
 	       ,(lambda () '()))))
 
@@ -922,9 +922,9 @@
 
   ;;; Configure TextGrid widget tags.
   (define (textgrid-configure-tags tg)
-    (tg 'tag 'configure 'active-cell background: (colors 'cursor))
     (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
     (tg 'tag 'configure 'rowhl-major background: (colors 'row-highlight-major))
+    (tg 'tag 'configure 'active-cell background: (colors 'cursor))
     (tg 'tag 'configure 'txt foreground: (colors 'text))
     (tg 'tag 'configure 'note foreground: (colors 'text-1))
     (tg 'tag 'configure 'int foreground: (colors 'text-2))
@@ -985,10 +985,7 @@
   ;;; tables, etc.) and the corresponding order or list view.
 
   (defstruct blockview-internal-state
-    ((item-cache '()) : list)
-    ((block-length-cache '()) : list)
-    ((cursor-x 0) : integer)
-    ((cursor-y 0) : integer))
+    ((item-cache '()) : list))
 
   (defstruct bv-field-config
     (type-tag : symbol)
@@ -1195,7 +1192,8 @@
     (let ((block-type? (eq? 'block (blockview-type b)))
 	  (rownums (blockview-rownums b))
 	  (rownum-header (blockview-rownum-header b))
-	  (content-header (blockview-content-header b)))
+	  (content-header (blockview-content-header b))
+	  (content-grid (blockview-content-grid b)))
       (rownums 'configure width: (if block-type? 6 5)
 	       yscrollcommand: `(,(blockview-yscroll b) set))
       (rownum-header 'configure height: (if block-type? 2 1)
@@ -1212,12 +1210,17 @@
       (tk/pack (blockview-content-header b)
 	       fill: 'x ipadx: 4 ipady: 4 side: 'top)
       (blockview-init-content-header b)
-      (tk/pack (blockview-content-grid b)
-	       expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
-      ((blockview-content-grid b) 'configure
-       xscrollcommand: `(,(blockview-xscroll b) set)
-       yscrollcommand: `(,(blockview-yscroll b) set))
+      (tk/pack content-grid expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
+      (content-grid 'configure xscrollcommand: `(,(blockview-xscroll b) set)
+		    yscrollcommand: `(,(blockview-yscroll b) set))
+      (content-grid 'mark 'set 'insert "1.0")
       (blockview-update b)))
+
+  ;;; Returns the current row, ie. the row that the cursor is currently on.
+  (define (blockview-get-current-row b)
+    (sub1 (inexact->exact
+	   (truncate (string->number
+		      ((blockview-content-grid b) 'index 'insert))))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -1251,11 +1254,11 @@
   ;;; row in car and cadr, respectively.
   (define (blockview-get-active-zone b)
     (let ((start+end-positions (blockview-start+end-positions b))
-	  (cursor-x (blockview-state b 'cursor-x)))
+	  (current-row (blockview-get-current-row b)))
       (list-ref start+end-positions
 		(list-index (lambda (start+end)
-			      (and (>= cursor-x (car start+end))
-				   (<= cursor-x (cadr start+end))))
+			      (and (>= current-row (car start+end))
+				   (<= current-row (cadr start+end))))
 			    start+end-positions))))
 
   ;;; Apply type tags and the 'active tag to the current active zone of the
@@ -1336,16 +1339,40 @@
 				"\n")))
 	      (concatenate (blockview-state b 'item-cache))))
 
+  (define (blockview-cursor-do b action)
+    (let ((grid (blockview-content-grid b)))
+      (grid 'tag action 'active-cell "insert" "insert wordend")))
+
+  (define (blockview-remove-cursor b)
+    (blockview-cursor-do b 'remove))
+
+  (define (blockview-show-cursor b)
+    (blockview-cursor-do b 'add))
+
+  ;; TODO status text
+  (define (blockview-focus b)
+    (blockview-show-cursor b)
+    (tk/focus (blockview-content-grid b)))
+
+  (define (blockview-unfocus b)
+    (blockview-remove-cursor b)
+    (set-state! 'active-md-command-info "")
+    (reset-status-text!))
+
   ;;; Update the blockview display.
+  ;; TODO storing/restoring insert mark position is a cludge. Generally we want
+  ;; the insert mark to move if stuff is being inserted above it.
   (define (blockview-update b)
     (let ((new-item-list (blockview-get-item-list b)))
       (unless (equal? new-item-list (blockview-state b 'item-cache))
-	(blockview-state-set! b 'item-cache new-item-list)
-	(blockview-update-content-grid b)
-	(blockview-update-row-numbers b)
-	(blockview-tag-active-zone b)
-	(when (eq? 'block (blockview-type b))
-	  (blockview-update-row-highlights b)))))
+	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
+	  (blockview-state-set! b 'item-cache new-item-list)
+	  (blockview-update-content-grid b)
+	  (blockview-update-row-numbers b)
+	  ((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
+	  (blockview-tag-active-zone b)
+	  (when (eq? 'block (blockview-type b))
+	    (blockview-update-row-highlights b))))))
 
 
   ;; ---------------------------------------------------------------------------
