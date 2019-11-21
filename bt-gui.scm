@@ -984,9 +984,6 @@
   ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
   ;;; tables, etc.) and the corresponding order or list view.
 
-  (defstruct blockview-internal-state
-    ((item-cache '()) : list))
-
   (defstruct bv-field-config
     (type-tag : symbol)
     (width : fixnum)
@@ -1010,21 +1007,7 @@
     (content-grid : procedure)
     (xscroll : procedure)
     (yscroll : procedure)
-    ((istate (make-blockview-internal-state))
-     : (struct blockview-internal-state)))
-
-  ;;; Accessor for the blockview's internal state.
-  (define (blockview-state mt #!optional param)
-    (if param
-	((eval (symbol-append 'blockview-internal-state- param))
-	 (blockview-istate mt))
-	(blockview-istate mt)))
-
-  ;;; Setter for the blockview's internal state.
-  (define (blockview-state-set! mt param val)
-    ((eval (symbol-append 'blockview-internal-state- param '-set!))
-     (blockview-istate mt)
-     val))
+    ((item-cache '()) : list))
 
   ;;; TODO incorrect for key/ukey commands: should be length of longest key
   (define (field-id->cursor-size field-id)
@@ -1248,7 +1231,7 @@
   		       (cons (list current-pos (+ current-pos (sub1 len)))
   			     (get-positions (+ current-pos len)
   					    (cdr items))))))))
-      (get-positions 0 (blockview-state b 'item-cache))))
+      (get-positions 0 (blockview-item-cache b))))
 
   ;;; Returns the active blockview zone as a list containing the first and last
   ;;; row in car and cadr, respectively.
@@ -1280,7 +1263,7 @@
 
   ;;; Get the total number of rows of the blockview's contents.
   (define (blockview-get-total-length b)
-    (apply + (map length (blockview-state b 'item-cache))))
+    (apply + (map length (blockview-item-cache b))))
 
   (define (blockview-update-row-highlights b)
     (let* ((total-length (blockview-get-total-length b))
@@ -1325,7 +1308,7 @@
 		 6 5))
 	    "\n")))
 	(iota (length chunk))))
-     (blockview-state b 'item-cache)))
+     (blockview-item-cache b)))
 
   ;;; Update the blockview content grid according to the current item cache.
   (define (blockview-update-content-grid b)
@@ -1337,7 +1320,7 @@
 					(normalize-field-value val id))
 				      row (blockview-field-ids b)))
 				"\n")))
-	      (concatenate (blockview-state b 'item-cache))))
+	      (concatenate (blockview-item-cache b))))
 
   (define (blockview-cursor-do b action)
     (let ((grid (blockview-content-grid b)))
@@ -1364,9 +1347,9 @@
   ;; the insert mark to move if stuff is being inserted above it.
   (define (blockview-update b)
     (let ((new-item-list (blockview-get-item-list b)))
-      (unless (equal? new-item-list (blockview-state b 'item-cache))
+      (unless (equal? new-item-list (blockview-item-cache b))
 	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
-	  (blockview-state-set! b 'item-cache new-item-list)
+	  (blockview-item-cache-set! b new-item-list)
 	  (blockview-update-content-grid b)
 	  (blockview-update-row-numbers b)
 	  ((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
