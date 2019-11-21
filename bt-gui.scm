@@ -1199,11 +1199,38 @@
       (content-grid 'mark 'set 'insert "1.0")
       (blockview-update b)))
 
+  ;;; Returns the current cursor position as a list containing the row in car,
+  ;;; and the character position in cadr. Row position is adjusted to 0-based
+  ;;; indexing.
+  (define (blockview-get-cursor-position b)
+    (let ((pos (map string->number
+		    (string-split ((blockview-content-grid b) 'index 'insert)
+				  "."))))
+      (list (sub1 (car pos))
+	    (cadr pos))))
+
   ;;; Returns the current row, ie. the row that the cursor is currently on.
   (define (blockview-get-current-row b)
-    (sub1 (inexact->exact
-	   (truncate (string->number
-		      ((blockview-content-grid b) 'index 'insert))))))
+    (car (blockview-get-cursor-position b)))
+
+  ;;; Returns the field ID that the cursor is currently on.
+  (define (blockview-get-current-field-id b)
+    (let ((char-pos (cadr (blockview-get-cursor-position b))))
+      (list-ref (blockview-field-ids b)
+		(list-index (lambda (cfg)
+			      (>= char-pos (bv-field-config-start (cadr cfg))))
+			    (blockview-field-configs b)))))
+
+  (define (blockview-update-current-command-info b)
+    (let ((current-field-id (blockview-get-current-field-id b)))
+      (if (eq? 'order (blockview-type b))
+	  (set-state! 'active-md-command-info
+		      (string-append "Channel "
+				     (string-drop (symbol->string
+						   current-field-id)
+						  2)))
+	  (set-active-md-command-info! current-field-id))
+      (reset-status-text!)))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -1335,7 +1362,8 @@
   ;; TODO status text
   (define (blockview-focus b)
     (blockview-show-cursor b)
-    (tk/focus (blockview-content-grid b)))
+    (tk/focus (blockview-content-grid b))
+    (blockview-update-current-command-info b))
 
   (define (blockview-unfocus b)
     (blockview-remove-cursor b)
