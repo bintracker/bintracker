@@ -1424,10 +1424,10 @@
   ;;; Bind common event handlers for the blockview {{b}}.
   (define (blockview-bind-events b)
     (let ((grid (blockview-content-grid b)))
-      (tk/bind grid '<Up> (lambda () (blockview-move-cursor b 'up)))
-      (tk/bind grid '<Down> (lambda () (blockview-move-cursor b 'down)))
-      (tk/bind grid '<Left> (lambda () (blockview-move-cursor b 'left)))
-      (tk/bind grid '<Right> (lambda () (blockview-move-cursor b 'right)))))
+      (tk/bind* grid '<Up> (lambda () (blockview-move-cursor b 'up)))
+      (tk/bind* grid '<Down> (lambda () (blockview-move-cursor b 'down)))
+      (tk/bind* grid '<Left> (lambda () (blockview-move-cursor b 'left)))
+      (tk/bind* grid '<Right> (lambda () (blockview-move-cursor b 'right)))))
 
   ;;; Pack the blockview widget {{b}} to the screen.
   (define (blockview-show b)
