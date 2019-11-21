@@ -1189,12 +1189,13 @@
   (define (blockview-get-current-field-id b)
     (let ((char-pos (cadr (blockview-get-cursor-position b))))
       (list-ref (blockview-field-ids b)
-		(list-index (lambda (cfg)
-			      (and (>= (bv-field-config-start (cadr cfg))
-				       char-pos)
-				   (< (+ (bv-field-config-start (cadr cfg))
-					 (bv-field-config-width (cadr cfg))))))
-			    (blockview-field-configs b)))))
+		(list-index
+		 (lambda (cfg)
+		   (and (>= char-pos (bv-field-config-start (cadr cfg)))
+			(> (+ (bv-field-config-start (cadr cfg))
+			      (bv-field-config-width (cadr cfg)))
+			   char-pos)))
+		 (blockview-field-configs b)))))
 
   ;;; Returns the bv-field-configuration for the field that the cursor is
   ;;; currently on.
