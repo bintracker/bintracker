@@ -1347,9 +1347,6 @@
 
   ;;; Show or hide the blockview's cursor. {{action}} can be 'add or 'remove.
   (define (blockview-cursor-do b action)
-    (display "blockview-cursor-do field-id: ")
-    (display (blockview-get-current-field-id b))
-    (display " width: ")
     (display (bv-field-config-cursor-width
 	      (blockview-get-current-field-config b)))
     (newline)
