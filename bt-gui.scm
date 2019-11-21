@@ -1348,9 +1348,6 @@
 
   ;;; Show or hide the blockview's cursor. {{action}} can be 'add or 'remove.
   (define (blockview-cursor-do b action)
-    (display (bv-field-config-cursor-width
-	      (blockview-get-current-field-config b)))
-    (newline)
     ((blockview-content-grid b) 'tag action 'active-cell "insert"
      (string-append "insert +"
 		    (->string (bv-field-config-cursor-width
