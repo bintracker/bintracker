@@ -964,6 +964,7 @@
 		       bg: (colors 'background)
 		       fg: (colors 'text-inactive)
 		       insertbackground: (colors 'text)
+		       insertontime: 0
 		       font: (list family: (settings 'font-mono)
 				   size: (settings 'font-size))
 		       cursor: '"" wrap: 'none))
@@ -1020,7 +1021,7 @@
   (define (field-id->cursor-digits field-id)
     (let ((cmd-config (config-get-inode-source-command field-id
 						       (current-config))))
-      (if (memq 'is_note (command-flags cmd-config))
+      (if (command-has-flag? cmd-config 'is_note)
 	  1 (value-display-size cmd-config))))
 
   ;;; Add type tags to the given row in {{textgrid}}. If {{textgrid}} is not
@@ -1189,8 +1190,17 @@
     (let ((char-pos (cadr (blockview-get-cursor-position b))))
       (list-ref (blockview-field-ids b)
 		(list-index (lambda (cfg)
-			      (>= char-pos (bv-field-config-start (cadr cfg))))
+			      (and (>= (bv-field-config-start (cadr cfg))
+				       char-pos)
+				   (< (+ (bv-field-config-start (cadr cfg))
+					 (bv-field-config-width (cadr cfg))))))
 			    (blockview-field-configs b)))))
+
+  ;;; Returns the bv-field-configuration for the field that the cursor is
+  ;;; currently on.
+  (define (blockview-get-current-field-config b)
+    (car (alist-ref (blockview-get-current-field-id b)
+		    (blockview-field-configs b))))
 
   ;;; Update the command information in the status bar, based on the field that
   ;;; the cursor currently points to.
@@ -1328,10 +1338,26 @@
 				"\n")))
 	      (concatenate (blockview-item-cache b))))
 
+  (define (blockview-cursor-x-positions b)
+    (flatten (map (lambda (field-cfg)
+		    (map (lambda (cursor-digit)
+			   (+ cursor-digit (bv-field-config-start field-cfg)))
+			 (iota (bv-field-config-cursor-digits field-cfg))))
+		  (map cadr (blockview-field-configs b)))))
+
   ;;; Show or hide the blockview's cursor. {{action}} can be 'add or 'remove.
   (define (blockview-cursor-do b action)
-    (let ((grid (blockview-content-grid b)))
-      (grid 'tag action 'active-cell "insert" "insert wordend")))
+    (display "blockview-cursor-do field-id: ")
+    (display (blockview-get-current-field-id b))
+    (display " width: ")
+    (display (bv-field-config-cursor-width
+	      (blockview-get-current-field-config b)))
+    (newline)
+    ((blockview-content-grid b) 'tag action 'active-cell "insert"
+     (string-append "insert +"
+		    (->string (bv-field-config-cursor-width
+			       (blockview-get-current-field-config b)))
+		    "c")))
 
   ;;; Hide the blockview's cursor.
   (define (blockview-remove-cursor b)
@@ -1356,6 +1382,7 @@
       ((blockview-rownums b) 'see (string-append (->string (add1 row))
 						 ".0"))))
 
+  ;;; Move the blockview's cursor in {{direction}}.
   (define (blockview-move-cursor b direction)
     (let* ((grid (blockview-content-grid b))
 	   (current-pos (blockview-get-cursor-position b))
@@ -1366,18 +1393,25 @@
 		     1
 		     (if (zero? (state 'edit-step))
 			 1 (state 'edit-step)))))
-      (blockview-set-cursor b
-			    (match direction
-			      ('up (if (zero? current-row)
-				       (sub1 total-length)
-				       (sub1 current-row)))
-			      ('down (if (>= (+ step current-row) total-length)
-					 0 (+ step current-row)))
-			      (else current-row))
-			    (match direction
-			      ('left '())
-			      ('right '())
-			      (else current-char)))))
+      (blockview-set-cursor
+       b
+       (match direction
+	 ('up (if (zero? current-row)
+		  (sub1 total-length)
+		  (sub1 current-row)))
+	 ('down (if (>= (+ step current-row) total-length)
+		    0 (+ step current-row)))
+	 (else current-row))
+       (match direction
+	 ('left (or (find (lambda (pos)
+			    (< pos current-char))
+			  (reverse (blockview-cursor-x-positions b)))
+		    (car (reverse (blockview-cursor-x-positions b)))))
+	 ('right (or (find (lambda (pos)
+			     (> pos current-char))
+			   (blockview-cursor-x-positions b))
+		     0))
+	 (else current-char)))))
 
   ;;; Set the input focus to the blockview {{b}}. In addition to setting the
   ;;; Tk focus, it also shows the cursor and updates the status bar info text.
@@ -1396,7 +1430,9 @@
   (define (blockview-bind-events b)
     (let ((grid (blockview-content-grid b)))
       (tk/bind grid '<Up> (lambda () (blockview-move-cursor b 'up)))
-      (tk/bind grid '<Down> (lambda () (blockview-move-cursor b 'down)))))
+      (tk/bind grid '<Down> (lambda () (blockview-move-cursor b 'down)))
+      (tk/bind grid '<Left> (lambda () (blockview-move-cursor b 'left)))
+      (tk/bind grid '<Right> (lambda () (blockview-move-cursor b 'right)))))
 
   ;;; Pack the blockview widget {{b}} to the screen.
   (define (blockview-show b)
