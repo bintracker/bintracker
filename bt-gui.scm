@@ -1170,35 +1170,6 @@
       (blockview-add-type-tags b (if block? 1 0)
       				(blockview-content-header b))))
 
-  ;;; Pack the blockview widget {{b}} to the screen.
-  (define (blockview-show b)
-    (let ((block-type? (eq? 'block (blockview-type b)))
-	  (rownums (blockview-rownums b))
-	  (rownum-header (blockview-rownum-header b))
-	  (content-header (blockview-content-header b))
-	  (content-grid (blockview-content-grid b)))
-      (rownums 'configure width: (if block-type? 6 5)
-	       yscrollcommand: `(,(blockview-yscroll b) set))
-      (rownum-header 'configure height: (if block-type? 2 1)
-		     width: (if block-type? 6 5))
-      (content-header 'configure height: (if block-type? 2 1))
-      (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
-      (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
-      (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
-      (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
-      (tk/pack (blockview-rownum-frame b) fill: 'y side: 'left)
-      (tk/pack rownum-header side: 'top ipadx: 4 ipady: 4)
-      (tk/pack rownums expand: 1 fill: 'y ipadx: 4 ipady: 4 side: 'top)
-      (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
-      (tk/pack (blockview-content-header b)
-	       fill: 'x ipadx: 4 ipady: 4 side: 'top)
-      (blockview-init-content-header b)
-      (tk/pack content-grid expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
-      (content-grid 'configure xscrollcommand: `(,(blockview-xscroll b) set)
-		    yscrollcommand: `(,(blockview-yscroll b) set))
-      (content-grid 'mark 'set 'insert "1.0")
-      (blockview-update b)))
-
   ;;; Returns the current cursor position as a list containing the row in car,
   ;;; and the character position in cadr. Row position is adjusted to 0-based
   ;;; indexing.
@@ -1221,6 +1192,8 @@
 			      (>= char-pos (bv-field-config-start (cadr cfg))))
 			    (blockview-field-configs b)))))
 
+  ;;; Update the command information in the status bar, based on the field that
+  ;;; the cursor currently points to.
   (define (blockview-update-current-command-info b)
     (let ((current-field-id (blockview-get-current-field-id b)))
       (if (eq? 'order (blockview-type b))
@@ -1260,6 +1233,10 @@
   					    (cdr items))))))))
       (get-positions 0 (blockview-item-cache b))))
 
+  ;;; Get the total number of rows of the blockview's contents.
+  (define (blockview-get-total-length b)
+    (apply + (map length (blockview-item-cache b))))
+
   ;;; Returns the active blockview zone as a list containing the first and last
   ;;; row in car and cadr, respectively.
   (define (blockview-get-active-zone b)
@@ -1274,23 +1251,25 @@
   ;;; Apply type tags and the 'active tag to the current active zone of the
   ;;; blockview {{b}}.
   (define (blockview-tag-active-zone b)
-    (let ((zone-limits (blockview-get-active-zone b)))
-      (textgrid-add-tags (blockview-rownums b)
-			'(active txt)
-			(car zone-limits)
-			0 'end (cadr zone-limits))
-      (textgrid-add-tags (blockview-content-grid b)
-			'active (car zone-limits)
-			0 'end (cadr zone-limits))
+    (let ((zone-limits (blockview-get-active-zone b))
+	  (grid (blockview-content-grid b))
+	  (rownums (blockview-rownums b)))
+      (for-each (lambda (tag)
+		  (grid 'tag 'remove tag "0.0" 'end))
+		(cons 'active (map (o bv-field-config-type-tag cadr)
+				   (blockview-field-configs b))))
+      (rownums 'tag 'remove 'active "0.0" 'end)
+      (rownums 'tag 'remove 'txt "0.0" 'end)
+      (textgrid-add-tags rownums '(active txt)
+			 (car zone-limits)
+			 0 'end (cadr zone-limits))
+      (textgrid-add-tags grid 'active (car zone-limits)
+			 0 'end (cadr zone-limits))
       (for-each (lambda (row)
 		  (blockview-add-type-tags b row))
 		(iota (- (cadr zone-limits)
 			 (sub1 (car zone-limits)))
 		      (car zone-limits) 1))))
-
-  ;;; Get the total number of rows of the blockview's contents.
-  (define (blockview-get-total-length b)
-    (apply + (map length (blockview-item-cache b))))
 
   (define (blockview-update-row-highlights b)
     (let* ((total-length (blockview-get-total-length b))
@@ -1349,26 +1328,105 @@
 				"\n")))
 	      (concatenate (blockview-item-cache b))))
 
+  ;;; Show or hide the blockview's cursor. {{action}} can be 'add or 'remove.
   (define (blockview-cursor-do b action)
     (let ((grid (blockview-content-grid b)))
       (grid 'tag action 'active-cell "insert" "insert wordend")))
 
+  ;;; Hide the blockview's cursor.
   (define (blockview-remove-cursor b)
     (blockview-cursor-do b 'remove))
 
+  ;;; Show the blockview's cursor.
   (define (blockview-show-cursor b)
     (blockview-cursor-do b 'add))
 
-  ;; TODO status text
+  ;;; Set the cursor to the given coordinates.
+  (define (blockview-set-cursor b row char)
+    (let ((grid (blockview-content-grid b))
+	  (active-zone (blockview-get-active-zone b)))
+      (blockview-remove-cursor b)
+      (grid 'mark 'set 'insert (string-append (->string (add1 row))
+					      "." (->string char)))
+      (when (or (< row (car active-zone))
+		(> row (cadr active-zone)))
+	(blockview-tag-active-zone b))
+      (blockview-show-cursor b)
+      (grid 'see 'insert)
+      ((blockview-rownums b) 'see (string-append (->string (add1 row))
+						 ".0"))))
+
+  (define (blockview-move-cursor b direction)
+    (let* ((grid (blockview-content-grid b))
+	   (current-pos (blockview-get-cursor-position b))
+	   (current-row (car current-pos))
+	   (current-char (cadr current-pos))
+	   (total-length (blockview-get-total-length b))
+	   (step (if (eq? 'order (blockview-type b))
+		     1
+		     (if (zero? (state 'edit-step))
+			 1 (state 'edit-step)))))
+      (blockview-set-cursor b
+			    (match direction
+			      ('up (if (zero? current-row)
+				       (sub1 total-length)
+				       (sub1 current-row)))
+			      ('down (if (>= (+ step current-row) total-length)
+					 0 (+ step current-row)))
+			      (else current-row))
+			    (match direction
+			      ('left '())
+			      ('right '())
+			      (else current-char)))))
+
+  ;;; Set the input focus to the blockview {{b}}. In addition to setting the
+  ;;; Tk focus, it also shows the cursor and updates the status bar info text.
   (define (blockview-focus b)
     (blockview-show-cursor b)
     (tk/focus (blockview-content-grid b))
     (blockview-update-current-command-info b))
 
+  ;;; Unset focus from the blockview {{b}}.
   (define (blockview-unfocus b)
     (blockview-remove-cursor b)
     (set-state! 'active-md-command-info "")
     (reset-status-text!))
+
+  ;;; Bind common event handlers for the blockview {{b}}.
+  (define (blockview-bind-events b)
+    (let ((grid (blockview-content-grid b)))
+      (tk/bind grid '<Up> (lambda () (blockview-move-cursor b 'up)))
+      (tk/bind grid '<Down> (lambda () (blockview-move-cursor b 'down)))))
+
+  ;;; Pack the blockview widget {{b}} to the screen.
+  (define (blockview-show b)
+    (let ((block-type? (eq? 'block (blockview-type b)))
+	  (rownums (blockview-rownums b))
+	  (rownum-header (blockview-rownum-header b))
+	  (content-header (blockview-content-header b))
+	  (content-grid (blockview-content-grid b)))
+      (rownums 'configure width: (if block-type? 6 5)
+	       yscrollcommand: `(,(blockview-yscroll b) set))
+      (rownum-header 'configure height: (if block-type? 2 1)
+		     width: (if block-type? 6 5))
+      (content-header 'configure height: (if block-type? 2 1))
+      (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
+      (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
+      (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
+      (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
+      (tk/pack (blockview-rownum-frame b) fill: 'y side: 'left)
+      (tk/pack rownum-header side: 'top ipadx: 4 ipady: 4)
+      (tk/pack rownums expand: 1 fill: 'y ipadx: 4 ipady: 4 side: 'top)
+      (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
+      (tk/pack (blockview-content-header b)
+	       fill: 'x ipadx: 4 ipady: 4 side: 'top)
+      (blockview-init-content-header b)
+      (tk/pack content-grid expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
+      (content-grid 'configure xscrollcommand: `(,(blockview-xscroll b) set)
+		    yscrollcommand: `(,(blockview-yscroll b) set))
+      (content-grid 'mark 'set 'insert "1.0")
+      (blockview-bind-events b)
+      (blockview-update b)))
 
   ;;; Update the blockview display.
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
