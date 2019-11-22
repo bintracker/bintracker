@@ -127,10 +127,9 @@
   (define (eval-console)
     (handle-exceptions
 	exn
-	(console 'insert 'end
-		 (string-append "\nError: " (->string exn)
-				(->string (arguments exn))
-				"\n"))
+	(console 'insert 'end (string-append "\nError: " (->string exn)
+					     (->string (arguments exn))
+					     "\n"))
       (let ((input-str (console 'get "end-1l" "end-1c")))
 	(unless (string-null? input-str)
 	  (console 'insert 'end
@@ -138,7 +137,8 @@
 		    "\n"
 		    (->string
 		     (eval (read (open-input-string input-str))))
-		    "\n"))))))
+		    "\n"))
+	  (console 'see 'insert)))))
 
 
   ;; ---------------------------------------------------------------------------
