@@ -963,7 +963,7 @@
 		       bg: (colors 'background)
 		       fg: (colors 'text-inactive)
 		       insertbackground: (colors 'text)
-		       insertontime: 0
+		       insertontime: 0 spacing3: 1
 		       font: (list family: (settings 'font-mono)
 				   size: (settings 'font-size))
 		       cursor: '"" wrap: 'none))
