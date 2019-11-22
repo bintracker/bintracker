@@ -1176,17 +1176,23 @@
 			   (blockview-field-configs b)))))
       (textgrid-add-tags header 'active (if block? 1 0))
       (blockview-add-type-tags b (if block? 1 0)
-      				(blockview-content-header b))))
+      			       (blockview-content-header b))))
+
+  ;;; Returns the position of {{mark}} as a list containing the row in car,
+  ;;; and the character position in cadr. Row position is adjusted to 0-based
+  ;;; indexing.
+  (define (blockview-mark->position b mark)
+    (let ((pos (map string->number
+		    (string-split ((blockview-content-grid b) 'index mark)
+				  "."))))
+      (list (sub1 (car pos))
+	    (cadr pos))))
 
   ;;; Returns the current cursor position as a list containing the row in car,
   ;;; and the character position in cadr. Row position is adjusted to 0-based
   ;;; indexing.
   (define (blockview-get-cursor-position b)
-    (let ((pos (map string->number
-		    (string-split ((blockview-content-grid b) 'index 'insert)
-				  "."))))
-      (list (sub1 (car pos))
-	    (cadr pos))))
+    (blockview-mark->position b 'insert))
 
   ;;; Returns the current row, ie. the row that the cursor is currently on.
   (define (blockview-get-current-row b)
@@ -1430,6 +1436,20 @@
       ((blockview-rownums b) 'see (string-append (->string (add1 row))
 						 ".0"))))
 
+  ;;; Set the blockview's cursor to the grid position currently closest to the
+  ;;; mouse pointer.
+  (define (blockview-set-cursor-from-mouse b)
+    (let ((mouse-pos (blockview-mark->position b 'current))
+	  (ui-zone-id (if (eq? 'block (blockview-type b))
+			       'blocks 'order)))
+      (unless (eq? ui-zone-id
+		   (car (list-ref ui-zones (state 'current-ui-zone))))
+	(switch-ui-zone-focus ui-zone-id))
+      (blockview-set-cursor b (car mouse-pos)
+			    (find (lambda (pos)
+				    (<= pos (cadr mouse-pos)))
+				  (reverse (blockview-cursor-x-positions b))))))
+
   ;;; Move the blockview's cursor in {{direction}}.
   (define (blockview-move-cursor b direction)
     (let* ((grid (blockview-content-grid b))
@@ -1547,6 +1567,8 @@
       (tk/bind* grid '<Down> (lambda () (blockview-move-cursor b 'down)))
       (tk/bind* grid '<Left> (lambda () (blockview-move-cursor b 'left)))
       (tk/bind* grid '<Right> (lambda () (blockview-move-cursor b 'right)))
+      (tk/bind* grid '<Button-1>
+		(lambda () (blockview-set-cursor-from-mouse b)))
       (tk/bind* grid '<<ClearStep>>
 		(lambda () (blockview-edit-current-cell b '())))
       (tk/bind* grid '<<BlockEntry>>
