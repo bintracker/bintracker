@@ -108,7 +108,7 @@
   ;;; Create default virtual events for Bintracker. This procedure only needs
   ;;; to be called on startup, or after updating key bindings.
   (define (create-virtual-events)
-    (apply tk/event (append '(add <<NoteEntry>>)
+    (apply tk/event (append '(add <<BlockEntry>>)
 			    (map car
 				 (app-keys-note-entry (settings 'keymap)))))
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
@@ -1023,17 +1023,24 @@
       (if (command-has-flag? cmd-config 'is_note)
 	  1 (value-display-size cmd-config))))
 
+  ;;; Generic procedure for mapping tags to the field columns of a textgrid.
+  ;;; This can be used either on the content header, or on the content grid.
+  (define (blockview-add-column-tags b textgrid row taglist)
+    (for-each (lambda (tag field-config)
+		(let ((start (bv-field-config-start field-config)))
+		  (textgrid-add-tags textgrid tag row start
+				     (+ start
+					(bv-field-config-width field-config)))))
+	      taglist
+	      (map cadr (blockview-field-configs b))))
+
   ;;; Add type tags to the given row in {{textgrid}}. If {{textgrid}} is not
   ;;; given, it defaults to the blockview's content-grid.
   (define (blockview-add-type-tags b row #!optional
 				   (textgrid (blockview-content-grid b)))
-    (for-each (lambda (field-config)
-		(let ((start (bv-field-config-start field-config)))
-		  (textgrid-add-tags textgrid
-				    (bv-field-config-type-tag field-config)
-				    row start (+ start (bv-field-config-width
-							field-config)))))
-	      (map cadr (blockview-field-configs b))))
+    (blockview-add-column-tags b textgrid row
+			       (map (o bv-field-config-type-tag cadr)
+				    (blockview-field-configs b))))
 
   ;;; Generate the alist of bv-field-configs.
   (define (blockview-make-field-configs block-ids field-ids)
@@ -1196,11 +1203,32 @@
 			   char-pos)))
 		 (blockview-field-configs b)))))
 
+  ;;; Returns the ID of the parent block node if the field that the cursor is
+  ;;; currently on.
+  (define (blockview-get-current-block-id b)
+    (config-get-parent-node-id (blockview-get-current-field-id b)
+			       (config-itree (current-config))))
+
   ;;; Returns the bv-field-configuration for the field that the cursor is
   ;;; currently on.
   (define (blockview-get-current-field-config b)
     (car (alist-ref (blockview-get-current-field-id b)
 		    (blockview-field-configs b))))
+
+  ;;; Returns the MDAL command config for the field that the cursor is
+  ;;; currently on.
+  (define (blockview-get-current-field-command b)
+    (config-get-inode-source-command (blockview-get-current-field-id b)
+				     (current-config)))
+
+  (define (blockview-get-current-order-pos b)
+    (let ((current-row (blockview-get-current-row b)))
+      (if (eq? 'order (blockview-type b))
+	  current-row
+	  (list-index (lambda (start+end)
+			(and (>= current-row (car start+end))
+			     (<= current-row (cadr start+end))))
+		      (blockview-start+end-positions b)))))
 
   ;;; Update the command information in the status bar, based on the field that
   ;;; the cursor currently points to.
@@ -1258,6 +1286,28 @@
 				   (<= current-row (cadr start+end))))
 			    start+end-positions))))
 
+  (define (blockview-get-current-field-instance b)
+    (- (blockview-get-current-row b)
+       (car (blockview-get-active-zone b))))
+
+  (define (blockview-get-current-block-instance b)
+    (let ((current-block-id (blockview-get-current-block-id b)))
+      (list-ref (list-ref (mod-get-order-values
+			   (blockview-group-id b)
+			   (get-current-node-instance (blockview-group-id b))
+			   (current-config))
+			  (blockview-get-current-order-pos b))
+		(list-index (lambda (block-id)
+			      (eq? block-id current-block-id))
+			    (blockview-block-ids b)))))
+
+  (define (blockview-get-current-field-path b)
+    (string-append (get-current-instance-path (blockview-group-id b))
+		   (symbol->string (blockview-get-current-block-id b))
+		   "/" (->string (blockview-get-current-block-instance b))
+		   "/" (symbol->string (blockview-get-current-field-id b))
+		   "/"))
+
   ;;; Apply type tags and the 'active tag to the current active zone of the
   ;;; blockview {{b}}.
   (define (blockview-tag-active-zone b)
@@ -1309,8 +1359,8 @@
       		minor-hl-rows)))
 
   ;;; Update the blockview row numbers according to the current item cache.
-  ;;; TODO remove tags first
   (define (blockview-update-row-numbers b)
+    ((blockview-rownums b) 'delete "0.0" 'end)
     (for-each
      (lambda (chunk)
        (for-each
@@ -1330,6 +1380,7 @@
 
   ;;; Update the blockview content grid according to the current item cache.
   (define (blockview-update-content-grid b)
+    ((blockview-content-grid b) 'delete "0.0" 'end)
     (for-each (lambda (row)
 		((blockview-content-grid b) 'insert 'end
 		 (string-append (blockview-values->row-string
@@ -1422,13 +1473,98 @@
     (set-state! 'active-md-command-info "")
     (reset-status-text!))
 
+  ;;; Set the field node instance that corresponds to the current cursor
+  ;;; position to {{new-value}}, and update the display and the undo/redo stacks
+  ;;; accordingly.
+  (define (blockview-edit-current-cell b new-value)
+    (let* ((path (blockview-get-current-field-path b))
+	   (instance (blockview-get-current-field-instance b))
+	   (action `(set ,path ((,instance ,new-value)))))
+      (push-undo (make-reverse-action action))
+      (apply-edit! action)
+      (blockview-update b)
+      (unless (zero? (state 'edit-step))
+	(blockview-move-cursor b 'down))
+      (set-toolbar-button-state 'journal 'undo 'enabled)
+      (unless (state 'modified)
+	(set-state! 'modified #t)
+	(update-window-title!))))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a note command.
+  (define (blockview-enter-note b keysym)
+    (let ((note-val (keypress->note keysym)))
+      (when note-val
+	(blockview-edit-current-cell b note-val))))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a note command.
+  (define (blockview-enter-trigger b)
+    (blockview-edit-current-cell b "on"))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a key/ukey command.
+  (define (blockview-enter-key b keysym)
+    (display "key entry")
+    (newline))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a numeric (int/uint) command.
+  (define (blockview-enter-numeric b keysym)
+    (display "numeric entry")
+    (newline))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a reference command.
+  (define (blockview-enter-reference b keysym)
+    (display "reference entry")
+    (newline))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a string command.
+  (define (blockview-enter-string b keysym)
+    (display "string entry")
+    (newline))
+
+  ;;; Dispatch entry events occuring on the blockview's content grid to the
+  ;;; appropriate edit procedures, depending on field command type.
+  (define (blockview-dispatch-entry-event b keysym)
+    (let ((cmd (blockview-get-current-field-command b)))
+      (if (command-has-flag? cmd 'is_note)
+	  (blockview-enter-note b keysym)
+	  (match (command-type cmd)
+	    ('trigger (blockview-enter-trigger b))
+	    ((or 'int 'uint) (blockview-enter-numeric b keysym))
+	    ((or 'key 'ukey) (blockview-enter-key b keysym))
+	    ('reference (blockview-enter-reference b keysym))
+	    ('string (blockview-enter-string b keysym))))))
+
   ;;; Bind common event handlers for the blockview {{b}}.
   (define (blockview-bind-events b)
     (let ((grid (blockview-content-grid b)))
       (tk/bind* grid '<Up> (lambda () (blockview-move-cursor b 'up)))
       (tk/bind* grid '<Down> (lambda () (blockview-move-cursor b 'down)))
       (tk/bind* grid '<Left> (lambda () (blockview-move-cursor b 'left)))
-      (tk/bind* grid '<Right> (lambda () (blockview-move-cursor b 'right)))))
+      (tk/bind* grid '<Right> (lambda () (blockview-move-cursor b 'right)))
+      (tk/bind* grid '<<BlockEntry>>
+		`(,(lambda (keysym)
+		     (blockview-dispatch-entry-event b keysym))
+		  %K))))
+
+  ;;; Update the blockview display.
+  ;; TODO storing/restoring insert mark position is a cludge. Generally we want
+  ;; the insert mark to move if stuff is being inserted above it.
+  (define (blockview-update b)
+    (let ((new-item-list (blockview-get-item-list b)))
+      (unless (equal? new-item-list (blockview-item-cache b))
+	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
+	  (blockview-item-cache-set! b new-item-list)
+	  (blockview-update-content-grid b)
+	  (blockview-update-row-numbers b)
+	  ((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
+	  (blockview-tag-active-zone b)
+	  (when (eq? 'block (blockview-type b))
+	    (blockview-update-row-highlights b))))))
 
   ;;; Pack the blockview widget {{b}} to the screen.
   (define (blockview-show b)
@@ -1459,21 +1595,6 @@
       (content-grid 'mark 'set 'insert "1.0")
       (blockview-bind-events b)
       (blockview-update b)))
-
-  ;;; Update the blockview display.
-  ;; TODO storing/restoring insert mark position is a cludge. Generally we want
-  ;; the insert mark to move if stuff is being inserted above it.
-  (define (blockview-update b)
-    (let ((new-item-list (blockview-get-item-list b)))
-      (unless (equal? new-item-list (blockview-item-cache b))
-	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
-	  (blockview-item-cache-set! b new-item-list)
-	  (blockview-update-content-grid b)
-	  (blockview-update-row-numbers b)
-	  ((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
-	  (blockview-tag-active-zone b)
-	  (when (eq? 'block (blockview-type b))
-	    (blockview-update-row-highlights b))))))
 
 
   ;; ---------------------------------------------------------------------------
