@@ -1546,6 +1546,8 @@
       (tk/bind* grid '<Down> (lambda () (blockview-move-cursor b 'down)))
       (tk/bind* grid '<Left> (lambda () (blockview-move-cursor b 'left)))
       (tk/bind* grid '<Right> (lambda () (blockview-move-cursor b 'right)))
+      (tk/bind* grid '<<ClearStep>>
+		(lambda () (blockview-edit-current-cell b '())))
       (tk/bind* grid '<<BlockEntry>>
 		`(,(lambda (keysym)
 		     (blockview-dispatch-entry-event b keysym))
