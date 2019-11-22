@@ -960,6 +960,7 @@
   ;;; widget with class bindings removed.
   (define (textgrid-create-basic parent)
     (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
+		       selectborderwidth: 0 padx: 0 pady: 4
 		       bg: (colors 'background)
 		       fg: (colors 'text-inactive)
 		       insertbackground: (colors 'text)
@@ -1082,7 +1083,7 @@
   (define (blockview-create parent type group-id)
     (let* ((header-frame (parent 'create-widget 'frame))
 	   (packframe (parent 'create-widget 'frame))
-  	   (rownum-frame (packframe 'create-widget 'frame))
+  	   (rownum-frame (packframe 'create-widget 'frame style: 'BT.TFrame))
 	   (content-frame (packframe 'create-widget 'frame))
   	   (block-ids
   	    (and (eq? type 'block)
@@ -1585,13 +1586,13 @@
       (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
       (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
       (tk/pack (blockview-rownum-frame b) fill: 'y side: 'left)
-      (tk/pack rownum-header side: 'top ipadx: 4 ipady: 4)
-      (tk/pack rownums expand: 1 fill: 'y ipadx: 4 ipady: 4 side: 'top)
+      (tk/pack rownum-header padx: '(4 0) side: 'top)
+      (tk/pack rownums expand: 1 fill: 'y padx: '(4 0) side: 'top)
       (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
       (tk/pack (blockview-content-header b)
-	       fill: 'x ipadx: 4 ipady: 4 side: 'top)
+	       fill: 'x side: 'top)
       (blockview-init-content-header b)
-      (tk/pack content-grid expand: 1 fill: 'both ipadx: 4 ipady: 4 side: 'top)
+      (tk/pack content-grid expand: 1 fill: 'both side: 'top)
       (content-grid 'configure xscrollcommand: `(,(blockview-xscroll b) set)
 		    yscrollcommand: `(,(blockview-yscroll b) set))
       (content-grid 'mark 'set 'insert "1.0")
