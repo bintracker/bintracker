@@ -611,8 +611,8 @@
     (let ((action (pop-undo)))
       (when action
 	(apply-edit! action)
-	;; (metatree-update (current-order-view))
-	;; (metatree-update (current-blocks-view))
+	(blockview-update (current-order-view))
+	(blockview-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'redo 'enabled)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
@@ -623,8 +623,8 @@
     (let ((action (pop-redo)))
       (when action
 	(apply-edit! action)
-	;; (metatree-update (current-order-view))
-	;; (metatree-update (current-blocks-view))
+	(blockview-update (current-order-view))
+	(blockview-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
 	(set-toolbar-button-state 'journal 'undo 'enabled)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
