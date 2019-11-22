@@ -914,8 +914,8 @@
   ;;; ### TextGrid
   ;; ---------------------------------------------------------------------------
 
-  ;;; A TextGrid is a Tk Text widget with default bindings removed and/or
-  ;;; replaces with Bintracker-specific bindings. TextGrids form the basis of
+  ;;; TextGrids are Tk Text widgets with default bindings removed and/or
+  ;;; replaced with Bintracker-specific bindings. TextGrids form the basis of
   ;;; Bintrackers blockview metawidget, which is used to display sets of blocks
   ;;; or order lists. A number of abstractions are provided to facilitate this.
 
