@@ -1286,10 +1286,12 @@
 				   (<= current-row (cadr start+end))))
 			    start+end-positions))))
 
+  ;;; Return the field instance ID currently under cursor.
   (define (blockview-get-current-field-instance b)
     (- (blockview-get-current-row b)
        (car (blockview-get-active-zone b))))
 
+  ;;; Return the block instance ID currently under cursor.
   (define (blockview-get-current-block-instance b)
     (let ((current-block-id (blockview-get-current-block-id b)))
       (list-ref (list-ref (mod-get-order-values
@@ -1301,6 +1303,7 @@
 			      (eq? block-id current-block-id))
 			    (blockview-block-ids b)))))
 
+  ;;; Return the MDAL node path string of the field currently under cursor.
   (define (blockview-get-current-field-path b)
     (string-append (get-current-instance-path (blockview-group-id b))
 		   (symbol->string (blockview-get-current-block-id b))
