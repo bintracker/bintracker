@@ -1019,18 +1019,27 @@
     (yscroll : procedure)
     ((item-cache '()) : list))
 
-  ;;; TODO incorrect for key/ukey commands: should be length of longest key
+  ;;; Returns the number of characters that the blockview cursor should span
+  ;;; for the given {{field-id}}.
   (define (field-id->cursor-size field-id)
     (let ((cmd-config (config-get-inode-source-command field-id
 						       (current-config))))
       (if (memq 'is_note (command-flags cmd-config))
-	  3 1)))
+	  3
+	  (if (memq (command-type cmd-config)
+		    '(key ukey))
+	      (value-display-size cmd-config)
+	      1))))
 
-  ;;; TODO incorrect for key/ukey commands
+  ;;; Returns the number of cursor positions for the the field node
+  ;;; {{field-id}}. For fields that are based on note/key/ukey commands, the
+  ;;; result will be one, otherwise it will be equal to the number of characters
+  ;;; needed to represent the valid input range for the field's source command.
   (define (field-id->cursor-digits field-id)
     (let ((cmd-config (config-get-inode-source-command field-id
 						       (current-config))))
-      (if (command-has-flag? cmd-config 'is_note)
+      (if (memq (command-type cmd-config)
+		'(key ukey))
 	  1 (value-display-size cmd-config))))
 
   ;;; Generic procedure for mapping tags to the field columns of a textgrid.
