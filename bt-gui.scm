@@ -987,7 +987,7 @@
 		       insertontime: 0 spacing3: 1
 		       font: (list family: (settings 'font-mono)
 				   size: (settings 'font-size))
-		       cursor: '"" wrap: 'none))
+		       cursor: '"" undo: 0 wrap: 'none))
 	   (id (tg 'get-id)))
       (tk-eval (string-append "bindtags " id " {all . " id "}"))
       (textgrid-configure-tags tg)
