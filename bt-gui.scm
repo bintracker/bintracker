@@ -511,16 +511,6 @@
   ;;; ## Style updates
   ;; ---------------------------------------------------------------------------
 
-  ;;; A work-around for the treeview tag configuration bug that affects
-  ;;; Tk 8.6.9 under Linux, based on
-  ;;; https://core.tcl-lang.org/tk/tktview?name=509cafafae
-  (define (patch-tcltk-8.6.9-treeview)
-    (when (string= "8.6.9" (tk-eval "info patchlevel"))
-      (ttk/style 'map 'Metatree.Treeview foreground:
-		 '(disabled SystemGrayText selected SystemHighlightText)
-		 background: '(disabled SystemButtonFace selected
-					SystemHighlightText))))
-
   ;;; Configure Tk widget styles
   (define (update-style!)
     ;; hide treeview borders
