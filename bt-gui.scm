@@ -1490,8 +1490,7 @@
     (let ((grid (blockview-content-grid b))
 	  (active-zone (blockview-get-active-zone b)))
       (blockview-remove-cursor b)
-      (grid 'mark 'set 'insert (string-append (->string (add1 row))
-					      "." (->string char)))
+      (grid 'mark 'set 'insert (textgrid-position->tk-index row char))
       (when (or (< row (car active-zone))
 		(> row (cadr active-zone)))
 	(blockview-tag-active-zone b))
@@ -1665,6 +1664,7 @@
 		  (blockview-update-row-highlights b)))
 	      (begin
 		(blockview-update-content-rows b new-item-list)
+		((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
 		(blockview-item-cache-set! b new-item-list)))))))
 
   ;;; Pack the blockview widget {{b}} to the screen.
