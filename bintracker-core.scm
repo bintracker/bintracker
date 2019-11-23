@@ -220,7 +220,7 @@
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
-    (list load-config update-window-title! patch-tcltk-8.6.9-treeview
+    (list load-config update-window-title!
 	  update-style! update-key-bindings! init-main-menu
 	  (lambda ()
 	    (when (settings 'show-menu)
