@@ -965,6 +965,11 @@
   (define (textgrid-remove-tags . args)
     (apply textgrid-do-tags (cons 'remove args)))
 
+  (define (textgrid-remove-tags-globally tg tags)
+    (for-each (lambda (tag)
+		(tg 'tag 'remove tag "0.0" "end"))
+	      tags))
+
   ;;; Convert the {{row}}, {{char}} arguments into a Tk Text index string.
   ;;; {{row}} is adjusted from 0-based indexing to 1-based indexing.
   (define (textgrid-position->tk-index row char)
@@ -1372,31 +1377,31 @@
 		      (car zone-limits) 1))))
 
   ;;; Update the row highlights of the blockview.
-  ;; TODO do it properly per chunk.
   (define (blockview-update-row-highlights b)
-    (let* ((total-length (blockview-get-total-length b))
-	   (major-hl-rows (iota (quotient total-length
-					  (state 'major-row-highlight))
-				0 (state 'major-row-highlight)))
-	   (minor-hl-rows (filter (lambda (i)
-				    (not (member i major-hl-rows)))
-				  (iota (quotient total-length
-						  (state 'minor-row-highlight))
-					0 (state 'minor-row-highlight))))
+    (let* ((start-positions (map car (blockview-start+end-positions b)))
+	   (make-rowlist
+	    (lambda (highlight-type)
+	      (flatten
+	       (map (lambda (chunk start)
+		      (map (lambda (i)
+			     (+ i start))
+			   (filter (lambda (i)
+				     (zero? (modulo i (state highlight-type))))
+				   (iota (length chunk)))))
+		    (blockview-item-cache b)
+		    start-positions))))
 	   (rownums (blockview-rownums b))
 	   (content (blockview-content-grid b)))
-      (textgrid-remove-tags rownums '(rowhl-major rowhl-minor)
-      			    0 0 'end (sub1 total-length))
-      (textgrid-remove-tags content '(rowhl-major rowhl-minor)
-      			    0 0 'end (sub1 total-length))
-      (for-each (lambda (row)
-		  (textgrid-add-tags rownums 'rowhl-major row)
-		  (textgrid-add-tags content 'rowhl-major row))
-		major-hl-rows)
+      (textgrid-remove-tags-globally rownums '(rowhl-major rowhl-minor))
+      (textgrid-remove-tags-globally content '(rowhl-major rowhl-minor))
       (for-each (lambda (row)
       		  (textgrid-add-tags rownums 'rowhl-minor row)
       		  (textgrid-add-tags content 'rowhl-minor row))
-      		minor-hl-rows)))
+      		(make-rowlist 'minor-row-highlight))
+      (for-each (lambda (row)
+		  (textgrid-add-tags rownums 'rowhl-major row)
+		  (textgrid-add-tags content 'rowhl-major row))
+		(make-rowlist 'major-row-highlight))))
 
   ;;; Update the blockview row numbers according to the current item cache.
   (define (blockview-update-row-numbers b)
