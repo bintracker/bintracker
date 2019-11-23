@@ -221,7 +221,7 @@
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
     (list load-config update-window-title!
-	  update-style! update-key-bindings! init-main-menu
+	  update-ttk-style update-key-bindings! init-main-menu
 	  (lambda ()
 	    (when (settings 'show-menu)
 	      (tk 'configure 'menu: (menu-widget (state 'menu)))))

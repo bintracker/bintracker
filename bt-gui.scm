@@ -132,12 +132,8 @@
   ;;; ## Widget Style
   ;; ---------------------------------------------------------------------------
 
-  ;;; Configure console and ttk widget styles
-  (define (update-style!)
-    ;; hide treeview borders
-    (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
-    (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
-
+  ;;; Configure ttk widget styles
+  (define (update-ttk-style)
     (ttk/style 'configure 'BT.TFrame background: (colors 'background))
 
     (ttk/style 'configure 'BT.TLabel background: (colors 'background)
@@ -151,13 +147,7 @@
 	       background: (colors 'background)
 	       font: (list family: (settings 'font-mono)
 			   size: (settings 'font-size)
-			   weight: 'bold))
-
-    (console 'configure bd: 0 highlightthickness: 0 bg: (colors 'background)
-	     fg: (colors 'text)
-	     insertbackground: (colors 'text)
-	     font: (list family: (settings 'font-mono)
-			 size: (settings 'font-size))))
+			   weight: 'bold)))
 
   ;;; Configure the style of the scrollbar widget {{s}} to match Bintracker's
   ;;; style.
@@ -526,12 +516,18 @@
 
   (define console-wrapper (console-frame 'create-widget 'frame))
 
-  (define console (console-wrapper 'create-widget 'text blockcursor: 'yes))
+  (define console (console-wrapper 'create-widget 'text))
 
   (define console-yscroll (console-wrapper 'create-widget 'scrollbar
 					   orient: 'vertical))
 
   (define (init-console)
+    (console 'configure  blockcursor: 'yes
+	     bd: 0 highlightthickness: 0 bg: (colors 'background)
+	     fg: (colors 'text)
+	     insertbackground: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+			 size: (settings 'font-size)))
     (tk/pack console-wrapper expand: 1 fill: 'both)
     (tk/pack console expand: 1 fill: 'both side: 'left)
     (tk/pack console-yscroll side: 'right fill: 'y)
