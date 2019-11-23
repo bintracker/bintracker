@@ -30,7 +30,7 @@
 
   ;; automatically map the following tk widgets to their ttk equivalent
   (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
-			    labelframe scrollbar notebook panedwindow
+			    labelframe notebook panedwindow
 			    progressbar combobox separator scale sizegrip
 			    spinbox treeview))
 
@@ -126,6 +126,47 @@
 					     "Save before " exit-or-closing
 					     "?")
 		     type: 'yesnocancel))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Widget Style
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Configure console and ttk widget styles
+  (define (update-style!)
+    ;; hide treeview borders
+    (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
+    (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
+
+    (ttk/style 'configure 'BT.TFrame background: (colors 'background))
+
+    (ttk/style 'configure 'BT.TLabel background: (colors 'background)
+	       foreground: (colors 'text)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
+    (ttk/style 'configure 'BT.TNotebook.Tab
+	       background: (colors 'background)
+	       font: (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold))
+
+    (console 'configure bd: 0 highlightthickness: 0 bg: (colors 'background)
+	     fg: (colors 'text)
+	     insertbackground: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+			 size: (settings 'font-size))))
+
+  ;;; Configure the style of the scrollbar widget {{s}} to match Bintracker's
+  ;;; style.
+  (define (configure-scrollbar-style s)
+    (s 'configure bd: 0 highlightthickness: 0 relief: 'flat
+       activebackground: (colors 'row-highlight-major)
+       bg: (colors 'row-highlight-minor)
+       troughcolor: (colors 'background)
+       elementborderwidth: 0))
 
 
   ;; ---------------------------------------------------------------------------
@@ -494,6 +535,7 @@
     (tk/pack console-wrapper expand: 1 fill: 'both)
     (tk/pack console expand: 1 fill: 'both side: 'left)
     (tk/pack console-yscroll side: 'right fill: 'y)
+    (configure-scrollbar-style console-yscroll)
     (console-yscroll 'configure command: `(,console yview))
     (console 'configure 'yscrollcommand: `(,console-yscroll set))
     (console 'insert 'end
@@ -505,38 +547,6 @@
 
   (define (clear-console)
     (console 'delete 0.0 'end))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Style updates
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Configure Tk widget styles
-  (define (update-style!)
-    ;; hide treeview borders
-    (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
-    (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
-
-    (ttk/style 'configure 'BT.TFrame background: (colors 'background))
-
-    (ttk/style 'configure 'BT.TLabel background: (colors 'background)
-	       foreground: (colors 'text)
-	       font: (list family: (settings 'font-mono)
-			   size: (settings 'font-size)
-			   weight: 'bold))
-
-    (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
-    (ttk/style 'configure 'BT.TNotebook.Tab
-	       background: (colors 'background)
-	       font: (list family: (settings 'font-mono)
-			   size: (settings 'font-size)
-			   weight: 'bold))
-
-    (console 'configure bd: 0 highlightthickness: 0 bg: (colors 'background)
-	     fg: (colors 'text)
-	     insertbackground: (colors 'text)
-	     font: (list family: (settings 'font-mono)
-			 size: (settings 'font-size))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -1674,6 +1684,8 @@
       (rownum-header 'configure height: (if block-type? 2 1)
 		     width: (if block-type? 6 5))
       (content-header 'configure height: (if block-type? 2 1))
+      (configure-scrollbar-style (blockview-xscroll b))
+      (configure-scrollbar-style (blockview-yscroll b))
       (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
       (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
       (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
