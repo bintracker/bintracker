@@ -1376,7 +1376,9 @@
 		 6 5))
 	    "\n")))
 	(iota (length chunk))))
-     (blockview-item-cache b)))
+     (blockview-item-cache b))
+    ;; remove newline at end
+    ((blockview-rownums b) 'delete "end -1c" "end"))
 
   ;;; Update the blockview content grid according to the current item cache.
   (define (blockview-update-content-grid b)
@@ -1389,7 +1391,8 @@
 					(normalize-field-value val id))
 				      row (blockview-field-ids b)))
 				"\n")))
-	      (concatenate (blockview-item-cache b))))
+	      (concatenate (blockview-item-cache b)))
+    ((blockview-content-grid b) 'delete "end -1c" "end"))
 
   (define (blockview-cursor-x-positions b)
     (flatten (map (lambda (field-cfg)
