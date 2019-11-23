@@ -1249,6 +1249,9 @@
     (config-get-inode-source-command (blockview-get-current-field-id b)
 				     (current-config)))
 
+  ;;; Returns the corresponding group order position for the chunk currently
+  ;;; under cursor. For order type blockviews, the result is equal to the
+  ;;; current row.
   (define (blockview-get-current-order-pos b)
     (let ((current-row (blockview-get-current-row b)))
       (if (eq? 'order (blockview-type b))
