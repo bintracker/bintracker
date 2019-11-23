@@ -1653,6 +1653,8 @@
 	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
 	  (if (or (not (= (length new-item-list)
 			  (length (blockview-item-cache b))))
+		  (not (= (length (concatenate new-item-list))
+			  (length (concatenate (blockview-item-cache b)))))
 		  (not (equal? (map length new-item-list)
 			       (map length (blockview-item-cache b)))))
 	      (begin
