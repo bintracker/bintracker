@@ -34,11 +34,26 @@
 			    progressbar combobox separator scale sizegrip
 			    spinbox treeview))
 
+
   ;; ---------------------------------------------------------------------------
-  ;;; ### Dialogues
+  ;;; ## Utilities
   ;; ---------------------------------------------------------------------------
 
-  ;;; Various general-purpose dialogue procedures.
+  ;;; Disable automatic keyboard traversal. Needed because it messes with key
+  ;;; binding involving Tab.
+  (define (disable-keyboard-traversal)
+    (tk/event 'delete '<<NextWindow>>)
+    (tk/event 'delete '<<PrevWindow>>))
+
+  ;;; update window title by looking at current file name and 'modified'
+  ;;; property
+  (define (update-window-title!)
+    (tk/wm 'title tk (if (state 'current-file)
+			 (string-append (pathname-file (state 'current-file))
+					(if (state 'modified)
+					    "*" "")
+					" - Bintracker")
+			 "Bintracker")))
 
   ;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
   ;;; that is safe to execute as a callback from Tk.
@@ -54,6 +69,13 @@
 			       subst ...)))
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Dialogues
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Various general-purpose dialogue procedures.
 
   ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
   ;;; tk/get-save-file that block the main application window  while the pop-up
@@ -1776,25 +1798,5 @@
       (car (bt-subgroups-widget-subgroups
 	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
 
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Utilities
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Disable automatic keyboard traversal. Needed because it messes with key
-  ;;; binding involving Tab.
-  (define (disable-keyboard-traversal)
-    (tk/event 'delete '<<NextWindow>>)
-    (tk/event 'delete '<<PrevWindow>>))
-
-  ;;; update window title by looking at current file name and 'modified'
-  ;;; property
-  (define (update-window-title!)
-    (tk/wm 'title tk (if (state 'current-file)
-			 (string-append (pathname-file (state 'current-file))
-					(if (state 'modified)
-					    "*" "")
-					" - Bintracker")
-			 "Bintracker")))
 
   ) ;; end module bt-gui
