@@ -507,13 +507,6 @@
 
   ;;; Configure Tk widget styles
   (define (update-style!)
-    ;; (ttk/style 'configure 'Metatree.Treeview background: (colors 'background)
-    ;; 	       fieldbackground: (colors 'background)
-    ;; 	       foreground: (colors 'text)
-    ;; 	       font: (list family: (settings 'font-mono)
-    ;; 			   size: (settings 'font-size))
-    ;; 	       rowheight: (treeview-rowheight))
-
     ;; hide treeview borders
     (ttk/style 'layout 'Metatree.Treeview '(Treeview.treearea sticky: nswe))
     (ttk/style 'configure 'Metatree.Treeview.Item indicatorsize: 0)
