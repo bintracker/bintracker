@@ -71,6 +71,7 @@
     ((show-toolbar #t) : boolean)
     ((font-mono "Courier") : string)
     ((font-size 10) : fixnum)
+    ((line-spacing 1) : fixnum)
     ((color-scheme (make-app-colors)) : (struct app-colors))
     ((default-edit-step 1) : fixnum)
     ((default-base-octave 4) : fixnum)

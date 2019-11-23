@@ -980,7 +980,7 @@
 		       bg: (colors 'background)
 		       fg: (colors 'text-inactive)
 		       insertbackground: (colors 'text)
-		       insertontime: 0 spacing3: 1
+		       insertontime: 0 spacing3: (settings 'line-spacing)
 		       font: (list family: (settings 'font-mono)
 				   size: (settings 'font-size))
 		       cursor: '"" undo: 0 wrap: 'none))
