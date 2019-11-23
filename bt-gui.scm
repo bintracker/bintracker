@@ -17,7 +17,7 @@
 	  bt-state bt-types mdal)
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### PS/Tk Initialization
+  ;;; ## PS/Tk Initialization
   ;; ---------------------------------------------------------------------------
 
   ;;; Init pstk and fire up Tcl/Tk runtime.
@@ -70,9 +70,14 @@
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
+  ;;; Create a tk image resource from a given PNG file.
+  (define (tk/icon filename)
+    (tk/image 'create 'photo format: "PNG"
+	      file: (string-append "resources/icons/" filename)))
+
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Dialogues
+  ;;; ## Dialogues
   ;; ---------------------------------------------------------------------------
 
   ;;; Various general-purpose dialogue procedures.
@@ -124,7 +129,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Events
+  ;;; ## Events
   ;; ---------------------------------------------------------------------------
 
   ;;; Create default virtual events for Bintracker. This procedure only needs
@@ -147,20 +152,9 @@
 			      (tk/winfo 'class widget)
 			      " " widget-id "}"))))
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ### Images
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Auxilliary image handling procedures.
-
-  ;;; Create a tk image resource from a given PNG file.
-  (define (tk/icon filename)
-    (tk/image 'create 'photo format: "PNG"
-	      file: (string-append "resources/icons/" filename)))
-
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Menus
+  ;;; ## Menus
   ;; ---------------------------------------------------------------------------
 
   ;;; `submenus` shall be an alist, where keys are unique identifiers, and
@@ -514,7 +508,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; Style updates
+  ;;; ## Style updates
   ;; ---------------------------------------------------------------------------
 
   ;;; A work-around for the treeview tag configuration bug that affects
@@ -993,7 +987,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### BlockView
+  ;;; ## BlockView
   ;; ---------------------------------------------------------------------------
 
   ;;; The BlockView metawidget is a generic widget that implements a spreadsheet
@@ -1094,7 +1088,10 @@
 	   field-ids type-tags sizes start-positions cursor-widths
 	   cursor-ds)))
 
-  ;;;
+  ;;; Returns a blockview metawidget that is suitable for the MDAL group
+  ;;; {{group-id}}. {{type}} must be `'block` for a regular blockview showing
+  ;;; the group's block node members, or '`order` for a blockview showing the
+  ;;; group's order list.
   (define (blockview-create parent type group-id)
     (let* ((header-frame (parent 'create-widget 'frame))
 	   (packframe (parent 'create-widget 'frame))
@@ -1419,6 +1416,8 @@
 	      (concatenate (blockview-item-cache b)))
     ((blockview-content-grid b) 'delete "end -1c" "end"))
 
+  ;;; Returns a list of character positions that the blockview's cursor may
+  ;;; assume.
   (define (blockview-cursor-x-positions b)
     (flatten (map (lambda (field-cfg)
 		    (map (lambda (cursor-digit)
@@ -1644,7 +1643,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Block Related Widgets and Procedures
+  ;;; ## Block Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
 
   ;;; A metawidget for displaying a group's block members and the corresponding
