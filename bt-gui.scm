@@ -965,6 +965,12 @@
   (define (textgrid-remove-tags . args)
     (apply textgrid-do-tags (cons 'remove args)))
 
+  ;;; Convert the {{row}}, {{char}} arguments into a Tk Text index string.
+  ;;; {{row}} is adjusted from 0-based indexing to 1-based indexing.
+  (define (textgrid-position->tk-index row char)
+    (string-append (->string (add1 row))
+		   "." (->string char)))
+
   ;;; Create a TextGrid as slave of the Tk widget {{parent}}. Returns a Tk Text
   ;;; widget with class bindings removed.
   (define (textgrid-create-basic parent)
@@ -1394,39 +1400,65 @@
 
   ;;; Update the blockview row numbers according to the current item cache.
   (define (blockview-update-row-numbers b)
-    ((blockview-rownums b) 'delete "0.0" 'end)
-    (for-each
-     (lambda (chunk)
-       (for-each
-	(lambda (i)
-	  ((blockview-rownums b) 'insert 'end
-	   (string-append
-	    (string-pad-right
-	     (string-pad (number->string i (settings 'number-base))
-			 (if (eq? 'block (blockview-type b))
-			     4 3)
-			 #\0)
-	     (if (eq? 'block (blockview-type b))
-		 6 5))
-	    "\n")))
-	(iota (length chunk))))
-     (blockview-item-cache b))
-    ;; remove newline at end
-    ((blockview-rownums b) 'delete "end -1c" "end"))
+    (let ((padding (if (eq? 'block (blockview-type b))
+		       4 3)))
+      ((blockview-rownums b) 'replace "0.0" 'end
+       (string-intersperse
+	(flatten
+	 (map (lambda (chunk)
+		(map (lambda (i)
+		       (string-pad-right
+			(string-pad (number->string i (settings 'number-base))
+				    padding #\0)
+			(+ 2 padding)))
+		     (iota (length chunk))))
+	      (blockview-item-cache b)))
+	"\n"))))
 
-  ;;; Update the blockview content grid according to the current item cache.
+  ;;; Perform a full update of the blockview content grid.
   (define (blockview-update-content-grid b)
-    ((blockview-content-grid b) 'delete "0.0" 'end)
-    (for-each (lambda (row)
-		((blockview-content-grid b) 'insert 'end
-		 (string-append (blockview-values->row-string
+    ((blockview-content-grid b) 'replace "0.0" 'end
+     (string-intersperse (map (lambda (row)
+				(blockview-values->row-string
 				 b
 				 (map (lambda (val id)
 					(normalize-field-value val id))
-				      row (blockview-field-ids b)))
-				"\n")))
-	      (concatenate (blockview-item-cache b)))
-    ((blockview-content-grid b) 'delete "end -1c" "end"))
+				      row (blockview-field-ids b))))
+			      (concatenate (blockview-item-cache b)))
+			 "\n")))
+
+  ;;; Update the blockview content grid on a row by row basis. This compares
+  ;;; the {{new-item-list}} against the current item cache, and only updates
+  ;;; rows that have changed. The list length of {{new-item-list}} and the
+  ;;; lengths of each of the subchunks must match the list of items in the
+  ;;; current item cache.
+  ;;; This operation does not update the blockview's item cache, which should
+  ;;; be done manually after calling this procedure.
+  (define (blockview-update-content-rows b new-item-list)
+    (let ((grid (blockview-content-grid b)))
+      (for-each (lambda (old-row new-row row-pos)
+		  (unless (equal? old-row new-row)
+		    (let* ((start (textgrid-position->tk-index row-pos 0))
+			   (end (textgrid-position->tk-index row-pos 'end))
+			   (tags (map string->symbol
+				      (string-split (grid 'tag 'names start))))
+			   (active-zone? (memq 'active tags))
+			   (major-hl? (memq 'rowhl-major tags))
+			   (minor-hl? (memq 'rowhl-minor tags)))
+		      (grid 'replace start end
+			    (blockview-values->row-string
+			     b (map (lambda (val id)
+				      (normalize-field-value val id))
+				    new-row (blockview-field-ids b))))
+		      (when major-hl?
+			(grid 'tag 'add 'rowhl-major start end))
+		      (when minor-hl?
+			(grid 'tag 'add 'rowhl-minor start end))
+		      (when active-zone?
+			(blockview-add-type-tags b row-pos)))))
+		(concatenate (blockview-item-cache b))
+		(concatenate new-item-list)
+		(iota (length (concatenate new-item-list))))))
 
   ;;; Returns a list of character positions that the blockview's cursor may
   ;;; assume.
@@ -1609,19 +1641,31 @@
 		  %K))))
 
   ;;; Update the blockview display.
+  ;;; The procedure attempts to be "smart" about updating, ie. it tries to not
+  ;;; perform unnecessary updates. This makes the procedure fast enough to be
+  ;;; used after any change to the blockview's content, rather than manually
+  ;;; updating the part of the content that has changed.
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
   (define (blockview-update b)
     (let ((new-item-list (blockview-get-item-list b)))
       (unless (equal? new-item-list (blockview-item-cache b))
 	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
-	  (blockview-item-cache-set! b new-item-list)
-	  (blockview-update-content-grid b)
-	  (blockview-update-row-numbers b)
-	  ((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
-	  (blockview-tag-active-zone b)
-	  (when (eq? 'block (blockview-type b))
-	    (blockview-update-row-highlights b))))))
+	  (if (or (not (= (length new-item-list)
+			  (length (blockview-item-cache b))))
+		  (not (equal? (map length new-item-list)
+			       (map length (blockview-item-cache b)))))
+	      (begin
+		(blockview-item-cache-set! b new-item-list)
+		(blockview-update-content-grid b)
+		(blockview-update-row-numbers b)
+		((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
+		(blockview-tag-active-zone b)
+		(when (eq? 'block (blockview-type b))
+		  (blockview-update-row-highlights b)))
+	      (begin
+		(blockview-update-content-rows b new-item-list)
+		(blockview-item-cache-set! b new-item-list)))))))
 
   ;;; Pack the blockview widget {{b}} to the screen.
   (define (blockview-show b)
