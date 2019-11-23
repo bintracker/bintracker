@@ -1355,12 +1355,10 @@
     (let ((zone-limits (blockview-get-active-zone b))
 	  (grid (blockview-content-grid b))
 	  (rownums (blockview-rownums b)))
-      (for-each (lambda (tag)
-		  (grid 'tag 'remove tag "0.0" 'end))
-		(cons 'active (map (o bv-field-config-type-tag cadr)
-				   (blockview-field-configs b))))
-      (rownums 'tag 'remove 'active "0.0" 'end)
-      (rownums 'tag 'remove 'txt "0.0" 'end)
+      (textgrid-remove-tags-globally
+       grid (cons 'active (map (o bv-field-config-type-tag cadr)
+			       (blockview-field-configs b))))
+      (textgrid-remove-tags-globally rownums '(active txt))
       (textgrid-add-tags rownums '(active txt)
 			 (car zone-limits)
 			 0 'end (cadr zone-limits))
@@ -1497,8 +1495,7 @@
 	(blockview-tag-active-zone b))
       (blockview-show-cursor b)
       (grid 'see 'insert)
-      ((blockview-rownums b) 'see (string-append (->string (add1 row))
-						 ".0"))))
+      ((blockview-rownums b) 'see (textgrid-position->tk-index row 0))))
 
   ;;; Set the blockview's cursor to the grid position currently closest to the
   ;;; mouse pointer.
