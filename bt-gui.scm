@@ -169,6 +169,8 @@
     (apply tk/event (append '(add <<BlockEntry>>)
 			    (map car
 				 (app-keys-note-entry (settings 'keymap)))))
+    (tk/event 'add '<<BlockMotion>>
+	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row)))
@@ -1525,18 +1527,33 @@
       (blockview-set-cursor
        b
        (match direction
-	 ('up (if (zero? current-row)
+	 ('Up (if (zero? current-row)
 		  (sub1 total-length)
 		  (sub1 current-row)))
-	 ('down (if (>= (+ step current-row) total-length)
+	 ('Down (if (>= (+ step current-row) total-length)
 		    0 (+ step current-row)))
+	 ('Home (if (zero? current-row)
+		    current-row
+		    (car (find (lambda (start+end)
+				 (< (car start+end)
+				    current-row))
+			       (reverse (blockview-start+end-positions b))))))
+	 ('End (if (= current-row (sub1 total-length))
+		   current-row
+		   (let ((next-pos (find (lambda (start+end)
+					   (> (car start+end)
+					      current-row))
+					 (blockview-start+end-positions b))))
+		     (if next-pos
+			 (car next-pos)
+			 (sub1 total-length)))))
 	 (else current-row))
        (match direction
-	 ('left (or (find (lambda (pos)
+	 ('Left (or (find (lambda (pos)
 			    (< pos current-char))
 			  (reverse (blockview-cursor-x-positions b)))
 		    (car (reverse (blockview-cursor-x-positions b)))))
-	 ('right (or (find (lambda (pos)
+	 ('Right (or (find (lambda (pos)
 			     (> pos current-char))
 			   (blockview-cursor-x-positions b))
 		     0))
@@ -1566,7 +1583,7 @@
       (apply-edit! action)
       (blockview-update b)
       (unless (zero? (state 'edit-step))
-	(blockview-move-cursor b 'down))
+	(blockview-move-cursor b 'Down))
       (set-toolbar-button-state 'journal 'undo 'enabled)
       (unless (state 'modified)
 	(set-state! 'modified #t)
@@ -1624,10 +1641,10 @@
   ;;; Bind common event handlers for the blockview {{b}}.
   (define (blockview-bind-events b)
     (let ((grid (blockview-content-grid b)))
-      (tk/bind* grid '<Up> (lambda () (blockview-move-cursor b 'up)))
-      (tk/bind* grid '<Down> (lambda () (blockview-move-cursor b 'down)))
-      (tk/bind* grid '<Left> (lambda () (blockview-move-cursor b 'left)))
-      (tk/bind* grid '<Right> (lambda () (blockview-move-cursor b 'right)))
+      (tk/bind* grid '<<BlockMotion>>
+		`(,(lambda (keysym)
+		     (blockview-move-cursor b keysym))
+		  %K))
       (tk/bind* grid '<Button-1>
 		(lambda () (blockview-set-cursor-from-mouse b)))
       (tk/bind* grid '<<ClearStep>>
