@@ -39,12 +39,6 @@
   ;;; ## Utilities
   ;; ---------------------------------------------------------------------------
 
-  ;;; Disable automatic keyboard traversal. Needed because it messes with key
-  ;;; binding involving Tab.
-  (define (disable-keyboard-traversal)
-    (tk/event 'delete '<<NextWindow>>)
-    (tk/event 'delete '<<PrevWindow>>))
-
   ;;; update window title by looking at current file name and 'modified'
   ;;; property
   (define (update-window-title!)
@@ -162,6 +156,12 @@
   ;; ---------------------------------------------------------------------------
   ;;; ## Events
   ;; ---------------------------------------------------------------------------
+
+  ;;; Disable automatic keyboard traversal. Needed because it messes with key
+  ;;; binding involving Tab.
+  (define (disable-keyboard-traversal)
+    (tk/event 'delete '<<NextWindow>>)
+    (tk/event 'delete '<<PrevWindow>>))
 
   ;;; Create default virtual events for Bintracker. This procedure only needs
   ;;; to be called on startup, or after updating key bindings.
