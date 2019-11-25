@@ -260,16 +260,9 @@
 
   ;;; Bintracker uses a dual undo/redo stack system to track user edits.
   ;;;
-  ;;; On every edit, the redo stack is cleared, and the executed action is
-  ;;; pushed to the undo stack, which is part of `*bintracker-state*`.
-  ;;;
-  ;;; Actions take the form `(action-type  node-path ((instance value) ...))`,
-  ;;; where *action-type* is one of `set`, `'remove`, `'insert`. *action-type*
-  ;;; may also be `'compound`, in that case the action specifier is followed by
-  ;;; a list of actions. Otherwise, *node-path* is a mdmod node path string,
-  ;;; `instance` is a node instance ID, and `value` is the node instance value
-  ;;; prior to the associated edit, ie. the instance value that was removed or
-  ;;; replaced, or the empty list if *action-type* is `'remove`.
+  ;;; On every edit, the redo stack is cleared, and the executed edit action is
+  ;;; pushed to the undo stack, which is part of `*bintracker-state*`. See
+  ;;; bt-gui/Editing for a description of edit actions.
   ;;;
   ;;; On `push-undo`, the first element of the undo stack is popped and pushed
   ;;; to the redo stack.
@@ -298,7 +291,7 @@
 							 (state 'journal)))))))
 
   ;;; Generate an action specification that when applied, will revert the edit
-  ;;; that results from the given {{action}} specification.
+  ;;; that results from the given edit {{action}} specification.
   ;;; TODO preserve instance names
   (define (make-reverse-action action)
     (match (car action)
