@@ -173,7 +173,9 @@
 	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
-    (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row)))
+    (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
+    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
+    (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
   ;;; evaluated before the local bindings of {{widget}}. This is necessary to
@@ -637,6 +639,12 @@
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
 	  (set-toolbar-button-state 'journal 'redo 'disabled)))))
 
+  ;;; Enable the undo toolbar button, and update the window title if necessary.
+  (define (run-post-edit-actions)
+    (set-toolbar-button-state 'journal 'undo 'enabled)
+    (unless (state 'modified)
+      (set-state! 'modified #t)
+      (update-window-title!)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Module Display Related Widgets and Procedures
@@ -1270,6 +1278,11 @@
 			     (<= current-row (cadr start+end))))
 		      (blockview-start+end-positions b)))))
 
+  ;;; Returns the chunk from the item cache that the cursor is currently on.
+  (define (blockview-get-current-chunk b)
+    (list-ref (blockview-item-cache b)
+	      (blockview-get-current-order-pos b)))
+
   ;;; Update the command information in the status bar, based on the field that
   ;;; the cursor currently points to.
   (define (blockview-update-current-command-info b)
@@ -1572,22 +1585,70 @@
     (set-state! 'active-md-command-info "")
     (reset-status-text!))
 
+  ;;; Delete the field node instance that corresponds to the current cursor
+  ;;; position, and insert an empty node at the end of the block instead.
+  (define (blockview-cut-current-cell b)
+    (let* ((current-instance (blockview-get-current-field-instance b))
+	   (row-index (list-index (lambda (id)
+				    (eq? id (blockview-get-current-field-id b)))
+				  (blockview-field-ids b)))
+	   (field-values (drop (map (lambda (row)
+				      (list-ref row row-index))
+				    (blockview-get-current-chunk b))
+			       (+ 1 current-instance)))
+	   (action
+	    (list 'set (blockview-get-current-field-path b)
+		  (map (lambda (i val)
+			 (list i val))
+		       (iota (length field-values)
+			     current-instance 1)
+		       (append field-values '(()))))))
+      (push-undo (make-reverse-action action))
+      (apply-edit! action)
+      (blockview-update b)
+      (blockview-move-cursor b 'Up)
+      (run-post-edit-actions)))
+
+  ;;; Insert an empty cell into the field column currently under cursor,
+  ;;; shifting the following node instances down and dropping the last instance.
+  (define (blockview-insert-cell b)
+    (let* ((current-instance (blockview-get-current-field-instance b))
+	   (row-index (list-index (lambda (id)
+				    (eq? id (blockview-get-current-field-id b)))
+				  (blockview-field-ids b)))
+	   (field-values (drop-right (drop (map (lambda (row)
+						  (list-ref row row-index))
+						(blockview-get-current-chunk b))
+					   current-instance)
+				     1))
+	   (action
+	    (list 'set (blockview-get-current-field-path b)
+		  (cons (list current-instance '())
+			(map (lambda (i val)
+			       (list i val))
+			     (iota (length field-values)
+				   (+ 1 current-instance)
+				   1)
+			     field-values)))))
+      (push-undo (make-reverse-action action))
+      (apply-edit! action)
+      (blockview-update b)
+      (blockview-show-cursor b)
+      (run-post-edit-actions)))
+
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to {{new-value}}, and update the display and the undo/redo stacks
   ;;; accordingly.
   (define (blockview-edit-current-cell b new-value)
-    (let* ((path (blockview-get-current-field-path b))
-	   (instance (blockview-get-current-field-instance b))
-	   (action `(set ,path ((,instance ,new-value)))))
+    (let ((action `(set ,(blockview-get-current-field-path b)
+			((,(blockview-get-current-field-instance b)
+			  ,new-value)))))
       (push-undo (make-reverse-action action))
       (apply-edit! action)
       (blockview-update b)
       (unless (zero? (state 'edit-step))
 	(blockview-move-cursor b 'Down))
-      (set-toolbar-button-state 'journal 'undo 'enabled)
-      (unless (state 'modified)
-	(set-state! 'modified #t)
-	(update-window-title!))))
+      (run-post-edit-actions)))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -1649,6 +1710,10 @@
 		(lambda () (blockview-set-cursor-from-mouse b)))
       (tk/bind* grid '<<ClearStep>>
 		(lambda () (blockview-edit-current-cell b '())))
+      (tk/bind* grid '<<CutStep>>
+		(lambda () (blockview-cut-current-cell b)))
+      (tk/bind* grid '<<InsertStep>>
+		(lambda () (blockview-insert-cell b)))
       (tk/bind* grid '<<BlockEntry>>
 		`(,(lambda (keysym)
 		     (blockview-dispatch-entry-event b keysym))
