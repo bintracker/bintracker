@@ -53,6 +53,8 @@
   (define on-close-file-hooks
     (list (lambda () (destroy-group-widget (state 'module-widget)))
 	  (lambda () (set-play-buttons 'disabled))
+	  (lambda () (set-toolbar-button-state 'journal 'undo 'disabled))
+	  (lambda () (set-toolbar-button-state 'journal 'redo 'disabled))
 	  reset-state! update-window-title! reset-status-text!
 	  disable-edit-settings!))
 
