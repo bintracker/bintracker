@@ -155,17 +155,20 @@
     (set-state!
      'menu (construct-menu
 	    (map (lambda (item) (cons 'submenu item))
-		 `((file "File" 0 ((command new "New..." 0 "Ctrl+N" #f)
-				   (command open "Open..." 0 "Ctrl+O"
-					    ,load-file)
-				   (command save "Save" 0 "Ctrl+S" ,save-file)
-				   (command save-as "Save as..." 5
-					    "Ctrl+Shift+S" ,save-file-as)
-				   (command close "Close" 0 "Ctrl+W"
-					    ,close-file)
-				   (separator)
-				   (command exit "Exit" 1 "Ctrl+Q"
-					    ,exit-bintracker)))
+		 `((file "File" 0
+			 ((command new "New..." 0 "Ctrl+N" #f)
+			  (command open "Open..." 0 "Ctrl+O"
+				   ,load-file)
+			  (command save "Save" 0 "Ctrl+S" ,save-file)
+			  (command save-as "Save as..." 5
+				   "Ctrl+Shift+S" ,save-file-as)
+			  (submenu export "Export" 0
+				   ((command bin ".bin" 0 "Alt+E b" #f)))
+			  (command close "Close" 0 "Ctrl+W"
+				   ,close-file)
+			  (separator)
+			  (command exit "Exit" 1 "Ctrl+Q"
+				   ,exit-bintracker)))
 		   (edit "Edit" 0 ((command undo "Undo" 0 "Ctrl+Z" ,undo)
 				   (command redo "Redo" 0 "Ctrl+Y" ,redo)))
 		   (generate "Generate" 0 ())
