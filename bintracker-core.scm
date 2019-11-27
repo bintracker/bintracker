@@ -9,6 +9,7 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
+	  (chicken file)
 	  srfi-1 srfi-13 srfi-69 pstk typed-records matchable list-utils
 	  simple-exceptions mdal
 	  bt-state bt-types bt-gui)
@@ -24,12 +25,14 @@
 
   ;;; Load the main configuration file
   (define (load-config)
-    (handle-exceptions
-	exn
-	(begin
-	  (display exn)
-	  (newline))
-      (load "config/config.scm")))
+    (if (file-exists? "config/config.scm")
+	(handle-exceptions
+	    exn
+	    (begin
+	      (display exn)
+	      (newline))
+	  (load "config/config.scm"))
+	(warning "Configuration file \"config/config.scm\" not found.")))
 
   ;;; If there are unsaved changes to the current module, ask user if they
   ;;; should be saved, then execute the procedure {{proc}} unless the user
