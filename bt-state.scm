@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
-	  typed-records matchable simple-exceptions pstk list-utils stack
+	  typed-records simple-exceptions pstk list-utils stack
 	  bt-types mdal)
 
   (define *bintracker-version* "0.2.0")
@@ -294,20 +294,21 @@
   ;;; that results from the given edit {{action}} specification.
   ;;; TODO preserve instance names
   (define (make-reverse-action action)
-    (match (car action)
-      ('set (list 'set (cadr action)
-		  (map (lambda (id+val)
-			 (list (car id+val)
-			       (inode-instance-val
-				((node-instance-path
-				  (string-append (cadr action)
-						 (->string (car id+val))
-						 "/"))
-				 (mdmod-global-node (current-mod))))))
-		       (third action))))
-      ('remove '())
-      ('insert '())
-      ('compound '())))
+    (case (car action)
+      ((set) (list 'set (cadr action)
+		   (map (lambda (id+val)
+			  (list (car id+val)
+				(inode-instance-val
+				 ((node-instance-path
+				   (string-append (cadr action)
+						  (->string (car id+val))
+						  "/"))
+				  (mdmod-global-node (current-mod))))))
+			(third action))))
+      ((remove) (list 'insert))
+      ((insert) (list 'remove))
+      ((compound) (list 'compound (map make-reverse-action
+				       (reverse (cdr action)))))))
 
   ;;; Push {{action}} to the journal's undo stack. If the stack is full, half of
   ;;; the old entries are dropped.

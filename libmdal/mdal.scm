@@ -7,7 +7,7 @@
   (import scheme (chicken base) (chicken module) (chicken format)
 	  (chicken string) (chicken bitwise)
 	  srfi-1 srfi-4 srfi-13 srfi-69 typed-records
-	  matchable md-config md-helpers md-types md-parser)
+	  md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
 
   (define-constant mdal-version 2)
@@ -47,9 +47,9 @@
 	  (let* ((empty-count (count-empty rows 0))
 		 (drop-count (if (zero? empty-count)
 				 1 empty-count)))
-	    (cons (match empty-count
-		    (0 (car rows))
-		    (1 ".")
+	    (cons (case empty-count
+		    ((0) (car rows))
+		    ((1) ".")
 		    (else (string-append "." (->string empty-count))))
 		  (collapse-empty-rows (drop rows drop-count)))))))
 
@@ -85,30 +85,30 @@
 			    (inode-instance-name node-instance)
 			    port)))
 	   (write-footer (lambda () (fprintf port "~A}\n" indent))))
-      (match (inode-config-type node-cfg)
-	('field (fprintf port "~A~A=~s" indent node-id
+      (case (inode-config-type node-cfg)
+	((field) (fprintf port "~A~A=~s" indent node-id
 			 (inode-instance-val node-instance)))
-	('block (begin
-		  (write-header)
-		  (for-each (lambda (row)
-			      (fprintf port "~A~A\n"
-				       (indent-level->string
-					(+ 1 indent-level))
-				       row))
-			    (rows->string
-			     (mod-get-block-instance-rows node-instance)
-			     (config-get-subnode-ids
-			      node-id (config-itree config))))
-		  (write-footer)))
-	('group (begin
-		  (write-header)
-		  (for-each (lambda (subnode)
-			      (begin
-				(write-node subnode (+ 1 indent-level)
-					    config port)
-				(newline port)))
-			    (inode-instance-val node-instance))
-		  (write-footer))))))
+	((block)
+	 (write-header)
+	 (for-each (lambda (row)
+		     (fprintf port "~A~A\n"
+			      (indent-level->string
+			       (+ 1 indent-level))
+			      row))
+		   (rows->string
+		    (mod-get-block-instance-rows node-instance)
+		    (config-get-subnode-ids
+		     node-id (config-itree config))))
+	 (write-footer))
+	((group)
+	 (write-header)
+	 (for-each (lambda (subnode)
+		     (begin
+		       (write-node subnode (+ 1 indent-level)
+				   config port)
+		       (newline port)))
+		   (inode-instance-val node-instance))
+	 (write-footer)))))
 
   ;;; Write the contents of {{node}} as MDAL text to {{port}}, indented by
   ;;; {{indent-level}}, based on the rules specified in config {{config}}.

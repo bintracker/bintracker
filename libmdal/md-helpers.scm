@@ -5,7 +5,7 @@
 (module md-helpers *
 
   (import scheme (chicken base) (chicken condition) (chicken string)
-	  srfi-1 srfi-13 srfi-69 simple-exceptions matchable
+	  srfi-1 srfi-13 srfi-69 simple-exceptions
 	  typed-records)
 
   ;; ---------------------------------------------------------------------------
@@ -99,44 +99,44 @@
   ;; simplified exception generator for common libmdal errors
   (define (raise-local exn-type . args)
     (raise ((make-exn
-	     (match exn-type
-	       ('missing-command-specifier
+	     (case exn-type
+	       ((missing-command-specifier)
 		"missing id, type, and/or default specifier")
-	       ('missing-command-bits "missing bits specifier")
-	       ('unknown-command-type
+	       ((missing-command-bits) "missing bits specifier")
+	       ((unknown-command-type)
 		(string-append "unknown command type "
 			       (->string (car args))))
-	       ('missing-command-keys "missing keys specifier")
-	       ('missing-command-reference-to
+	       ((missing-command-keys) "missing keys specifier")
+	       ((missing-command-reference-to)
 		"missing reference-to specifier")
-	       ('nonnumeric-command-range
+	       ((nonnumeric-command-range)
 		"range used on command not of type int/uint")
-	       ('incomplete-config
+	       ((incomplete-config)
 		"incomplete mdalconfig specification")
-	       ('unsupported-mdconf-version
+	       ((unsupported-mdconf-version)
 		(string-append "unsupported MDCONF version "
 			       (->string (car args))))
-	       ('not-mdconf "Not an MDCONF specification.")
-	       ('not-command
+	       ((not-mdconf) "Not an MDCONF specification.")
+	       ((not-command)
 		(string-append "Not an MDAL command specification."
 			       (->string (car args))))
-	       ('missing-inode-type "missing inode config type")
-	       ('unknown-inode-type
+	       ((missing-inode-type) "missing inode config type")
+	       ((unknown-inode-type)
 		(string-append "unknown inode config type "
 			       (->string (car args))))
-	       ('missing-ifield-source "missing source command id specifier")
-	       ('missing-inode-id "missing id specifier")
-	       ('missing-inode-subnodes "inode contains no subnodes")
-	       ('illegal-block-child
+	       ((missing-ifield-source) "missing source command id specifier")
+	       ((missing-inode-id) "missing id specifier")
+	       ((missing-inode-subnodes) "inode contains no subnodes")
+	       ((illegal-block-child)
 		(string-append "inode of type " (->string (car args))
 			       " may not be a child of a block inode"))
-	       ('missing-onode-id "missing id specifier")
-	       ('no-config "No CONFIG specified")
-	       ('no-mdal-version "No MDAL version specified")
-	       ('unsupported-mdal-version
+	       ((missing-onode-id) "missing id specifier")
+	       ((no-config) "No CONFIG specified")
+	       ((no-mdal-version) "No MDAL version specified")
+	       ((unsupported-mdal-version)
 		(string-append "Unsupported MDAL version: "
 			       (->string (car args))))
-	       ('compiler-failed "Failed to compile module."))
+	       ((compiler-failed) "Failed to compile module."))
 	     exn-type)
 	    "")))
 

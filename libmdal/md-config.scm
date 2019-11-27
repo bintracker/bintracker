@@ -10,7 +10,7 @@
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
 	  (chicken condition) (chicken sort)
-	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 matchable
+	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69
 	  simple-exceptions typed-records
 	  md-helpers md-types md-command md-note-table schemta)
   (reexport md-command md-note-table schemta)
@@ -349,13 +349,13 @@
   ;;; Generate the local itree for an inode. This procedure should be called by
   ;;; `apply`ing it to an inode config expression.
   (define (get-itree node-type #!key id from nodes flags)
-    (match node-type
-      ('field (list from))
-      ('block (list id (get-subnodes-itree nodes)))
-      ('group (list id (append (get-subnodes-itree nodes)
-			       (if (and flags (memv 'ordered flags))
-				   (list (generate-order-tree id nodes))
-				   '()))))
+    (case node-type
+      ((field) (list from))
+      ((block) (list id (get-subnodes-itree nodes)))
+      ((group) (list id (append (get-subnodes-itree nodes)
+				(if (and flags (memv 'ordered flags))
+				    (list (generate-order-tree id nodes))
+				    '()))))
       (else (raise-local 'unknown-inode-type node-type))))
 
   ;;; Generate the global itree (nested list of inode IDs) from the list of
@@ -701,13 +701,13 @@
 			     (car order-pos))
 			  (transform-index (cdr order-pos) order-length
 					   (+ 1 column)))))))
-      (match layout
-	(shared-numeric-matrix
+      (case layout
+	((shared-numeric-matrix)
 	 (lambda (raw-order)
 	   (flatten (map (lambda (order-pos)
 			   (transform-index order-pos (length raw-order) 0))
 			 raw-order))))
-	(pointer-matrix (lambda (raw-order) raw-order))
+	((pointer-matrix) (lambda (raw-order) raw-order))
 	(else (error "unsupported order type")))))
 
   ;; TODO
@@ -1084,15 +1084,15 @@
   ;;; dispatch output note config expressions to the appropriate onode
   ;;; generators
   (define (dispatch-onode-expr expr proto-config path-prefix)
-    (apply (match (car expr)
-	     ('comment (lambda (proto-cfg c p) (make-onode type: 'comment
-							   size: 0 val: c)))
-	     ('asm make-oasm)
-	     ('symbol make-osymbol)
-	     ('field make-ofield)
-	     ('block make-oblock)
-	     ('group make-ogroup)
-	     ('order make-oorder)
+    (apply (case (car expr)
+	     ((comment) (lambda (proto-cfg c p) (make-onode type: 'comment
+							    size: 0 val: c)))
+	     ((asm) make-oasm)
+	     ((symbol) make-osymbol)
+	     ((field) make-ofield)
+	     ((block) make-oblock)
+	     ((group) make-ogroup)
+	     ((order) make-oorder)
 	     (else (error "unsupported output node type")))
 	   (append (list proto-config path-prefix) (cdr expr))))
 

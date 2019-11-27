@@ -14,7 +14,7 @@
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
 	  (chicken condition)
 	  srfi-1 srfi-13 srfi-14 srfi-69 typed-records
-	  simple-exceptions matchable md-helpers)
+	  simple-exceptions md-helpers)
 
   ;;; **[RECORD]** COMMAND
   ;;; command config record type
@@ -124,9 +124,9 @@
       ;; TODO implement ranges, keymap files
       (list id (make-command
 		type: type
-		bits: (match type
-			('string 0)
-			('trigger 1)
+		bits: (case type
+			((string) 0)
+			((trigger) 1)
 			(else bits))
 		default: default
 		reference-to: reference-to

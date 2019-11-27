@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
-	  typed-records matchable simple-exceptions pstk stack
+	  typed-records simple-exceptions pstk stack
 	  bt-state bt-types mdal)
 
   ;; ---------------------------------------------------------------------------
@@ -214,23 +214,24 @@
 	   (lambda (id item)
 	     (menu-items-set! menu (append (menu-items menu)
 					   (list id item))))))
-      (match (car item-spec)
-	('command (begin
-		    (append-to-item-list! (second item-spec) #f)
-		    ((menu-widget menu) 'add 'command label: (third item-spec)
-		     underline: (fourth item-spec)
-		     accelerator: (or (fifth item-spec) "")
-		     command: (sixth item-spec))))
-	('submenu (let* ((submenu (construct-menu (fifth item-spec))))
-		    (append-to-item-list! (second item-spec)
-					  submenu)
-		    ((menu-widget menu) 'add 'cascade
-		     menu: (menu-widget submenu)
-		     label: (third item-spec)
-		     underline: (fourth item-spec))))
-	('separator (begin
-		      (append-to-item-list! 'separator #f)
-		      ((menu-widget menu) 'add 'separator)))
+      (case (car item-spec)
+	((command)
+	 (append-to-item-list! (second item-spec) #f)
+	 ((menu-widget menu) 'add 'command label: (third item-spec)
+	  underline: (fourth item-spec)
+	  accelerator: (or (fifth item-spec) "")
+	  command: (sixth item-spec)))
+	((submenu)
+	 (let* ((submenu (construct-menu (fifth item-spec))))
+	   (append-to-item-list! (second item-spec)
+				 submenu)
+	   ((menu-widget menu) 'add 'cascade
+	    menu: (menu-widget submenu)
+	    label: (third item-spec)
+	    underline: (fourth item-spec))))
+	((separator)
+	 (append-to-item-list! 'separator #f)
+	 ((menu-widget menu) 'add 'separator))
 	(else (error (string-append "Unknown menu item type \""
 				    (->string (car item-spec))
 				    "\""))))))
@@ -650,19 +651,19 @@
   ;;; Apply an edit action to the current module.
   ;; TODO only renumber if node-path names a field node.
   (define (apply-edit! action)
-    (match (car action)
-      ('set (node-set! ((node-path (cadr action))
-			(mdmod-global-node (current-mod)))
-		       (third action)))
-      ('remove (node-remove! ((node-path (cadr action))
-			      (mdmod-global-node (current-mod)))
-			     (third action)
-			     #t))
-      ('insert (node-insert! ((node-path (cadr action))
+    (case (car action)
+      ((set) (node-set! ((node-path (cadr action))
+			 (mdmod-global-node (current-mod)))
+			(third action)))
+      ((remove) (node-remove! ((node-path (cadr action))
 			       (mdmod-global-node (current-mod)))
-			     (third action)
-			     #t))
-      ('compound (for-each apply-edit! (cdr action)))))
+			      (third action)
+			      #t))
+      ((insert) (node-insert! ((node-path (cadr action))
+			       (mdmod-global-node (current-mod)))
+			      (third action)
+			      #t))
+      ((compound) (for-each apply-edit! (cdr action)))))
 
   ;;; Undo the latest edit action, by retrieving the latest action from the undo
   ;;; stack, applying it, updating the redo stack, and refreshing the display.
@@ -742,21 +743,21 @@
   ;;; command.
   ;; TODO results should be cached
   (define (value-display-size command-config)
-    (match (command-type command-config)
+    (case (command-type command-config)
       ;; FIXME this is incorrect for negative numbers
-      ((or 'int 'uint) (inexact->exact
-			(ceiling
-			 (/ (log (expt 2 (command-bits command-config)))
-			    (log (settings 'number-base))))))
-      ((or 'key 'ukey) (if (memq 'is_note (command-flags command-config))
-			   3 (apply max
-				    (map (o string-length car)
-					 (hash-table-keys
-					  (command-keys command-config))))))
-      ('reference (if (>= 16 (settings 'number-base))
-		      2 3))
-      ('trigger 1)
-      ('string 32)))
+      ((int uint) (inexact->exact
+		   (ceiling
+		    (/ (log (expt 2 (command-bits command-config)))
+		       (log (settings 'number-base))))))
+      ((key ukey) (if (memq 'is_note (command-flags command-config))
+		      3 (apply max
+			       (map (o string-length car)
+				    (hash-table-keys
+				     (command-keys command-config))))))
+      ((reference) (if (>= 16 (settings 'number-base))
+		       2 3))
+      ((trigger) 1)
+      ((string) 32)))
 
   ;;; Transform an ifield value from MDAL format to tracker display format.
   ;;; Replaces empty values with dots, changes numbers depending on number
@@ -767,17 +768,17 @@
       (if (or (not val) (null? val))
 	  (list->string (make-list (value-display-size command-config)
   	  			   #\.))
-  	  (match (command-type command-config)
-	    ((or 'int 'uint 'reference)
+  	  (case (command-type command-config)
+	    ((int uint reference)
 	     (string-pad (number->string val (settings 'number-base))
 			 (value-display-size command-config)
 			 #\0))
-	    ((or 'key 'ukey) (if (memq 'is_note
-				       (command-flags command-config))
-				 (normalize-note-name val)
-				 val))
-	    ('trigger "x")
-	    ('string val)))))
+	    ((key ukey) (if (memq 'is_note
+				  (command-flags command-config))
+			    (normalize-note-name val)
+			    val))
+	    ((trigger) "x")
+	    ((string) val)))))
 
   ;;; Get the color tag asscociated with the field's command type.
   (define (get-field-color-tag field-id)
@@ -785,13 +786,13 @@
 			   field-id (current-config))))
       (if (memq 'is_note (command-flags command-config))
 	  'text-1
-	  (match (command-type command-config)
-	    ((or 'int 'uint) 'text-2)
-	    ((or 'key 'ukey) 'text-3)
-	    ('reference 'text-4)
-	    ('trigger 'text-5)
-	    ('string 'text-6)
-	    ('modifier 'text-7)
+	  (case (command-type command-config)
+	    ((int uint) 'text-2)
+	    ((key ukey) 'text-3)
+	    ((reference) 'text-4)
+	    ((trigger) 'text-5)
+	    ((string) 'text-6)
+	    ((modifier) 'text-7)
 	    (else 'text)))))
 
   ;;; Get the RGB color string associated with the field's command type.
@@ -824,9 +825,9 @@
 			   field-id (current-config))))
       (if (memq 'is_note (command-flags command-config))
 	  'note
-	  (match (command-type command-config)
-	    ((or 'int 'uint) 'int)
-	    ((or 'key 'ukey) 'key)
+	  (case (command-type command-config)
+	    ((int uint) 'int)
+	    ((key ukey) 'key)
 	    (else (command-type command-config))))))
 
 
@@ -838,9 +839,9 @@
       (if (>= len (length chars))
 	  (string-pad-right (list->string chars)
 			    len)
-	  (match len
-	    (1 (->string (car chars)))
-	    (2 (list->string (list (car chars) (car (reverse chars)))))
+	  (case len
+	    ((1) (->string (car chars)))
+	    ((2) (list->string (list (car chars) (car (reverse chars)))))
 	    (else (list->string (append (take chars (- len 2))
 					(list #\. (car (reverse chars))))))))))
 
@@ -1597,37 +1598,37 @@
 			 1 (state 'edit-step)))))
       (blockview-set-cursor
        b
-       (match direction
-	 ('Up (if (zero? current-row)
-		  (sub1 total-length)
-		  (sub1 current-row)))
-	 ('Down (if (>= (+ step current-row) total-length)
-		    0 (+ step current-row)))
-	 ('Home (if (zero? current-row)
+       (case direction
+	 ((Up) (if (zero? current-row)
+		   (sub1 total-length)
+		   (sub1 current-row)))
+	 ((Down) (if (>= (+ step current-row) total-length)
+		     0 (+ step current-row)))
+	 ((Home) (if (zero? current-row)
+		     current-row
+		     (car (find (lambda (start+end)
+				  (< (car start+end)
+				     current-row))
+				(reverse (blockview-start+end-positions b))))))
+	 ((End) (if (= current-row (sub1 total-length))
 		    current-row
-		    (car (find (lambda (start+end)
-				 (< (car start+end)
-				    current-row))
-			       (reverse (blockview-start+end-positions b))))))
-	 ('End (if (= current-row (sub1 total-length))
-		   current-row
-		   (let ((next-pos (find (lambda (start+end)
-					   (> (car start+end)
-					      current-row))
-					 (blockview-start+end-positions b))))
-		     (if next-pos
-			 (car next-pos)
-			 (sub1 total-length)))))
+		    (let ((next-pos (find (lambda (start+end)
+					    (> (car start+end)
+					       current-row))
+					  (blockview-start+end-positions b))))
+		      (if next-pos
+			  (car next-pos)
+			  (sub1 total-length)))))
 	 (else current-row))
-       (match direction
-	 ('Left (or (find (lambda (pos)
-			    (< pos current-char))
-			  (reverse (blockview-cursor-x-positions b)))
-		    (car (reverse (blockview-cursor-x-positions b)))))
-	 ('Right (or (find (lambda (pos)
-			     (> pos current-char))
-			   (blockview-cursor-x-positions b))
-		     0))
+       (case direction
+	 ((Left) (or (find (lambda (pos)
+			     (< pos current-char))
+			   (reverse (blockview-cursor-x-positions b)))
+		     (car (reverse (blockview-cursor-x-positions b)))))
+	 ((Right) (or (find (lambda (pos)
+			      (> pos current-char))
+			    (blockview-cursor-x-positions b))
+		      0))
 	 (else current-char)))))
 
   ;;; Set the input focus to the blockview {{b}}. In addition to setting the
@@ -1744,12 +1745,12 @@
     (let ((cmd (blockview-get-current-field-command b)))
       (if (command-has-flag? cmd 'is_note)
 	  (blockview-enter-note b keysym)
-	  (match (command-type cmd)
-	    ('trigger (blockview-enter-trigger b))
-	    ((or 'int 'uint) (blockview-enter-numeric b keysym))
-	    ((or 'key 'ukey) (blockview-enter-key b keysym))
-	    ('reference (blockview-enter-reference b keysym))
-	    ('string (blockview-enter-string b keysym))))))
+	  (case (command-type cmd)
+	    ((trigger) (blockview-enter-trigger b))
+	    ((int uint) (blockview-enter-numeric b keysym))
+	    ((key ukey) (blockview-enter-key b keysym))
+	    ((reference) (blockview-enter-reference b keysym))
+	    ((string) (blockview-enter-string b keysym))))))
 
   ;;; Bind common event handlers for the blockview {{b}}.
   (define (blockview-bind-events b)
