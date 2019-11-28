@@ -763,22 +763,21 @@
   ;;; Replaces empty values with dots, changes numbers depending on number
   ;;; format setting, and turns everything into a string.
   (define (normalize-field-value val field-id)
-    (let ((command-config (config-get-inode-source-command
-  			   field-id (current-config))))
-      (if (or (not val) (null? val))
-	  (list->string (make-list (value-display-size command-config)
-  	  			   #\.))
-  	  (case (command-type command-config)
-	    ((int uint reference)
-	     (string-pad (number->string val (settings 'number-base))
-			 (value-display-size command-config)
-			 #\0))
-	    ((key ukey) (if (memq 'is_note
-				  (command-flags command-config))
-			    (normalize-note-name val)
-			    val))
-	    ((trigger) "x")
-	    ((string) val)))))
+    (let* ((command-config (config-get-inode-source-command
+  			    field-id (current-config)))
+	   (display-size (value-display-size command-config)))
+      (cond ((not val) (list->string (make-list display-size #\.)))
+	    ((null? val) (list->string (make-list display-size #\space)))
+	    (else (case (command-type command-config)
+		    ((int uint reference)
+		     (string-pad (number->string val (settings 'number-base))
+				 display-size #\0))
+		    ((key ukey) (if (memq 'is_note
+					  (command-flags command-config))
+				    (normalize-note-name val)
+				    val))
+		    ((trigger) "x")
+		    ((string) val))))))
 
   ;;; Get the color tag asscociated with the field's command type.
   (define (get-field-color-tag field-id)
@@ -1368,7 +1367,7 @@
 		       (append block-values
 			       (make-list (- chunk-length (length block-values))
 					  (make-list (length (car block-values))
-						     #f))))))
+						     '()))))))
 	       order))))
 
   ;;; Determine the start and end positions of each item chunk in the
@@ -1431,6 +1430,13 @@
     (list-index (lambda (id)
 		  (eq? id (blockview-get-current-field-id b)))
 		(blockview-field-ids b)))
+
+  ;;; Returns the (un-normalized) value of the field instance currently under
+  ;;; cursor.
+  (define (blockview-get-current-field-value b)
+    (list-ref (list-ref (blockview-get-current-chunk b)
+			(blockview-get-current-field-instance b))
+	      (blockview-get-current-field-index b)))
 
   ;;; Apply type tags and the 'active tag to the current active zone of the
   ;;; blockview {{b}}.
@@ -1656,47 +1662,52 @@
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
   (define (blockview-cut-current-cell b)
-    (let* ((current-instance (blockview-get-current-field-instance b))
-	   (field-index (blockview-get-current-field-index b))
-	   (field-values (drop (map (lambda (row)
-				      (list-ref row field-index))
-				    (blockview-get-current-chunk b))
-			       (+ 1 current-instance)))
-	   (action (list 'set (blockview-get-current-field-path b)
-			 (map (lambda (i val)
-				(list i val))
-			      (iota (length field-values)
-				    current-instance 1)
-			      (append field-values '(()))))))
-      (push-undo (make-reverse-action action))
-      (apply-edit! action)
-      (blockview-update b)
-      (blockview-move-cursor b 'Up)
-      (run-post-edit-actions)))
+    (unless (null? (blockview-get-current-field-value b))
+      (let* ((current-instance (blockview-get-current-field-instance b))
+	     (field-index (blockview-get-current-field-index b))
+	     (field-values (drop (remove null?
+					 (map (lambda (row)
+						(list-ref row field-index))
+					      (blockview-get-current-chunk b)))
+				 (+ 1 current-instance)))
+	     (action (list 'set (blockview-get-current-field-path b)
+			   (map (lambda (i val)
+				  (list i val))
+				(iota (length field-values)
+				      current-instance 1)
+				(append field-values '(()))))))
+	(push-undo (make-reverse-action action))
+	(apply-edit! action)
+	(blockview-update b)
+	(blockview-move-cursor b 'Up)
+	(run-post-edit-actions))))
 
   ;;; Insert an empty cell into the field column currently under cursor,
   ;;; shifting the following node instances down and dropping the last instance.
   (define (blockview-insert-cell b)
-    (let* ((current-instance (blockview-get-current-field-instance b))
-	   (field-index (blockview-get-current-field-index b))
-	   (field-values (drop-right (drop (map (lambda (row)
-						  (list-ref row field-index))
-						(blockview-get-current-chunk b))
-					   current-instance)
-				     1))
-	   (action (list 'set (blockview-get-current-field-path b)
-			 (cons (list current-instance '())
-			       (map (lambda (i val)
-				      (list i val))
-				    (iota (length field-values)
-					  (+ 1 current-instance)
-					  1)
-				    field-values)))))
-      (push-undo (make-reverse-action action))
-      (apply-edit! action)
-      (blockview-update b)
-      (blockview-show-cursor b)
-      (run-post-edit-actions)))
+    (unless (null? (blockview-get-current-field-value b))
+      (let* ((current-instance (blockview-get-current-field-instance b))
+	     (field-index (blockview-get-current-field-index b))
+	     (field-values (drop-right
+			    (remove null?
+				    (drop (map (lambda (row)
+						 (list-ref row field-index))
+					       (blockview-get-current-chunk b))
+					  current-instance))
+			    1))
+	     (action (list 'set (blockview-get-current-field-path b)
+			   (cons (list current-instance '())
+				 (map (lambda (i val)
+					(list i val))
+				      (iota (length field-values)
+					    (+ 1 current-instance)
+					    1)
+				      field-values)))))
+	(push-undo (make-reverse-action action))
+	(apply-edit! action)
+	(blockview-update b)
+	(blockview-show-cursor b)
+	(run-post-edit-actions))))
 
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to {{new-value}}, and update the display and the undo/redo stacks
@@ -1751,15 +1762,16 @@
   ;;; Dispatch entry events occuring on the blockview's content grid to the
   ;;; appropriate edit procedures, depending on field command type.
   (define (blockview-dispatch-entry-event b keysym)
-    (let ((cmd (blockview-get-current-field-command b)))
-      (if (command-has-flag? cmd 'is_note)
-	  (blockview-enter-note b keysym)
-	  (case (command-type cmd)
-	    ((trigger) (blockview-enter-trigger b))
-	    ((int uint) (blockview-enter-numeric b keysym))
-	    ((key ukey) (blockview-enter-key b keysym))
-	    ((reference) (blockview-enter-reference b keysym))
-	    ((string) (blockview-enter-string b keysym))))))
+    (unless (null? (blockview-get-current-field-value b))
+      (let ((cmd (blockview-get-current-field-command b)))
+	(if (command-has-flag? cmd 'is_note)
+	    (blockview-enter-note b keysym)
+	    (case (command-type cmd)
+	      ((trigger) (blockview-enter-trigger b))
+	      ((int uint) (blockview-enter-numeric b keysym))
+	      ((key ukey) (blockview-enter-key b keysym))
+	      ((reference) (blockview-enter-reference b keysym))
+	      ((string) (blockview-enter-string b keysym)))))))
 
   ;;; Bind common event handlers for the blockview {{b}}.
   (define (blockview-bind-events b)
@@ -1771,7 +1783,9 @@
       (tk/bind* grid '<Button-1>
 		(lambda () (blockview-set-cursor-from-mouse b)))
       (tk/bind* grid '<<ClearStep>>
-		(lambda () (blockview-edit-current-cell b '())))
+		(lambda ()
+		  (unless (null? (blockview-get-current-field-value b))
+		    (blockview-edit-current-cell b '()))))
       (tk/bind* grid '<<CutStep>>
 		(lambda () (blockview-cut-current-cell b)))
       (tk/bind* grid '<<InsertStep>>
