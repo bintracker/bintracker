@@ -192,15 +192,8 @@
   ;;; to the length of the block nodes as if they were combined into a single
   ;;; instance after being mapped onto the order node.
   (define (get-ordered-group-length group-id group-instance config)
-    (let ((blocks (inode-instances
-		   (car (mod-get-group-instance-blocks group-instance
-						       group-id config)))))
-      (apply + (map (lambda (instance-id)
-		      (length (inode-instances
-			       (car (inode-instance-val
-				     (car (alist-ref instance-id blocks)))))))
-		    (map car (mod-get-order-values group-id group-instance
-						   config))))))
+    (apply + (map car (mod-get-order-values group-id group-instance
+					    config))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -218,8 +211,10 @@
        val: (if (eq? 'field (get-node-type node-id))
 		(if (or (symbol-contains parent-id "_ORDER")
 			(eq? 'group (get-node-type parent-id)))
-		    (command-default (config-get-inode-source-command
-				      node-id config))
+		    (if (symbol-contains node-id "_LENGTH")
+			block-length
+			(command-default (config-get-inode-source-command
+					  node-id config)))
 		    '())
 		(map (lambda (subnode-id)
 		       (make-inode

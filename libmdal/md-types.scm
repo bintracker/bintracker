@@ -300,7 +300,13 @@
 
   ;;; Returns the values of all order fields as a list of row value sets.
   (define (mod-get-order-values group-id group-instance config)
-    (letrec ((repeat-values
+    (letrec ((order-val (inode-instance-val
+			 (car (alist-ref 0
+					 (inode-instances
+					  (get-subnode group-instance
+						       (symbol-append
+							group-id '_ORDER)))))))
+	     (repeat-values
 	      (lambda (rows previous-row)
 		(if (null-list? rows)
 		    '()
@@ -314,13 +320,10 @@
 	      (map (lambda (subnode)
 		     (map (o inode-instance-val cadr)
 			  (inode-instances subnode)))
-		   (inode-instance-val
-		    (car (alist-ref 0 (inode-instances
-				       (get-subnode
-					group-instance
-					(symbol-append group-id '_ORDER))))))))
+		   order-val))
        ;;; dummy values for first run
-       '(0 0 0))))
+       (make-list (length order-val)
+		  0))))
 
   ;;; Returns the plain field values of a block, sorted per field node (column)
   (define (mod-get-block-instance-values block-instance)

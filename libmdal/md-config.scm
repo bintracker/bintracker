@@ -89,16 +89,22 @@
   ;;; auto-generated order inodes
   (define (create-order-commands itree)
     (alist->hash-table
-     (map (lambda (x)
-  	    (list x
-  		  (make-command type: 'reference bits: 16
-  				reference-to: (string->symbol
-					       (substring/shared
-  						(symbol->string x) 2))
-  				flags: '(use_last_set))))
-  	  (filter (lambda (x)
-  		    (string-prefix? "R_" (symbol->string x)))
-  		  (flatten itree)))))
+     (append (map (lambda (id)
+		    (list id (make-command type: 'uint bits: 16
+					   flags: '(use_last_set))))
+		  (filter (lambda (id)
+			    (string-contains (symbol->string id) "_LENGTH"))
+			  (flatten itree)))
+	     (map (lambda (id)
+  		    (list id (make-command type: 'reference bits: 16
+  					   reference-to:
+					   (string->symbol
+					    (substring/shared
+  					     (symbol->string id) 2))
+  					   flags: '(use_last_set))))
+  		  (filter (lambda (id)
+  			    (string-prefix? "R_" (symbol->string id)))
+  			  (flatten itree))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -324,12 +330,13 @@
   (define (generate-order-tree id subnodes)
     (list (symbol-append id '_ORDER)
 	  (append
-	   (map (lambda (node)
-		  (list (symbol-append 'R_ (apply (lambda (#!key id) id)
-						  (cdr node)))))
-		(filter (lambda (node)
-			  (eq? 'block (car node)))
-			subnodes))
+	   (cons (list (symbol-append id '_LENGTH))
+		 (map (lambda (node)
+			(list (symbol-append 'R_ (apply (lambda (#!key id) id)
+							(cdr node)))))
+		      (filter (lambda (node)
+				(eq? 'block (car node)))
+			      subnodes)))
 	   (concatenate
 	    (map (lambda (node)
 		   (map (lambda (sym)
@@ -391,16 +398,22 @@
     (cons (list (symbol-append group-id '_ORDER)
 		(make-inode-config type: 'block
 				   instance-range: (make-instance-range)))
-	  (map (lambda (node)
-		 (let ((result-id (symbol-append 'R_ (car node))))
-		   (list result-id
-			 (make-inode-config
-			  type: 'field
-			  instance-range: (make-instance-range max: #f)
-			  cmd-id: result-id))))
-	       (filter (lambda (node)
-			 (eq? 'block (inode-config-type (cadr node))))
-		       subnodes))))
+	  (cons (let ((length-node-id (symbol-append group-id '_LENGTH)))
+		  (list length-node-id
+			(make-inode-config
+			 type: 'field
+			 instance-range: (make-instance-range max: #f)
+			 cmd-id: length-node-id)))
+		(map (lambda (node)
+		       (let ((result-id (symbol-append 'R_ (car node))))
+			 (list result-id
+			       (make-inode-config
+				type: 'field
+				instance-range: (make-instance-range max: #f)
+				cmd-id: result-id))))
+		     (filter (lambda (node)
+			       (eq? 'block (inode-config-type (cadr node))))
+			     subnodes)))))
 
   ;;; Preliminary error checks for inode config specifications.
   (define (check-inode-spec type id from nodes parent-type)
@@ -818,20 +831,27 @@
 	    (iota (length (cadar split-fields)))))))
 
   ;;; Generate an order inode corresponding to a resized igroup.
-  (define (generate-order node-id length config)
-    (make-inode
-     config-id: node-id
-     instances:
-     `((0 ,(make-inode-instance
-	    val: (map (lambda (id)
-			(make-inode
-			 config-id: id
-			 instances:
+  (define (generate-order group-id block-size length config)
+    (let ((order-id (symbol-append group-id '_ORDER)))
+      (make-inode
+       config-id: order-id
+       instances:
+       `((0 ,(make-inode-instance
+	      val: (cons (make-inode
+			  config-id: (symbol-append group-id '_LENGTH)
+			  instances: (map (lambda (id)
+					    (list id (make-inode-instance
+						      val: block-size)))
+					  (iota length)))
 			 (map (lambda (id)
-				(list id (make-inode-instance val: id)))
-			      (iota length))))
-		      (config-get-subnode-ids
-		       node-id (config-itree config))))))))
+				(make-inode
+				 config-id: id
+				 instances:
+				 (map (lambda (id)
+					(list id (make-inode-instance val: id)))
+				      (iota length))))
+			      (config-get-subnode-ids
+			       order-id (config-itree config))))))))))
 
   ;;; Get all values of a block field node. This uses eval-field and transforms
   ;;; results accordingly.
@@ -874,7 +894,7 @@
 		     config)
 		    config))
 		 original-blocks))
-	   (new-order (list (generate-order order-id
+	   (new-order (list (generate-order parent-inode-id size
 					    (length (inode-instances
 						     (car resized-blocks)))
 					    config))))

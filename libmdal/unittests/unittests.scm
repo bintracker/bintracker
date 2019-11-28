@@ -76,11 +76,12 @@
 	(hash-table-exists? (config-commands my-cfg) 'LICENSE)))
 
  (test-assert "order commands created"
-   (and (hash-table-exists? (config-commands my-cfg) 'R_DRUMS)
+   (and (hash-table-exists? (config-commands my-cfg) 'PATTERNS_LENGTH)
+	(hash-table-exists? (config-commands my-cfg) 'R_DRUMS)
 	(hash-table-exists? (config-commands my-cfg) 'R_CH1)
 	(hash-table-exists? (config-commands my-cfg) 'R_CH2)))
 
- (test "all commands created" 9
+ (test "all commands created" 10
        (hash-table-size (config-commands my-cfg))))
 
 
@@ -272,6 +273,10 @@
     instances:
     `((0 ,(make-inode-instance
 	   val: (list (make-inode
+		       config-id: 'PATTERNS_LENGTH
+		       instances: `((0 ,(make-inode-instance val: 16))
+				    (1 ,(make-inode-instance))))
+		      (make-inode
 		       config-id: 'R_DRUMS
 		       instances: `((0 ,(make-inode-instance val: 0))
 				    (1 ,(make-inode-instance))))
@@ -501,7 +506,7 @@
  "MD-Module/Compilation"
 
  (test "mdmod->file"
-       "00faea58672c888f872750c13c1daf1c"
+       "0030a481d76130cd7deac550e4fbd7b9"
        (begin
 	 (mdmod->file my-mod "test.mdal")
 	 (file-md5sum "test.mdal")))

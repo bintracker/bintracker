@@ -1257,10 +1257,11 @@
 	       b (map node-id-abbreviate
 		      (if block?
 			  field-ids
-			  (map (lambda (id)
-				 (string->symbol
-				  (string-drop (symbol->string id) 2)))
-			       field-ids))
+			  (cons 'ROWS
+				(map (lambda (id)
+				       (string->symbol
+					(string-drop (symbol->string id) 2)))
+				     (cdr field-ids))))
 		      (map (o bv-field-config-width cadr)
 			   (blockview-field-configs b)))))
       (textgrid-add-tags header 'active (if block? 1 0))
@@ -1360,7 +1361,7 @@
   	  (list order)
 	  (map (lambda (order-pos)
 		 (mod-get-block-values group-instance order-pos))
-	       order))))
+	       (map cdr order)))))
 
   ;;; Determine the start and end positions of each item chunk in the
   ;;; blockview's item cache.
