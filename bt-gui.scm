@@ -1360,8 +1360,16 @@
       (if (eq? 'order (blockview-type b))
   	  (list order)
 	  (map (lambda (order-pos)
-		 (mod-get-block-values group-instance order-pos))
-	       (map cdr order)))))
+		 (let ((block-values (mod-get-block-values group-instance
+							   (cdr order-pos)))
+		       (chunk-length (car order-pos)))
+		   (if (<= chunk-length (length block-values))
+		       (take block-values chunk-length)
+		       (append block-values
+			       (make-list (- chunk-length (length block-values))
+					  (make-list (length (car block-values))
+						     #f))))))
+	       order))))
 
   ;;; Determine the start and end positions of each item chunk in the
   ;;; blockview's item cache.
