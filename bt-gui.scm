@@ -1406,10 +1406,12 @@
   ;;; Return the block instance ID currently under cursor.
   (define (blockview-get-current-block-instance b)
     (let ((current-block-id (blockview-get-current-block-id b)))
-      (list-ref (list-ref (mod-get-order-values
-			   (blockview-group-id b)
-			   (get-current-node-instance (blockview-group-id b))
-			   (current-config))
+      (list-ref (list-ref (map cdr
+			       (mod-get-order-values
+				(blockview-group-id b)
+				(get-current-node-instance
+				 (blockview-group-id b))
+				(current-config)))
 			  (blockview-get-current-order-pos b))
 		(list-index (lambda (block-id)
 			      (eq? block-id current-block-id))
