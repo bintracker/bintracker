@@ -33,7 +33,7 @@
       (write instance-name port))
     (display "={\n" port))
 
-  ;; find empty rows in the given list of {{rows}} and collapse them using .n
+  ;; find empty rows in the given list of `rows` and collapse them using .n
   ;; syntax
   (define (collapse-empty-rows rows)
     (letrec ((count-empty (lambda (rs empty-count)
@@ -73,7 +73,7 @@
 	     ", "))
 	  rows)))
 
-  ;;; write an inode-instance to {{port}} as MDAL text
+  ;;; write an inode-instance to `port` as MDAL text
   (define (write-node-instance node-instance instance-id node-id
 			       indent-level config port)
     (let* ((indent (indent-level->string indent-level))
@@ -110,8 +110,8 @@
 		   (inode-instance-val node-instance))
 	 (write-footer)))))
 
-  ;;; Write the contents of {{node}} as MDAL text to {{port}}, indented by
-  ;;; {{indent-level}}, based on the rules specified in config {{config}}.
+  ;;; Write the contents of `node` as MDAL text to `port`, indented by
+  ;;; `indent-level`, based on the rules specified in config `config`.
   (define (write-node node indent-level config port)
     (let ((indent (indent-level->string indent-level))
 	  (node-type (inode-config-type (config-inode-ref
@@ -122,8 +122,8 @@
 				       indent-level config port))
 		(inode-instances node))))
 
-  ;;; Write the MDAL text of {{mod}} to {{port}}. {{port}} defaults to
-  ;;; (current-output-port) if omitted.
+  ;;; Write the MDAL text of `mod` to `port`. `port` defaults to
+  ;;; `(current-output-port)` if omitted.
   (define (write-mdmod mod #!optional (port (current-output-port)))
     (fprintf port "MDAL_VERSION=~s\n" mdal-version)
     (fprintf port "CONFIG=\"~A\"\n\n" (mdmod-config-id mod))
@@ -135,7 +135,7 @@
 	      (inode-instance-val ((mod-get-node-instance 0)
 				   (mdmod-global-node mod)))))
 
-  ;;; write {{module}} to an .mdal file.
+  ;;; write `module` to an .mdal file.
   (define (mdmod->file mod filename)
     (call-with-output-file filename
       (lambda (port)
@@ -200,7 +200,7 @@
   ;;; ### Generators
   ;; ---------------------------------------------------------------------------
 
-  ;;; Generate a new, empty inode instance based on the config {{config}}.
+  ;;; Generate a new, empty inode instance based on the config `config`.
   (define (generate-new-inode-instance config node-id parent-id block-length)
     (let ((get-node-type (lambda (id)
 			   (inode-config-type
@@ -230,8 +230,8 @@
 		     (config-get-subnode-ids node-id
 					     (config-itree config)))))))
 
-  ;;; Generate a new, empty mdmod based on the config {{config}}. Generated
-  ;;; blocks will have the length specified by {{block-length}}, unless other
+  ;;; Generate a new, empty mdmod based on the config `config`. Generated
+  ;;; blocks will have the length specified by `block-length`, unless other
   ;;; constraints apply from the config.
   (define (generate-new-mdmod config-id config block-length)
     (make-mdmod config-id: config-id config: config

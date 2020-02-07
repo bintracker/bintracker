@@ -1,7 +1,5 @@
 
-;;; # Module MD-HELPERS
 ;;; Auxiliary functions used by other libmdal modules
-
 (module md-helpers *
 
   (import scheme (chicken base) (chicken condition) (chicken string)
@@ -23,10 +21,6 @@
 	      (list->string (append (list (car name-string-list) #\-)
 				    (cdr name-string-list)))))))
 
-  ;;; **[RECORD]** RANGE
-  ;;; Constructor: `(make-range minimum maximum)`
-  ;;; Predicate: `range?`
-  ;;; Getters: `range-min` `range-max`
   (defstruct range
     min max)
 
@@ -64,7 +58,7 @@
   (define (add-hash-table-entry ht key value)
     (hash-table-merge ht (alist->hash-table (list (list key value)))))
 
-  ;;; add {{val}} to all numeric elements of the list {{lst}}
+  ;;; add `val` to all numeric elements of the list `lst`
   (define (add-to-list lst val)
     (map (lambda (elem)
 	   (if (number? elem)
@@ -76,12 +70,12 @@
   ;; (define (symbol-append x y)
   ;;   (string->symbol (string-append (->string x) (->string y))))
 
-  ;;; Check if the symbol name {{sym}} contains the string {{str}}.
+  ;;; Check if the symbol name `sym` contains the string `str`.
   (define (symbol-contains sym str)
     (string-contains (symbol->string sym) str))
 
-  ;;; create a new exception from the given {{exn}}, prefixing exn message
-  ;;; with {{msg-prefix}} and adding {{kind-key}} to the existing kind-keys
+  ;;; create a new exception from the given `exn`, prefixing exn message
+  ;;; with `msg-prefix` and adding `kind-key` to the existing kind-keys
   (define (amend-exn exn msg-prefix kind-key)
     (make-exn (string-append msg-prefix (message exn))
 	      kind-key (apply values (map car

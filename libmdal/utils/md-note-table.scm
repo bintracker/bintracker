@@ -2,9 +2,7 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; # Module MD-NOTE-TABLE
 ;;; Generate note to frequency divider/lookup value mappings
-
 (module md-note-table
     (make-counters
      make-dividers-range

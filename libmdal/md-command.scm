@@ -2,13 +2,11 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; # Module MD-COMMAND
-;;; MDAL Command Configuration
-
 ;; -----------------------------------------------------------------------------
 ;; MDCONF: COMMANDS
 ;; -----------------------------------------------------------------------------
 
+;;; MDAL Command Configuration
 (module md-command *
 
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
@@ -16,29 +14,19 @@
 	  srfi-1 srfi-13 srfi-14 srfi-69 typed-records
 	  simple-exceptions md-helpers)
 
-  ;;; **[RECORD]** COMMAND
+
   ;;; command config record type
-  ;;; Constructor:
-  ;;; `(make-command type bits default referene-to keys flags range description)`
-  ;;; fields:
-  ;;; type - one of (int uint key ukey reference string trigger label) or a
-  ;;;        user-defined type
-  ;;; bits - uint number of bits in command
-  ;;; default - default value string
-  ;;; reference-to - #f or an identifier string
-  ;;; keys - #f or a hash-map
-  ;;; flags - list of command flags
-  ;;; range - #f or an range object
-  ;;; description - #f or a string
   (defstruct command
-    type
-    (bits 0)
-    (default "0")
-    reference-to
-    keys
-    (flags '())
-    range
-    description)
+    type ;;; one of `int uint key ukey reference string trigger label` or a
+         ;;; user-defined type
+    (bits 0) ;;; number of bits in command
+    (default "0") ;;; default value
+    reference-to ;;; `#f` or an identifier
+    keys ;;; `#f` or a hash-map
+    (flags '()) ;;; list of command flags
+    range ;;; `#f` or a range object
+    description ;;; `#f` or a string
+    )
 
   ;;; check if the given command has the given flag
   (define (command-has-flag? cmd flag)

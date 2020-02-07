@@ -2,9 +2,7 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; # Module MD-CONFIG
 ;;; handle MDCONF configurations
-
 (module md-config *
 
   (import scheme (chicken base) (chicken string) (chicken format)
@@ -27,11 +25,9 @@
   ;;; ## MDCONF: TARGETS
   ;; ---------------------------------------------------------------------------
 
-  ;;; **[RECORD]** CPU
   (defstruct cpu
     id endianness)
 
-  ;;; **[RECORD]** TARGET
   ;;; Describe the target system of a sound driver.
   (defstruct target-platform
     id cpu clock-speed)
@@ -40,7 +36,6 @@
   ;; ## MDCONF: INPUT NODE CONFIGURATION
   ;; ---------------------------------------------------------------------------
 
-  ;;; **[RECORD]** INSTANCE-RANGE
   (defstruct instance-range
     (min 1)
     (max 1))
@@ -60,13 +55,13 @@
       (printf "order node: ~S\n" (inode-config-order-id cfg)))
     (printf ">"))
 
-  ;;; Returns #t if the given {{inode-config}} specifies that only one instance
+  ;;; Returns #t if the given `inode-config` specifies that only one instance
   ;;; of this inode may exist.
   (define (single-instance-node? inode-config)
     (equal? (make-instance-range)
 	    (inode-config-instance-range inode-config)))
 
-  ;;; clone a given inode tree 'amount' times, post-fixing 'times' to the ID
+  ;;; clone a given inode tree `amount` times, post-fixing `times` to the ID
   ;;; names
   (define (clone-inode-tree tree amount)
     (letrec*
@@ -135,11 +130,11 @@
     (let ((val (hash-table-ref/default (accessor cfg) id #f)))
       (if val (car val) #f)))
 
-  ;;; return the command config for the given {{id}}
+  ;;; return the command config for the given `id`
   (define (config-command-ref id cfg)
     (config-x-ref config-commands id cfg))
 
-  ;;; return the inode config for the given {{id}}
+  ;;; return the inode config for the given `id`
   (define (config-inode-ref id cfg)
     (config-x-ref config-inodes id cfg))
 
@@ -289,8 +284,8 @@
 			(onode-val node)
 			"unresolved")))
 
-  ;;; Compute the total size of the binary output of a list of onodes. Returns #f
-  ;;; if any of the onodes does not have it's size argument resolved.
+  ;;; Compute the total size of the binary output of a list of onodes. Returns
+  ;;; `#f` if any of the onodes does not have it's size argument resolved.
   ;; TODO currently dead code, is it still useful?
   (define (mod-output-size onodes)
     (if (any (lambda (node)
@@ -392,7 +387,7 @@
 		   commands)))
      (create-order-commands itree)))
 
-  ;;; Generate the input order node configurations for the given {{group-id}}
+  ;;; Generate the input order node configurations for the given `group-id`
   ;;; and the list of subnode configurations.
   (define (make-order-config-nodes group-id subnodes)
     (cons (list (symbol-append group-id '_ORDER)
@@ -445,7 +440,7 @@
 	   (make-instance-range))
 	  (else (make-instance-range max: #f))))
 
-  ;;; Evaluate an input node config expression. {{parent-type}} is the type of
+  ;;; Evaluate an input node config expression. `parent-type` is the type of
   ;;; the parent node. Returns an alist of the resulting inode config and its
   ;;; subnode configs.
   (define (eval-inode-config node-expr parent-type)
@@ -702,7 +697,7 @@
 		   md-symbols)))))
 
   ;;; Returns a procedure that will transform a raw ref-matrix order (as
-  ;;; emitted by group onodes) into the desired {{layout}}.
+  ;;; emitted by group onodes) into the desired `layout`.
   ;; TODO loop points? Also, currently groups emit numeric refs,  but they
   ;;      should emit pointers.
   (define (make-order-transformer layout base-index)
@@ -755,7 +750,7 @@
 
   ;;; Helper for resize-block-instances
   ;;; Takes a list of ifield instances and splits it into chunks of
-  ;;; {{chunk-size}}
+  ;;; `chunk-size`
   (define (make-instance-chunks inode-cmd-config inode-instances chunk-size)
     (letrec*
 	((use-last-set? (memq 'use_last_set
@@ -787,8 +782,8 @@
 				     (get-last-set next-chunk last-set))))))))
       (make-chunks inode-instances (make-inode-instance))))
 
-  ;;; Resize instances of the given {{iblock}} to {{size}} by merging all
-  ;;; instances according to {{order}}, then splitting into chunks. {{order}}
+  ;;; Resize instances of the given `iblock` to `size` by merging all
+  ;;; instances according to `order`, then splitting into chunks. `order`
   ;;; must be a simple list of instance IDs.
   (define (resize-block-instances iblock size order config)
     (let* ((field-ids (config-get-subnode-ids (inode-config-id iblock)
@@ -863,7 +858,7 @@
 	   (map car (inode-instances inode)))))
 
   ;;; Resize all non-order blocks in the given igroup instance to
-  ;;; {{size}}, and emit a new igroup instance with a new order.
+  ;;; `size`, and emit a new igroup instance with a new order.
   ;; TODO works, but missing test
   ;; TODO must work for unordered groups as well
   (define (resize-blocks parent-inode-instance parent-inode-id size config)
@@ -1166,7 +1161,7 @@
       (run-compiler otree md-symbols 0)))
 
   ;;; Generate a compiler from the given output config expression.
-  ;;; {{proto-config}} must be a config struct with all fields resolved
+  ;;; `proto-config` must be a config struct with all fields resolved
   ;;; except the config-comiler itself.
   ;;; The compiler is a procedure taking 2 arguments: an mdmod structure,
   ;;; and an origin (address at which to compile). It returns a list of output
@@ -1209,7 +1204,7 @@
 		   itree: itree inodes: _input
 		   compiler: (make-compiler output proto-config path-prefix))))
 
-  ;;; Evaluate the given {{mdconf}} s-expression, and return a config record.
+  ;;; Evaluate the given `mdconf` s-expression, and return a config record.
   (define (read-config mdconf path-prefix)
     ;; TODO unify tags/flags (should be called use for all elems)
     (if (and (pair? mdconf)

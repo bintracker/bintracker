@@ -2,9 +2,7 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; # Module MD-TYPES
 ;;; md-module record types and additional accessors
-
 (module md-types *
 
   (import scheme (chicken base) (chicken string) (chicken format) (chicken sort)
@@ -14,7 +12,7 @@
   ;;; ## MDMOD: INPUT NODES
   ;; ---------------------------------------------------------------------------
 
-  ;;; The inode instance record type. {{val}} can be one of
+  ;;; The inode instance record type. `val` can be one of
   ;;;   () -> inactive node
   ;;;   a string of the actual value
   ;;;   a list of subnodes
@@ -63,7 +61,7 @@
   ;;;---------------------------------------------------------------------------
 
   ;;; Returns a list of inode instances that have consecutive IDs. Renumbering
-  ;;; starts at index 0, unless specified otherwise with the {{from}} argument.
+  ;;; starts at index 0, unless specified otherwise with the `from` argument.
   (define (renumber-node-instances instances #!optional (from 0))
     (map (lambda (id instance)
 	   (cons id (cdr instance)))
@@ -75,7 +73,7 @@
   (define (values->inode-instance #!optional (val '()) (name ""))
     (make-inode-instance val: val name: name))
 
-  ;;; Set the given instances in the given {{inode}}. {{instances}} must be an
+  ;;; Set the given instances in the given `inode`. `instances` must be an
   ;;; alist of (id value) or (id value name) lists, where *id* is the ID of the
   ;;; inode instance to set, *value* is the new inode instance value, and *name*
   ;;; is an optional string argument naming the inode instance.
@@ -89,8 +87,8 @@
 			       (inode-instances inode)))
 	      instances))
 
-  ;;; Delete the given {{instances}} in {{inode}}. {{instances}} must be a list
-  ;;; of inode instance IDs. If {{renumber}} is `#t`, then the inode's instance
+  ;;; Delete the given `instances` in `inode`. `instances` must be a list
+  ;;; of inode instance IDs. If `renumber` is `#t`, then the inode's instance
   ;;; IDs will be regenerated to be consecutive.
   (define (node-remove! inode instances #!optional renumber)
     (let* ((new-instances (remove (lambda (i)
@@ -101,8 +99,8 @@
 				(renumber-node-instances new-instances)
 				new-instances))))
 
-  ;;; Insert the given list of {{instances}} into the given {{inode}}.
-  ;;; {{instances}} must be a list of (id value [name]) lists, where *id* is the
+  ;;; Insert the given list of `instances` into the given `inode`.
+  ;;; `instances` must be a list of `(id value [name])` lists, where *id* is the
   ;;; inode instance ID, *value* is the inode instance value, and the optional
   ;;; *name* is an inode instance name.
   (define (node-insert! inode instances #!optional renumber)
@@ -256,10 +254,10 @@
       (get-rows (map inode-instances
 		     (inode-instance-val iblock-instance)))))
 
-  ;;; Returns the values of all field node instances of the given {{row}} of the
-  ;;; given non-order block-instances in the given {{group-instance}} as a
+  ;;; Returns the values of all field node instances of the given `row` of the
+  ;;; given non-order block-instances in the given `group-instance` as a
   ;;; flat list.
-  ;;; {{block-instance-ids}} must be a list containing the requested numerical
+  ;;; `block-instance-ids` must be a list containing the requested numerical
   ;;; block instance IDs for each non-order block in the group.
   ;;; Empty (unset) instance values will be returned as #f.
   (define (mod-get-row-values group-instance block-instance-ids row)
@@ -284,7 +282,7 @@
 			       (inode-instance-val group-instance))))))
 
   ;;; Returns the values of all field node instances of the non-order block
-  ;;; instances in the given {{group-instance}}, as a list of row value sets.
+  ;;; instances in the given `group-instance`, as a list of row value sets.
   ;;; Effectively calls md-mod-get-row-values on each row of the relevant
   ;;; blocks.
   ;;; TODO: will break if order node is the first in group instance subnodes.

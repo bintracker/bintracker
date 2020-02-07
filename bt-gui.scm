@@ -49,7 +49,7 @@
 					" - Bintracker")
 			 "Bintracker")))
 
-  ;;; Thread-safe version of tk/bind. Wraps the procedure {{proc}} in a thunk
+  ;;; Thread-safe version of tk/bind. Wraps the procedure `proc` in a thunk
   ;;; that is safe to execute as a callback from Tk.
   (define-syntax tk/bind*
     (syntax-rules ()
@@ -108,7 +108,7 @@
 		     type: 'ok))
 
   ;;; Display a message box that asks the user whether to save unsaved changes
-  ;;; before exiting or closing. **exit-or-closing** should be the string
+  ;;; before exiting or closing. `exit-or-closing` should be the string
   ;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
     (tk/message-box* title: (string-append "Save before "
@@ -143,7 +143,7 @@
 			   size: (settings 'font-size)
 			   weight: 'bold)))
 
-  ;;; Configure the style of the scrollbar widget {{s}} to match Bintracker's
+  ;;; Configure the style of the scrollbar widget `s` to match Bintracker's
   ;;; style.
   (define (configure-scrollbar-style s)
     (s 'configure bd: 0 highlightthickness: 0 relief: 'flat
@@ -178,7 +178,7 @@
     (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
-  ;;; evaluated before the local bindings of {{widget}}. This is necessary to
+  ;;; evaluated before the local bindings of `widget`. This is necessary to
   ;;; prevent keypresses that are handled globally being passed through to the
   ;;; widget.
   (define (reverse-binding-eval-order widget)
@@ -198,11 +198,11 @@
     ((widget (tk 'create-widget 'menu)) : procedure)
     ((items '()) : list))
 
-  ;;; Destructively add an item to menu-struct **menu** according to
-  ;;; **item-spec**. **item-spec** must be a list containing either
-  ;;; ('separator)
-  ;;; ('command id label underline accelerator command)
-  ;;; ('submenu id label underline items-list)
+  ;;; Destructively add an item to menu-struct `menu` according to
+  ;;; `item-spec`. `item-spec` must be a list containing either
+  ;;; - `('separator)`
+  ;;; - `('command id label underline accelerator command)`
+  ;;; - `('submenu id label underline items-list)`
   ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
   ;;; name that will be shown in the menu for this item, and its underline
   ;;; position; *accelerator* is a string naming a keyboard shortcut for the
@@ -291,7 +291,7 @@
       (console ,(lambda () (tk/focus console))
 	       ,(lambda () '()))))
 
-  ;;; Switch keyboard focus to another UI zone. {{new-zone}} can be either an
+  ;;; Switch keyboard focus to another UI zone. `new-zone` can be either an
   ;;; index to the `ui-zones` list, or a symbol naming an entry in
   ;;; that list.
   (define (switch-ui-zone-focus new-zone)
@@ -376,18 +376,18 @@
       		 (show-settings ,(toolbar-button "settings.png" 'enabled)
       				"Settings..."))))
 
-  ;;; Returns the entry associated with {{id}} in the given toolbar
-  ;;; button {{group}}.
+  ;;; Returns the entry associated with `id` in the given toolbar
+  ;;; button `group`.
   (define (toolbar-button-ref group-id button-id)
     (let ((group (alist-ref group-id toolbar-button-groups)))
       (and group (alist-ref button-id group))))
 
-  ;;; Associate the procedure {{command}} with a toolbar button.
+  ;;; Associate the procedure `command` with a toolbar button.
   (define (set-toolbar-button-command group-id button-id command)
     ((car (toolbar-button-ref group-id button-id))
      'configure command: command))
 
-  ;;; Bind the mouse <Enter>/<Leave> events to display {{description}} in the
+  ;;; Bind the mouse `<Enter>`/`<Leave>` events to display `description` in the
   ;;; status bar.
   (define (bind-toolbar-button-info group-id button-id)
     (let ((button-entry (toolbar-button-ref group-id button-id)))
@@ -401,7 +401,7 @@
     ((car (toolbar-button-ref group-id button-id))
      'configure 'state: state))
 
-  ;;; Set the state of the play button. {{state}} must be either `'enabled` or
+  ;;; Set the state of the play button. `state` must be either `'enabled` or
   ;;; `'disabled`.
   (define (set-play-buttons state)
     (for-each (lambda (button)
@@ -434,8 +434,8 @@
       (bind-info-status label description)))
 
   ;;; Create a spinbox in the edit settings toolbar.
-  ;;; {{from}} and {{to}} specify the permitted range of values, {{statevar}}
-  ;;; specifies the relevant field in `app-state`, and {{action}} specifies
+  ;;; `from` and `to` specify the permitted range of values, `statevar`
+  ;;; specifies the relevant field in `app-state`, and `action` specifies
   ;;; an additional procedure to call on validation.
   ;; TODO <<Increment>>/<<Decrement>> events are buggy, events are
   ;; sometimes generated repeatedly
@@ -491,7 +491,7 @@
 			   (blockview-update-row-highlights
 			    (current-blocks-view)))))))
 
-  ;;; Set the state of the edit settings spinboxes to {{state}}, which must be
+  ;;; Set the state of the edit settings spinboxes to `state`, which must be
   ;;; either `'enabled` or `'disabled`.
   (define (set-edit-settings-state! state)
     (for-each (lambda (setting)
@@ -579,13 +579,13 @@
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      (state 'active-md-command-info))))
 
-  ;;; Display {{msg}} in the status bar, extending the current info string.
+  ;;; Display `msg` in the status bar, extending the current info string.
   (define (display-action-info-status! msg)
     (tk-set-var! "status-text" (string-append (get-module-info-text)
 					      msg)))
 
-  ;;; Bind the `<Enter>`/`<Leave>` events for the given {{widget}} to display/
-  ;;; remove the given info {{text}} in the status bar.
+  ;;; Bind the `<Enter>`/`<Leave>` events for the given `widget` to display/
+  ;;; remove the given info `text` in the status bar.
   (define (bind-info-status widget text)
     (tk/bind* widget '<Enter>
 	      (lambda () (display-action-info-status! text)))
@@ -611,10 +611,10 @@
   ;;;
   ;;; An edit action is a list that may take one of the following forms:
   ;;;
-  ;;; `('set node-path ((instance value) ...))`
-  ;;; `('insert node-path ((instance value) ...))`
-  ;;; `('remove node-path (instance ...))`
-  ;;; `('compound (edit-action ...))`
+  ;;; - `('set node-path ((instance value) ...))`
+  ;;; - `('insert node-path ((instance value) ...))`
+  ;;; - `('remove node-path (instance ...))`
+  ;;; - `('compound (edit-action ...))`
   ;;;
   ;;; where **node-path** is a fully qualified MDAL node path string (ie. a path
   ;;; starting at the global inode, see md-types/MDMOD for details),
@@ -798,7 +798,7 @@
   (define (get-field-color field-id)
     (colors (get-field-color-tag field-id)))
 
-  ;;; Convert a keysym (as returned by a tk-event %K placeholder) to an
+  ;;; Convert a keysym (as returned by a tk-event `%K` placeholder) to an
   ;;; MDAL note name.
   (define (keypress->note key)
     (let ((entry-spec (alist-ref (string->symbol
@@ -830,9 +830,9 @@
 	    (else (command-type command-config))))))
 
 
-  ;;; Generate an abbrevation of {{len}} characters from the given MDAL inode
-  ;;; identifier {{id}}. Returns the abbrevation as a string. The string is
-  ;;; padded to {{len}} characters if necessary.
+  ;;; Generate an abbrevation of `len` characters from the given MDAL inode
+  ;;; identifier `id`. Returns the abbrevation as a string. The string is
+  ;;; padded to `len` characters if necessary.
   (define (node-id-abbreviate id len)
     (let ((chars (string->list (symbol->string id))))
       (if (>= len (length chars))
@@ -1002,8 +1002,8 @@
   					     "bold")))
 
   ;;; Abstraction over Tk's `textwidget tag add` command.
-  ;;; Contrary to Tk's convention, {{row}} uses 0-based indexing.
-  ;;; {{tags}} may be a single tag, or a list of tags.
+  ;;; Contrary to Tk's convention, `row` uses 0-based indexing.
+  ;;; `tags` may be a single tag, or a list of tags.
   (define (textgrid-do-tags method tg tags first-row #!optional
 			    (first-col 0) (last-col 'end) (last-row #f))
     (for-each (lambda (tag)
@@ -1026,13 +1026,13 @@
 		(tg 'tag 'remove tag "0.0" "end"))
 	      tags))
 
-  ;;; Convert the {{row}}, {{char}} arguments into a Tk Text index string.
-  ;;; {{row}} is adjusted from 0-based indexing to 1-based indexing.
+  ;;; Convert the `row`, `char` arguments into a Tk Text index string.
+  ;;; `row` is adjusted from 0-based indexing to 1-based indexing.
   (define (textgrid-position->tk-index row char)
     (string-append (->string (add1 row))
 		   "." (->string char)))
 
-  ;;; Create a TextGrid as slave of the Tk widget {{parent}}. Returns a Tk Text
+  ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
   ;;; widget with class bindings removed.
   (define (textgrid-create-basic parent)
     (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
@@ -1087,7 +1087,7 @@
     ((item-cache '()) : list))
 
   ;;; Returns the number of characters that the blockview cursor should span
-  ;;; for the given {{field-id}}.
+  ;;; for the given `field-id`.
   (define (field-id->cursor-size field-id)
     (let ((cmd-config (config-get-inode-source-command field-id
 						       (current-config))))
@@ -1099,7 +1099,7 @@
 	      1))))
 
   ;;; Returns the number of cursor positions for the the field node
-  ;;; {{field-id}}. For fields that are based on note/key/ukey commands, the
+  ;;; `field-id`. For fields that are based on note/key/ukey commands, the
   ;;; result will be one, otherwise it will be equal to the number of characters
   ;;; needed to represent the valid input range for the field's source command.
   (define (field-id->cursor-digits field-id)
@@ -1120,7 +1120,7 @@
 	      taglist
 	      (map cadr (blockview-field-configs b))))
 
-  ;;; Add type tags to the given row in {{textgrid}}. If {{textgrid}} is not
+  ;;; Add type tags to the given row in `textgrid`. If `textgrid` is not
   ;;; given, it defaults to the blockview's content-grid.
   (define (blockview-add-type-tags b row #!optional
 				   (textgrid (blockview-content-grid b)))
@@ -1165,7 +1165,7 @@
 	   cursor-ds)))
 
   ;;; Returns a blockview metawidget that is suitable for the MDAL group
-  ;;; {{group-id}}. {{type}} must be `'block` for a regular blockview showing
+  ;;; `group-id`. `type` must be `'block` for a regular blockview showing
   ;;; the group's block node members, or '`order` for a blockview showing the
   ;;; group's order list.
   (define (blockview-create parent type group-id)
@@ -1208,8 +1208,8 @@
 				      (apply grid (cons 'yview args))
 				      (apply rownums (cons 'yview args)))))))
 
-  ;;; Convert the list of row {{values}} into a string that can be inserted into
-  ;;; the blockview's content-grid or header-grid. Each entry in {{values}} must
+  ;;; Convert the list of row `values` into a string that can be inserted into
+  ;;; the blockview's content-grid or header-grid. Each entry in `values` must
   ;;; correspond to a field column in the blockview's content-grid.
   (define (blockview-values->row-string b values)
     (letrec ((construct-string
@@ -1267,7 +1267,7 @@
       (blockview-add-type-tags b (if block? 1 0)
       			       (blockview-content-header b))))
 
-  ;;; Returns the position of {{mark}} as a list containing the row in car,
+  ;;; Returns the position of `mark` as a list containing the row in car,
   ;;; and the character position in cadr. Row position is adjusted to 0-based
   ;;; indexing.
   (define (blockview-mark->position b mark)
@@ -1441,7 +1441,7 @@
 	      (blockview-get-current-field-index b)))
 
   ;;; Apply type tags and the 'active tag to the current active zone of the
-  ;;; blockview {{b}}.
+  ;;; blockview `b`.
   (define (blockview-tag-active-zone b)
     (let ((zone-limits (blockview-get-active-zone b))
 	  (grid (blockview-content-grid b))
@@ -1518,8 +1518,8 @@
 			 "\n")))
 
   ;;; Update the blockview content grid on a row by row basis. This compares
-  ;;; the {{new-item-list}} against the current item cache, and only updates
-  ;;; rows that have changed. The list length of {{new-item-list}} and the
+  ;;; the `new-item-list` against the current item cache, and only updates
+  ;;; rows that have changed. The list length of `new-item-list` and the
   ;;; lengths of each of the subchunks must match the list of items in the
   ;;; current item cache.
   ;;; This operation does not update the blockview's item cache, which should
@@ -1559,7 +1559,8 @@
 			 (iota (bv-field-config-cursor-digits field-cfg))))
 		  (map cadr (blockview-field-configs b)))))
 
-  ;;; Show or hide the blockview's cursor. {{action}} can be 'add or 'remove.
+  ;;; Show or hide the blockview's cursor. `action` shall be `'add` or
+  ;;; `'remove`.
   (define (blockview-cursor-do b action)
     ((blockview-content-grid b) 'tag action 'active-cell "insert"
      (string-append "insert +"
@@ -1602,7 +1603,7 @@
 				    (<= pos (cadr mouse-pos)))
 				  (reverse (blockview-cursor-x-positions b))))))
 
-  ;;; Move the blockview's cursor in {{direction}}.
+  ;;; Move the blockview's cursor in `direction`.
   (define (blockview-move-cursor b direction)
     (let* ((grid (blockview-content-grid b))
 	   (current-pos (blockview-get-cursor-position b))
@@ -1648,14 +1649,14 @@
 		      0))
 	 (else current-char)))))
 
-  ;;; Set the input focus to the blockview {{b}}. In addition to setting the
+  ;;; Set the input focus to the blockview `b`. In addition to setting the
   ;;; Tk focus, it also shows the cursor and updates the status bar info text.
   (define (blockview-focus b)
     (blockview-show-cursor b)
     (tk/focus (blockview-content-grid b))
     (blockview-update-current-command-info b))
 
-  ;;; Unset focus from the blockview {{b}}.
+  ;;; Unset focus from the blockview `b`.
   (define (blockview-unfocus b)
     (blockview-remove-cursor b)
     (set-state! 'active-md-command-info "")
@@ -1712,7 +1713,7 @@
 	(run-post-edit-actions))))
 
   ;;; Set the field node instance that corresponds to the current cursor
-  ;;; position to {{new-value}}, and update the display and the undo/redo stacks
+  ;;; position to `new-value`, and update the display and the undo/redo stacks
   ;;; accordingly.
   (define (blockview-edit-current-cell b new-value)
     (let ((action `(set ,(blockview-get-current-field-path b)
@@ -1775,7 +1776,7 @@
 	      ((reference) (blockview-enter-reference b keysym))
 	      ((string) (blockview-enter-string b keysym)))))))
 
-  ;;; Bind common event handlers for the blockview {{b}}.
+  ;;; Bind common event handlers for the blockview `b`.
   (define (blockview-bind-events b)
     (let ((grid (blockview-content-grid b)))
       (tk/bind* grid '<<BlockMotion>>
@@ -1825,7 +1826,7 @@
 		((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
 		(blockview-item-cache-set! b new-item-list)))))))
 
-  ;;; Pack the blockview widget {{b}} to the screen.
+  ;;; Pack the blockview widget `b` to the screen.
   (define (blockview-show b)
     (let ((block-type? (eq? 'block (blockview-type b)))
 	  (rownums (blockview-rownums b))
@@ -1908,7 +1909,7 @@
     (notebook-frames : (list-of procedure))
     (subgroups : (list-of (struct bt-group-widget))))
 
-  ;;; Create a `bt-subgroups-widget` as child of the given *parent-widget*.
+  ;;; Create a `bt-subgroups-widget` as child of `parent-widget`.
   (define (make-subgroups-widget parent-node-id parent-widget)
     (let ((sg-ids (config-get-subnode-type-ids parent-node-id
 					       (current-config)

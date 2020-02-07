@@ -1,12 +1,9 @@
-;; -*- geiser-scheme-implementation: 'chicken -*-
-
 ;; This file is part of the libmdal library.
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; # Module MD-PARSER
-;;; .mdal module parser
 
+;;; .mdal module parser
 (module md-parser *
 
   (import scheme (chicken base) (chicken io) (chicken string)
@@ -179,7 +176,7 @@
 	  expr
 	  (raise ((make-exn "Syntax error" 'syntax-error) "")))))
 
-  ;;; extract assignments for the given {{identifier}} from the given
+  ;;; extract assignments for the given `identifier` from the given
   ;;; expressions
   (define (get-assignments exprs identifier)
     (filter (lambda (e)

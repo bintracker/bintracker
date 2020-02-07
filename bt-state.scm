@@ -20,7 +20,7 @@
   (define *bintracker-state* (make-app-state))
   (define *bintracker-settings* (make-app-settings))
 
-  ;;; Get the global application state, or a specific {{param}}eter of that
+  ;;; Get the global application state, or a specific `param`eter of that
   ;;; state.
   (define (state #!optional param)
     (if param
@@ -40,7 +40,7 @@
 			minor-row-highlight:
 			(settings 'default-minor-row-highlight)))))
 
-  ;;; Get the global application settings, or a specific {{param}}eter of that
+  ;;; Get the global application settings, or a specific `param`eter of that
   ;;; state.
   (define (settings #!optional param)
     (if param
@@ -54,7 +54,8 @@
      (app-settings-color-scheme *bintracker-settings*)))
 
 
-  ;;; All-purpose shorthand setter, used to implement set-conf!, set-color, etc
+  ;;; All-purpose shorthand setter, used to implement `set-conf!`, `set-color`,
+  ;;; etc.
   (define (set-global! prefix obj param val)
     ((eval (string->symbol (string-append prefix (->string param)
 					  "-set!")))
@@ -72,7 +73,7 @@
 		 param val))
 
   ;;; Load and apply a color scheme from a scheme config file.
-  ;;; {{scheme-name}} must be the name of the scheme config, without path or
+  ;;; `scheme-name` must be the name of the scheme config, without path or
   ;;; extension.
   (define (load-color-scheme scheme-name)
     (let ((set-color-scheme
@@ -111,23 +112,23 @@
       (tk-eval (string-append "ttk::style theme use " (->string name)))))
 
 
-  ;;; Return the alist of key-bindings in the given **key-group**.
+  ;;; Return the alist of key-bindings in the given `key-group`.
   (define (get-keybinding-group key-group)
     ((eval (symbol-append 'app-keys- key-group))
      (settings 'keymap)))
 
-  ;;; Set the alist of keybindings in the given **key-group** to **group-lst**.
+  ;;; Set the alist of keybindings in the given `key-group` to `group-lst`.
   (define (set-keybinding-group! key-group group-lst)
     ((eval (symbol-append 'app-keys- key-group '-set!))
      (settings 'keymap)
      group-lst))
 
-  ;;; Create a new key binding, or replace an existing one. **key-group** must
-  ;;; be one of 'global, 'console, 'edit, 'note-keys, or 'plug-ins. **key-spec**
-  ;;; shall be a key key binding specifier, using Tk's angular bracket syntax.
-  ;;; https://www.tcl.tk/man/tcl8.6/TkCmd/bind.htm
-  ;;; **action** shall be the name of a procedure or quoted lambda definition,
-  ;;; except if **key-group** is 'note-entry. In that case, it should be a note
+  ;;; Create a new key binding, or replace an existing one. `key-group` must
+  ;;; be one of `'global`, `'console`, `'edit`, `'note-keys`, or `'plug-ins`.
+  ;;; `key-spec` shall be a key key binding specifier, using Tk's
+  ;;; [angular bracket syntax](https://www.tcl.tk/man/tcl8.6/TkCmd/bind.htm).
+  ;;; `action` shall be the name of a procedure or quoted lambda definition,
+  ;;; except if `key-group` is `'note-entry`. In that case, it should be a note
   ;;; name, optionally followed by an octave offset.
   (define (bind-keys! key-group key-spec action . args)
     (set-keybinding-group!
@@ -136,8 +137,8 @@
 	 '()
 	 (alist-update key-spec action (get-keybinding-group key-group)))))
 
-  ;;; Look up a key binding in the keymap table. Returns #f if the given
-  ;;; **key-spec** is not bound.
+  ;;; Look up a key binding in the keymap table. Returns `#f` if the given
+  ;;; `key-spec` is not bound.
   (define (key-binding key-group key-spec)
     (and (app-keys? (settings 'keymap))
 	 (let ((binding (alist-ref key-spec (get-keybinding-group key-group))))
@@ -145,14 +146,14 @@
 	       (car binding)
 	       #f))))
 
-  ;;; Look up the key binding for {{action}} in the given {{key-group}}
+  ;;; Look up the key binding for `action` in the given `key-group`.
   (define (inverse-key-binding key-group action)
     (and (app-keys? (settings 'keymap))
 	 (alist-inverse-ref (list action)
 			    (get-keybinding-group key-group)
 			    equal? #f)))
 
-  ;;; Load a keymap, **name** shall be the name of the keymap file to load,
+  ;;; Load a keymap, `name` shall be the name of the keymap file to load,
   ;;; without extension or path. Keymaps are expected to reside in
   ;;; `config/keymaps`.
   ;;; Loading a keymap does not change active bindings in a running bintracker
@@ -167,7 +168,7 @@
 		     (apply make-app-keys (cdr my-keymap)))
 	  (error "Not a valid Bintracker keymap."))))
 
-  ;;; Returns the current module, or #f if no module is loaded.
+  ;;; Returns the current module, or `#f` if no module is loaded.
   (define (current-mod)
     (app-state-current-mdmod *bintracker-state*))
 
@@ -226,16 +227,16 @@
     				(config-inodes (current-config))))))))
 
   ;;; Query the instance record for the currently visible instance of the
-  ;;; group or block node {{node-id}}.
+  ;;; group or block node `node-id`.
   (define (get-current-instance node-id)
     (car (alist-ref node-id (state 'current-instances))))
 
-  ;;; Update the instance record for {{node-id}}.
+  ;;; Update the instance record for `node-id`.
   (define (set-current-instance! node-id val)
     (alist-update! node-id val (state 'current-instances)))
 
   ;;; Return the node-instance path string for the currently visible instance
-  ;;; of the group or block node {{node-id}}. The result can be fed into
+  ;;; of the group or block node `node-id`. The result can be fed into
   ;;; `node-instance-path`.
   (define (get-current-instance-path node-id)
     (let ((ancestors (config-get-node-ancestors-ids
@@ -248,7 +249,7 @@
 		       (cdr (reverse (cons node-id ancestors))))))))
 
   ;;; Return the currently visible inode-instance of the group or block node
-  ;;; {{node-id}}.
+  ;;; `node-id`.
   (define (get-current-node-instance node-id)
     ((node-instance-path (get-current-instance-path node-id))
      (mdmod-global-node (current-mod))))
@@ -291,7 +292,7 @@
 							 (state 'journal)))))))
 
   ;;; Generate an action specification that when applied, will revert the edit
-  ;;; that results from the given edit {{action}} specification.
+  ;;; that results from the given edit `action` specification.
   ;;; TODO preserve instance names
   (define (make-reverse-action action)
     (case (car action)
@@ -310,7 +311,7 @@
       ((compound) (list 'compound (map make-reverse-action
 				       (reverse (cdr action)))))))
 
-  ;;; Push {{action}} to the journal's undo stack. If the stack is full, half of
+  ;;; Push `action` to the journal's undo stack. If the stack is full, half of
   ;;; the old entries are dropped.
   (define (push-undo action)
     (limit-undo-stack)
@@ -332,7 +333,7 @@
 	     (push-redo (make-reverse-action action))
 	     action))))
 
-  ;;; Push {{action}} to the redo stack.
+  ;;; Push `action` to the redo stack.
   (define (push-redo action)
     (stack-push! (app-journal-redo-stack (state 'journal))
 		 action))

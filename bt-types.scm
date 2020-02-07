@@ -10,7 +10,7 @@
 	  typed-records stack)
 
   ;;; Undo/Redo stack wrapper
-  ;;; Undo stack depth is limited to {{stack-limit}}. For performance reason,
+  ;;; Undo stack depth is limited to `stack-limit`. For performance reason,
   ;;; undo stack depth is tracked manually. Redo stack size does not need to be
   ;;; tracked since it cannot grow beyond the undo stack depth.
   (defstruct app-journal
@@ -35,13 +35,6 @@
     ((journal (make-app-journal)) : (struct app-journal)))
 
   ;;; Record type that wraps GUI element colors.
-  ;;; {{text-1}}: note commands
-  ;;; {{text-2}}: numeric commands (int/uint)
-  ;;; {{text-3}}: key commands
-  ;;; {{text-4}}: reference commands
-  ;;; {{text-5}}: trigger commands
-  ;;; {{text-6}}: string commands
-  ;;; {{text-7}}: modifier commands
   (defstruct app-colors
     ((background "#222222") : string)
     ((background-inactive "#111111") : string)
@@ -50,13 +43,14 @@
     ((cursor "#0066cc") : string)
     ((text "#00ee00") : string)
     ((text-inactive "#00aa00") : string)
-    ((text-1 "#00ee00") : string)
-    ((text-2 "#00ee00") : string)
-    ((text-3 "#00ee00") : string)
-    ((text-4 "#00ee00") : string)
-    ((text-5 "#00ee00") : string)
-    ((text-6 "#00ee00") : string)
-    ((text-7 "#00ee00") : string))
+    ((text-1 "#00ee00") : string) ;;; note commands
+    ((text-2 "#00ee00") : string) ;;; numeric commands (int/uint)
+    ((text-3 "#00ee00") : string) ;;; key commands
+    ((text-4 "#00ee00") : string) ;;; reference commands
+    ((text-5 "#00ee00") : string) ;;; trigger commands
+    ((text-6 "#00ee00") : string) ;;; string commands
+    ((text-7 "#00ee00") : string) ;;; modifier commands
+    )
 
   (defstruct app-keys
     global console edit note-entry plugins)
