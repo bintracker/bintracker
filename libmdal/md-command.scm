@@ -109,7 +109,6 @@
 				      (if id (->string id) "???")))))
 	      (else (abort exn)))
       (check-command-spec id type bits default reference-to keys range)
-      ;; TODO implement ranges, keymap files
       (list id (make-command
 		type: type
 		bits: (case type
@@ -130,6 +129,10 @@
 				       (if (null? shift)
 					   1 (car shift))))))
 			       ,keys))
-		flags: tags range: range description: description))))
+		flags: tags
+		range: (or range
+			   (and (memv type '(int uint))
+				(bits->range bits (eqv? type 'int))))
+		description: description))))
 
   )  ;; end module md-command

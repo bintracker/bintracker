@@ -28,10 +28,19 @@
   (defstruct range
     min max)
 
-  ;;;
+  ;;; Check if `val` is within the limits defined by the `range` object.
   (define (in-range? val range)
     (and (>= val (range-min range))
 	 (<= val (range-max range))))
+
+  ;;; Create a `range` object for an integer with the given number of `bits`.
+  (define (bits->range bits signed)
+    (let ((umax (sub1 (expt 2 bits))))
+      (if signed
+	  (make-range min: (- 0 (quotient (+ umax 1)
+				     2))
+		      max: (quotient umax 2))
+	  (make-range min: 0 max: umax))))
 
   ;; ;;; **[RECORD]** ASM-SYNTAX
   ;; ;;; Constructor: `(make-asm-syntax hex-prefix byte-op word-op dword-op)`
