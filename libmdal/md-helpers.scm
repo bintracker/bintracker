@@ -1,3 +1,7 @@
+;; This file is part of the libmdal library.
+;; Copyright (c) utz/irrlicht project 2018-2020
+;; See LICENSE for license details.
+
 
 ;;; Auxiliary functions used by other libmdal modules
 (module md-helpers *
