@@ -415,7 +415,7 @@
     (unless config (raise-local 'no-config))
     config)
 
-  ;;; construct an mdmod from a given .mdal file
+  ;;; construct an mdmod object from a given .mdal module file
   (define (file->mdmod filepath config-dir-path #!optional (path-prefix ""))
     (handle-exceptions
 	exn

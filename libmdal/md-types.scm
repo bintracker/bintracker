@@ -122,6 +122,20 @@
   ;;; ## MDMOD: MODULE
   ;; ---------------------------------------------------------------------------
 
+  ;;; The internal representation of an MDAL module.
+  ;;; The structure of `global-node` mirrors that of the MDAL module
+  ;;; s-expression, with the following changes:
+  ;;;
+  ;;; - The GLOBAL node is explicit.
+  ;;; - Each node is represented as an element in an alist, where the key is
+  ;;;   the node ID, and the value (remainder) is an alist of node instances.
+  ;;; - Each node instance is represented as an element in an alist, where the
+  ;;;   key is the instance ID, the first value of the remainder is the node
+  ;;;   instance name (or `#f` if none was given), and the rest of the remainder
+  ;;;   is the actual node instance value, depending on the node type.
+  ;;; - In block node instances, all rows are expanded to a list containing the
+  ;;;   values for each block field subnode. Unset (empty) fields are
+  ;;;   represented by `null` (the empty list).
   (defstruct mdmod
     config-id config global-node)
 
