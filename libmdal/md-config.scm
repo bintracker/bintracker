@@ -126,8 +126,7 @@
 			  (memv (car field-value) '(+ - * / % ^ & v))
 			  (in-range? field-value
 				     (command-range command-config))))
-		    ((reference) (and (integer? field-value)
-				      (positive? field-value)))
+		    ((reference) ((conjoin integer? positive?) field-value))
 		    ((string) (string? field-value))
 		    ((label) (symbol? field-value))))
 	(raise-local 'illegal-value field-value field-id))
