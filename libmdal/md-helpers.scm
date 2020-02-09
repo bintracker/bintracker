@@ -130,10 +130,17 @@
 			       " may not be a child of a block inode"))
 	       ((missing-onode-id) "missing id specifier")
 	       ((no-config) "No CONFIG specified")
+	       ((not-mdmod) "Not an MDAL module")
 	       ((no-mdal-version) "No MDAL version specified")
 	       ((unsupported-mdal-version)
 		(string-append "Unsupported MDAL version: "
 			       (->string (car args))))
+	       ((illegal-value (string-append "Illegal value "
+					      (->string (car args))
+					      " for field "
+					      (->string (cadr args)))))
+	       ((unknown-node) (string-append "Unknown node "
+					      (->string (car args))))
 	       ((compiler-failed) "Failed to compile module."))
 	     exn-type)
 	    "")))
