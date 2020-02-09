@@ -300,57 +300,104 @@
 					   (car field-contents))
 		     '())))))
 
+  ;;; Replace short-hand empty row notation in a block node mod-sexp with
+  ;;; actual empty rows.
+  (define (mod-replace-empty-block-rows target-row-length rows)
+    (if (null? rows)
+	'()
+	(if (number? (car rows))
+	    (append (make-list (car rows)
+			       (make-list target-row-length '()))
+		    (mod-replace-empty-block-rows target-row-length
+						  (cdr rows)))
+	    (cons (car rows)
+		  (mod-replace-empty-block-rows target-row-length
+						(cdr rows))))))
+
+  ;;; Parse a block instance row expression into the internal representation.
+  (define (mod-parse-block-row row field-ids block-id instance-id)
+    (if (any pair? row)
+	(begin
+	  (when (any atom? row)
+	    (raise-local 'row-spec-unmatched block-id instance-id row))
+	  (when (any (lambda (x)
+		       (not (memv (car x) field-ids)))
+		     row)
+	    (raise-local 'unknown-node
+			 (car (find (lambda (x)
+				      (not (memv (car x) field-ids)))
+				    row))))
+	  (map (lambda (field-id)
+		 (let ((val (alist-ref field-id row)))
+		   (if val
+		       (car val)
+		       '())))
+	       field-ids))
+	(begin
+	  (unless (= (length row) (length field-ids))
+	    (raise-local 'row-spec-unmatched block-id instance-id row))
+	  row)))
+
   ;;; Parse the contents of a block node instance into the internal
   ;;; representation. This parser should be applied to a mdmod node expression,
   ;;; with the appropriate `mdconfig` cons'd.
   (define (mod-parse-block-instance mdconfig block-id #!rest contents
-				#!key name (id 0))
-    (let ((actual-contents (remove-keyword-args (cdr contents)
-						'(id: name:)))
-	  (inode-config (config-inode-ref block-id mdconfig)))
-      (list id name
-	    '())))
+				    #!key name (id 0))
+    (let* ((actual-contents (remove-keyword-args (cdr contents)
+						 '(id: name:)))
+	   (inode-config (config-inode-ref block-id mdconfig))
+	   (field-ids (config-get-subnode-ids block-id (config-itree mdconfig)))
+	   (normalized-block-rows (mod-replace-empty-block-rows
+				   (length field-ids)
+				   (remove-keyword-args contents
+							'(id: name:)))))
+      (append (list id name)
+	      (map (lambda (row)
+		     (mod-parse-block-row row field-ids block-id id))
+		   normalized-block-rows))))
 
   ;;; Generic parser for igroup subnodes, used by `mod-parse-block` and
   ;;; `mod-parse-subgroup`.
   (define (mod-parse-group-subnode subnode-id instance-parser mdconfig
-			       parent-group-contents)
-    (list subnode-id
-	  (map (lambda (node-instance)
-		 (apply instance-parser (cons mdconfig node-instance)))
-	       (filter (lambda (subnode)
-			 (eqv? subnode-id '(car subnode)))
-		       parent-group-contents))))
+				   parent-group-contents)
+    (let ((actual-subnode-id (if (symbol-contains subnode-id "_ORDER")
+				 'ORDER subnode-id)))
+      (cons subnode-id
+	    (map (lambda (node-instance)
+		   (apply instance-parser
+			  (cons mdconfig
+				(cons subnode-id (cdr node-instance)))))
+		 (filter (lambda (subnode)
+			   (eqv? actual-subnode-id (car subnode)))
+			 parent-group-contents)))))
 
   ;;; Parse the block node expressions belonging to `block-id` in
   ;;; `parent-group-contents`.
   (define (mod-parse-block block-id mdconfig parent-group-contents)
     (mod-parse-group-subnode block-id mod-parse-block-instance
-			 mdconfig parent-group-contents))
+			     mdconfig parent-group-contents))
 
   ;;; Parse the subgroup node expressions belonging to `subgroup-id` in
   ;;; `parent-group-contents`.
   (define (mod-parse-subgroup subgroup-id mdconfig parent-group-contents)
     (mod-parse-group-subnode subgroup-id mod-parse-group-instance
-			 mdconfig parent-group-contents))
+			     mdconfig parent-group-contents))
 
   ;;; Parse the contents of a group node instance into the internal
   ;;; representation. This parser should be applied to a mdmod node expression,
   ;;; with the appropriate `mdconfig` cons'd.
   (define (mod-parse-group-instance mdconfig node-id #!rest contents
-				#!key name (id 0))
-    (let ((actual-contents (remove-keyword-args (cdr contents)
-						'(id: name:)))
-	  (inode-config (config-inode-ref node-id mdconfig)))
-      (unless inode-config (raise-local 'unknown-node node-id))
-      (list id name
-	    (map (lambda (subnode-id)
-		   ((case (inode-config-type inode-config)
-		       ((field) mod-parse-group-field)
-		       ((block) mod-parse-block)
-		       ((group) mod-parse-subgroup))
-		    subnode-id mdconfig actual-contents))
-		 (config-get-subnode-ids node-id (config-itree mdconfig))))))
+				    #!key name (id 0))
+    (let ((actual-contents (remove-keyword-args contents '(id: name:))))
+      (append (list id name)
+	      (map (lambda (subnode-id)
+		     ((case (inode-config-type (config-inode-ref subnode-id
+								 mdconfig))
+			((field) mod-parse-group-field)
+			((block) mod-parse-block)
+			((group) mod-parse-subgroup))
+		      subnode-id mdconfig actual-contents))
+		   (config-get-subnode-ids node-id (config-itree mdconfig))))))
 
   ;;; check if mdmod s-expression specifies a supported MDAL version
   ;;; This procedure should be applied to a mod-sexp.

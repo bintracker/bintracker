@@ -162,6 +162,11 @@
 					      (->string (cadr args)))))
 	       ((unknown-node) (string-append "Unknown node "
 					      (->string (car args))))
+	       ((row-spec-unmatched)
+		(string-append "In block node " (->string (car args))
+			       ", ID " (->string (cadr args))
+			       ": row \"" (->string (caddr args))
+			       "\" does not match specification"))
 	       ((compiler-failed) "Failed to compile module."))
 	     exn-type)
 	    "")))

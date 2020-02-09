@@ -242,6 +242,34 @@
  (define my-mod-expr (read (open-input-file "unittests/modules/huby-test.mdal"
 					    text:)))
 
+ (define my-global-node-contents (remove-keyword-args (cdr my-mod-expr)
+						      '(version: config:)))
+
+ (test-group
+  "MDMOD integrity checks"
+
+  (test "not an MDAL module"
+	"Not an MDAL module"
+	(with-exn-handler (lambda (e) (message e))
+			  (lambda ()
+			    (apply check-mdmod-version
+				   '(mdal-modul version: 4)))))
+
+  (test "valid version"
+	2 (apply check-mdmod-version my-mod-expr))
+
+  (test "invalid version"
+	"Unsupported MDAL version: 4"
+	(with-exn-handler (lambda (e) (message e))
+			  (lambda ()
+			    (apply check-mdmod-version
+				   '(mdal-module version: 4)))))
+
+  (test "mod-get-config-name"
+	"Huby"
+	(apply mod-get-config-name my-mod-expr)))
+
+
  ;; (define my-drum-inode
  ;;   (make-inode config-id: 'DRUM
  ;; 	       instances: (zip (iota 16)
@@ -318,68 +346,89 @@
  ;; 				       val: (list my-note2-inode1)))))
  ;; 	 my-patterns-order-inode))
 
-
- ;; (test "mod-parse-group-fields"
- ;;       (list
- ;; 	(make-inode config-id: 'AUTHOR
- ;; 		    instances: `((0 ,(make-inode-instance val: "utz"))))
- ;; 	(make-inode config-id: 'TITLE
- ;; 		    instances: `((0 ,(make-inode-instance val: "Huby Test"))))
- ;; 	(make-inode config-id: 'LICENSE
- ;; 		    instances: `((0 ,(make-inode-instance
- ;; 				      val: "Creative Commons CC0"))))
- ;; 	(make-inode config-id: 'BPM
- ;; 		    instances: `((0 ,(make-inode-instance val: 120)))))
- ;;       (mod-parse-group-fields my-mod-expr 'GLOBAL my-cfg))
-
-
- ;; (test "mod-parse-block-fields"
- ;;       (list my-note1-inode)
- ;;       (mod-parse-block-fields
- ;; 	(last (car (get-assignments
- ;; 		    (last (car (get-assignments my-mod-expr 'PATTERNS)))
- ;; 		    'CH1)))
- ;; 	'CH1 my-cfg))
-
- ;; (test "mod-parse-group-blocks"
- ;;       my-patterns-subnodes
- ;;       (mod-parse-group-blocks
- ;; 	(last (car (get-assignments my-mod-expr 'PATTERNS)))
- ;; 	'PATTERNS my-cfg))
-
- ;; (define my-global-subnodes
- ;;   (append (mod-parse-group-fields my-mod-expr 'GLOBAL my-cfg)
- ;; 	   (list (make-inode config-id: 'PATTERNS
- ;; 			     instances: `((0 ,(make-inode-instance
- ;; 					       val: my-patterns-subnodes)))))))
-
- ;; (test "mod-parse-group"
- ;;       my-global-subnodes
- ;;       (mod-parse-group my-mod-expr 'GLOBAL my-cfg))
+ (test "parsing group fields"
+       '((AUTHOR (0 "utz"))
+	 (BPM (0 120)))
+       `(,(mod-parse-group-field 'AUTHOR my-cfg my-global-node-contents)
+	 ,(mod-parse-group-field 'BPM my-cfg my-global-node-contents)))
 
  (test-group
-  "MDMOD integrity checks"
+  "parsing blocks"
 
-  (test "not an MDAL module"
-	"Not an MDAL module"
+  (test "replacing empty block rows"
+	'((0 1 2 3)
+	  (() () () ())
+	  (foo)
+	  (() () () ())
+	  (() () () ()))
+	(mod-replace-empty-block-rows 4 '((0 1 2 3) 1 (foo) 2)))
+
+  (test "detect mixed shorthand/full syntax"
+	"In block node XYZ, ID 0: row \"(1 2 (BAZ 3))\" does not match specification"
 	(with-exn-handler (lambda (e) (message e))
 			  (lambda ()
-			    (apply check-mdmod-version
-				   '(mdal-modul version: 4)))))
+			    (mod-parse-block-row '(1 2 (BAZ 3))
+						 '(FOO BAR BAZ)
+						 'XYZ 0))))
 
-  (test "valid version"
-	2 (apply check-mdmod-version my-mod-expr))
-
-  (test "invalid version"
-	"Unsupported MDAL version: 4"
+  (test "detect unrecognized node"
+	"Unknown node ZAP"
 	(with-exn-handler (lambda (e) (message e))
 			  (lambda ()
-			    (apply check-mdmod-version
-				   '(mdal-module version: 4))))))
+			    (mod-parse-block-row '((ZAP 1))
+						 '(FOO BAR BAZ)
+						 'XYZ 0))))
 
- (test "mod-get-config-name"
-       "Huby"
-       (apply mod-get-config-name my-mod-expr))
+  (test "detect invalid row length"
+	"In block node XYZ, ID 0: row \"(1 2)\" does not match specification"
+	(with-exn-handler (lambda (e) (message e))
+			  (lambda ()
+			    (mod-parse-block-row '(1 2)
+						 '(FOO BAR BAZ)
+						 'XYZ 0))))
+
+  (test "parsing valid block rows"
+	'((1 2 3 )
+	  (1 () 3))
+	`(,(mod-parse-block-row '(1 2 3)
+				'(FOO BAR BAZ)
+				'X 0)
+	  ,(mod-parse-block-row '((FOO 1) (BAZ 3))
+				'(FOO BAR BAZ)
+				'X 0)))
+
+  (test "parsing block instance"
+	'(0 #f
+	    (#x10 #x00 #x00 #x00)
+	    (() () () #x01))
+	(apply mod-parse-block-instance `(,my-cfg PATTERNS_ORDER
+						  (#x10 #x00 #x00 #x00)
+						  ((R_CH2 #x01))))))
+
+ (test "parsing groups"
+       `(0 #f
+	   (AUTHOR (0 "utz"))
+	   (TITLE (0 "Huby Test"))
+	   (LICENSE (0 "Creative Commons CC0"))
+	   (BPM (0 120))
+	   (PATTERNS (0 #f
+			(DRUMS ,(append (list 0 "beat0")
+					(concatenate
+					 (make-list 4 `((#t) (()) (()) (()))))))
+			(CH1 (0 #f
+				(a3) (()) (rest) (()) (c4) (()) (rest) (())
+				(e4) (()) (rest) (()) (g4) (()) (rest) (())))
+			(CH2 ,(append (list 0 #f '(a2))
+				      (make-list 15 '(())))
+			     ,(append (list 1 #f '(e2))
+				      (make-list 15 '(()))))
+			(PATTERNS_ORDER (0 #f
+					   (#x10 #x00 #x00 #x00)
+					   (() () () #x01))))))
+       (apply mod-parse-group-instance
+	      (append `(,my-cfg GLOBAL)
+		      (remove-keyword-args (cdr my-mod-expr)
+					   '(version: config:)))))
 
  ;; (test "mod-string->number"
  ;;       '(64 64 64)
