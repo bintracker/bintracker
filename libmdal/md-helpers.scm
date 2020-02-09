@@ -70,9 +70,21 @@
 	       (add-to-list elem val)))
 	 lst))
 
-  ;; ;;; Append {{y}} to {{x}} and turn the result into a symbol.
-  ;; (define (symbol-append x y)
-  ;;   (string->symbol (string-append (->string x) (->string y))))
+  ;;; Drop the given `keywords` and their corresponding value arguments from
+  ;;; the list of `args`.
+  (define (remove-keyword-args args keywords)
+    (let ((drop-key+arg
+	   (lambda (key)
+	     (let ((not-target-key? (lambda (x)
+				      (not (eqv? x key)))))
+	       (if (memv key args)
+		   (append (take-while not-target-key? args)
+			   (cddr (drop-while not-target-key? args)))
+		   args)))))
+      (if (null? keywords)
+	  args
+	  (remove-keyword-args (drop-key+arg (car keywords))
+			       (cdr keywords)))))
 
   ;;; Check if the symbol name `sym` contains the string `str`.
   (define (symbol-contains sym str)
