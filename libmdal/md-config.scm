@@ -101,6 +101,38 @@
   			    (string-prefix? "R_" (symbol->string id)))
   			  (flatten itree))))))
 
+  ;;; Verify that a parsed `field-value` is a legal input. Raises an exception
+  ;;; of type `illegal-value` on failure, otherwise returns the field value.
+  ;;; Note that for modifier, reference, and label commands, only a type check
+  ;;; is performed.
+  (define (validate-field-value mdconfig field-id field-value)
+    (let ((command-config (config-command-ref
+			   (inode-config-cmd-id (config-inode-ref field-id
+								  mdconfig))
+			   mdconfig)))
+      (unless (or (null? field-value)
+		  (case (command-type command-config)
+		    ((int uint)
+		     (and (integer? field-value)
+			  (in-range? field-value
+				     (command-range command-config))))
+		    ((key ukey) (and (symbol? field-value)
+				     (hash-table-ref/default
+				      (command-keys command-config)
+				      field-value #f)))
+		    ((trigger (and field-value (boolean? field-value))))
+		    ((modifier)
+		     (and (pair? field-value)
+			  (memv (car field-value) '(+ - * / % ^ & v))
+			  (in-range? field-value
+				     (command-range command-config))))
+		    ((reference) (and (integer? field-value)
+				      (positive? field-value)))
+		    ((string) (string? field-value))
+		    ((label) (symbol? field-value))))
+	(raise-local 'illegal-value field-value field-id))
+      field-value))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDCONF: MASTER CONFIGURATION
