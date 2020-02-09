@@ -25,7 +25,20 @@
    (and (in-range? 1 (make-range min: 0 max: 2))
 	(not (in-range? 3 (make-range min: 0 max: 2)))))
 
+ (test "bits->range"
+       '((-128 127)
+	 (0 255))
+       (let ((r1 (bits->range 8 #t))
+	     (r2 (bits->range 8 #f)))
+	 `((,(range-min r1) ,(range-max r1))
+	   (,(range-min r2) ,(range-max r2)))))
+
  (test "make-pairs" '((a 1) (b 2)) (make-pairs '(a 1 b 2)))
+
+ (test "remove-keyword-args"
+       '(0 1 baz 4)
+       (remove-keyword-args '(0 1 foo: 2 bar: 3 baz 4)
+			    '(foo: bar: baz:)))
 
  (test "add-hash-table-entry" '()
        (lset-difference
