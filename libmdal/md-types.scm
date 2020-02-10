@@ -12,48 +12,64 @@
   ;;; ## MDMOD: INPUT NODES
   ;; ---------------------------------------------------------------------------
 
-  ;;; The inode instance record type. `val` can be one of
-  ;;;   () -> inactive node
-  ;;;   a string of the actual value
-  ;;;   a list of subnodes
+  ;; TODO obsolete
+  ;; The inode instance record type. `val` can be one of
+  ;;   () -> inactive node
+  ;;   a string of the actual value
+  ;;   a list of subnodes
   (defstruct inode-instance
     (val '())
     (name ""))
 
+  (define (inode-instance-val inode-instance)
+    (let ((raw-val (cddr inode-instance)))
+      (if (pair? (car raw-val))
+	  raw-val
+	  (car raw-val))))
+
+  ;; TODO obsolete
   ;;; Printer for inode-instance records.
   (define (display-inode-instance i)
     (let ((instance-val (inode-instance-val i)))
       (printf "#<inode-instance>: ~A " (inode-instance-name i))
       (if (and (list? instance-val)
-	       (not (null-list? instance-val)))
-	  (begin (newline)
-		 (for-each display-inode instance-val))
-	  (printf "~S\n" instance-val))))
+  	       (not (null-list? instance-val)))
+  	  (begin (newline)
+  		 (for-each display-inode instance-val))
+  	  (printf "~S\n" instance-val))))
 
-  ;;; return the subnode of the given id
+  ;;; TODO rename to subnode-ref, reverse args
+  ;;; Returns the subnode with the given `subnode-id`
   (define (get-subnode inode-instance subnode-id)
     (find (lambda (node)
-	    (eq? (inode-config-id node) subnode-id))
-	  (inode-instance-val inode-instance)))
+	    (eqv? subnode-id (car node)))
+	  (cddr inode-instance)))
 
+  ;;; Returns the inode instance witht the given `instance-id`.
+  (define (inode-instance-ref instance-id inode)
+    (find (lambda (instance)
+	    (= instance-id (car instance)))
+	  (cdr inode)))
+
+  ;; TODO obsolete
   ;;; The inode record type.
   (defstruct inode
     config-id instances)
 
+  ;; TODO obsolete
   ;;; Printer for inode records.
   (define (display-inode node)
     (printf "#<inode: ~s>\n" (inode-config-id node))
     (for-each (lambda (x)
-		(printf "instance ~S: " (car x))
-		(display-inode-instance (cadr x))
-		(newline))
-	      (inode-instances node)))
+  		(printf "instance ~S: " (car x))
+  		(display-inode-instance (cadr x))
+  		(newline))
+  	      (inode-instances node)))
 
+  ;; TODO obsolete?
   ;;; return the number of instances in the given inode
   (define (inode-count-instances node)
-    (if (not (inode-instances node))
-	0
-	(length (inode-instances node))))
+    (length (cdr node)))
 
 
   ;;;---------------------------------------------------------------------------
@@ -144,6 +160,7 @@
     (printf "#<mdmod>\n\nCONFIG ID: ~A\n\n" (mdmod-config-id mod))
     (printf "CONFIG:\n~S\n" (mdmod-config mod)))
 
+  ;; TODO obsolete
   ;;; generate a function that takes an inode as parameter, and returns the node
   ;;; instance matching the given numeric instance id
   ;;; TODO should check if node instance actually exists
@@ -151,42 +168,73 @@
     (lambda (node)
       (car (alist-ref id (inode-instances node)))))
 
+  ;; TODO obsolete
   ;;; lo-level api, generate a function that takes an inode as param, and
   ;;; returns the node matching the given path
   (define (make-npath-fn pathlist)
     (if (= 2 (length pathlist))
-	(lambda (node)
-	  (find (lambda (subnode-id)
-		  (eq? (inode-config-id subnode-id)
-		       (string->symbol (cadr pathlist))))
-		(inode-instance-val
-		 ((mod-get-node-instance (string->number (car pathlist)))
-		  node))))
-	(lambda (node)
-	  ((make-npath-fn (cddr pathlist))
-	   ((make-npath-fn (take pathlist 2)) node)))))
+  	(lambda (node)
+  	  (find (lambda (subnode-id)
+  		  (eq? (inode-config-id subnode-id)
+  		       (string->symbol (cadr pathlist))))
+  		(inode-instance-val
+  		 ((mod-get-node-instance (string->number (car pathlist)))
+  		  node))))
+  	(lambda (node)
+  	  ((make-npath-fn (cddr pathlist))
+  	   ((make-npath-fn (take pathlist 2)) node)))))
 
+  ;; TODO obsolete
   ;;; generate a function that takes an inode as parameter, and returns the node
   ;;; instance matching the given path
   (define (node-instance-path path)
     (letrec ((make-instance-path-fn
-	      (lambda (pathlist)
-		(if (= 1 (length pathlist))
-		    (mod-get-node-instance (string->number (car pathlist)))
-		    (lambda (node)
-		      ((make-instance-path-fn (cddr pathlist))
-		       ((make-npath-fn (take pathlist 2)) node)))))))
+  	      (lambda (pathlist)
+  		(if (= 1 (length pathlist))
+  		    (mod-get-node-instance (string->number (car pathlist)))
+  		    (lambda (node)
+  		      ((make-instance-path-fn (cddr pathlist))
+  		       ((make-npath-fn (take pathlist 2)) node)))))))
       (make-instance-path-fn (string-split path "/"))))
-
-  ;;; generate a function that takes an inode as parameter, and returns the
-  ;;; subnode matching the given path
-  (define (node-path path)
-    (make-npath-fn (string-split path "/")))
-
 
   ;;----------------------------------------------------------------------------
   ;;; ### mod accessor functions
   ;;----------------------------------------------------------------------------
+
+  ;;; Generate a function that takes an inode as parameter, and returns the
+  ;;; subnode or node instance matching the given path `p`, where `p` is a
+  ;;; string in the form "instance-id/node-id...". For example,
+  ;;; ```Scheme
+  ;;; (node-path "0/PATTERNS/0/CH1")
+  ;;; ```
+  ;;; will return a procedure that, when called with the global node as
+  ;;; argument, will return the node CH1 in instance 0 of the PATTERN node,
+  ;;; assuming that the node exists and is defined in the module's
+  ;;; configuration.
+  (define (node-path p)
+    (let* ((path (string-split p "/"))
+	   (accessor-proc
+	    (apply
+	     compose
+	     (cons (if (string->number (last path))
+		       (lambda (contents)
+			 (inode-instance-ref (string->number (last path))
+					     contents))
+		       (lambda (contents)
+			 (get-subnode contents (string->symbol (last path)))))
+		   (cdr (reverse
+			 (map (lambda (path-elem subnode-access)
+				(if subnode-access
+				    (lambda (contents)
+				      (alist-ref (string->symbol path-elem)
+						 contents))
+				    (lambda (contents)
+				      (cddr
+				       (alist-ref (string->number path-elem)
+						  contents)))))
+			      path (circular-list #f #t))))))))
+      (lambda (node)
+	(accessor-proc (cdr node)))))
 
   ;;; split a list of subnodes into two seperate lists at the given node-id. The
   ;;; second list will be the tail, including the node at split point.

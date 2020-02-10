@@ -135,105 +135,82 @@
        (config-get-node-default 'DRUM my-cfg)))
 
 
-;; (test-group
-;;  "MD-MODULE/Inodes"
+(test-group
+ "MD-MODULE/Inodes"
 
-;;  (define my-global-inode-instance
-;;    (car (alist-ref 0 (inode-instances (mdmod-global-node my-mod)))))
+ (define my-global-inode-instance (cadr (mdmod-global-node my-mod)))
 
-;;  (test "get-subnode"
-;;        (find (lambda (node)
-;; 	       (eq? (inode-config-id node) 'PATTERNS))
-;; 	     (inode-instance-val my-global-inode-instance))
-;;        (get-subnode my-global-inode-instance 'PATTERNS))
+ (test "get-subnode"
+       (find (lambda (node)
+ 	       (eqv? (car node) 'PATTERNS))
+ 	     (cddr my-global-inode-instance))
+       (get-subnode my-global-inode-instance 'PATTERNS))
 
-;;  (define my-ch2-inode
-;;    (get-subnode
-;;     (car (alist-ref 0 (inode-instances
-;; 		       (get-subnode my-global-inode-instance 'PATTERNS))))
-;;     'CH2))
+ (define my-ch2-inode
+   (get-subnode
+    (inode-instance-ref 0 (get-subnode my-global-inode-instance 'PATTERNS))
+    'CH2))
 
-;;  (test "inode-count-instances" 2 (inode-count-instances my-ch2-inode))
+ (test "inode-count-instances" 2 (inode-count-instances my-ch2-inode))
 
-;;  (define my-note1-inode
-;;    (get-subnode
-;;     (car (alist-ref
-;; 	  0 (inode-instances
-;; 	     (get-subnode
-;; 	      (car (alist-ref
-;; 		    0 (inode-instances
-;; 		       (get-subnode my-global-inode-instance 'PATTERNS))))
-;; 	      'CH1))))
-;;     'NOTE1))
+ ;; (define my-note1-inode
+ ;;   (get-subnode
+ ;;    (car (alist-ref
+ ;; 	  0 (inode-instances
+ ;; 	     (get-subnode
+ ;; 	      (car (alist-ref
+ ;; 		    0 (inode-instances
+ ;; 		       (get-subnode my-global-inode-instance 'PATTERNS))))
+ ;; 	      'CH1))))
+ ;;    'NOTE1))
 
-;;  (test "get-node-command-cfg"
-;;        (car (hash-table-ref (config-commands my-cfg) 'NOTE))
-;;        (get-node-command-cfg my-note1-inode my-cfg))
+ ;; (test "get-node-command-cfg"
+ ;;       (car (hash-table-ref (config-commands my-cfg) 'NOTE))
+ ;;       (get-node-command-cfg my-note1-inode my-cfg))
 
-;;  (test "eval-field-last-set" "c4"
-;;        (eval-field-last-set
-;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
+ ;; (test "eval-field-last-set" "c4"
+ ;;       (eval-field-last-set
+ ;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
 
-;;  (test "eval-field" 0
-;;        (eval-field 3 my-note1-inode
-;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
+ ;; (test "eval-field" 0
+ ;;       (eval-field 3 my-note1-inode
+ ;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
 
-;;  (define (make-test-inode instances)
-;;    (make-inode config-id: 'FOO
-;; 	       instances: (map (lambda (i)
-;; 				 (list (car i)
-;; 				       (make-inode-instance val: (cadr i))))
-;; 			       instances)))
+ ;; (define (make-test-inode instances)
+ ;;   (make-inode config-id: 'FOO
+ ;; 	       instances: (map (lambda (i)
+ ;; 				 (list (car i)
+ ;; 				       (make-inode-instance val: (cadr i))))
+ ;; 			       instances)))
 
-;;  (define my-mutable-inode
-;;    (make-test-inode '((0 "n0") (1 "n1") (2 "n2"))))
+ ;; (define my-mutable-inode
+ ;;   (make-test-inode '((0 "n0") (1 "n1") (2 "n2"))))
 
-;;  (test "node-set!"
-;;        (make-test-inode '((0 "n0") (1 "foo") (2 "bar")))
-;;        (begin (node-set! my-mutable-inode '((1 "foo") (2 "bar")))
-;; 	      my-mutable-inode))
+ ;; (test "node-set!"
+ ;;       (make-test-inode '((0 "n0") (1 "foo") (2 "bar")))
+ ;;       (begin (node-set! my-mutable-inode '((1 "foo") (2 "bar")))
+ ;; 	      my-mutable-inode))
 
-;;  (test "node-remove!"
-;;        (make-test-inode '((0 "n0") (1 "bar")))
-;;        (begin (node-remove! my-mutable-inode '(1) #t)
-;; 	      my-mutable-inode))
+ ;; (test "node-remove!"
+ ;;       (make-test-inode '((0 "n0") (1 "bar")))
+ ;;       (begin (node-remove! my-mutable-inode '(1) #t)
+ ;; 	      my-mutable-inode))
 
-;;  (test "node-insert!"
-;;        (make-test-inode '((0 "n0") (1 "baz") (2 "bar")))
-;;        (begin (node-insert! my-mutable-inode '((1 "baz")) #t)
-;; 	      my-mutable-inode)))
+ ;; (test "node-insert!"
+ ;;       (make-test-inode '((0 "n0") (1 "baz") (2 "bar")))
+ ;;       (begin (node-insert! my-mutable-inode '((1 "baz")) #t)
+ ;; 	      my-mutable-inode))
+ )
 
+;; TODO merge with Accessors II, move below parser tests
+(test-group
+ "MD-Module/Accessors"
 
-;; (test-group
-;;  "MD-Module/Accessors"
-
-;;  ;; GLOBAL/0/PATTERNS/0/CH1/0/NOTE1
-;;  (define my-test-node
-;;    (get-subnode
-;;     (car (alist-ref
-;; 	  0
-;; 	  (inode-instances
-;; 	   (get-subnode
-;; 	    (car (alist-ref
-;; 		  0
-;; 		  (inode-instances
-;; 		   (get-subnode
-;; 		    (car (alist-ref
-;; 			  0
-;; 			  (inode-instances
-;; 			   (mdmod-global-node my-mod))))
-;; 		    'PATTERNS))))
-;; 	    'CH1))))
-;;     'NOTE1))
-
-;;  (test "node-path" my-test-node
-;;        ((node-path "0/PATTERNS/0/CH1/0/NOTE1")
-;; 	(mdmod-global-node my-mod)))
-
-;;  (test "node-instance-path"
-;;        (car (alist-ref 4 (inode-instances my-test-node)))
-;;        ((node-instance-path "0/PATTERNS/0/CH1/0/NOTE1/4")
-;; 	(mdmod-global-node my-mod))))
+ (test "node-path"
+       (append '(1 #f (e2))
+	       (make-list 15 '(())))
+       ((node-path "0/PATTERNS/0/CH2/1") (mdmod-global-node my-mod)))
+ )
 
 
 (test-group
