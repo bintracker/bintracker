@@ -4,8 +4,8 @@
 
 (module mdal *
 
-  (import scheme (chicken base) (chicken module) (chicken format)
-	  (chicken string) (chicken bitwise)
+  (import scheme (chicken base) (chicken module) (chicken pretty-print)
+	  (chicken format) (chicken string) (chicken bitwise)
 	  srfi-1 srfi-4 srfi-13 srfi-69 typed-records
 	  md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
@@ -16,130 +16,71 @@
   ;;; ### output generation
   ;;----------------------------------------------------------------------------
 
-  ;; convert an indent level to a string of (* 4 indent-level) spaces.
-  (define (indent-level->string indent-level)
-    (list->string (make-list (* 4 indent-level)
-			     #\space)))
+  (define (mod-block-instance-contents->expr block-id contents mdconfig)
+    (letrec
+	((field-ids (config-get-subnode-ids block-id
+					    (config-itree mdconfig)))
+	 (collapse-empty-rows
+	  (lambda (rows)
+	    (if (null? rows)
+		'()
+		(let ((empty-head (length (take-while null? rows))))
+		  (if (zero? empty-head)
+		      (append (take-while pair? rows)
+			      (collapse-empty-rows (drop-while pair? rows)))
+		      (cons empty-head
+			    (collapse-empty-rows (drop rows empty-head)))))))))
+      (collapse-empty-rows
+       (map (lambda (row)
+	      (cond
+	       ((= (length field-ids) (length (remove null? row))) row)
+	       ((null-list? (remove null? row)) '())
+	       (else (filter-map (lambda (field-id field-val)
+				   (and (not (null? field-val))
+					(list field-id field-val)))
+				 field-ids row))))
+	    contents))))
 
-  ;; write the left part of an MDAL block/group instance assignment to port.
-  (define (write-node-instance-header indent node-id instance-id
-				      omit-instance-id instance-name port)
-    (fprintf port "~A~s" indent
-	     (if (symbol-contains node-id "_ORDER")
-		 'ORDER node-id))
-    (when (not omit-instance-id)
-      (fprintf port "(~s)" instance-id))
-    (when (not (string-null? instance-name))
-      (write instance-name port))
-    (display "={\n" port))
+  (define (mod-node->node-expr node-id node-contents mdconfig)
+    (map (lambda (instance)
+	   (mod-node-instance->instance-expr node-id instance mdconfig))
+	 node-contents))
 
-  ;; find empty rows in the given list of `rows` and collapse them using .n
-  ;; syntax
-  (define (collapse-empty-rows rows)
-    (letrec ((count-empty (lambda (rs empty-count)
-			    (if (or (null? rs)
-				    (not (string=? "." (car rs))))
-				empty-count
-				(count-empty (cdr rs)
-					     (+ 1 empty-count))))))
-      (if (null? rows)
-	  '()
-	  (let* ((empty-count (count-empty rows 0))
-		 (drop-count (if (zero? empty-count)
-				 1 empty-count)))
-	    (cons (case empty-count
-		    ((0) (car rows))
-		    ((1) ".")
-		    (else (string-append "." (->string empty-count))))
-		  (collapse-empty-rows (drop rows drop-count)))))))
+  (define (mod-group-instance-contents->node-expr group-id contents mdconfig)
+    (filter-map (lambda (node-id)
+		  (let ((node-expr (mod-node->node-expr
+				    node-id (alist-ref node-id contents)
+				    mdconfig)))
+		    (and (pair? node-expr)
+			 node-expr)))
+		(config-get-subnode-ids group-id (config-itree mdconfig))))
 
-  ;; convert block instance rows to MDAL strings
-  (define (rows->string rows field-ids)
-    (collapse-empty-rows
-     (map (lambda (row)
-	    (string-intersperse
-	     (cond ((null? (remove null? row))
-		    (list "."))
-		   ((= (length row)
-		       (length (remove null? row)))
-		    (map ->string row))
-		   (else (remove string-null?
-				 (map (lambda (val id)
-					(if (null? val)
-					    ""
-					    (string-append (->string id)
-							   "=" (->string val))))
-				      row field-ids))))
-	     ", "))
-	  rows)))
+  (define (mod-node-instance->instance-expr node-id instance mdconfig)
+    (cons (if (symbol-contains node-id "_ORDER")
+	      'ORDER node-id)
+	  (append (if (not (zero? (car instance)))
+		      (list 'id: (car instance))
+		      '())
+		  (if (cadr instance)
+		      (list 'name: (cadr instance))
+		      '())
+		  (case (inode-config-type (config-inode-ref node-id mdconfig))
+		    ((field) (list (caddr instance)))
+		    ((block) (mod-block-instance-contents->expr
+			      node-id (cddr instance) mdconfig))
+		    ((group) (mod-group-instance-contents->node-expr
+			      node-id (cddr instance) mdconfig))))))
 
-  ;;; write an inode-instance to `port` as MDAL text
-  (define (write-node-instance node-instance instance-id node-id
-			       indent-level config port)
-    (let* ((indent (indent-level->string indent-level))
-	   (node-cfg (config-inode-ref node-id config))
-	   (write-header (lambda ()
-			   (write-node-instance-header
-			    indent node-id instance-id
-			    (single-instance-node? node-cfg)
-			    (inode-instance-name node-instance)
-			    port)))
-	   (write-footer (lambda () (fprintf port "~A}\n" indent))))
-      (case (inode-config-type node-cfg)
-	((field) (fprintf port "~A~A=~s" indent node-id
-			 (inode-instance-val node-instance)))
-	((block)
-	 (write-header)
-	 (for-each (lambda (row)
-		     (fprintf port "~A~A\n"
-			      (indent-level->string
-			       (+ 1 indent-level))
-			      row))
-		   (rows->string
-		    (mod-get-block-instance-rows node-instance)
-		    (config-get-subnode-ids
-		     node-id (config-itree config))))
-	 (write-footer))
-	((group)
-	 (write-header)
-	 (for-each (lambda (subnode)
-		     (begin
-		       (write-node subnode (+ 1 indent-level)
-				   config port)
-		       (newline port)))
-		   (inode-instance-val node-instance))
-	 (write-footer)))))
-
-  ;;; Write the contents of `node` as MDAL text to `port`, indented by
-  ;;; `indent-level`, based on the rules specified in config `config`.
-  (define (write-node node indent-level config port)
-    (let ((indent (indent-level->string indent-level))
-	  (node-type (inode-config-type (config-inode-ref
-					 (inode-config-id node) config))))
-      (for-each (lambda (id/val)
-		  (write-node-instance (cadr id/val) (car id/val)
-				       (inode-config-id node)
-				       indent-level config port))
-		(inode-instances node))))
-
-  ;;; Write the MDAL text of `mod` to `port`. `port` defaults to
-  ;;; `(current-output-port)` if omitted.
-  (define (write-mdmod mod #!optional (port (current-output-port)))
-    (fprintf port "MDAL_VERSION=~s\n" mdal-version)
-    (fprintf port "CONFIG=\"~A\"\n\n" (mdmod-config-id mod))
-    (for-each (lambda (subnode)
-		(begin
-		  (write-node subnode 0 (mdmod-config mod)
-			      port)
-		  (newline port)))
-	      (inode-instance-val ((mod-get-node-instance 0)
-				   (mdmod-global-node mod)))))
-
-  ;;; write `module` to an .mdal file.
+  ;;; write the MDAL module `mod` to an .mdal file.
   (define (mdmod->file mod filename)
     (call-with-output-file filename
       (lambda (port)
-	(write-mdmod mod port))))
+	(pp (append (list 'mdal-module 'version: mdal-version
+			  'config: (mdmod-config-id mod))
+		    (mod-group-instance-contents->node-expr
+		     'GLOBAL (cddr (cadr (mdmod-global-node mod)))
+		     (mdmod-config mod)))
+	    port))))
 
   ;;; compile an module to an onode tree
   ;;; TODO and a list of symbols for mod->asm?
