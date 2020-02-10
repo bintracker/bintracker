@@ -347,8 +347,8 @@
  ;; 	 my-patterns-order-inode))
 
  (test "parsing group fields"
-       '((AUTHOR (0 "utz"))
-	 (BPM (0 120)))
+       '((AUTHOR (0 #f "utz"))
+	 (BPM (0 #f 120)))
        `(,(mod-parse-group-field 'AUTHOR my-cfg my-global-node-contents)
 	 ,(mod-parse-group-field 'BPM my-cfg my-global-node-contents)))
 
@@ -407,10 +407,10 @@
 
  (test "parsing groups"
        `(0 #f
-	   (AUTHOR (0 "utz"))
-	   (TITLE (0 "Huby Test"))
-	   (LICENSE (0 "Creative Commons CC0"))
-	   (BPM (0 120))
+	   (AUTHOR (0 #f "utz"))
+	   (TITLE (0 #f "Huby Test"))
+	   (LICENSE (0 #f "Creative Commons CC0"))
+	   (BPM (0 #f 120))
 	   (PATTERNS (0 #f
 			(DRUMS ,(append (list 0 "beat0")
 					(concatenate

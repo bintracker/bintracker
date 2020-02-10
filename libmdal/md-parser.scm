@@ -295,10 +295,10 @@
   (define (mod-parse-group-field field-id mdconfig parent-group-contents)
     (let ((field-contents (alist-ref field-id parent-group-contents)))
       (list field-id
-	    `(0 ,(if field-contents
-		     (validate-field-value mdconfig field-id
-					   (car field-contents))
-		     '())))))
+	    `(0 #f ,(if field-contents
+			(validate-field-value mdconfig field-id
+					      (car field-contents))
+			'())))))
 
   ;;; Replace short-hand empty row notation in a block node mod-sexp with
   ;;; actual empty rows.
