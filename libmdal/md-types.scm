@@ -210,12 +210,11 @@
 	   (accessor-proc
 	    (apply
 	     compose
-	     (cons (if (string->number (last path))
-		       (lambda (contents)
-			 (inode-instance-ref (string->number (last path))
-					     contents))
-		       (lambda (contents)
-			 (get-subnode contents (string->symbol (last path)))))
+	     (cons (lambda (contents)
+		     (find (lambda (x)
+			     (eqv? (car x) (or (string->number (last path))
+					       (string->symbol (last path)))))
+			   contents))
 		   (cdr (reverse
 			 (map (lambda (path-elem subnode-access)
 				(if subnode-access

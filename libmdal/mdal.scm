@@ -111,8 +111,8 @@
   ;;; ### additional accessors
   ;; ---------------------------------------------------------------------------
 
-  ;;; returns the group instance's block nodes, except the order node, which can
-  ;;; be retrieved with mod-get-group-instance-order instead
+  ;;; returns the group instance's block nodes, except the order node. The
+  ;;; order node can be retrieved with `mod-get-group-instance-order` instead.
   (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
     (let ((subnode-ids
   	   (filter (lambda (id)
@@ -125,7 +125,7 @@
   ;;; returns the group instance's order node (instance 0)
   ;; TODO currently dead code except in unittests
   (define (mod-get-group-instance-order igroup-instance igroup-id)
-    ((mod-get-node-instance 0)
+    (inode-instance-ref 0
      (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
 
   ;;; Returns the total number of all block rows in the given group node

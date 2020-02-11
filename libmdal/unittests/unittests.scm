@@ -329,35 +329,6 @@
 		      (remove-keyword-args (cdr my-mod-expr)
 					   '(version: config:)))))
 
- ;; (test "mod-string->number"
- ;;       '(64 64 64)
- ;;       (list (mod-string->number "64")
- ;; 	     (mod-string->number "$40")
- ;; 	     (mod-string->number "#x40")))
-
- ;; (test "file->mdmod"
- ;;       (make-inode config-id: 'GLOBAL
- ;; 		   instances: `((0 ,(make-inode-instance
- ;; 				     val: my-global-subnodes))))
- ;;       (mdmod-global-node
- ;; 	(file->mdmod "unittests/modules/huby-test.mdal"
- ;; 		     my-config-path)))
-
- ;; (test "mod-get-group-instance-blocks"
- ;;       (list ((node-path "0/PATTERNS/0/DRUMS")
- ;; 	      (mdmod-global-node my-mod))
- ;; 	     ((node-path "0/PATTERNS/0/CH1") (mdmod-global-node my-mod))
- ;; 	     ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
- ;;       (mod-get-group-instance-blocks
- ;; 	((node-instance-path "0/PATTERNS/0") (mdmod-global-node my-mod))
- ;; 	'PATTERNS my-cfg))
-
- ;; (test "mod-get-group-instance-order"
- ;;       ((node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
- ;; 	(mdmod-global-node my-mod))
- ;;       (mod-get-group-instance-order
- ;; 	((node-instance-path "0/PATTERNS/0") (mdmod-global-node my-mod))
- ;; 	'PATTERNS))
  )
 
 
@@ -432,10 +403,34 @@
 (test-group
  "MD-Module/Accessors"
 
- (test "node-path"
+ (test "node-path to inode instance"
        (append '(1 #f (e2))
-	       (make-list 15 '(())))
+ 	       (make-list 15 '(())))
        ((node-path "0/PATTERNS/0/CH2/1") (mdmod-global-node my-mod)))
+
+ (test "node-path to subnode"
+       (list 'CH2
+	     (append '(0 #f (a2))
+ 		     (make-list 15 '(())))
+	     (append '(1 #f (e2))
+ 		     (make-list 15 '(()))))
+       ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
+
+ ;; (test "mod-get-group-instance-blocks"
+ ;;       (list ((node-path "0/PATTERNS/0/DRUMS")
+ ;; 	      (mdmod-global-node my-mod))
+ ;; 	     ((node-path "0/PATTERNS/0/CH1") (mdmod-global-node my-mod))
+ ;; 	     ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
+ ;;       (mod-get-group-instance-blocks
+ ;; 	((node-instance-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+ ;; 	'PATTERNS my-cfg))
+
+ (test "mod-get-group-instance-order"
+       ((node-path "0/PATTERNS/0/PATTERNS_ORDER/0")
+ 	(mdmod-global-node my-mod))
+       (mod-get-group-instance-order
+ 	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+ 	'PATTERNS))
 
  ;;  (test "mod-split-node-list-at"
  ;;        (list (list ((node-path "0/PATTERNS/0/DRUMS")
