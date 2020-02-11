@@ -134,85 +134,6 @@
  (test "config-get-node-default" #f
        (config-get-node-default 'DRUM my-cfg)))
 
-
-(test-group
- "MD-MODULE/Inodes"
-
- (define my-global-inode-instance (cadr (mdmod-global-node my-mod)))
-
- (test "get-subnode"
-       (find (lambda (node)
- 	       (eqv? (car node) 'PATTERNS))
- 	     (cddr my-global-inode-instance))
-       (get-subnode my-global-inode-instance 'PATTERNS))
-
- (define my-ch2-inode
-   (get-subnode
-    (inode-instance-ref 0 (get-subnode my-global-inode-instance 'PATTERNS))
-    'CH2))
-
- (test "inode-count-instances" 2 (inode-count-instances my-ch2-inode))
-
- ;; (define my-note1-inode
- ;;   (get-subnode
- ;;    (car (alist-ref
- ;; 	  0 (inode-instances
- ;; 	     (get-subnode
- ;; 	      (car (alist-ref
- ;; 		    0 (inode-instances
- ;; 		       (get-subnode my-global-inode-instance 'PATTERNS))))
- ;; 	      'CH1))))
- ;;    'NOTE1))
-
- ;; (test "get-node-command-cfg"
- ;;       (car (hash-table-ref (config-commands my-cfg) 'NOTE))
- ;;       (get-node-command-cfg my-note1-inode my-cfg))
-
- ;; (test "eval-field-last-set" "c4"
- ;;       (eval-field-last-set
- ;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
-
- ;; (test "eval-field" 0
- ;;       (eval-field 3 my-note1-inode
- ;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
-
- ;; (define (make-test-inode instances)
- ;;   (make-inode config-id: 'FOO
- ;; 	       instances: (map (lambda (i)
- ;; 				 (list (car i)
- ;; 				       (make-inode-instance val: (cadr i))))
- ;; 			       instances)))
-
- ;; (define my-mutable-inode
- ;;   (make-test-inode '((0 "n0") (1 "n1") (2 "n2"))))
-
- ;; (test "node-set!"
- ;;       (make-test-inode '((0 "n0") (1 "foo") (2 "bar")))
- ;;       (begin (node-set! my-mutable-inode '((1 "foo") (2 "bar")))
- ;; 	      my-mutable-inode))
-
- ;; (test "node-remove!"
- ;;       (make-test-inode '((0 "n0") (1 "bar")))
- ;;       (begin (node-remove! my-mutable-inode '(1) #t)
- ;; 	      my-mutable-inode))
-
- ;; (test "node-insert!"
- ;;       (make-test-inode '((0 "n0") (1 "baz") (2 "bar")))
- ;;       (begin (node-insert! my-mutable-inode '((1 "baz")) #t)
- ;; 	      my-mutable-inode))
- )
-
-;; TODO merge with Accessors II, move below parser tests
-(test-group
- "MD-Module/Accessors"
-
- (test "node-path"
-       (append '(1 #f (e2))
-	       (make-list 15 '(())))
-       ((node-path "0/PATTERNS/0/CH2/1") (mdmod-global-node my-mod)))
- )
-
-
 (test-group
  "MD-Module/Parser"
 
@@ -323,9 +244,10 @@
  ;; 				       val: (list my-note2-inode1)))))
  ;; 	 my-patterns-order-inode))
 
+
  (test "parsing group fields"
-       '((AUTHOR (0 #f "utz"))
-	 (BPM (0 #f 120)))
+       '((AUTHOR (0 #f . "utz"))
+	 (BPM (0 #f . 120)))
        `(,(mod-parse-group-field 'AUTHOR my-cfg my-global-node-contents)
 	 ,(mod-parse-group-field 'BPM my-cfg my-global-node-contents)))
 
@@ -384,10 +306,10 @@
 
  (test "parsing groups"
        `(0 #f
-	   (AUTHOR (0 #f "utz"))
-	   (TITLE (0 #f "Huby Test"))
-	   (LICENSE (0 #f "Creative Commons CC0"))
-	   (BPM (0 #f 120))
+	   (AUTHOR (0 #f . "utz"))
+	   (TITLE (0 #f . "Huby Test"))
+	   (LICENSE (0 #f . "Creative Commons CC0"))
+	   (BPM (0 #f . 120))
 	   (PATTERNS (0 #f
 			(DRUMS ,(append (list 0 "beat0")
 					(concatenate
@@ -439,120 +361,195 @@
  )
 
 
-;; (test-group
-;;  "MD-Module/Accessors II"
+(test-group
+ "MD-MODULE/Inodes"
 
-;;  (test "mod-split-node-list-at"
-;;        (list (list ((node-path "0/PATTERNS/0/DRUMS")
-;; 		    (mdmod-global-node my-mod)))
-;; 	     (list ((node-path "0/PATTERNS/0/CH1")
-;; 		    (mdmod-global-node my-mod))
-;; 		   ((node-path "0/PATTERNS/0/CH2")
-;; 		    (mdmod-global-node my-mod))
-;; 		   ((node-path "0/PATTERNS/0/PATTERNS_ORDER")
-;; 		    (mdmod-global-node my-mod))))
-;;        (mod-split-node-list-at
-;; 	'CH1 (inode-instance-val ((node-instance-path "0/PATTERNS/0")
-;; 				  (mdmod-global-node my-mod)))))
+ (define my-global-inode-instance (cadr (mdmod-global-node my-mod)))
 
-;;  (test "mod-split-instances-at"
-;;        (list (zip (iota 5)
-;; 		  (cons (make-inode-instance val: "a2")
-;; 			(make-list 4 (make-inode-instance))))
-;; 	     (zip (iota 11 5)
-;; 		  (make-list 11 (make-inode-instance))))
-;;        (mod-split-instances-at
-;; 	5 (inode-instances ((node-path "0/PATTERNS/0/CH2/0/NOTE2")
-;; 			    (mdmod-global-node my-mod)))))
+ (test "get-subnode"
+       (find (lambda (node)
+ 	       (eqv? (car node) 'PATTERNS))
+ 	     (cddr my-global-inode-instance))
+       (get-subnode my-global-inode-instance 'PATTERNS))
 
-;;  (test "mod-replace-subnode"
-;;        (make-inode-instance
-;; 	val: (list (make-inode config-id: 'NOTE1
-;; 			       instances:
-;; 			       (zip (iota 4)
-;; 				    (make-list 4 (make-inode-instance))))))
-;;        (mod-replace-subnode
-;; 	((node-instance-path "0/PATTERNS/0/CH1/0")
-;; 	 (mdmod-global-node my-mod))
-;; 	(make-inode config-id: 'NOTE1
-;; 		    instances: (zip (iota 4)
-;; 				    (make-list 4 (make-inode-instance))))))
+ (define my-ch2-inode
+   (get-subnode
+    (inode-instance-ref 0 (get-subnode my-global-inode-instance 'PATTERNS))
+    'CH2))
 
-;;  (test "mod-replace-inode-instance"
-;;        (make-inode config-id: 'NOTE2
-;; 		   instances: (zip (iota 16)
-;; 				   (make-list 16 (make-inode-instance))))
-;;        (mod-replace-inode-instance
-;; 	((node-path "0/PATTERNS/0/CH2/0/NOTE2")
-;; 	 (mdmod-global-node my-mod))
-;; 	0 (make-inode-instance)))
+ (test "inode-count-instances" 2 (inode-count-instances my-ch2-inode))
 
-;;  (test "mod-node-setter"
-;;        (make-inode
-;; 	config-id: 'CH2
-;; 	instances:
-;; 	`((0 ,(make-inode-instance
-;; 	       val: (list (make-inode
-;; 			   config-id: 'NOTE2
-;; 			   instances:
-;; 			   (zip (iota 16)
-;; 				(make-list 16 (make-inode-instance)))))))
-;; 	  (1 ,(make-inode-instance
-;; 	       val: (list
-;; 		     (make-inode
-;; 		      config-id: 'NOTE2
-;; 		      instances:
-;; 		      (zip (iota 16)
-;; 			   (cons (make-inode-instance val: "e2")
-;; 				 (make-list 15 (make-inode-instance))))))))))
-;;        ((mod-node-setter "0")
-;; 	(make-inode config-id: 'NOTE2
-;; 		    instances: (zip (iota 16)
-;; 				    (make-list 16 (make-inode-instance))))
-;; 	((node-path "0/PATTERNS/0/CH2")
-;; 	 (mdmod-global-node my-mod))))
+ ;; (define my-note1-inode
+ ;;   (get-subnode
+ ;;    (car (alist-ref
+ ;; 	  0 (inode-instances
+ ;; 	     (get-subnode
+ ;; 	      (car (alist-ref
+ ;; 		    0 (inode-instances
+ ;; 		       (get-subnode my-global-inode-instance 'PATTERNS))))
+ ;; 	      'CH1))))
+ ;;    'NOTE1))
 
-;;  (test "mod-get-row-values"
-;;        '("on" "c4" #f)
-;;        (mod-get-row-values ((node-instance-path "0/PATTERNS/0")
-;; 			    (mdmod-global-node my-mod))
-;; 			   '(0 0 0)
-;; 			   4))
+ ;; (test "get-node-command-cfg"
+ ;;       (car (hash-table-ref (config-commands my-cfg) 'NOTE))
+ ;;       (get-node-command-cfg my-note1-inode my-cfg))
 
-;;  (test "mod-get-block-values"
-;;        '(("on" "a3" "a2")
-;; 	 (#f #f #f)
-;; 	 (#f "rest" #f)
-;; 	 (#f #f #f)
-;; 	 ("on" "c4" #f)
-;; 	 (#f #f #f)
-;; 	 (#f "rest" #f)
-;; 	 (#f #f #f)
-;; 	 ("on" "e4" #f)
-;; 	 (#f #f #f)
-;; 	 (#f "rest" #f)
-;; 	 (#f #f #f)
-;; 	 ("on" "g4" #f)
-;; 	 (#f #f #f)
-;; 	 (#f "rest" #f)
-;; 	 (#f #f #f))
-;;        (mod-get-block-values ((node-instance-path "0/PATTERNS/0")
-;; 			      (mdmod-global-node my-mod))
-;; 			     '(0 0 0)))
+ ;; (test "eval-field-last-set" "c4"
+ ;;       (eval-field-last-set
+ ;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
 
-;;  (test "mod-get-group-instance-order"
-;;        ((node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
-;; 	(mdmod-global-node my-mod))
-;;        (mod-get-group-instance-order ((node-instance-path "0/PATTERNS/0")
-;; 				      (mdmod-global-node my-mod))
-;; 				     'PATTERNS))
+ ;; (test "eval-field" 0
+ ;;       (eval-field 3 my-note1-inode
+ ;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
 
-;;  (test "get-ordered-group-length"
-;;        32
-;;        (get-ordered-group-length 'PATTERNS
-;; 				 ((node-instance-path "0/PATTERNS/0")
-;; 				  (mdmod-global-node my-mod))
-;; 				 my-cfg)))
+ ;; (define (make-test-inode instances)
+ ;;   (make-inode config-id: 'FOO
+ ;; 	       instances: (map (lambda (i)
+ ;; 				 (list (car i)
+ ;; 				       (make-inode-instance val: (cadr i))))
+ ;; 			       instances)))
+
+ ;; (define my-mutable-inode
+ ;;   (make-test-inode '((0 "n0") (1 "n1") (2 "n2"))))
+
+ ;; (test "node-set!"
+ ;;       (make-test-inode '((0 "n0") (1 "foo") (2 "bar")))
+ ;;       (begin (node-set! my-mutable-inode '((1 "foo") (2 "bar")))
+ ;; 	      my-mutable-inode))
+
+ ;; (test "node-remove!"
+ ;;       (make-test-inode '((0 "n0") (1 "bar")))
+ ;;       (begin (node-remove! my-mutable-inode '(1) #t)
+ ;; 	      my-mutable-inode))
+
+ ;; (test "node-insert!"
+ ;;       (make-test-inode '((0 "n0") (1 "baz") (2 "bar")))
+ ;;       (begin (node-insert! my-mutable-inode '((1 "baz")) #t)
+ ;; 	      my-mutable-inode))
+ )
+
+;; TODO merge with Accessors II, move below parser tests
+(test-group
+ "MD-Module/Accessors"
+
+ (test "node-path"
+       (append '(1 #f (e2))
+	       (make-list 15 '(())))
+       ((node-path "0/PATTERNS/0/CH2/1") (mdmod-global-node my-mod)))
+
+ ;;  (test "mod-split-node-list-at"
+ ;;        (list (list ((node-path "0/PATTERNS/0/DRUMS")
+ ;; 		    (mdmod-global-node my-mod)))
+ ;; 	     (list ((node-path "0/PATTERNS/0/CH1")
+ ;; 		    (mdmod-global-node my-mod))
+ ;; 		   ((node-path "0/PATTERNS/0/CH2")
+ ;; 		    (mdmod-global-node my-mod))
+ ;; 		   ((node-path "0/PATTERNS/0/PATTERNS_ORDER")
+ ;; 		    (mdmod-global-node my-mod))))
+ ;;        (mod-split-node-list-at
+ ;; 	'CH1 (inode-instance-val ((node-instance-path "0/PATTERNS/0")
+ ;; 				  (mdmod-global-node my-mod)))))
+
+ ;;  (test "mod-split-instances-at"
+ ;;        (list (zip (iota 5)
+ ;; 		  (cons (make-inode-instance val: "a2")
+ ;; 			(make-list 4 (make-inode-instance))))
+ ;; 	     (zip (iota 11 5)
+ ;; 		  (make-list 11 (make-inode-instance))))
+ ;;        (mod-split-instances-at
+ ;; 	5 (inode-instances ((node-path "0/PATTERNS/0/CH2/0/NOTE2")
+ ;; 			    (mdmod-global-node my-mod)))))
+
+ ;;  (test "mod-replace-subnode"
+ ;;        (make-inode-instance
+ ;; 	val: (list (make-inode config-id: 'NOTE1
+ ;; 			       instances:
+ ;; 			       (zip (iota 4)
+ ;; 				    (make-list 4 (make-inode-instance))))))
+ ;;        (mod-replace-subnode
+ ;; 	((node-instance-path "0/PATTERNS/0/CH1/0")
+ ;; 	 (mdmod-global-node my-mod))
+ ;; 	(make-inode config-id: 'NOTE1
+ ;; 		    instances: (zip (iota 4)
+ ;; 				    (make-list 4 (make-inode-instance))))))
+
+ ;;  (test "mod-replace-inode-instance"
+ ;;        (make-inode config-id: 'NOTE2
+ ;; 		   instances: (zip (iota 16)
+ ;; 				   (make-list 16 (make-inode-instance))))
+ ;;        (mod-replace-inode-instance
+ ;; 	((node-path "0/PATTERNS/0/CH2/0/NOTE2")
+ ;; 	 (mdmod-global-node my-mod))
+ ;; 	0 (make-inode-instance)))
+
+ ;;  (test "mod-node-setter"
+ ;;        (make-inode
+ ;; 	config-id: 'CH2
+ ;; 	instances:
+ ;; 	`((0 ,(make-inode-instance
+ ;; 	       val: (list (make-inode
+ ;; 			   config-id: 'NOTE2
+ ;; 			   instances:
+ ;; 			   (zip (iota 16)
+ ;; 				(make-list 16 (make-inode-instance)))))))
+ ;; 	  (1 ,(make-inode-instance
+ ;; 	       val: (list
+ ;; 		     (make-inode
+ ;; 		      config-id: 'NOTE2
+ ;; 		      instances:
+ ;; 		      (zip (iota 16)
+ ;; 			   (cons (make-inode-instance val: "e2")
+ ;; 				 (make-list 15 (make-inode-instance))))))))))
+ ;;        ((mod-node-setter "0")
+ ;; 	(make-inode config-id: 'NOTE2
+ ;; 		    instances: (zip (iota 16)
+ ;; 				    (make-list 16 (make-inode-instance))))
+ ;; 	((node-path "0/PATTERNS/0/CH2")
+ ;; 	 (mdmod-global-node my-mod))))
+
+ ;;  (test "mod-get-row-values"
+ ;;        '("on" "c4" #f)
+ ;;        (mod-get-row-values ((node-instance-path "0/PATTERNS/0")
+ ;; 			    (mdmod-global-node my-mod))
+ ;; 			   '(0 0 0)
+ ;; 			   4))
+
+ ;;  (test "mod-get-block-values"
+ ;;        '(("on" "a3" "a2")
+ ;; 	 (#f #f #f)
+ ;; 	 (#f "rest" #f)
+ ;; 	 (#f #f #f)
+ ;; 	 ("on" "c4" #f)
+ ;; 	 (#f #f #f)
+ ;; 	 (#f "rest" #f)
+ ;; 	 (#f #f #f)
+ ;; 	 ("on" "e4" #f)
+ ;; 	 (#f #f #f)
+ ;; 	 (#f "rest" #f)
+ ;; 	 (#f #f #f)
+ ;; 	 ("on" "g4" #f)
+ ;; 	 (#f #f #f)
+ ;; 	 (#f "rest" #f)
+ ;; 	 (#f #f #f))
+ ;;        (mod-get-block-values ((node-instance-path "0/PATTERNS/0")
+ ;; 			      (mdmod-global-node my-mod))
+ ;; 			     '(0 0 0)))
+
+ ;;  (test "mod-get-group-instance-order"
+ ;;        ((node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
+ ;; 	(mdmod-global-node my-mod))
+ ;;        (mod-get-group-instance-order ((node-instance-path "0/PATTERNS/0")
+ ;; 				      (mdmod-global-node my-mod))
+ ;; 				     'PATTERNS))
+
+ ;; (test "get-ordered-group-length"
+ ;;       32
+ ;;       (get-ordered-group-length 'PATTERNS
+ ;; 				 ((node-instance-path "0/PATTERNS/0")
+ ;; 				  (mdmod-global-node my-mod))
+ ;; 				 my-cfg))
+ )
+
 
 (test-group
  "Export & Compilation"
