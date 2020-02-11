@@ -21,12 +21,6 @@
     (val '())
     (name ""))
 
-  (define (inode-instance-val inode-instance)
-    (let ((raw-val (cddr inode-instance)))
-      (if (pair? (car raw-val))
-	  raw-val
-	  (car raw-val))))
-
   ;; TODO obsolete
   ;;; Printer for inode-instance records.
   (define (display-inode-instance i)

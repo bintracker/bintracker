@@ -65,7 +65,7 @@
 		      (list 'name: (cadr instance))
 		      '())
 		  (case (inode-config-type (config-inode-ref node-id mdconfig))
-		    ((field) (list (caddr instance)))
+		    ((field) (list (cddr instance)))
 		    ((block) (mod-block-instance-contents->expr
 			      node-id (cddr instance) mdconfig))
 		    ((group) (mod-group-instance-contents->node-expr
