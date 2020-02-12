@@ -399,7 +399,6 @@
  ;; 	      my-mutable-inode))
  )
 
-;; TODO merge with Accessors II, move below parser tests
 (test-group
  "MD-Module/Accessors"
 
@@ -416,14 +415,14 @@
  		     (make-list 15 '(()))))
        ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
 
- ;; (test "mod-get-group-instance-blocks"
- ;;       (list ((node-path "0/PATTERNS/0/DRUMS")
- ;; 	      (mdmod-global-node my-mod))
- ;; 	     ((node-path "0/PATTERNS/0/CH1") (mdmod-global-node my-mod))
- ;; 	     ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
- ;;       (mod-get-group-instance-blocks
- ;; 	((node-instance-path "0/PATTERNS/0") (mdmod-global-node my-mod))
- ;; 	'PATTERNS my-cfg))
+ ;; TODO move into subgroup "high level accessors"
+ (test "mod-get-group-instance-blocks"
+       (list ((node-path "0/PATTERNS/0/DRUMS") (mdmod-global-node my-mod))
+ 	     ((node-path "0/PATTERNS/0/CH1") (mdmod-global-node my-mod))
+ 	     ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
+       (mod-get-group-instance-blocks
+ 	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+ 	'PATTERNS my-cfg))
 
  (test "mod-get-group-instance-order"
        ((node-path "0/PATTERNS/0/PATTERNS_ORDER/0")
@@ -431,6 +430,18 @@
        (mod-get-group-instance-order
  	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
  	'PATTERNS))
+
+ (test "mod-get-order-values"
+       '((16 0 0 0)
+	 (16 0 0 1))
+       (mod-get-order-values 'PATTERNS ((node-path "0/PATTERNS/0")
+					(mdmod-global-node my-mod))))
+
+ (test "get-ordered-group-length"
+       32
+       (get-ordered-group-length 'PATTERNS
+ 				 ((node-path "0/PATTERNS/0")
+ 				  (mdmod-global-node my-mod))))
 
  ;;  (test "mod-split-node-list-at"
  ;;        (list (list ((node-path "0/PATTERNS/0/DRUMS")
@@ -502,47 +513,33 @@
  ;; 	((node-path "0/PATTERNS/0/CH2")
  ;; 	 (mdmod-global-node my-mod))))
 
- ;;  (test "mod-get-row-values"
- ;;        '("on" "c4" #f)
- ;;        (mod-get-row-values ((node-instance-path "0/PATTERNS/0")
- ;; 			    (mdmod-global-node my-mod))
- ;; 			   '(0 0 0)
- ;; 			   4))
+  (test "mod-get-row-values"
+        '(#t "c4" #f)
+        (mod-get-row-values ((node-path "0/PATTERNS/0")
+ 			     (mdmod-global-node my-mod))
+ 			    '(0 0 0)
+ 			    4))
 
- ;;  (test "mod-get-block-values"
- ;;        '(("on" "a3" "a2")
- ;; 	 (#f #f #f)
- ;; 	 (#f "rest" #f)
- ;; 	 (#f #f #f)
- ;; 	 ("on" "c4" #f)
- ;; 	 (#f #f #f)
- ;; 	 (#f "rest" #f)
- ;; 	 (#f #f #f)
- ;; 	 ("on" "e4" #f)
- ;; 	 (#f #f #f)
- ;; 	 (#f "rest" #f)
- ;; 	 (#f #f #f)
- ;; 	 ("on" "g4" #f)
- ;; 	 (#f #f #f)
- ;; 	 (#f "rest" #f)
- ;; 	 (#f #f #f))
- ;;        (mod-get-block-values ((node-instance-path "0/PATTERNS/0")
- ;; 			      (mdmod-global-node my-mod))
- ;; 			     '(0 0 0)))
-
- ;;  (test "mod-get-group-instance-order"
- ;;        ((node-instance-path "0/PATTERNS/0/PATTERNS_ORDER/0")
- ;; 	(mdmod-global-node my-mod))
- ;;        (mod-get-group-instance-order ((node-instance-path "0/PATTERNS/0")
- ;; 				      (mdmod-global-node my-mod))
- ;; 				     'PATTERNS))
-
- ;; (test "get-ordered-group-length"
- ;;       32
- ;;       (get-ordered-group-length 'PATTERNS
- ;; 				 ((node-instance-path "0/PATTERNS/0")
- ;; 				  (mdmod-global-node my-mod))
- ;; 				 my-cfg))
+  (test "mod-get-block-values"
+        '((#t "a3" "a2")
+  	 (#f #f #f)
+  	 (#f "rest" #f)
+  	 (#f #f #f)
+  	 (#t "c4" #f)
+  	 (#f #f #f)
+  	 (#f "rest" #f)
+  	 (#f #f #f)
+  	 (#t "e4" #f)
+  	 (#f #f #f)
+  	 (#f "rest" #f)
+  	 (#f #f #f)
+  	 (#t "g4" #f)
+  	 (#f #f #f)
+  	 (#f "rest" #f)
+  	 (#f #f #f))
+        (mod-get-block-values ((node-path "0/PATTERNS/0")
+  			       (mdmod-global-node my-mod))
+  			      '(0 0 0)))
  )
 
 

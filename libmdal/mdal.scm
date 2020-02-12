@@ -114,28 +114,11 @@
   ;;; returns the group instance's block nodes, except the order node. The
   ;;; order node can be retrieved with `mod-get-group-instance-order` instead.
   (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
-    (let ((subnode-ids
-  	   (filter (lambda (id)
-  		     (not (symbol-contains id "_ORDER")))
-  		   (config-get-subnode-type-ids igroup-id config 'block))))
-      (map (lambda (id)
-  	     (get-subnode igroup-instance id))
-  	   subnode-ids)))
-
-  ;;; returns the group instance's order node (instance 0)
-  ;; TODO currently dead code except in unittests
-  (define (mod-get-group-instance-order igroup-instance igroup-id)
-    (inode-instance-ref 0
-     (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
-
-  ;;; Returns the total number of all block rows in the given group node
-  ;;; instance. The containing group node must be ordered. The result is equal
-  ;;; to the length of the block nodes as if they were combined into a single
-  ;;; instance after being mapped onto the order node.
-  (define (get-ordered-group-length group-id group-instance config)
-    (apply + (map car (mod-get-order-values group-id group-instance
-					    config))))
-
+    (map (lambda (id)
+  	   (get-subnode igroup-instance id))
+  	 (filter (lambda (id)
+  		   (not (symbol-contains id "_ORDER")))
+  		 (config-get-subnode-type-ids igroup-id config 'block))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Generators

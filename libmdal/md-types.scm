@@ -70,6 +70,7 @@
   ;; ### inode mutators
   ;;;---------------------------------------------------------------------------
 
+  ;; TODO probably obsolete (only used to renumber block fields?)
   ;;; Returns a list of inode instances that have consecutive IDs. Renumbering
   ;;; starts at index 0, unless specified otherwise with the `from` argument.
   (define (renumber-node-instances instances #!optional (from 0))
@@ -295,87 +296,86 @@
       (eval (append '(lambda (subnode ancestor-node))
 		    (list setter)))))
 
+  ;; TODO obsolete
   ;;; Returns the values of the block instance's fields, sorted per row
-  (define (mod-get-block-instance-rows iblock-instance)
-    (letrec ((get-rows
-	      (lambda (field-instances)
-		(if (null? (car field-instances))
-		    '()
-		    (cons (map (lambda (field-instance)
-				 (inode-instance-val (cadr field-instance)))
-			       (map car field-instances))
-			  (get-rows (map cdr field-instances)))))))
-      (get-rows (map inode-instances
-		     (inode-instance-val iblock-instance)))))
+  ;; (define (mod-get-block-instance-rows iblock-instance)
+  ;;   (letrec ((get-rows
+  ;; 	      (lambda (field-instances)
+  ;; 		(if (null? (car field-instances))
+  ;; 		    '()
+  ;; 		    (cons (map (lambda (field-instance)
+  ;; 				 (inode-instance-val (cadr field-instance)))
+  ;; 			       (map car field-instances))
+  ;; 			  (get-rows (map cdr field-instances)))))))
+  ;;     (get-rows (map inode-instances
+  ;; 		     (inode-instance-val iblock-instance)))))
 
   ;;; Returns the values of all field node instances of the given `row` of the
   ;;; given non-order block-instances in the given `group-instance` as a
   ;;; flat list.
   ;;; `block-instance-ids` must be a list containing the requested numerical
   ;;; block instance IDs for each non-order block in the group.
+  ;;; Values are returned as strings, except for trigger fields.
   ;;; Empty (unset) instance values will be returned as #f.
   (define (mod-get-row-values group-instance block-instance-ids row)
-    (flatten (map (lambda (block-instance)
-		    (map (lambda (field-node)
-			   (let ((instance-val
-				  (inode-instance-val
-				   (car (alist-ref
-					 row (inode-instances
-					      field-node))))))
-			     (if (null? instance-val)
-				 #f instance-val)))
-			 (inode-instance-val block-instance)))
-		  (map (lambda (blk-inst-id blk-node)
-			 (car (alist-ref blk-inst-id
-					 (inode-instances blk-node))))
-		       block-instance-ids
-		       (remove (lambda (block-node)
-				 (symbol-contains
-				  (inode-config-id block-node)
-				  "_ORDER"))
-			       (inode-instance-val group-instance))))))
+    (flatten
+     (map (lambda (block-inst-id block-node)
+	    (map (lambda (value)
+		   (if (null? value)
+		       #f
+		       (if (boolean? value)
+			   value
+			   (->string value))))
+		 (list-ref (cddr (inode-instance-ref block-inst-id block-node))
+			   row)))
+	  block-instance-ids
+	  (remove (lambda (node)
+		    (symbol-contains (car node) "_ORDER"))
+		  (cddr group-instance)))))
 
   ;;; Returns the values of all field node instances of the non-order block
   ;;; instances in the given `group-instance`, as a list of row value sets.
   ;;; Effectively calls md-mod-get-row-values on each row of the relevant
   ;;; blocks.
-  ;;; TODO: will break if order node is the first in group instance subnodes.
   (define (mod-get-block-values group-instance block-instance-ids)
     (map (lambda (row)
-	   (mod-get-row-values group-instance block-instance-ids row))
-	 (iota (inode-count-instances
-		(car (inode-instance-val
-		      (car (alist-ref (car block-instance-ids)
-				      (inode-instances
-				       (car (inode-instance-val
-					     group-instance)))))))))))
+  	   (mod-get-row-values group-instance block-instance-ids row))
+  	 (iota (length (cdr (alist-ref
+			     (car block-instance-ids)
+			     (cdr (find (lambda (subnode)
+					  (not (symbol-contains (car subnode)
+								"_ORDER")))
+  					(cddr group-instance)))))))))
+
+  ;;; returns the group instance's order node (instance 0)
+  (define (mod-get-group-instance-order igroup-instance igroup-id)
+    (inode-instance-ref 0
+     (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
 
   ;;; Returns the values of all order fields as a list of row value sets.
-  (define (mod-get-order-values group-id group-instance config)
-    (letrec ((order-val (inode-instance-val
-			 (car (alist-ref 0
-					 (inode-instances
-					  (get-subnode group-instance
-						       (symbol-append
-							group-id '_ORDER)))))))
-	     (repeat-values
-	      (lambda (rows previous-row)
-		(if (null-list? rows)
-		    '()
-		    (cons (map (lambda (pos previous-pos)
-				 (if (null? pos)
-				     previous-pos pos))
-			       (car rows) previous-row)
-			  (repeat-values (cdr rows) (car rows)))))))
-      (repeat-values
-       (apply map list
-	      (map (lambda (subnode)
-		     (map (o inode-instance-val cadr)
-			  (inode-instances subnode)))
-		   order-val))
-       ;;; dummy values for first run
-       (make-list (length order-val)
-		  0))))
+  ;;; Values are normalized, ie. empty positions are replaced with repeated
+  ;;; values from an earlier row.
+  (define (mod-get-order-values group-id group-instance)
+    (letrec ((repeat-values
+  	       (lambda (rows previous-row)
+  		 (if (null-list? rows)
+  		     '()
+  		     (cons (map (lambda (pos previous-pos)
+  				  (if (null? pos)
+  				      previous-pos pos))
+  				(car rows) previous-row)
+  			   (repeat-values (cdr rows) (car rows))))))
+	     (raw-order (cddr (mod-get-group-instance-order group-instance
+							    group-id))))
+      (repeat-values raw-order (make-list (length (car raw-order))
+					  0))))
+
+  ;;; Returns the total number of all block rows in the given group node
+  ;;; instance. The containing group node must be ordered. The result is equal
+  ;;; to the length of the block nodes as if they were combined into a single
+  ;;; instance after being mapped onto the order node.
+  (define (get-ordered-group-length group-id group-instance)
+    (apply + (map car (mod-get-order-values group-id group-instance))))
 
   ;;; Returns the plain field values of a block, sorted per field node (column)
   (define (mod-get-block-instance-values block-instance)
