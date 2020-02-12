@@ -222,9 +222,8 @@
 				      (alist-ref (string->symbol path-elem)
 						 contents))
 				    (lambda (contents)
-				      (cddr
-				       (alist-ref (string->number path-elem)
-						  contents)))))
+				      (cdr (alist-ref (string->number path-elem)
+						      contents)))))
 			      path (circular-list #f #t))))))))
       (lambda (node)
 	(accessor-proc (cdr node)))))
