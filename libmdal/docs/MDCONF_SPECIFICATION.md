@@ -53,7 +53,7 @@ The MDCONF standard is based on [symbolic expressions](https://en.wikipedia.org/
 Any MDCONF configuration is a single s-expression in the form
 
 <pre>
-(mdalconfig
+(mdal-config
  version: 2 target: <i>target</i>
  description: <i>"An optional description of the music player"</i>
 
