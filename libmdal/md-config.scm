@@ -36,6 +36,7 @@
   ;; ## MDCONF: INPUT NODE CONFIGURATION
   ;; ---------------------------------------------------------------------------
 
+  ;; TODO can be replaced by md-helpers/range
   (defstruct instance-range
     (min 1)
     (max 1))
@@ -232,11 +233,23 @@
 	      (eq? type (inode-config-type (config-inode-ref id config))))
 	    (config-get-subnode-ids inode-id (config-itree config))))
 
+  ;; TODO rename to slighly more sane `config-get-inode-command`
   ;;; return the source command of a given inode
   (define (config-get-inode-source-command node-id config)
     (config-command-ref (inode-config-cmd-id
 			 (config-inode-ref node-id config))
 			config))
+
+  ;; TODO this is practically identical to config-get-inot-source-command,
+  ;; except that this one takes a node instead of a node id. So these 2 should
+  ;; be merged. Resp. get-node-command-cfg will no longer work anyway, since
+  ;; block field nodes are no longer explicit.
+  ;;; return the command configuration associated with the given field node
+  (define (get-node-command-cfg node config)
+    (config-command-ref
+     (inode-config-cmd-id (config-inode-ref (inode-config-id node)
+					    config))
+     config))
 
   ;;; get the default value of a given inode config
   (define (config-get-node-default node-id config)
@@ -248,13 +261,6 @@
   ;; ---------------------------------------------------------------------------
   ;; misc leftovers from refactoring
   ;; ---------------------------------------------------------------------------
-
-  ;;; return the command configuration associated with the given field node
-  (define (get-node-command-cfg node config)
-    (config-command-ref
-     (inode-config-cmd-id (config-inode-ref (inode-config-id node)
-					    config))
-     config))
 
   ;;; find the last set instance of the given node before the given instance,
   ;;; and return its raw value, or its default value if no set instances are
@@ -319,19 +325,15 @@
   ;;; `#f` if any of the onodes does not have it's size argument resolved.
   ;; TODO currently dead code, is it still useful?
   (define (mod-output-size onodes)
-    (if (any (lambda (node)
-	       (not (onode-size node)))
-	     onodes)
-	#f
-	(apply + (map onode-size onodes))))
+    (and (not (any (lambda (node)
+		     (not (onode-size node)))
+		   onodes))
+	 (apply + (map onode-size onodes))))
 
   ;;; returns true if all onodes have been resolved, false otherwise
   ;; TODO currently dead code, but should be used
   (define (mod-all-resolved? onodes)
-    (not (any (lambda (node)
-		(if (onode-fn node)
-		    #t #f))
-	      onodes)))
+    (not (any onode-fn onodes)))
 
 
   ;; ---------------------------------------------------------------------------
