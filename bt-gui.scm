@@ -881,8 +881,8 @@
 	     (bt-field-widget-val-entry w)
 	     side: 'top padx: 4 pady: 4)
     ((bt-field-widget-val-entry w) 'insert 'end
-     (normalize-field-value (inode-instance-val
-    			     ((node-instance-path
+     (normalize-field-value (cddr
+    			     ((node-path
     			       (string-append
     				group-instance-path
     				(symbol->string (bt-field-widget-node-id w))
@@ -1354,8 +1354,7 @@
   (define (blockview-get-item-list b)
     (let* ((group-id (blockview-group-id b))
   	   (group-instance (get-current-node-instance group-id))
-  	   (order (mod-get-order-values group-id group-instance
-  					(current-config))))
+  	   (order (mod-get-order-values group-id group-instance)))
       (if (eq? 'order (blockview-type b))
   	  (list order)
 	  (map (lambda (order-pos)
@@ -1410,8 +1409,7 @@
 			       (mod-get-order-values
 				(blockview-group-id b)
 				(get-current-node-instance
-				 (blockview-group-id b))
-				(current-config)))
+				 (blockview-group-id b))))
 			  (blockview-get-current-order-pos b))
 		(list-index (lambda (block-id)
 			      (eq? block-id current-block-id))

@@ -251,7 +251,7 @@
   ;;; Return the currently visible inode-instance of the group or block node
   ;;; `node-id`.
   (define (get-current-node-instance node-id)
-    ((node-instance-path (get-current-instance-path node-id))
+    ((node-path (get-current-instance-path node-id))
      (mdmod-global-node (current-mod))))
 
 
