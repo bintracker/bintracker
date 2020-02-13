@@ -674,7 +674,8 @@
     (let* ((output (asm-file->bytes
 		    (string-append path-prefix
 				   "unittests/config/Huby/huby.asm")
-		    "z80" 3 org: #x8000 path-prefix: path-prefix))
+		    (cpu-id (target-platform-cpu (config-target proto-config)))
+		    3 org: #x8000 path-prefix: path-prefix))
 	   (output-length (length output)))
       (make-onode type: 'asm size: output-length val: output)))
 
