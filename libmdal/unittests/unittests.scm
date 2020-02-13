@@ -33,6 +33,10 @@
 	 `((,(range-min r1) ,(range-max r1))
 	   (,(range-min r2) ,(range-max r2)))))
 
+ (test "int->bytes"
+       (list 0 0 0 8)
+       (int->bytes 8 4 'big-endian))
+
  (test "make-pairs" '((a 1) (b 2)) (make-pairs '(a 1 b 2)))
 
  (test "remove-keyword-args"

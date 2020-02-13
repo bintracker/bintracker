@@ -649,19 +649,6 @@
 			      (map transform-element expr)
 			      (transform-element expr)))))))
 
-  ;; TODO should go elsewhere
-  (define (int->bytes val number-of-bytes endian)
-    (letrec* ((make-bytes (lambda (restval remaining-bytes)
-			    (if (zero? remaining-bytes)
-				'()
-				(cons (bitwise-and #xff restval)
-				      (make-bytes (quotient restval #x100)
-						  (sub1 remaining-bytes))))))
-	      (byte-list (make-bytes val number-of-bytes)))
-      (if (eq? 'little-endian endian)
-	  byte-list
-	  (reverse byte-list))))
-
   ;;; Generate an onode config of type 'symbol. Call this procedure by
   ;;; `apply`ing it to an onode config expression.
   (define (make-osymbol proto-config path-prefix #!key id)

@@ -7,6 +7,7 @@
 (module md-helpers *
 
   (import scheme (chicken base) (chicken condition) (chicken string)
+	  (only (chicken bitwise) bitwise-and)
 	  srfi-1 srfi-13 srfi-69 simple-exceptions
 	  typed-records)
 
@@ -41,6 +42,21 @@
 				     2))
 		      max: (quotient umax 2))
 	  (make-range min: 0 max: umax))))
+
+  ;;; Convert the integer `i` into a list of bytes, capped at `number-of-bytes`
+  ;;; and respecting `endian`ness.
+  (define (int->bytes i number-of-bytes endian)
+    (letrec* ((make-bytes (lambda (restval remaining-bytes)
+			    (if (zero? remaining-bytes)
+				'()
+				(cons (bitwise-and #xff restval)
+				      (make-bytes (quotient restval #x100)
+						  (sub1 remaining-bytes))))))
+	      (byte-list (make-bytes i number-of-bytes)))
+      (if (eq? 'little-endian endian)
+	  byte-list
+	  (reverse byte-list))))
+
 
   ;; ;;; **[RECORD]** ASM-SYNTAX
   ;; ;;; Constructor: `(make-asm-syntax hex-prefix byte-op word-op dword-op)`
