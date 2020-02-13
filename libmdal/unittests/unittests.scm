@@ -547,41 +547,11 @@
  )
 
 
-(test-group
- "Export & Compilation"
-
- (test "mdmod->file"
-       "61ebee468dbbe461dd3103cb835eaf41"
-       (begin
-	 (mdmod->file my-mod "test.mdal")
-	 (file-md5sum "test.mdal")))
-
- ;; (test "mod->bin"
- ;;       (list 33 108 128 205 9 128 195 0 128 78 35 70 35 94 35 86 35 126 35 183
- ;; 	     200 229 213 197 110 6 2 38 0 41 41 41 25 229 111 16 246 217 225 209
- ;; 	     6 8 26 19 217 103 87 217 126 35 217 111 95 254 44 40 1 175 50 70
- ;; 	     128 193 197 243 175 29 32 3 93 149 0 21 32 2 84 148 159 230 16 211
- ;; 	     254 219 254 47 230 31 32 5 11 120 177 32 227 33 88 39 217 251 32 2
- ;; 	     16 196 193 209 225 40 165 201
- ;; 	     238 57
- ;; 	     113 128
- ;; 	     1 5 2 6 3 7 4 8 0
- ;; 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
- ;; 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
- ;; 	     135 135 135 135 135 135 135 135 135 135 135 135 135 135 135 135
- ;; 	     180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180)
- ;;       (mod->bin my-mod #x8000))
- )
-
 ;; (test-group
 ;;  "New Config Compiler Generator"
 
 ;;  (define my-parent-node ((node-instance-path "0")
 ;; 			 (mdmod-global-node my-mod)))
-
-;;  (test "int->bytes"
-;;        (list 0 0 0 8)
-;;        (int->bytes 8 4 'big-endian))
 
 ;;  ;; TODO new Huby.mdconf uses 140 bpm as default
 ;;  (test "transform-compose-expr"
