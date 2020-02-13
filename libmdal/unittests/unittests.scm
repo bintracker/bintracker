@@ -447,28 +447,27 @@
  				 ((node-path "0/PATTERNS/0")
  				  (mdmod-global-node my-mod))))
 
- ;;  (test "mod-split-node-list-at"
- ;;        (list (list ((node-path "0/PATTERNS/0/DRUMS")
- ;; 		    (mdmod-global-node my-mod)))
- ;; 	     (list ((node-path "0/PATTERNS/0/CH1")
- ;; 		    (mdmod-global-node my-mod))
- ;; 		   ((node-path "0/PATTERNS/0/CH2")
- ;; 		    (mdmod-global-node my-mod))
- ;; 		   ((node-path "0/PATTERNS/0/PATTERNS_ORDER")
- ;; 		    (mdmod-global-node my-mod))))
- ;;        (mod-split-node-list-at
- ;; 	'CH1 (inode-instance-val ((node-instance-path "0/PATTERNS/0")
- ;; 				  (mdmod-global-node my-mod)))))
+ (test "mod-split-node-list-at"
+       (list (list ((node-path "0/PATTERNS/0/DRUMS")
+ 		    (mdmod-global-node my-mod)))
+ 	     (list ((node-path "0/PATTERNS/0/CH1")
+ 		    (mdmod-global-node my-mod))
+ 		   ((node-path "0/PATTERNS/0/CH2")
+ 		    (mdmod-global-node my-mod))
+ 		   ((node-path "0/PATTERNS/0/PATTERNS_ORDER")
+ 		    (mdmod-global-node my-mod))))
+       (mod-split-node-list-at 'CH1 (cddr ((node-path "0/PATTERNS/0")
+ 					   (mdmod-global-node my-mod)))))
 
- ;;  (test "mod-split-instances-at"
- ;;        (list (zip (iota 5)
- ;; 		  (cons (make-inode-instance val: "a2")
- ;; 			(make-list 4 (make-inode-instance))))
- ;; 	     (zip (iota 11 5)
- ;; 		  (make-list 11 (make-inode-instance))))
- ;;        (mod-split-instances-at
- ;; 	5 (inode-instances ((node-path "0/PATTERNS/0/CH2/0/NOTE2")
- ;; 			    (mdmod-global-node my-mod)))))
+  ;; (test "mod-split-instances-at"
+  ;;       (list (zip (iota 5)
+  ;; 		  (cons (make-inode-instance val: "a2")
+  ;; 			(make-list 4 (make-inode-instance))))
+  ;; 	     (zip (iota 11 5)
+  ;; 		  (make-list 11 (make-inode-instance))))
+  ;;       (mod-split-instances-at
+  ;; 	5 (inode-instances ((node-path "0/PATTERNS/0/CH2/0/NOTE2")
+  ;; 			    (mdmod-global-node my-mod)))))
 
  ;;  (test "mod-replace-subnode"
  ;;        (make-inode-instance
@@ -582,5 +581,31 @@
 ;; 	 (car (alist-ref 'my-sym
 ;; 			 (third ((onode-fn my-onode) my-onode my-parent-node
 ;; 				 my-cfg 8 '())))))))
+
+(test-group
+ "Export & Compilation"
+
+ (test "mdmod->file"
+       "61ebee468dbbe461dd3103cb835eaf41"
+       (begin
+	 (mdmod->file my-mod "test.mdal")
+	 (file-md5sum "test.mdal")))
+
+ ;; (test "mod->bin"
+ ;;       (list 33 108 128 205 9 128 195 0 128 78 35 70 35 94 35 86 35 126 35 183
+ ;; 	     200 229 213 197 110 6 2 38 0 41 41 41 25 229 111 16 246 217 225 209
+ ;; 	     6 8 26 19 217 103 87 217 126 35 217 111 95 254 44 40 1 175 50 70
+ ;; 	     128 193 197 243 175 29 32 3 93 149 0 21 32 2 84 148 159 230 16 211
+ ;; 	     254 219 254 47 230 31 32 5 11 120 177 32 227 33 88 39 217 251 32 2
+ ;; 	     16 196 193 209 225 40 165 201
+ ;; 	     238 57
+ ;; 	     113 128
+ ;; 	     1 5 2 6 3 7 4 8 0
+ ;; 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
+ ;; 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
+ ;; 	     135 135 135 135 135 135 135 135 135 135 135 135 135 135 135 135
+ ;; 	     180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180)
+ ;;       (mod->bin my-mod #x8000))
+ )
 
 (test-exit)
