@@ -233,9 +233,11 @@
   ;;; second list will be the tail, including the node at split point.
   (define (mod-split-node-list-at node-id nodes)
     (receive (break (lambda (node)
-		      (eq? node-id (inode-config-id node)))
+		      (eq? node-id (car node)))
 		    nodes)))
 
+  ;; TODO obsolete after re-implementing mod-replace-node-instance, but need
+  ;; new proc for block instances
   ;;; split a list of inode instances into two seperate lists at the given node
   ;;; instance id. The second list will be the tail, including the instance at
   ;;; split point.
