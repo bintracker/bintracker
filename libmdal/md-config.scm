@@ -141,7 +141,7 @@
   ;; TODO: where to handle max-binsize?
 
   (defstruct config
-    target description commands itree inodes compiler)
+    target description commands itree inodes default-origin compiler)
 
   (define (display-config cfg)
     (printf "#<config>\n\n")
@@ -675,7 +675,9 @@
 		    (string-append path-prefix
 				   "unittests/config/Huby/huby.asm")
 		    (cpu-id (target-platform-cpu (config-target proto-config)))
-		    3 org: #x8000 path-prefix: path-prefix))
+		    3
+		    org: (config-default-origin proto-config)
+		    path-prefix: path-prefix))
 	   (output-length (length output)))
       (make-onode type: 'asm size: output-length val: output)))
 
@@ -1204,7 +1206,7 @@
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `read-config`.
   (define (eval-mdalconfig path-prefix #!key version target commands input
-			   output (description ""))
+			   output (default-origin 0) (description ""))
     (unless (and version target commands input output)
       (raise-local 'incomplete-config))
     (unless (in-range? version *supported-config-versions*)
@@ -1219,10 +1221,10 @@
 	    (make-config
 	     target: _target
 	     commands: (get-config-commands commands itree path-prefix _target)
-	     itree: itree inodes: _input)))
+	     itree: itree inodes: _input default-origin: default-origin)))
       (make-config target: _target description: description
 		   commands: (config-commands proto-config)
-		   itree: itree inodes: _input
+		   itree: itree inodes: _input default-origin: default-origin
 		   compiler: (make-compiler output proto-config path-prefix))))
 
   ;;; Evaluate the given `mdconf` s-expression, and return a config record.

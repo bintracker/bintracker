@@ -57,6 +57,8 @@ Any MDCONF configuration is a single s-expression in the form
  version: 2 target: <i>target</i>
  description: <i>"An optional description of the music player"</i>
 
+ default-origin: <i>An optional origin address for binary output</i>
+
  commands: ((command id: <i>ID</i> bits: <i>n</i> type: <i>command-type</i> ...)
             ...)
 
@@ -303,6 +305,8 @@ ZX Spectrum beeper.
  version: 2 target: spectrum48  ;; mandatory version and target specification
  description: "A simple 2 channel pin pulse (PFM) engine in less than 100 bytes.
  By Shiru 2011, 2013."  ;; An optional description of the underlying sound engine.
+
+ default-origin: #x8000  ;; default origin address for binary output
 
  ;; list of commands
  commands: ((command id: BPM bits: 16 type: uint default: 140)
