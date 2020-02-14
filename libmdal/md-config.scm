@@ -513,16 +513,15 @@
   ;;; Evaluate the input node configuration expressions. Returns an alist of
   ;;; input nodes. The caller will probably want to convert the result into a
   ;;; hash table.
-  (define (get-config-inodes inode-configs . parent-type)
-    (let ((_parent-type (if (null? parent-type) #f (car parent-type))))
-      (if (null? inode-configs)
-	  '()
-	  (append (if (eqv? 'clone (caar inode-configs))
-		      (clone-inode-config (car inode-configs)
-					  _parent-type)
-		      (eval-inode-config (car inode-configs)
-					 _parent-type))
-		  (get-config-inodes (cdr inode-configs))))))
+  (define (get-config-inodes inode-configs #!optional parent-type)
+    (if (null? inode-configs)
+	'()
+	(append (if (eqv? 'clone (caar inode-configs))
+		    (clone-inode-config (car inode-configs)
+					parent-type)
+		    (eval-inode-config (car inode-configs)
+				       parent-type))
+		(get-config-inodes (cdr inode-configs)))))
 
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
