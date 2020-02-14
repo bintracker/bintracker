@@ -652,7 +652,7 @@
 
   ;;; Generate an onode config of type 'symbol. Call this procedure by
   ;;; `apply`ing it to an onode config expression.
-  (define (make-osymbol proto-config path-prefix #!key id)
+  (define (make-osymbol proto-config config-dir path-prefix #!key id)
     (unless id (raise-local 'missing-onode-id))
     (make-onode type: 'symbol size: 0
 		fn: (lambda (onode parent-inode config current-org md-symbols)
@@ -665,14 +665,13 @@
 
   ;; TODO
   ;; 1. pass in current-org
-  ;; 2. resolve source filepath
+  ;; 2. DONE resolve source filepath
   ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
   ;;    oasm node
   ;; 4. store asm text somehow for retrieval on asm output generation?
-  (define (make-oasm proto-config path-prefix #!key file code)
+  (define (make-oasm proto-config config-dir path-prefix #!key file code)
     (let* ((output (asm-file->bytes
-		    (string-append path-prefix
-				   "unittests/config/Huby/huby.asm")
+		    (string-append config-dir file)
 		    (cpu-id (target-platform-cpu (config-target proto-config)))
 		    3
 		    org: (config-default-origin proto-config)
@@ -699,7 +698,7 @@
 
   ;; TODO
   ;; - check if direct-resolvable
-  (define (make-ofield proto-config path-prefix #!key bytes compose)
+  (define (make-ofield proto-config config-dir path-prefix #!key bytes compose)
     (let ((compose-proc (transform-compose-expr compose))
 	  (endianness (config-get-target-endianness proto-config))
 	  (required-symbols (get-required-symbols compose)))
@@ -741,7 +740,7 @@
 	(else (error "unsupported order type")))))
 
   ;; TODO
-  (define (make-oorder proto-config path-prefix #!key from layout
+  (define (make-oorder proto-config config-dir path-prefix #!key from layout
 		       element-size (base-index 0))
     (let ((transformer-proc (make-order-transformer layout base-index))
 	  (order-symbol (symbol-append '_mdal_order_ from)))
@@ -1033,7 +1032,8 @@
   ;;;    instance-val includes the combined field nodes of the required source
   ;;;    iblock instances.
   ;;; 6. The pseudo block instances are passed to the field evaluators.
-  (define (make-oblock proto-config path-prefix #!key id from resize nodes)
+  (define (make-oblock proto-config config-dir path-prefix
+		       #!key id from resize nodes)
     (let* ((parent-inode-id (car (config-get-node-ancestors-ids
 				  (car from) (config-itree proto-config))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
@@ -1084,10 +1084,10 @@
   ;;         -> or use something like force/delay
   ;;            -> or generally use virtual pointers for everything and only
   ;;               resolve on final output -> most flexible solution
-  (define (make-ogroup proto-config path-prefix #!key id from nodes)
+  (define (make-ogroup proto-config config-dir path-prefix #!key id from nodes)
     (let* ((otree (map (lambda (expr)
 			 (dispatch-onode-expr expr proto-config
-					      path-prefix))
+					      config-dir path-prefix))
 		       nodes))
 	   (generate-order
 	    (lambda (syms)
@@ -1120,9 +1120,9 @@
 
   ;;; dispatch output note config expressions to the appropriate onode
   ;;; generators
-  (define (dispatch-onode-expr expr proto-config path-prefix)
+  (define (dispatch-onode-expr expr proto-config config-dir path-prefix)
     (apply (case (car expr)
-	     ((comment) (lambda (proto-cfg c p)
+	     ((comment) (lambda (proto-cfg config-dir c p)
 			  (make-onode type: 'comment size: 0 val: c)))
 	     ((asm) make-oasm)
 	     ((symbol) make-osymbol)
@@ -1131,7 +1131,7 @@
 	     ((group) make-ogroup)
 	     ((order) make-oorder)
 	     (else (error "unsupported output node type")))
-	   (append (list proto-config path-prefix) (cdr expr))))
+	   (append (list proto-config config-dir path-prefix) (cdr expr))))
 
   ;;; Do a single compiler pass run over the given otree.
   ;;; Returns a list containing the updated otree in the 1st slot, the updated
@@ -1192,9 +1192,10 @@
   ;;; if it cannot resolve all output nodes after 3 passes.
   ;; TODO haven't thought about optional fields at all yet (how about "only-if")
   ;;      also, more conditions, eg. required-if begin etc...
-  (define (make-compiler output-expr proto-config path-prefix)
+  (define (make-compiler output-expr proto-config config-dir path-prefix)
     (let ((otree (map (lambda (expr)
-			(dispatch-onode-expr expr proto-config path-prefix))
+			(dispatch-onode-expr expr proto-config
+					     config-dir path-prefix))
 		      output-expr)))
       (lambda (mod origin)
 	(car (compile-otree otree ((mod-get-node-instance 0)
@@ -1204,7 +1205,8 @@
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `read-config`.
-  (define (eval-mdalconfig path-prefix #!key version target commands input
+  (define (eval-mdalconfig config-dir path-prefix
+			   #!key version target commands input
 			   output (default-origin 0) (description ""))
     (unless (and version target commands input output)
       (raise-local 'incomplete-config))
@@ -1224,33 +1226,40 @@
       (make-config target: _target description: description
 		   commands: (config-commands proto-config)
 		   itree: itree inodes: _input default-origin: default-origin
-		   compiler: (make-compiler output proto-config path-prefix))))
+		   compiler: (make-compiler output proto-config config-dir
+					    path-prefix))))
 
   ;;; Evaluate the given `mdconf` s-expression, and return a config record.
-  (define (read-config mdconf path-prefix)
+  (define (read-config mdconf config-dir path-prefix)
     (unless (and (pair? mdconf)
 		 (eqv? 'mdal-config (car mdconf)))
       (raise-local 'not-mdconf))
-    (apply eval-mdalconfig (cons path-prefix (cdr mdconf))))
+    (apply eval-mdalconfig (append `(,config-dir ,path-prefix)
+				   (cdr mdconf))))
 
   ;;; Generate an config record from an .mdconf configuration file.
-  (define (file->config filepath #!optional (path-prefix ""))
-    (handle-exceptions
-	exn
-	(cond ((exn-any-of? exn '(not-mdconf unsupported-mdconf-version
-					     incomplete-config
-					     invalid-command))
-	       (let ((exn-loc (string-append
-			       "In " filepath
-			       (if (string-null? (location exn))
-				   "" (string-append ", " (location exn))))))
-		 (raise ((amend-exn
-			  exn (string-append exn-loc "\nInvalid config: ")
-			  'invalid-config)
-			 exn-loc))))
-	      (else (abort exn)))
-      (call-with-input-file filepath (lambda (port)
-				       (read-config (read port)
-						    path-prefix)))))
+  ;;; `parent-dir` is the file path to the parent directory of the directory
+  ;;; containing the .mdconf file.
+  (define (file->config parent-dir config-name #!optional (path-prefix ""))
+    (let* ((config-dir (string-append parent-dir config-name "/"))
+	   (filepath (string-append config-dir config-name ".mdconf")))
+      (handle-exceptions
+	  exn
+	  (cond ((exn-any-of? exn '(not-mdconf unsupported-mdconf-version
+					       incomplete-config
+					       invalid-command))
+		 (let ((exn-loc (string-append
+				 "In " filepath
+				 (if (string-null? (location exn))
+				     "" (string-append ", " (location exn))))))
+		   (raise ((amend-exn
+			    exn (string-append exn-loc "\nInvalid config: ")
+			    'invalid-config)
+			   exn-loc))))
+		(else (abort exn)))
+	(call-with-input-file
+	    filepath
+	  (lambda (port)
+	    (read-config (read port) config-dir path-prefix))))))
 
   )  ;; end module md-config

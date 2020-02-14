@@ -7,7 +7,7 @@
 (define my-config-path "unittests/config/")
 (define my-target (eval (car (read-list
 			      (open-input-file "targets/spectrum48.scm")))))
-(define my-cfg (file->config "unittests/config/Huby/Huby.mdconf"))
+(define my-cfg (file->config my-config-path "Huby"))
 (define my-mod (file->mdmod "unittests/modules/huby-test.mdal"
 			    my-config-path))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"

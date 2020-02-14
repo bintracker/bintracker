@@ -428,10 +428,7 @@
       (let ((mod-sexp (read (open-input-file filepath text:))))
         (apply check-mdmod-version mod-sexp)
 	(let* ((cfg-name (apply mod-get-config-name mod-sexp))
-	       (config (file->config
-			(string-append config-dir-path cfg-name "/"
-				       cfg-name ".mdconf")
-			path-prefix)))
+	       (config (file->config config-dir-path cfg-name path-prefix)))
 	  (make-mdmod
 	   config-id: cfg-name
 	   config: config
