@@ -1122,8 +1122,8 @@
   ;;; generators
   (define (dispatch-onode-expr expr proto-config path-prefix)
     (apply (case (car expr)
-	     ((comment) (lambda (proto-cfg c p) (make-onode type: 'comment
-							    size: 0 val: c)))
+	     ((comment) (lambda (proto-cfg c p)
+			  (make-onode type: 'comment size: 0 val: c)))
 	     ((asm) make-oasm)
 	     ((symbol) make-osymbol)
 	     ((field) make-ofield)
@@ -1228,10 +1228,10 @@
 
   ;;; Evaluate the given `mdconf` s-expression, and return a config record.
   (define (read-config mdconf path-prefix)
-    (if (and (pair? mdconf)
-	     (eqv? 'mdal-config (car mdconf)))
-	(apply eval-mdalconfig (cons path-prefix (cdr mdconf)))
-	(raise-local 'not-mdconf)))
+    (unless (and (pair? mdconf)
+		 (eqv? 'mdal-config (car mdconf)))
+      (raise-local 'not-mdconf))
+    (apply eval-mdalconfig (cons path-prefix (cdr mdconf))))
 
   ;;; Generate an config record from an .mdconf configuration file.
   (define (file->config filepath #!optional (path-prefix ""))
