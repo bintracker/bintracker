@@ -1228,7 +1228,6 @@
 
   ;;; Evaluate the given `mdconf` s-expression, and return a config record.
   (define (read-config mdconf path-prefix)
-    ;; TODO unify tags/flags (should be called use for all elems)
     (if (and (pair? mdconf)
 	     (eqv? 'mdal-config (car mdconf)))
 	(apply eval-mdalconfig (cons path-prefix (cdr mdconf)))

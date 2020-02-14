@@ -93,7 +93,7 @@
 
   ;; TODO pass in target-cpu-speed
   (define (eval-command path-prefix cpu-speed #!key id type bits default
-			reference-to keys (tags '()) range (description ""))
+			reference-to keys (flags '()) range (description ""))
     (handle-exceptions
 	exn
 	(cond ((exn-any-of? exn '(missing-command-specifier
@@ -129,7 +129,7 @@
 				       (if (null? shift)
 					   1 (car shift))))))
 			       ,keys))
-		flags: tags
+		flags: flags
 		range: (or range
 			   (and (memv type '(int uint))
 				(bits->range bits (eqv? type 'int))))
