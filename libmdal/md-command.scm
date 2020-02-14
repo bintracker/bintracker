@@ -30,13 +30,11 @@
 
   ;;; check if the given command has the given flag
   (define (command-has-flag? cmd flag)
-    (if (memq flag (command-flags cmd))
-	#t #f))
+    (memq flag (command-flags cmd)))
 
   ;;; check if the given command has any flags
   (define (command-has-flags? cmd)
-    (if (null? (command-flags cmd))
-	#f #t))
+    (not (null? (command-flags cmd))))
 
   (define (display-command cmd)
     (printf "#<command>\ntype:    ~A\nbits:    ~S\ndefault: ~A~!"
@@ -91,7 +89,8 @@
     (when (and range (not (memv type '(int uint))))
       (raise-local 'nonnumeric-command-range)))
 
-  ;; TODO pass in target-cpu-speed
+  ;;; Evaluate a MDCONF command definition expression. Returns a `command`
+  ;;; object.
   (define (eval-command path-prefix cpu-speed #!key id type bits default
 			reference-to keys (flags '()) range (description ""))
     (handle-exceptions
