@@ -61,21 +61,21 @@
 (test-group
  "utils/MD-Note-Table"
 
- (test "note-table-range" '("a1" "c2")
-       (note-table-range (alist->hash-table '(("a1" 1) ("b1" 2) ("c2" 3)))))
+ (test "note-table-range" '(a1 c2)
+       (note-table-range (alist->hash-table '((a1 1) (b1 2) (c2 3)))))
 
  (test-assert "make-counters"
    (let ((my-note-table (make-counters 12 47 1 0)))
      (and (= 37 (hash-table-size my-note-table))
-	  (string= "c1" (lowest-note my-note-table))
-	  (string= "b3" (highest-note my-note-table))
-	  (= 13 (car (hash-table-ref my-note-table "c2"))))))
+	  (eqv? 'c1 (lowest-note my-note-table))
+	  (eqv? 'b3 (highest-note my-note-table))
+	  (= 13 (car (hash-table-ref my-note-table 'c2))))))
 
  (test-assert "make-dividers"
    (let ((my-note-table (make-dividers 3500000 118 8 0 -4)))
      (and (= 56 (hash-table-size my-note-table))
-	  (string= "e2" (lowest-note my-note-table))
-	  (string= "a#6" (highest-note my-note-table))))))
+	  (eqv? 'e2 (lowest-note my-note-table))
+	  (eqv? 'a#6 (highest-note my-note-table))))))
 
 
 (test-group

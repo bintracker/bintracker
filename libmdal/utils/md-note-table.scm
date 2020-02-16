@@ -83,13 +83,13 @@
 	 offs)))
 
   (define (offset->note-name offset)
-    (string-append (vector-ref note-names (modulo offset 12))
-                   (number->string (offset->octave offset))))
+    (string->symbol (string-append (vector-ref note-names (modulo offset 12))
+				   (number->string (offset->octave offset)))))
 
   ;;;
   (define (make-dividers-range cycles beg end rest bits cpu-speed)
     (if (> beg end)
-        (list (list "rest" rest))
+        (list (list 'rest rest))
         (cons (list (offset->note-name beg)
                     (offset->divider beg cycles bits cpu-speed))
               (make-dividers-range cycles (+ 1 beg) end rest bits
@@ -98,7 +98,7 @@
   ;;;
   (define (make-inverse-dividers-range cycles beg end rest cpu-speed)
     (if (> beg end)
-	(list (list "rest" rest))
+	(list (list 'rest rest))
 	(cons (list (offset->note-name beg)
                     (offset->inverse-divider beg cycles cpu-speed))
               (make-inverse-dividers-range cycles (+ 1 beg) end rest
@@ -146,7 +146,7 @@
     (letrec ((mkcounters
               (lambda (beg end first rest)
 		(if (> beg end)
-                    (list (list "rest" rest))
+                    (list (list 'rest rest))
                     (cons (list (offset->note-name beg) first)
                           (mkcounters (+ 1 beg) end (+ 1 first) rest))))))
       (alist->hash-table (mkcounters beg end first-index rest-index))))
