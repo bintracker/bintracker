@@ -8,7 +8,7 @@
 	    (command id: NOTE bits: 8 type: ukey
 		     flags: (enable_modifiers use_last_set is_note)
 		     keys: (make-inverse-dividers 118 8 0 -1)
-		     default: "rest")
+		     default: rest)
 	    (command id: DRUM type: trigger default: #f description:
 		     "Trigger a click drum. Replaces note on channel 1."))
 
