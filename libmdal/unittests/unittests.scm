@@ -81,6 +81,23 @@
 (test-group
  "MD-Config/Master Config"
 
+ (test "parsing plugin version"
+       '(1 0)
+       (list (plugin-version-major (config-plugin-version my-cfg))
+	     (plugin-version-minor (config-plugin-version my-cfg))))
+
+ (test "plugin version compatibility check"
+       '(#t #t #f #f)
+       (let ((available-version (make-plugin-version major: 1 minor: 4)))
+	 (list (plugin-versions-compatible?
+		available-version (make-plugin-version major: 1 minor: 4))
+	       (plugin-versions-compatible?
+		available-version (make-plugin-version major: 1 minor: 2))
+	       (plugin-versions-compatible?
+		available-version (make-plugin-version major: 1 minor: 6))
+	       (plugin-versions-compatible?
+		available-version (make-plugin-version major: 2 minor: 4)))))
+
  (test "creating system target" "spectrum48"
        (target-platform-id (config-target my-cfg)))
 
@@ -144,8 +161,9 @@
  (define my-mod-expr (read (open-input-file "unittests/modules/huby-test.mdal"
 					    text:)))
 
- (define my-global-node-contents (remove-keyword-args (cdr my-mod-expr)
-						      '(version: config:)))
+ (define my-global-node-contents (remove-keyword-args
+				  (cdr my-mod-expr)
+				  '(version: config: config-version:)))
 
  (test-group
   "MDMOD integrity checks"
@@ -157,10 +175,10 @@
 			    (apply check-mdmod-version
 				   '(mdal-modul version: 4)))))
 
-  (test "valid version"
+  (test "valid mdmod version"
 	2 (apply check-mdmod-version my-mod-expr))
 
-  (test "invalid version"
+  (test "invalid mdmod version"
 	"Unsupported MDAL version: 4"
 	(with-exn-handler (lambda (e) (message e))
 			  (lambda ()
@@ -330,8 +348,9 @@
 					   (() () () #x01))))))
        (apply mod-parse-group-instance
 	      (append `(,my-cfg GLOBAL)
-		      (remove-keyword-args (cdr my-mod-expr)
-					   '(version: config:)))))
+		      (remove-keyword-args
+		       (cdr my-mod-expr)
+		       '(version: config: config-version:)))))
 
  )
 
@@ -546,41 +565,50 @@
  )
 
 
-;; (test-group
-;;  "New Config Compiler Generator"
+(test-group
+ "Compiler Generator"
 
-;;  (define my-parent-node ((node-instance-path "0")
-;; 			 (mdmod-global-node my-mod)))
+ (define my-parent-node ((node-path "0")
+			 (mdmod-global-node my-mod)))
 
-;;  ;; TODO new Huby.mdconf uses 140 bpm as default
-;;  (test "transform-compose-expr"
-;;        (quotient 1779661 120)
-;;        ((transform-compose-expr '(quotient 1779661 ?BPM))
-;; 	0 my-parent-node '() my-cfg))
+ (test "get-required-symbols"
+       '((foo)
+	 (foo bar baz)
+	 ())
+       (list (get-required-symbols '$foo)
+	     (get-required-symbols '($foo ($bar (0 ($baz boo)))))
+	     (get-required-symbols '(foo bar (baz ())))))
 
-;;  (test "make-order-transformer"
-;;        '(1 5 2 6 3 7 4 8)
-;;        ((make-order-transformer 'shared-numeric-matrix 1)
-;; 	'((0 0) (1 1) (2 2) (3 3))))
+ ;; ;; TODO new Huby.mdconf uses 140 bpm as default
+ ;; (test "transform-compose-expr"
+ ;;       (quotient 1779661 120)
+ ;;       ((transform-compose-expr '(quotient 1779661 ?BPM))
+ ;; 	0 my-parent-node '() my-cfg))
 
-;;  (test "make-ofield"
-;;        (list (int->bytes (quotient 1779661 120) 2 'little-endian)
-;; 	     (list 0 0))
-;;        (let ((my-onode1 (make-ofield my-cfg "" bytes: 2
-;; 				     compose: '(quotient 1779661 ?BPM)))
-;; 	     (my-onode2 (make-ofield my-cfg "" bytes: 2
-;; 				     compose: '(- $my-sym 8))))
-;; 	 (list (onode-val (car ((onode-fn my-onode1) my-onode1
-;; 				my-parent-node my-cfg 0 '())))
-;; 	       (onode-val (car ((onode-fn my-onode2) my-onode2
-;; 				my-parent-node my-cfg 0 '((my-sym 8))))))))
+ ;; (test "make-order-transformer"
+ ;;       '(1 5 2 6 3 7 4 8)
+ ;;       ((make-order-transformer 'shared-numeric-matrix 1)
+ ;; 	'((0 0) (1 1) (2 2) (3 3))))
 
-;;  (test "make-osymbol"
-;;        8
-;;        (let ((my-onode (make-osymbol my-cfg "" id: 'my-sym)))
-;; 	 (car (alist-ref 'my-sym
-;; 			 (third ((onode-fn my-onode) my-onode my-parent-node
-;; 				 my-cfg 8 '())))))))
+ ;; (test "make-ofield"
+ ;;       (list (int->bytes (quotient 1779661 120) 2 'little-endian)
+ ;; 	     (list 0 0))
+ ;;       (let ((my-onode1 (make-ofield my-cfg "" bytes: 2
+ ;; 				     compose: '(quotient 1779661 ?BPM)))
+ ;; 	     (my-onode2 (make-ofield my-cfg "" bytes: 2
+ ;; 				     compose: '(- $my-sym 8))))
+ ;; 	 (list (onode-val (car ((onode-fn my-onode1) my-onode1
+ ;; 				my-parent-node my-cfg 0 '())))
+ ;; 	       (onode-val (car ((onode-fn my-onode2) my-onode2
+ ;; 				my-parent-node my-cfg 0 '((my-sym 8))))))))
+
+ ;; (test "make-osymbol"
+ ;;       8
+ ;;       (let ((my-onode (make-osymbol my-cfg "" id: 'my-sym)))
+ ;; 	 (car (alist-ref 'my-sym
+ ;; 			 (third ((onode-fn my-onode) my-onode my-parent-node
+ ;; 				 my-cfg 8 '()))))))
+ )
 
 (test-group
  "Export & Compilation"

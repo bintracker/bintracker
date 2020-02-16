@@ -148,6 +148,8 @@
 		"range used on command not of type int/uint")
 	       ((incomplete-config)
 		"incomplete mdalconfig specification")
+	       ((missing-config-plugin-version
+		 "missing or incorrect config plugin version specification"))
 	       ((unsupported-mdconf-version)
 		(string-append "unsupported MDCONF version "
 			       (->string (car args))))
@@ -167,6 +169,8 @@
 			       " may not be a child of a block inode"))
 	       ((missing-onode-id) "missing id specifier")
 	       ((no-config) "No CONFIG specified")
+	       ((incompatible-config-version)
+		"MDAL configuration version incompatible with module")
 	       ((not-mdmod) "Not an MDAL module")
 	       ((no-mdal-version) "No MDAL version specified")
 	       ((unsupported-mdal-version)

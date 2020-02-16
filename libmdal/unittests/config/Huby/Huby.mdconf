@@ -1,5 +1,5 @@
 (mdal-config
- version: 2 target: spectrum48
+ mdconf-version: 2 plugin-version: 1.0 target: spectrum48
  description: "A simple 2 channel pin pulse (PFM) engine in less than 100 bytes.
  By Shiru 2011, 2013."
  default-origin: #x8000

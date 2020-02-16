@@ -140,8 +140,22 @@
 
   ;; TODO: where to handle max-binsize?
 
+  (defstruct plugin-version
+    major minor)
+
+  ;;; Check whether the MDCONF plugin-version `available-version` is compatible
+  ;;; with `requested-version`. Versions are considered compatible if the major
+  ;;; versions match, and the minor version of the `available-version` is
+  ;;; greater than or equal to the minor version of the `requested-version`.
+  (define (plugin-versions-compatible? available-version requested-version)
+    (and (= (plugin-version-major available-version)
+	    (plugin-version-major requested-version))
+	 (>= (plugin-version-minor available-version)
+	     (plugin-version-minor requested-version))))
+
   (defstruct config
-    target description commands itree inodes default-origin compiler)
+    target plugin-version description commands itree inodes default-origin
+    compiler)
 
   (define (display-config cfg)
     (printf "#<config>\n\n")
@@ -1203,16 +1217,29 @@
 			    (mdmod-config mod)
 			    origin '())))))
 
+  ;;; Evaluate the plugin-version keyword argument of an mdal-config expression.
+  ;;; Returns a `plugin-version` struct.
+  (define (read-config-plugin-version version-arg)
+    (unless (and (number? version-arg)
+		 (= 2 (length (string-split (number->string version-arg)
+					    "."))))
+      (raise-local 'missing-config-plugin-version))
+    (let ((major/minor (map string->number
+			    (string-split (number->string version-arg)
+					  "."))))
+      (make-plugin-version major: (car major/minor) minor: (cadr major/minor))))
+
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `read-config`.
   (define (eval-mdalconfig config-dir path-prefix
-			   #!key version target commands input
-			   output (default-origin 0) (description ""))
-    (unless (and version target commands input output)
+			   #!key mdconf-version plugin-version target commands
+			   input output (default-origin 0) (description ""))
+    (unless (and mdconf-version plugin-version target commands input output)
       (raise-local 'incomplete-config))
-    (unless (in-range? version *supported-config-versions*)
-      (raise-local 'unsupported-mdconf-version version))
-    (let* ((_target (target-generator (->string target)
+    (unless (in-range? mdconf-version *supported-config-versions*)
+      (raise-local 'unsupported-mdconf-version mdconf-version))
+    (let* ((_version (read-config-plugin-version plugin-version))
+	   (_target (target-generator (->string target)
 				      path-prefix))
 	   (itree (eval-inode-tree input))
 	   (_input (alist->hash-table
@@ -1220,10 +1247,12 @@
 			    (make-default-inode-configs))))
 	   (proto-config
 	    (make-config
+	     plugin-version: _version
 	     target: _target
 	     commands: (get-config-commands commands itree path-prefix _target)
 	     itree: itree inodes: _input default-origin: default-origin)))
-      (make-config target: _target description: description
+      (make-config plugin-version: _version target: _target
+		   description: description
 		   commands: (config-commands proto-config)
 		   itree: itree inodes: _input default-origin: default-origin
 		   compiler: (make-compiler output proto-config config-dir

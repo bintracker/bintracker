@@ -415,6 +415,10 @@
     (unless config (raise-local 'no-config))
     config)
 
+  ;;; Read the config-version keyword argument. Returns a plugin-version struct.
+  (define (mod-get-config-version head #!rest args #!key config-version)
+    (read-config-plugin-version config-version))
+
   ;;; construct an mdmod object from a given .mdal module file
   (define (file->mdmod filepath config-dir-path #!optional (path-prefix ""))
     (handle-exceptions
@@ -428,7 +432,11 @@
       (let ((mod-sexp (read (open-input-file filepath text:))))
         (apply check-mdmod-version mod-sexp)
 	(let* ((cfg-name (apply mod-get-config-name mod-sexp))
+	       (plugin-version (apply mod-get-config-version mod-sexp))
 	       (config (file->config config-dir-path cfg-name path-prefix)))
+	  (unless (plugin-versions-compatible? plugin-version
+					       (config-plugin-version config))
+	    (raise-local 'incompatible-config-version))
 	  (make-mdmod
 	   config-id: cfg-name
 	   config: config
@@ -437,7 +445,9 @@
 				     (append `(,config GLOBAL)
 					     (remove-keyword-args
 					      (cdr mod-sexp)
-					      '(version: config:))))))))))
+					      '(version:
+						config:
+						config-version:))))))))))
 
 
   ) ;; end module md-parser
