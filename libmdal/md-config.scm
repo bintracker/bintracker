@@ -184,6 +184,7 @@
   (define (config-inode-ref id cfg)
     (config-x-ref config-inodes id cfg))
 
+  ;;; Returns the endianness of the configuration's target platform.
   (define (config-get-target-endianness cfg)
     ((o cpu-endianness target-platform-cpu config-target) cfg))
 
@@ -247,6 +248,13 @@
 	      (eq? type (inode-config-type (config-inode-ref id config))))
 	    (config-get-subnode-ids inode-id (config-itree config))))
 
+    ;;; Returns the row index of the field subnode `field-id` in instances of
+  ;;; the block node `block-id`.
+  (define (config-get-block-field-index block-id field-id config)
+    (list-index (lambda (id)
+		  (eqv? id field-id))
+		(config-get-subnode-ids block-id (config-itree config))))
+
   ;; TODO rename to slighly more sane `config-get-inode-command`
   ;;; return the source command of a given inode
   (define (config-get-inode-source-command node-id config)
@@ -271,51 +279,6 @@
       (if node-cmd
 	  (command-default node-cmd)
 	  '())))
-
-  ;; ---------------------------------------------------------------------------
-  ;; misc leftovers from refactoring
-  ;; ---------------------------------------------------------------------------
-
-  ;;; find the last set instance of the given node before the given instance,
-  ;;; and return its raw value, or its default value if no set instances are
-  ;;; found
-  (define (eval-field-last-set instance-id node command-config)
-    (let ((last-set
-	   (find (lambda (instance)
-		   (not (null? (inode-instance-val (cadr instance)))))
-		 (reverse (take (inode-instances node)
-				instance-id)))))
-      (if last-set
-	  (inode-instance-val (second last-set))
-	  (command-default command-config))))
-
-
-  ;;; evaluate a field node instance, ie. generate it's output value. This will
-  ;;; never return an empty value. If the node instance is inactive, it will
-  ;;; return the default value, or backtrace if the use-last-set flag is enabled
-  ;;; on the node command.
-  ;;; To display the node's current value, use print-field instead.
-  ;;; TODO: this could be optimized by constructing a dedicated eval fn in
-  ;;; config.
-  (define (eval-field instance-id node command-config)
-    (let* ((field ((mod-get-node-instance instance-id) node))
-	   (current-val (inode-instance-val field))
-	   (raw-val (if (null? current-val)
-			(if (command-has-flag? command-config
-					       'use_last_set)
-			    (eval-field-last-set
-			     instance-id node command-config)
-			    (command-default command-config))
-			current-val))
-	   (cmd-type (command-type command-config)))
-      (cond ((memq cmd-type '(int uint reference)) raw-val)
-	    ((memq cmd-type '(key ukey))
-	     (car (hash-table-ref (command-keys command-config) raw-val)))
-	    (else "cmd type not implemented"))))
-
-  ;;; check if the given inode instance is 'active', ie. check if a value is set.
-  (define (is-set? inode-instance)
-    (not (null? (inode-instance-val inode-instance))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -622,6 +585,98 @@
   ;;; Onode-fns output a list containing the processed onode, the next origin
   ;;; address (if it can be deduced, otherwise #f), and the updated list of
   ;;; symbols.
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; #### Auxiliary accessor procs
+  ;; ---------------------------------------------------------------------------
+
+  ;;; find the last set instance of the given node before the given instance,
+  ;;; and return its raw value, or its default value if no set instances are
+  ;;; found
+  (define (eval-field-last-set instance-id node command-config)
+    (let ((last-set
+	   (find (lambda (instance)
+		   (not (null? (inode-instance-val (cadr instance)))))
+		 (reverse (take (inode-instances node)
+				instance-id)))))
+      (if last-set
+	  (inode-instance-val (second last-set))
+	  (command-default command-config))))
+
+
+  ;;; evaluate a field node instance, ie. generate it's output value. This will
+  ;;; never return an empty value. If the node instance is inactive, it will
+  ;;; return the default value, or backtrace if the use-last-set flag is enabled
+  ;;; on the node command.
+  ;;; To display the node's current value, use print-field instead.
+  ;;; TODO: this could be optimized by constructing a dedicated eval fn in
+  ;;; config.
+  (define (eval-field instance-id node command-config)
+    (let* ((field ((mod-get-node-instance instance-id) node))
+	   (current-val (inode-instance-val field))
+	   (raw-val (if (null? current-val)
+			(if (command-has-flag? command-config 'use_last_set)
+			    (eval-field-last-set
+			     instance-id node command-config)
+			    (command-default command-config))
+			current-val))
+	   (cmd-type (command-type command-config)))
+      (cond ((memq cmd-type '(int uint reference)) raw-val)
+	    ((memq cmd-type '(key ukey))
+	     (car (hash-table-ref (command-keys command-config) raw-val)))
+	    (else "cmd type not implemented"))))
+
+  ;;; Transform the field node instance value `current-val` according to
+  ;;; the given MDAL `command-config`.
+  (define (eval-effective-field-val current-val command-config)
+    (case (command-type command-config)
+      ((int uint reference string trigger) current-val)
+      ((key ukey) (car (hash-table-ref (command-keys command-config)
+				       current-val)))
+      (else (error "cmd type not implemented"))))
+
+  ;;; Evaluate a group field node instance, resolving key and ukey values as
+  ;;; needed. This always returns the effective field value, ie. an empty node
+  ;;; instance returns the default value of the underlying command.
+  (define (eval-group-field field-node instance-id command-config)
+    (let* ((current-val (cddr (inode-instance-ref instance-id field-node)))
+	   (raw-val (if (null? current-val)
+			(command-default command-config)
+			current-val)))
+      (eval-effective-field-val raw-val command-config)))
+
+  ;;; Helper for 'eval-block-field`. Finds the last set field instance of the
+  ;;; field node at `field-index` before `row` in the `block-instance`.
+  (define (backtrace-block-fields block-instance start-row field-index)
+    (find (complement null?)
+	  (reverse (map (lambda (row)
+			  (list-ref row field-index))
+			(take (cddr block-instance)
+			      start-row)))))
+
+  ;;; Evaluate the field with the given `field-id` in `row` of the given
+  ;;; `block-instance`. Evaluation will backtrace if the field node command
+  ;;; has the `use-last-set` flag.
+  (define (eval-block-field block-instance block-id field-id row mdconfig)
+    (let* ((field-index (config-get-block-field-index block-id field-id
+						      mdconfig))
+	   (raw-val (block-field-ref block-instance row field-index))
+	   (command-config (config-get-inode-source-command field-id mdconfig)))
+      (eval-effective-field-val
+       (if (null? raw-val)
+	   (if (command-has-flag? command-config 'use_last_set)
+	       (let ((last-set (backtrace-block-fields block-instance
+						       row field-index)))
+		 (or last-set (command-default command-config)))
+	       (command-default command-config))
+	   raw-val)
+       command-config)))
+
+  ;;; check if the given inode instance is 'active', ie. check if a value is
+  ;;; set.
+  (define (is-set? inode-instance)
+    (not (null? (inode-instance-val inode-instance))))
 
 
   ;;; Transform an output field config expression into an actual resolver

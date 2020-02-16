@@ -45,6 +45,15 @@
 	    (= instance-id (car instance)))
 	  (cdr inode)))
 
+  ;;; Returns the value of the field at `field-index` in `row` of
+  ;;; `block-instance`. Returns null if the requested `row` does not exist.
+  (define (block-field-ref block-instance row field-index)
+    (let ((rows (cddr block-instance)))
+      (if (>= row (length rows))
+	  '()
+	  (list-ref (list-ref rows row)
+		    field-index))))
+
   ;; TODO obsolete
   ;;; The inode record type.
   (defstruct inode

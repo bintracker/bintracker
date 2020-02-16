@@ -388,14 +388,6 @@
  ;;       (car (hash-table-ref (config-commands my-cfg) 'NOTE))
  ;;       (get-node-command-cfg my-note1-inode my-cfg))
 
- ;; (test "eval-field-last-set" "c4"
- ;;       (eval-field-last-set
- ;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
-
- ;; (test "eval-field" 0
- ;;       (eval-field 3 my-note1-inode
- ;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
-
  ;; (define (make-test-inode instances)
  ;;   (make-inode config-id: 'FOO
  ;; 	       instances: (map (lambda (i)
@@ -570,6 +562,29 @@
 
  (define my-parent-node ((node-path "0")
 			 (mdmod-global-node my-mod)))
+
+ ;; (test "eval-field-last-set" "c4"
+ ;;       (eval-field-last-set
+ ;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
+
+ ;; (test "eval-field" 0
+ ;;       (eval-field 3 my-note1-inode
+ ;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
+
+ (test  "eval-group-field"
+	120
+	(eval-group-field
+	 (get-subnode (inode-instance-ref 0 (mdmod-global-node my-mod))
+		      'BPM)
+	 0 (config-get-inode-source-command 'BPM my-cfg)))
+
+ (test "eval-block-field"
+       (car (hash-table-ref (command-keys (config-get-inode-source-command
+					   'NOTE2 my-cfg))
+			    'a2))
+       (eval-block-field ((node-path "0/PATTERNS/0/CH2/0")
+			  (mdmod-global-node my-mod))
+			 'CH2 'NOTE2 10 my-cfg))
 
  (test "get-required-symbols"
        '((foo)
