@@ -563,14 +563,6 @@
  (define my-parent-node ((node-path "0")
 			 (mdmod-global-node my-mod)))
 
- ;; (test "eval-field-last-set" "c4"
- ;;       (eval-field-last-set
- ;; 	5 my-note1-inode (get-node-command-cfg my-note1-inode my-cfg)))
-
- ;; (test "eval-field" 0
- ;;       (eval-field 3 my-note1-inode
- ;; 		   (get-node-command-cfg my-note1-inode my-cfg)))
-
  (test  "eval-group-field"
 	120
 	(eval-group-field
@@ -584,7 +576,7 @@
 			    'a2))
        (eval-block-field ((node-path "0/PATTERNS/0/CH2/0")
 			  (mdmod-global-node my-mod))
-			 'CH2 'NOTE2 10 my-cfg))
+			 0 10 (config-command-ref 'NOTE my-cfg)))
 
  (test "get-required-symbols"
        '((foo)
@@ -594,16 +586,78 @@
 	     (get-required-symbols '($foo ($bar (0 ($baz boo)))))
 	     (get-required-symbols '(foo bar (baz ())))))
 
- ;; ;; TODO new Huby.mdconf uses 140 bpm as default
- ;; (test "transform-compose-expr"
- ;;       (quotient 1779661 120)
- ;;       ((transform-compose-expr '(quotient 1779661 ?BPM))
- ;; 	0 my-parent-node '() my-cfg))
+ (test "transform-compose-expr"
+       (quotient 1779661 120)
+       ((transform-compose-expr '(quotient 1779661 ?BPM) my-cfg)
+ 	0 my-parent-node '() my-cfg))
 
- ;; (test "make-order-transformer"
- ;;       '(1 5 2 6 3 7 4 8)
- ;;       ((make-order-transformer 'shared-numeric-matrix 1)
- ;; 	'((0 0) (1 1) (2 2) (3 3))))
+ (test "make-order-transformer"
+       '(1 5 2 6 3 7 4 8)
+       ((make-order-transformer 'shared-numeric-matrix 1)
+ 	'((0 0) (1 1) (2 2) (3 3))))
+
+ (test "block-repeat-last-set"
+       '((() 2 3)
+	 (() () ()))
+       (block-repeat-last-set
+	'((() () ())
+	  (() () ()))
+	'((() 2 ())
+	  (() () 3))
+	'(#f #t #t)))
+
+ (test "split-block-instance-contents"
+       '((0 #f (a2) (()) (()) (()))
+	 (1 #f (a2) (()) (()) (()))
+	 (2 #f (a2) (()) (()) (()))
+	 (3 #f (a2) (()) (()) (())))
+       (split-block-instance-contents
+	4 'CH2 my-cfg
+	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mdmod-global-node my-mod)))))
+
+ (test "resize-block-instances"
+       '(CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+	     (1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+	     (2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
+	     (3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
+       (resize-block-instances
+	((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod))
+	8
+	((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mdmod-global-node my-mod))
+	my-cfg))
+
+ (test "resize-blocks"
+       '(0 #f
+	   (DRUMS (0 #f (#t) (()) (()) (()) (#t) (()) (()) (()))
+		     (1 #f (#t) (()) (()) (()) (#t) (()) (()) (()))
+		     (2 #f (#t) (()) (()) (()) (#t) (()) (()) (()))
+		     (3 #f (#t) (()) (()) (()) (#t) (()) (()) (())))
+	   (CH1 (0 #f (a3) (()) (rest) (()) (c4) (()) (rest) (()))
+		(1 #f (e4) (()) (rest) (()) (g4) (()) (rest) (()))
+		(2 #f (a3) (()) (rest) (()) (c4) (()) (rest) (()))
+		(3 #f (e4) (()) (rest) (()) (g4) (()) (rest) (())))
+	   (CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+		(1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+		(2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
+		(3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
+	   (PATTERNS_ORDER (0 #f
+			      (8 0 0 0 0)
+			      (8 1 1 1 1)
+			      (8 2 2 2 2)
+			      (8 3 3 3 3))))
+       (resize-blocks
+	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+	'PATTERNS 8 my-cfg))
+
+ (test "make-order-alist"
+       '((0 (0 0)) (1 (1 1)) (2 (2 2)) (3 (3 3)))
+       (make-order-alist
+	(get-subnode (resize-blocks
+		      ((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+		      'PATTERNS 8 my-cfg)
+		     'PATTERNS_ORDER)
+	'(CH1 CH2)
+	my-cfg))
 
  ;; (test "make-ofield"
  ;;       (list (int->bytes (quotient 1779661 120) 2 'little-endian)
@@ -617,12 +671,12 @@
  ;; 	       (onode-val (car ((onode-fn my-onode2) my-onode2
  ;; 				my-parent-node my-cfg 0 '((my-sym 8))))))))
 
- ;; (test "make-osymbol"
- ;;       8
- ;;       (let ((my-onode (make-osymbol my-cfg "" id: 'my-sym)))
- ;; 	 (car (alist-ref 'my-sym
- ;; 			 (third ((onode-fn my-onode) my-onode my-parent-node
- ;; 				 my-cfg 8 '()))))))
+ (test "make-osymbol"
+       8
+       (let ((my-onode (make-osymbol my-cfg "" "" id: 'my-sym)))
+ 	 (car (alist-ref 'my-sym
+ 			 (third ((onode-fn my-onode) my-onode my-parent-node
+ 				 my-cfg 8 '()))))))
  )
 
 (test-group
@@ -634,21 +688,21 @@
 	 (mdmod->file my-mod "test.mdal")
 	 (file-md5sum "test.mdal")))
 
- ;; (test "mod->bin"
- ;;       (list 33 108 128 205 9 128 195 0 128 78 35 70 35 94 35 86 35 126 35 183
- ;; 	     200 229 213 197 110 6 2 38 0 41 41 41 25 229 111 16 246 217 225 209
- ;; 	     6 8 26 19 217 103 87 217 126 35 217 111 95 254 44 40 1 175 50 70
- ;; 	     128 193 197 243 175 29 32 3 93 149 0 21 32 2 84 148 159 230 16 211
- ;; 	     254 219 254 47 230 31 32 5 11 120 177 32 227 33 88 39 217 251 32 2
- ;; 	     16 196 193 209 225 40 165 201
- ;; 	     238 57
- ;; 	     113 128
- ;; 	     1 5 2 6 3 7 4 8 0
- ;; 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
- ;; 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
- ;; 	     135 135 135 135 135 135 135 135 135 135 135 135 135 135 135 135
- ;; 	     180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180)
- ;;       (mod->bin my-mod #x8000))
+ (test "mod->bin"
+       (list 33 108 128 205 9 128 195 0 128 78 35 70 35 94 35 86 35 126 35 183
+ 	     200 229 213 197 110 6 2 38 0 41 41 41 25 229 111 16 246 217 225 209
+ 	     6 8 26 19 217 103 87 217 126 35 217 111 95 254 44 40 1 175 50 70
+ 	     128 193 197 243 175 29 32 3 93 149 0 21 32 2 84 148 159 230 16 211
+ 	     254 219 254 47 230 31 32 5 11 120 177 32 227 33 88 39 217 251 32 2
+ 	     16 196 193 209 225 40 165 201
+ 	     238 57
+ 	     113 128
+ 	     1 5 2 6 3 7 4 8 0
+ 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
+ 	     44 67 0 0 44 57 0 0 44 45 0 0 44 38 0 0
+ 	     135 135 135 135 135 135 135 135 135 135 135 135 135 135 135 135
+ 	     180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180)
+       (mod->bin my-mod #x8000))
  )
 
 (test-exit)

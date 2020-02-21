@@ -360,26 +360,30 @@
 
   ;;; returns the group instance's order node (instance 0)
   (define (mod-get-group-instance-order igroup-instance igroup-id)
-    (inode-instance-ref 0
-     (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
+    (cadr (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
+
+  ;;; Helper for `mod-get-order-values.
+  ;;; Given the contents of a block instance, return the contents such that
+  ;;; empty fields are replaced with the last set value.
+  (define (repeat-block-row-values rows)
+    (letrec ((repeat-values
+	      (lambda (rows previous-row)
+		(if (null-list? rows)
+  		    '()
+  		    (cons (map (lambda (pos previous-pos)
+  				 (if (null? pos)
+  				     previous-pos pos))
+  			       (car rows) previous-row)
+  			  (repeat-values (cdr rows) (car rows)))))))
+      (repeat-values rows (make-list (length (car rows))
+				     0))))
 
   ;;; Returns the values of all order fields as a list of row value sets.
   ;;; Values are normalized, ie. empty positions are replaced with repeated
   ;;; values from an earlier row.
   (define (mod-get-order-values group-id group-instance)
-    (letrec ((repeat-values
-  	       (lambda (rows previous-row)
-  		 (if (null-list? rows)
-  		     '()
-  		     (cons (map (lambda (pos previous-pos)
-  				  (if (null? pos)
-  				      previous-pos pos))
-  				(car rows) previous-row)
-  			   (repeat-values (cdr rows) (car rows))))))
-	     (raw-order (cddr (mod-get-group-instance-order group-instance
-							    group-id))))
-      (repeat-values raw-order (make-list (length (car raw-order))
-					  0))))
+    (repeat-block-row-values (cddr (mod-get-group-instance-order group-instance
+								 group-id))))
 
   ;;; Returns the total number of all block rows in the given group node
   ;;; instance. The containing group node must be ordered. The result is equal
