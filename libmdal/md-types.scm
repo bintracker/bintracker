@@ -34,7 +34,7 @@
 
   ;;; TODO rename to subnode-ref, reverse args
   ;;; Returns the subnode with the given `subnode-id`
-  (define (get-subnode inode-instance subnode-id)
+  (define (subnode-ref subnode-id inode-instance)
     (find (lambda (node)
 	    (eqv? subnode-id (car node)))
 	  (cddr inode-instance)))
@@ -360,7 +360,7 @@
 
   ;;; returns the group instance's order node (instance 0)
   (define (mod-get-group-instance-order igroup-instance igroup-id)
-    (cadr (get-subnode igroup-instance (symbol-append igroup-id '_ORDER))))
+    (cadr (subnode-ref (symbol-append igroup-id '_ORDER) igroup-instance)))
 
   ;;; Helper for `mod-get-order-values.
   ;;; Given the contents of a block instance, return the contents such that

@@ -360,16 +360,16 @@
 
  (define my-global-inode-instance (cadr (mdmod-global-node my-mod)))
 
- (test "get-subnode"
+ (test "subnode-ref"
        (find (lambda (node)
  	       (eqv? (car node) 'PATTERNS))
  	     (cddr my-global-inode-instance))
-       (get-subnode my-global-inode-instance 'PATTERNS))
+       (subnode-ref 'PATTERNS my-global-inode-instance))
 
  (define my-ch2-inode
-   (get-subnode
-    (inode-instance-ref 0 (get-subnode my-global-inode-instance 'PATTERNS))
-    'CH2))
+   (subnode-ref
+    'CH2
+    (inode-instance-ref 0 (subnode-ref 'PATTERNS my-global-inode-instance))))
 
  (test "inode-count-instances" 2 (inode-count-instances my-ch2-inode))
 
@@ -566,8 +566,7 @@
  (test  "eval-group-field"
 	120
 	(eval-group-field
-	 (get-subnode (inode-instance-ref 0 (mdmod-global-node my-mod))
-		      'BPM)
+	 (subnode-ref 'BPM (inode-instance-ref 0 (mdmod-global-node my-mod)))
 	 0 (config-get-inode-source-command 'BPM my-cfg)))
 
  (test "eval-block-field"
@@ -652,10 +651,10 @@
  (test "make-order-alist"
        '((0 (0 0)) (1 (1 1)) (2 (2 2)) (3 (3 3)))
        (make-order-alist
-	(get-subnode (resize-blocks
+	(subnode-ref 'PATTERNS_ORDER
+		     (resize-blocks
 		      ((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
-		      'PATTERNS 8 my-cfg)
-		     'PATTERNS_ORDER)
+		      'PATTERNS 8 my-cfg))
 	'(CH1 CH2)
 	my-cfg))
 

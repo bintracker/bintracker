@@ -634,7 +634,7 @@
 	     `(,(complement null?)
 	       (,list-ref (,list-ref (,cddr (,mod-get-node-instance
 					     instance-id
-					     (get-subnode parent-node node-id)))
+					     (subnode-ref node-id parent-node)))
 				     row)
 			  ,(list-index (lambda (x)
 					 (eqv? x node-id))
@@ -662,7 +662,7 @@
 						    config)))
 	    (if (eqv? 'group (get-parent-node-type transformed-symbol mdconfig))
 		`(,eval-group-field
-		  (,get-subnode parent-node (quote ,transformed-symbol))
+		  (,subnode-ref (quote ,transformed-symbol) parent-node)
 		  instance-id ,command-config)
 		`(,eval-block-field
 		  parent-node
@@ -903,7 +903,7 @@
 		      (and (memv (car subnode) block-subnode-ids)
 			   (not (eqv? order-id (car subnode)))))
 		    (cddr parent-inode-instance)))
-	   (original-order (get-subnode parent-inode-instance order-id))
+	   (original-order (subnode-ref order-id parent-inode-instance))
 	   (resized-blocks
 	    (map (lambda (block)
 		   (resize-block-instances block size original-order config))
@@ -990,7 +990,7 @@
 		  (apply zip (map (lambda (order-field source)
 				    (cddr (inode-instance-ref
 					   order-field
-					   (get-subnode parent source))))
+					   (subnode-ref source parent))))
 				  order-pos sources))))))
       (map (lambda (order-pos)
 	     (append (list (car order-pos) #f)
@@ -1067,7 +1067,7 @@
 					       resize config)
 				parent-inode))
 		    (order-alist
-		     (make-order-alist (get-subnode parent order-id)
+		     (make-order-alist (subnode-ref order-id parent)
 				       source-block-ids config))
 		    (unique-order-combinations (delete-duplicates order-alist))
 		    (result
@@ -1121,7 +1121,7 @@
 		      otree
 		      ;; TODO currently assuming there's only one instance, but
 		      ;;      actually must be done for every instance
-		      (inode-instance-ref 0 (get-subnode parent-inode from))
+		      (inode-instance-ref 0 (subnode-ref from parent-inode))
 		      config current-org md-symbols))
 		    (subtree-size (apply + (map onode-size
 						(car subtree-result))))

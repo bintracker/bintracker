@@ -115,7 +115,7 @@
   ;;; order node can be retrieved with `mod-get-group-instance-order` instead.
   (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
     (map (lambda (id)
-  	   (get-subnode igroup-instance id))
+  	   (subnode-ref id igroup-instance))
   	 (filter (lambda (id)
   		   (not (symbol-contains id "_ORDER")))
   		 (config-get-subnode-type-ids igroup-id config 'block))))
