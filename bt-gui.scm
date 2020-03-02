@@ -1600,7 +1600,8 @@
       (blockview-set-cursor b (car mouse-pos)
 			    (find (lambda (pos)
 				    (<= pos (cadr mouse-pos)))
-				  (reverse (blockview-cursor-x-positions b))))))
+				  (reverse (blockview-cursor-x-positions b))))
+      (blockview-update-current-command-info b)))
 
   ;;; Move the blockview's cursor in `direction`.
   (define (blockview-move-cursor b direction)
@@ -1646,7 +1647,9 @@
 			      (> pos current-char))
 			    (blockview-cursor-x-positions b))
 		      0))
-	 (else current-char)))))
+	 (else current-char)))
+      (when (memv direction '(Left Right))
+	(blockview-update-current-command-info b))))
 
   ;;; Set the input focus to the blockview `b`. In addition to setting the
   ;;; Tk focus, it also shows the cursor and updates the status bar info text.
