@@ -68,8 +68,8 @@
   ;;; construct an alist containing the default commands AUTHOR and TITLE
   (define (make-default-commands)
     `((AUTHOR ,(make-command type: 'string default: "unknown"))
-      (TITLE ,(make-command type: 'string "untitled"))
-      (LICENSE ,(make-command type: 'string "All Rights Reserved"))))
+      (TITLE ,(make-command type: 'string default: "untitled"))
+      (LICENSE ,(make-command type: 'string default: "All Rights Reserved"))))
 
   ;;; basic error checks for mdalconfig command specification
   (define (check-command-spec id type bits default reference-to keys range)
