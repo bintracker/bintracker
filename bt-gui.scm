@@ -1341,10 +1341,12 @@
     (let ((current-field-id (blockview-get-current-field-id b)))
       (if (eq? 'order (blockview-type b))
 	  (set-state! 'active-md-command-info
-		      (string-append "Channel "
-				     (string-drop (symbol->string
-						   current-field-id)
-						  2)))
+		      (if (symbol-contains current-field-id "_LENGTH")
+			  "Step Length"
+			  (string-append "Channel "
+					 (string-drop (symbol->string
+						       current-field-id)
+						      2))))
 	  (set-active-md-command-info! current-field-id))
       (reset-status-text!)))
 
