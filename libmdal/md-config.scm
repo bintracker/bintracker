@@ -629,12 +629,6 @@
 	   raw-val)
        command-config)))
 
-  ;; TODO obsolete
-  ;;; check if the given inode instance is 'active', ie. check if a value is
-  ;;; set.
-  (define (is-set? inode-instance)
-    (not (null? (cddr inode-instance))))
-
   ;;; Get the inode type of the parent of node `node-id`.
   (define (get-parent-node-type node-id mdconfig)
     (inode-config-type
