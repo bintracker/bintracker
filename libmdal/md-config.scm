@@ -298,20 +298,6 @@
 			(onode-val node)
 			"unresolved")))
 
-  ;;; Compute the total size of the binary output of a list of onodes. Returns
-  ;;; `#f` if any of the onodes does not have it's size argument resolved.
-  ;; TODO currently dead code, is it still useful?
-  (define (mod-output-size onodes)
-    (and (not (any (lambda (node)
-		     (not (onode-size node)))
-		   onodes))
-	 (apply + (map onode-size onodes))))
-
-  ;;; returns true if all onodes have been resolved, false otherwise
-  ;; TODO currently dead code, but should be used
-  (define (mod-all-resolved? onodes)
-    (not (any onode-fn onodes)))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## CONFIG PARSER + COMPILER GENERATOR
@@ -1162,6 +1148,19 @@
 	     (else (error "unsupported output node type")))
 	   (append (list proto-config config-dir path-prefix) (cdr expr))))
 
+  ;;; Compute the total size of the binary output of a list of onodes. Returns
+  ;;; `#f` if any of the onodes does not have it's size argument resolved.
+  ;; TODO currently dead code, is it still useful?
+  (define (mod-output-size onodes)
+    (and (not (any (lambda (node)
+		     (not (onode-size node)))
+		   onodes))
+	 (apply + (map onode-size onodes))))
+
+  ;;; returns true if all onodes have been resolved, false otherwise
+  (define (mod-all-resolved? onodes)
+    (not (any onode-fn onodes)))
+
   ;;; Do a single compiler pass run over the given otree.
   ;;; Returns a list containing the updated otree in the 1st slot, the updated
   ;;; origin in the 2nd slot, and the updated list of symbols in the 3rd slot.
@@ -1201,7 +1200,7 @@
 	      ;; (newline)
 	      ;; (display tree-result)
 	      ;; (newline)
-	      (if (not (any onode-fn (car tree-result)))
+	      (if (mod-all-resolved? (car tree-result))
 		  tree-result
 		  (run-compiler (car tree-result) (caddr tree-result)
 				(+ passes 1)))))))
