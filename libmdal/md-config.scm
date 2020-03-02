@@ -504,12 +504,11 @@
   ;;; Compiler helper: Get the current origin (compile address).
   ;;; Returns #f if current origin cannot be resolved.
   (define (get-current-origin preceding-otree symbols)
-    (if (any (lambda (node)
-	       (not (onode-size node)))
-	     preceding-otree)
-	#f
-	(+ (alist-ref '_mdal_origin symbols)
-	   (apply + (map onode-size preceding-otree)))))
+    (and (any (lambda (node)
+		(not (onode-size node)))
+	      preceding-otree)
+	 (+ (alist-ref '_mdal_origin symbols)
+	    (apply + (map onode-size preceding-otree)))))
 
 
   ;;----------------------------------------------------------------------------
