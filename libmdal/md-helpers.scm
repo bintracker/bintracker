@@ -17,14 +17,15 @@
 
   ;;; Convert note names from MDAL's format to the conventional tracker naming
   ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
-  (define (normalize-note-name name)
-    (if (string=? "rest" name)
-	"==="
-	(if (string-contains name "#")
-	    name
-	    (let ((name-string-list (string->list name)))
-	      (list->string (append (list (car name-string-list) #\-)
-				    (cdr name-string-list)))))))
+  (define (normalize-note-name n)
+    (let ((name (->string n)))
+      (if (string=? "rest" name)
+	  "==="
+	  (if (string-contains name "#")
+	      name
+	      (let ((name-string-list (string->list name)))
+		(list->string (append (list (car name-string-list) #\-)
+				      (cdr name-string-list))))))))
 
   (defstruct range
     min max)

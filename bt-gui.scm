@@ -807,7 +807,7 @@
 				 (app-keys-note-entry (settings 'keymap)))))
       (and entry-spec
 	   (if (string= "rest" (car entry-spec))
-	       "rest"
+	       'rest
 	       (let* ((octave-modifier (if (> (length entry-spec) 1)
 					   (cadr entry-spec)
 					   0))
@@ -815,8 +815,9 @@
 		 ;; TODO proper range check
 		 (and (and (>= mod-octave 0)
 			   (<= mod-octave 9)
-			   (string-append (car entry-spec)
-					  (->string mod-octave)))))))))
+			   (string->symbol
+			    (string-append (car entry-spec)
+					   (->string mod-octave))))))))))
 
   ;;; Get the appropriate command type tag to set the item color.
   (define (get-command-type-tag field-id)
