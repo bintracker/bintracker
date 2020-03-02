@@ -268,9 +268,8 @@
   ;; block field nodes are no longer explicit.
   ;;; return the command configuration associated with the given field node
   (define (get-node-command-cfg node config)
-    (config-command-ref
-     (inode-config-cmd-id (config-inode-ref (inode-config-id node)
-					    config))
+    (config-command-ref (inode-config-cmd-id (config-inode-ref (car node)
+							       config))
      config))
 
   ;;; get the default value of a given inode config
@@ -632,7 +631,7 @@
 	((is-set?)
 	 (if (eqv? parent-type 'group)
 	     `(,(complement null?)
-	       (,list-ref (,list-ref (,cddr (,mod-get-node-instance
+	       (,list-ref (,list-ref (,cddr (,inode-instance-ref
 					     instance-id
 					     (subnode-ref node-id parent-node)))
 				     row)
