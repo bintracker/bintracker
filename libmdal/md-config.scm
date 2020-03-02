@@ -586,45 +586,6 @@
   ;;; address (if it can be deduced, otherwise #f), and the updated list of
   ;;; symbols.
 
-
-  ;; ;; TODO obsolete
-  ;; ;;; find the last set instance of the given node before the given instance,
-  ;; ;;; and return its raw value, or its default value if no set instances are
-  ;; ;;; found
-  ;; (define (eval-field-last-set instance-id node command-config)
-  ;;   (let ((last-set
-  ;; 	   (find (lambda (instance)
-  ;; 		   (not (null? (inode-instance-val (cadr instance)))))
-  ;; 		 (reverse (take (inode-instances node)
-  ;; 				instance-id)))))
-  ;;     (if last-set
-  ;; 	  (inode-instance-val (second last-set))
-  ;; 	  (command-default command-config))))
-
-
-  ;; ;; TODO obsolete
-  ;; ;;; evaluate a field node instance, ie. generate it's output value. This will
-  ;; ;;; never return an empty value. If the node instance is inactive, it will
-  ;; ;;; return the default value, or backtrace if the use-last-set flag is enabled
-  ;; ;;; on the node command.
-  ;; ;;; To display the node's current value, use print-field instead.
-  ;; ;;; TODO: this could be optimized by constructing a dedicated eval fn in
-  ;; ;;; config.
-  ;; (define (eval-field instance-id node command-config)
-  ;;   (let* ((field ((mod-get-node-instance instance-id) node))
-  ;; 	   (current-val (inode-instance-val field))
-  ;; 	   (raw-val (if (null? current-val)
-  ;; 			(if (command-has-flag? command-config 'use_last_set)
-  ;; 			    (eval-field-last-set
-  ;; 			     instance-id node command-config)
-  ;; 			    (command-default command-config))
-  ;; 			current-val))
-  ;; 	   (cmd-type (command-type command-config)))
-  ;;     (cond ((memq cmd-type '(int uint reference)) raw-val)
-  ;; 	    ((memq cmd-type '(key ukey))
-  ;; 	     (car (hash-table-ref (command-keys command-config) raw-val)))
-  ;; 	    (else "cmd type not implemented"))))
-
   ;;; Transform the field node instance value `current-val` according to
   ;;; the given MDAL `command-config`.
   (define (eval-effective-field-val current-val command-config)
@@ -668,6 +629,7 @@
 	   raw-val)
        command-config)))
 
+  ;; TODO obsolete
   ;;; check if the given inode instance is 'active', ie. check if a value is
   ;;; set.
   (define (is-set? inode-instance)
@@ -680,6 +642,32 @@
 						  (config-itree mdconfig))
 		       mdconfig)))
 
+  ;;; Transform a conditional special form in an onode compose expression into
+  ;;; a resolver procedure call. `expr` must be a list containing the form
+  ;;; symbol in car, and an inode name in cadr.
+  (define (transform-compose-expr-conditional expr mdconfig field-indices)
+    (let* ((node-id (string->symbol (string-drop (symbol->string (cadr expr))
+						 1)))
+	   (parent-type (get-parent-node-type node-id mdconfig)))
+      (case (car expr)
+	((is-set?)
+	 (if (eqv? parent-type 'group)
+	     `(,(complement null?)
+	       (,list-ref (,list-ref (,cddr (,mod-get-node-instance
+					     instance-id
+					     (get-subnode parent-node node-id)))
+				     row)
+			  ,(list-index (lambda (x)
+					 (eqv? x node-id))
+				       field-indices)))
+	     `(,(complement null?)
+	       (,list-ref (,list-ref (,cddr parent-node)
+				     instance-id)
+			  ,(list-index (lambda (x)
+			  		 (eqv? x node-id))
+			  	       field-indices)))))
+	(else (error "Unsupported conditional in onode compose expr")))))
+
   ;;; Helper for `transform-compose-expr`. Transforms an output field config
   ;;; expresssion element into a resolver procedure call.
   (define (transform-compose-expr-element elem mdconfig
@@ -687,8 +675,7 @@
     (cond
      ((symbol? elem)
       (let* ((symbol-name (symbol->string elem))
-	     (transformed-symbol (string->symbol
-				  (string-drop symbol-name 1))))
+	     (transformed-symbol (string->symbol (string-drop symbol-name 1))))
 	(cond
 	 ((string-prefix? "?" symbol-name)
 	  (let ((command-config
@@ -699,32 +686,28 @@
 		  (,get-subnode parent-node (quote ,transformed-symbol))
 		  instance-id ,command-config)
 		`(,eval-block-field
-		  (,inode-instance-ref instance-id parent-node)
+		  parent-node
 		  ,(list-index (lambda (x)
 				 (eqv? x transformed-symbol))
 			       field-indices)
-		  row ,command-config))))
+		  instance-id ;; row
+		  ,command-config))))
 	 ((string-prefix? "$" symbol-name)
 	  `(let ((sym-val (,alist-ref (quote ,transformed-symbol)
 				      md-symbols)))
 	     (and sym-val (,car sym-val))))
 	 (else elem))))
      ((pair? elem)
-      ;; TODO this will no longer work with block fields
-      (if (eqv? 'is-set? (car elem))
-	  `(,is-set?
-	    ((,mod-get-node-instance instance-id)
-	     (,get-subnode
-	      parent-node
-	      (quote ,(string->symbol
-		       (string-drop (symbol->string (cadr elem))
-				    1))))))
+      (if (memv (car elem) '(is-set?))
+	  (transform-compose-expr-conditional elem mdconfig field-indices)
 	  (transform-compose-expr elem mdconfig field-indices)))
      (else elem)))
 
   ;;; Transform an output field config expression into an actual resolver
   ;;; procedure body.
   (define (transform-compose-expr expr mdconfig #!optional field-indices)
+    ;; TODO bad naming for block fields, instance id = row,
+    ;; parent-node = block inst
     (eval (append (list 'lambda '(instance-id parent-node md-symbols config)
 			(if (pair? expr)
 			    (map (lambda (elem)
@@ -849,84 +832,6 @@
 		       (list onode #f md-symbols)))
 		 (list onode #f md-symbols))))))
 
-  ;; ;; TODO obsolete
-  ;; ;;; Helper for resize-block-instances
-  ;; ;;; Takes a list of ifield instances and splits it into chunks of
-  ;; ;;; `chunk-size`
-  ;; (define (make-instance-chunks inode-cmd-config inode-instances chunk-size)
-  ;;   (letrec*
-  ;; 	((use-last-set? (memq 'use_last_set
-  ;; 			      (command-flags inode-cmd-config)))
-  ;; 	 (get-last-set
-  ;; 	  (lambda (instances previous-last-set)
-  ;; 	    (let ((last-set
-  ;; 		   (find (lambda (instance)
-  ;; 			   (not (null? (inode-instance-val instance))))
-  ;; 			 (reverse instances))))
-  ;; 	      (if last-set last-set previous-last-set))))
-  ;; 	 (make-chunks
-  ;; 	  (lambda (instances last-set)
-  ;; 	    (if (null-list? instances)
-  ;; 		'()
-  ;; 		(let* ((next-chunk (if (< (length instances) chunk-size)
-  ;; 				       instances
-  ;; 				       (take instances chunk-size)))
-  ;; 		       (actual-chunk-size (length next-chunk)))
-  ;; 		  (cons (zip (iota chunk-size)
-  ;; 			     (append (if (and use-last-set?
-  ;; 					      (null? (inode-instance-val
-  ;; 						      (car next-chunk))))
-  ;; 					 (cons last-set (cdr next-chunk))
-  ;; 					 next-chunk)
-  ;; 				     (make-list (- chunk-size actual-chunk-size)
-  ;; 						(make-inode-instance))))
-  ;; 			(make-chunks (drop instances (length next-chunk))
-  ;; 				     (get-last-set next-chunk last-set))))))))
-  ;;     (make-chunks inode-instances (make-inode-instance))))
-
-  ;;; Resize instances of the given `iblock` to `size` by merging all
-  ;;; instances according to `order`, then splitting into chunks. `order`
-  ;;; must be a simple list of instance IDs.
-  ;; (define (resize-block-instances iblock size order config)
-  ;;   (let* ((field-ids (config-get-subnode-ids (inode-config-id iblock)
-  ;; 					      (config-itree config)))
-  ;; 	   (sorted-instances (map (lambda (pos)
-  ;; 				    ((mod-get-node-instance pos) iblock))
-  ;; 				  order))
-  ;; 	   (merged-fields
-  ;; 	    (map (lambda (field-id)
-  ;; 		   (list field-id
-  ;; 			 (concatenate
-  ;; 			  (map (lambda (block-instance)
-  ;; 				 (map cadr (inode-instances
-  ;; 					    (get-subnode block-instance
-  ;; 							 field-id))))
-  ;; 			       sorted-instances))))
-  ;; 		 field-ids))
-  ;; 	   (split-fields
-  ;; 	    (map (lambda (field)
-  ;; 		   (list (car field)
-  ;; 			 (make-instance-chunks
-  ;; 			  (config-get-inode-source-command (car field)
-  ;; 							   config)
-  ;; 			  (cadr field)
-  ;; 			  size)))
-  ;; 		 merged-fields)))
-  ;;     (make-inode
-  ;;      config-id: (inode-config-id iblock)
-  ;;      instances:
-  ;;      (map (lambda (pos)
-  ;; 	      (list pos (make-inode-instance
-  ;; 			 val:
-  ;; 			 (map (lambda (id)
-  ;; 				(make-inode
-  ;; 				 config-id: id
-  ;; 				 instances:
-  ;; 				 (list-ref (car (alist-ref id split-fields))
-  ;; 					   pos)))
-  ;; 			      field-ids))))
-  ;; 	    (iota (length (cadar split-fields)))))))
-
   ;;; Helper for `split-block-instance-contents`. Backtrace on `previous-chunk`
   ;;; to replace values in the first row of `current-chunk` with the last set
   ;;; value as specified by `backtrace-targets`.
@@ -1003,38 +908,6 @@
 			   (car order-row)))
 		   (repeat-block-row-values (cddadr order))))))))
 
-  ;; ;;; Generate an order inode corresponding to a resized igroup.
-  ;; (define (generate-order group-id block-size length config)
-  ;;   (let ((order-id (symbol-append group-id '_ORDER)))
-  ;;     (make-inode
-  ;;      config-id: order-id
-  ;;      instances:
-  ;;      `((0 ,(make-inode-instance
-  ;; 	      val: (cons (make-inode
-  ;; 			  config-id: (symbol-append group-id '_LENGTH)
-  ;; 			  instances: (map (lambda (id)
-  ;; 					    (list id (make-inode-instance
-  ;; 						      val: block-size)))
-  ;; 					  (iota length)))
-  ;; 			 (map (lambda (id)
-  ;; 				(make-inode
-  ;; 				 config-id: id
-  ;; 				 instances:
-  ;; 				 (map (lambda (id)
-  ;; 					(list id (make-inode-instance val: id)))
-  ;; 				      (iota length))))
-  ;; 			      (config-get-subnode-ids
-  ;; 			       order-id (config-itree config))))))))))
-
-  ;; ;;; Get all values of a block field node. This uses eval-field and transforms
-  ;; ;;; results accordingly.
-  ;; (define (get-column-values inode config)
-  ;;   (let ((command-cfg (config-get-inode-source-command
-  ;; 			(inode-config-id inode) config)))
-  ;;     (map (lambda (instance-id)
-  ;; 	     (eval-field instance-id inode command-cfg))
-  ;; 	   (map car (inode-instances inode)))))
-
   ;; TODO must work for unordered groups as well
   ;;; Resize all non-order blocks in the given igroup instance to
   ;;; `size`, and emit a new igroup instance with a new order.
@@ -1062,7 +935,8 @@
 		   (append '(0 #f)
 			   (map (lambda (pos)
 				  (cons size
-					(make-list (length block-subnode-ids)
+					(make-list (sub1 (length
+							  block-subnode-ids))
 						   pos)))
 				(iota (length (cdar resized-blocks)))))))))
       (append (list (car parent-inode-instance) #f)
@@ -1131,21 +1005,18 @@
   ;;; by an oblock field.
   (define (make-pseudo-block-instances parent sources
 				       unique-order-combinations)
-    (letrec
-	((make-subnode-list
-	  (lambda (sources order-pos)
-	    (if (null-list? order-pos)
-		'()
-		(append (cddr (inode-instance-ref
-			       (car order-pos)
-			       (get-subnode parent (car sources))))
-			(make-subnode-list (cdr sources) (cdr order-pos)))))))
+    (let ((make-subnode-list
+	   (lambda (order-pos)
+	     (map concatenate
+		  (apply zip (map (lambda (order-field source)
+				    (cddr (inode-instance-ref
+					   order-field
+					   (get-subnode parent source))))
+				  order-pos sources))))))
       (map (lambda (order-pos)
-	     ;; (make-inode-instance val: (make-subnode-list sources order-pos))
-	     ;; TODO this is incorrect, of course
-	     (append (list 0 #f)
-		     (make-subnode-list sources order-pos)))
-	   (map cadr unique-order-combinations))))
+	     (append (list (car order-pos) #f)
+		     (make-subnode-list (cadr order-pos))))
+	   unique-order-combinations)))
 
   ;;; Helper for make-oblock. Resolve the oblock node value.
   ;;; Returns a list containing the oblock in car and updated origin in cadr.
@@ -1163,14 +1034,24 @@
 		  (map-in-order
 		   (lambda (field-prototype)
 		     (let ((result ((onode-fn field-prototype)
-				    field-prototype block-instance row-pos
+				    field-prototype
+				    block-instance row-pos
 				    config origin md-symbols)))
 		       (set! origin (cadr result))
 		       (onode-val (car result))))
 		   field-prototypes))
-		(iota ((o length cdr car cddr) block-instance))))
+		(iota (length (cddr block-instance)))))
 	     iblock-instances)))
       (list final-result origin)))
+
+  ;;; Helper for `make-oblock`.
+  ;;; Sort a list of oblock source node IDs to match the order in which the
+  ;;; module configuration provides them.
+  (define (order-oblock-sources sources parent-node-id mdconf)
+    (filter-map (lambda (subnode-id)
+		  (and (memv subnode-id sources)
+		       subnode-id))
+		(config-get-subnode-ids parent-node-id (config-itree mdconf))))
 
   ;;; Oblock compilation works as follows:
   ;;; 1. The parent inode instance contents are resized if necessary, and a new
@@ -1190,17 +1071,13 @@
     (let* ((parent-inode-id (car (config-get-node-ancestors-ids
 				  (car from) (config-itree proto-config))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
+	   (source-block-ids (order-oblock-sources from parent-inode-id
+						   proto-config))
 	   ;; TODO repeat vs static
 	   (field-prototypes (map (lambda (node)
-				    ;; (display from)
-				    ;; (newline)
-				    ;; (display (cdr node))
-				    ;; (newline)
-				    ;; (display (append (list proto-config from)
-				    ;; 		     (cdr node)))
-				    ;; (newline)
 				    (apply make-oblock-rowfield
-					   (append (list proto-config from)
+					   (append (list proto-config
+							 source-block-ids)
 						   (cdr node))))
 				  nodes)))
       (make-onode
@@ -1212,11 +1089,12 @@
 				parent-inode))
 		    (order-alist
 		     (make-order-alist (get-subnode parent order-id)
-				       from config))
+				       source-block-ids config))
 		    (unique-order-combinations (delete-duplicates order-alist))
 		    (result
 		     (resolve-oblock (make-pseudo-block-instances
-				      parent from unique-order-combinations)
+				      parent source-block-ids
+				      unique-order-combinations)
 				     field-prototypes config current-org
 				     md-symbols)))
 	       (list (make-onode type: 'block
@@ -1264,8 +1142,6 @@
 		      otree
 		      ;; TODO currently assuming there's only one instance, but
 		      ;;      actually must be done for every instance
-		      ;; (car (alist-ref 0 (inode-instances
-		      ;; 			 (get-subnode parent-inode from))))
 		      (inode-instance-ref 0 (get-subnode parent-inode from))
 		      config current-org md-symbols))
 		    (subtree-size (apply + (map onode-size

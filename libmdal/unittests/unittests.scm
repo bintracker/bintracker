@@ -641,10 +641,10 @@
 		(2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
 		(3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
 	   (PATTERNS_ORDER (0 #f
-			      (8 0 0 0 0)
-			      (8 1 1 1 1)
-			      (8 2 2 2 2)
-			      (8 3 3 3 3))))
+			      (8 0 0 0)
+			      (8 1 1 1)
+			      (8 2 2 2)
+			      (8 3 3 3))))
        (resize-blocks
 	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
 	'PATTERNS 8 my-cfg))
@@ -659,17 +659,17 @@
 	'(CH1 CH2)
 	my-cfg))
 
- ;; (test "make-ofield"
- ;;       (list (int->bytes (quotient 1779661 120) 2 'little-endian)
- ;; 	     (list 0 0))
- ;;       (let ((my-onode1 (make-ofield my-cfg "" bytes: 2
- ;; 				     compose: '(quotient 1779661 ?BPM)))
- ;; 	     (my-onode2 (make-ofield my-cfg "" bytes: 2
- ;; 				     compose: '(- $my-sym 8))))
- ;; 	 (list (onode-val (car ((onode-fn my-onode1) my-onode1
- ;; 				my-parent-node my-cfg 0 '())))
- ;; 	       (onode-val (car ((onode-fn my-onode2) my-onode2
- ;; 				my-parent-node my-cfg 0 '((my-sym 8))))))))
+ (test "make-ofield"
+       (list (int->bytes (quotient 1779661 120) 2 'little-endian)
+ 	     (list 0 0))
+       (let ((my-onode1 (make-ofield my-cfg "" "" bytes: 2
+ 				     compose: '(quotient 1779661 ?BPM)))
+ 	     (my-onode2 (make-ofield my-cfg "" "" bytes: 2
+ 				     compose: '(- $my-sym 8))))
+ 	 (list (onode-val (car ((onode-fn my-onode1) my-onode1
+ 				my-parent-node my-cfg 0 '())))
+ 	       (onode-val (car ((onode-fn my-onode2) my-onode2
+ 	       			my-parent-node my-cfg 0 '((my-sym 8))))))))
 
  (test "make-osymbol"
        8
@@ -677,6 +677,10 @@
  	 (car (alist-ref 'my-sym
  			 (third ((onode-fn my-onode) my-onode my-parent-node
  				 my-cfg 8 '()))))))
+
+ (test "order-oblock-sources"
+       '(DRUMS CH1)
+       (order-oblock-sources '(CH1 DRUMS) 'PATTERNS my-cfg))
  )
 
 (test-group
