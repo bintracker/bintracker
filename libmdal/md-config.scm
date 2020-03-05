@@ -87,7 +87,7 @@
     (alist->hash-table
      (append (map (lambda (id)
 		    (list id (make-command type: 'uint bits: 16
-					   flags: '(use_last_set))))
+					   flags: '(use-last-set))))
 		  (filter (lambda (id)
 			    (string-contains (symbol->string id) "_LENGTH"))
 			  (flatten itree)))
@@ -97,7 +97,7 @@
 					   (string->symbol
 					    (substring/shared
   					     (symbol->string id) 2))
-  					   flags: '(use_last_set))))
+  					   flags: '(use-last-set))))
   		  (filter (lambda (id)
   			    (string-prefix? "R_" (symbol->string id)))
   			  (flatten itree))))))
@@ -605,7 +605,7 @@
     (let ((raw-val (block-field-ref block-instance row field-index)))
       (eval-effective-field-val
        (if (null? raw-val)
-	   (if (command-has-flag? command-config 'use_last_set)
+	   (if (command-has-flag? command-config 'use-last-set)
 	       (let ((last-set (backtrace-block-fields block-instance
 						       row field-index)))
 		 (or last-set (command-default command-config)))
@@ -840,7 +840,7 @@
 	  (map (lambda (field-id)
 		 (command-has-flag? (config-get-inode-source-command
 				     field-id mdconfig)
-				    'use_last_set))
+				    'use-last-set))
 	       (config-get-subnode-ids block-id (config-itree mdconfig))))
 	 (make-chunks
 	  (lambda (remaining-chunk previous-chunk)

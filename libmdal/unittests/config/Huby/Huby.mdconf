@@ -6,7 +6,7 @@
 
  commands: ((command id: BPM bits: 16 type: uint default: 140)
 	    (command id: NOTE bits: 8 type: ukey
-		     flags: (enable_modifiers use_last_set is_note)
+		     flags: (enable-modifiers use-last-set is-note)
 		     keys: (make-inverse-dividers 118 8 0 -1)
 		     default: rest)
 	    (command id: DRUM type: trigger default: #f description:

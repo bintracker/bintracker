@@ -749,7 +749,7 @@
 		   (ceiling
 		    (/ (log (expt 2 (command-bits command-config)))
 		       (log (settings 'number-base))))))
-      ((key ukey) (if (memq 'is_note (command-flags command-config))
+      ((key ukey) (if (memq 'is-note (command-flags command-config))
 		      3 (apply max
 			       (map (o string-length car)
 				    (hash-table-keys
@@ -772,7 +772,7 @@
 		    ((int uint reference)
 		     (string-pad (number->string val (settings 'number-base))
 				 display-size #\0))
-		    ((key ukey) (if (memq 'is_note
+		    ((key ukey) (if (memq 'is-note
 					  (command-flags command-config))
 				    (normalize-note-name val)
 				    val))
@@ -783,7 +783,7 @@
   (define (get-field-color-tag field-id)
     (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
-      (if (memq 'is_note (command-flags command-config))
+      (if (memq 'is-note (command-flags command-config))
 	  'text-1
 	  (case (command-type command-config)
 	    ((int uint) 'text-2)
@@ -823,7 +823,7 @@
   (define (get-command-type-tag field-id)
     (let ((command-config (config-get-inode-source-command
 			   field-id (current-config))))
-      (if (memq 'is_note (command-flags command-config))
+      (if (memq 'is-note (command-flags command-config))
 	  'note
 	  (case (command-type command-config)
 	    ((int uint) 'int)
@@ -1092,7 +1092,7 @@
   (define (field-id->cursor-size field-id)
     (let ((cmd-config (config-get-inode-source-command field-id
 						       (current-config))))
-      (if (memq 'is_note (command-flags cmd-config))
+      (if (memq 'is-note (command-flags cmd-config))
 	  3
 	  (if (memq (command-type cmd-config)
 		    '(key ukey))
@@ -1771,7 +1771,7 @@
   (define (blockview-dispatch-entry-event b keysym)
     (unless (null? (blockview-get-current-field-value b))
       (let ((cmd (blockview-get-current-field-command b)))
-	(if (command-has-flag? cmd 'is_note)
+	(if (command-has-flag? cmd 'is-note)
 	    (blockview-enter-note b keysym)
 	    (case (command-type cmd)
 	      ((trigger) (blockview-enter-trigger b))

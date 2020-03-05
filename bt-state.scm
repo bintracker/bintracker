@@ -192,7 +192,7 @@
       (set-state! 'active-md-command-info
 		  (string-append
 		   (symbol->string field-id) ": "
-		   (if (command-has-flag? command 'is_note)
+		   (if (command-has-flag? command 'is-note)
 		       (string-append
 			(normalize-note-name
 			 (lowest-note (command-keys command)))
