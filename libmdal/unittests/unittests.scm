@@ -458,17 +458,17 @@
  				 ((node-path "0/PATTERNS/0")
  				  (mdmod-global-node my-mod))))
 
- (test "mod-split-node-list-at"
-       (list (list ((node-path "0/PATTERNS/0/DRUMS")
- 		    (mdmod-global-node my-mod)))
- 	     (list ((node-path "0/PATTERNS/0/CH1")
- 		    (mdmod-global-node my-mod))
- 		   ((node-path "0/PATTERNS/0/CH2")
- 		    (mdmod-global-node my-mod))
- 		   ((node-path "0/PATTERNS/0/PATTERNS_ORDER")
- 		    (mdmod-global-node my-mod))))
-       (mod-split-node-list-at 'CH1 (cddr ((node-path "0/PATTERNS/0")
- 					   (mdmod-global-node my-mod)))))
+ ;; (test "mod-split-node-list-at"
+ ;;       (list (list ((node-path "0/PATTERNS/0/DRUMS")
+ ;; 		    (mdmod-global-node my-mod)))
+ ;; 	     (list ((node-path "0/PATTERNS/0/CH1")
+ ;; 		    (mdmod-global-node my-mod))
+ ;; 		   ((node-path "0/PATTERNS/0/CH2")
+ ;; 		    (mdmod-global-node my-mod))
+ ;; 		   ((node-path "0/PATTERNS/0/PATTERNS_ORDER")
+ ;; 		    (mdmod-global-node my-mod))))
+ ;;       (mod-split-node-list-at 'CH1 (cddr ((node-path "0/PATTERNS/0")
+ ;; 					   (mdmod-global-node my-mod)))))
 
   ;; (test "mod-split-instances-at"
   ;;       (list (zip (iota 5)

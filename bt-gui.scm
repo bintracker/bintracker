@@ -648,22 +648,20 @@
   ;;; if the user would expect to be all of the actions to be reversed at once
   ;;; on Undo.
 
-  ;;; Apply an edit action to the current module.
   ;; TODO only renumber if node-path names a field node.
+  ;;; Apply an edit action to the current module.
   (define (apply-edit! action)
-    (case (car action)
-      ((set) (node-set! ((node-path (cadr action))
-			 (mdmod-global-node (current-mod)))
-			(third action)))
-      ((remove) (node-remove! ((node-path (cadr action))
-			       (mdmod-global-node (current-mod)))
-			      (third action)
-			      #t))
-      ((insert) (node-insert! ((node-path (cadr action))
-			       (mdmod-global-node (current-mod)))
-			      (third action)
-			      #t))
-      ((compound) (for-each apply-edit! (cdr action)))))
+    (if (eqv? 'compound (car action))
+	(for-each apply-edit! (cdr action))
+	((case (car action)
+	   ((set) node-set!)
+	   ((remove) node-remove!)
+	   ((insert) node-insert!)
+	   (else (warning (string-append "Unsupported edit action \""
+					 (->string (car action))
+					 "\""))))
+	 ((node-path (cadr action)) (mdmod-global-node (current-mod)))
+	 (third action) (fourth action) (current-config))))
 
   ;;; Undo the latest edit action, by retrieving the latest action from the undo
   ;;; stack, applying it, updating the redo stack, and refreshing the display.
@@ -1419,12 +1417,10 @@
 			    (blockview-block-ids b)))))
 
   ;;; Return the MDAL node path string of the field currently under cursor.
-  (define (blockview-get-current-field-path b)
+  (define (blockview-get-current-block-instance-path b)
     (string-append (get-current-instance-path (blockview-group-id b))
 		   (symbol->string (blockview-get-current-block-id b))
-		   "/" (->string (blockview-get-current-block-instance b))
-		   "/" (symbol->string (blockview-get-current-field-id b))
-		   "/"))
+		   "/" (->string (blockview-get-current-block-instance b))))
 
   ;;; Return the index of the the current field node ID in the blockview's list
   ;;; of field IDs. The result can be used to retrieve a field instance value
@@ -1677,7 +1673,8 @@
 						(list-ref row field-index))
 					      (blockview-get-current-chunk b)))
 				 (+ 1 current-instance)))
-	     (action (list 'set (blockview-get-current-field-path b)
+	     (action (list 'set (blockview-get-current-block-instance-path b)
+			   (blockview-get-current-field-id b)
 			   (map (lambda (i val)
 				  (list i val))
 				(iota (length field-values)
@@ -1702,7 +1699,8 @@
 					       (blockview-get-current-chunk b))
 					  current-instance))
 			    1))
-	     (action (list 'set (blockview-get-current-field-path b)
+	     (action (list 'set (blockview-get-current-block-instance-path b)
+			   (blockview-get-current-field-id b)
 			   (cons (list current-instance '())
 				 (map (lambda (i val)
 					(list i val))
@@ -1720,7 +1718,8 @@
   ;;; position to `new-value`, and update the display and the undo/redo stacks
   ;;; accordingly.
   (define (blockview-edit-current-cell b new-value)
-    (let ((action `(set ,(blockview-get-current-field-path b)
+    (let ((action `(set ,(blockview-get-current-block-instance-path b)
+			,(blockview-get-current-field-id b)
 			((,(blockview-get-current-field-instance b)
 			  ,new-value)))))
       (push-undo (make-reverse-action action))
@@ -1740,7 +1739,7 @@
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
   (define (blockview-enter-trigger b)
-    (blockview-edit-current-cell b "on"))
+    (blockview-edit-current-cell b #t))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a key/ukey command.

@@ -296,16 +296,25 @@
   ;;; TODO preserve instance names
   (define (make-reverse-action action)
     (case (car action)
-      ((set) (list 'set (cadr action)
-		   (map (lambda (id+val)
-			  (list (car id+val)
-				(inode-instance-val
-				 ((node-instance-path
-				   (string-append (cadr action)
-						  (->string (car id+val))
-						  "/"))
-				  (mdmod-global-node (current-mod))))))
-			(third action))))
+      ((set)
+       (list 'set (cadr action) (third action)
+	     (map (lambda (id+val)
+		    (list (car id+val)
+			  (if (eqv? 'block (config-get-parent-node-type
+					    (third action)
+					    (current-config)))
+			      (mod-get-block-field-value
+			       ((node-path (cadr action))
+				(mdmod-global-node (current-mod)))
+			       (car id+val)
+			       (third action)
+			       (current-config))
+			      ;; TODO this is wrong
+			      (cddr ((node-path
+			  	      (string-append (cadr action)
+			  			     (->string (car id+val))))
+			  	     (mdmod-global-node (current-mod)))))))
+		  (fourth action))))
       ((remove) (list 'insert))
       ((insert) (list 'remove))
       ((compound) (list 'compound (map make-reverse-action

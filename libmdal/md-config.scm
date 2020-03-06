@@ -215,6 +215,14 @@
 			   (member inode-id (flatten node)))
 			 (cadar itree))))))
 
+  ;;; Return the inode type of the parent node of `inode-id`.
+  (define (config-get-parent-node-type inode-id mdconf)
+    (and (not (eqv? inode-id 'GLOBAL))
+	 (inode-config-type
+	  (config-inode-ref (config-get-parent-node-id inode-id
+						       (config-itree mdconf))
+			    mdconf))))
+
   ;;; Return the list of ancestor IDs of the given inode in the given inode tree
   ;;; The returned list is sorted from the closest ancestor to the most distant.
   (define  (config-get-node-ancestors-ids inode-id itree)
