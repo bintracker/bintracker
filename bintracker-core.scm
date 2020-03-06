@@ -12,7 +12,7 @@
 	  (chicken file)
 	  srfi-1 srfi-13 srfi-69 pstk typed-records matchable list-utils
 	  simple-exceptions mdal
-	  bt-state bt-types bt-gui)
+	  bt-state bt-types bt-db bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-gui (chicken bitwise)

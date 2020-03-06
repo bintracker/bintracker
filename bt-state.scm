@@ -14,7 +14,7 @@
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
 	  typed-records simple-exceptions pstk list-utils stack
-	  bt-types mdal)
+	  bt-types bt-db mdal)
 
   (define *bintracker-version* "0.2.0")
   (define *bintracker-state* (make-app-state))

@@ -14,7 +14,7 @@
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
 	  typed-records simple-exceptions pstk stack
-	  bt-state bt-types mdal)
+	  bt-state bt-types bt-db mdal)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## PS/Tk Initialization

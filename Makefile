@@ -14,6 +14,7 @@ else
  head -n 1 chicken-repository-path)
 endif
 ALL_SOURCE_FILES = bt-types.scm bt-state.scm bt-gui.scm bintracker-core.scm\
+ bt-db.scm\
  libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-config.scm\
  libmdal/md-command.scm libmdal/utils/md-note-table.scm libmdal/md-types.scm\
  libmdal/md-helpers.scm libmdal/mdal.scm
@@ -24,7 +25,7 @@ endif
 
 # build bintracker-core
 bintracker-core.so: bintracker-core.scm bt-state.import.so bt-types.import.so\
-	bt-gui.import.so libmdal/mdal.import.so $(DO_TAGS)
+	bt-gui.import.so bt-db.import.so libmdal/mdal.import.so $(DO_TAGS)
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bintracker-core.scm -j bintracker-core
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
@@ -35,14 +36,22 @@ bt-types.so: bt-types.scm
 bt-types.import.so: bt-types.so
 	$(CSC) $(IMPORTFLAGS) bt-types.import.scm
 
-bt-state.so: bt-state.scm bt-types.import.so libmdal/mdal.import.so
+bt-state.so: bt-state.scm bt-types.import.so bt-db.import.so\
+ libmdal/mdal.import.so
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-state.scm -j bt-state
 
 bt-state.import.so: bt-state.so
 	$(CSC) $(IMPORTFLAGS) bt-state.import.scm
 
-bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so
+bt-db.so: bt-db.scm libmdal/mdal.import.so
+	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
+	$(CSC) $(LIBFLAGS) bt-db.scm -j bt-db
+
+bt-db.import.so: bt-db.so
+	$(CSC) $(IMPORTFLAGS) bt-db.import.scm
+
+bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so bt-db.import.so
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-gui.scm -j bt-gui
 
