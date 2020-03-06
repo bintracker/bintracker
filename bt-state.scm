@@ -293,32 +293,49 @@
 
   ;;; Generate an action specification that when applied, will revert the edit
   ;;; that results from the given edit `action` specification.
-  ;;; TODO preserve instance names
   (define (make-reverse-action action)
-    (case (car action)
-      ((set)
-       (list 'set (cadr action) (third action)
-	     (map (lambda (id+val)
-		    (list (car id+val)
-			  (if (eqv? 'block (config-get-parent-node-type
+    (if (eqv? 'compound (car action))
+	(list 'compound (map make-reverse-action (reverse (cdr action))))
+	(if (eqv? 'block (config-get-parent-node-type (third action)
+						      (current-config)))
+	    (case (car action)
+	      ((set) (list 'set (cadr action) (third action)
+			   (map (lambda (id+val)
+				  (list (car id+val)
+					(mod-get-block-field-value
+					 ((node-path (cadr action))
+					  (mdmod-global-node (current-mod)))
+					 (car id+val)
+					 (third action)
+					 (current-config))))
+				(fourth action))))
+	      ((remove) (list 'insert (cadr action) (third action)
+			      (map (lambda (id+val)
+				     (list (car id+val)
+					   (mod-get-block-field-value
+					    ((node-path (cadr action))
+					     (mdmod-global-node (current-mod)))
+					    (car id+val)
 					    (third action)
-					    (current-config)))
-			      (mod-get-block-field-value
-			       ((node-path (cadr action))
-				(mdmod-global-node (current-mod)))
-			       (car id+val)
-			       (third action)
-			       (current-config))
-			      ;; TODO this is wrong
-			      (cddr ((node-path
-			  	      (string-append (cadr action)
-			  			     (->string (car id+val))))
-			  	     (mdmod-global-node (current-mod)))))))
-		  (fourth action))))
-      ((remove) (list 'insert))
-      ((insert) (list 'remove))
-      ((compound) (list 'compound (map make-reverse-action
-				       (reverse (cdr action)))))))
+					    (current-config))))
+				   (fourth action))))
+	      ((insert) (list 'remove (cadr action) (third action)
+			      (map car (fourth action)))))
+	    (case (car action)
+	      ((set)
+	       (list 'set (cadr action) (third action)
+		     (map (lambda (id+val)
+			    (list (car id+val)
+				  (cdr ((node-path
+			  		 (string-append
+					  (cadr action) "/"
+					  (symbol->string (third action))
+			  		  (->string (car id+val))))
+			  		(mdmod-global-node (current-mod))))))
+			  (fourth action))))
+	      ((remove) (list 'insert (cadr action) (third action)))
+	      ((insert) (list 'remove (cadr action) (third action)
+			      (map car (fourth action))))))))
 
   ;;; Push `action` to the journal's undo stack. If the stack is full, half of
   ;;; the old entries are dropped.
