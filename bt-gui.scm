@@ -541,7 +541,7 @@
     (console 'configure 'yscrollcommand: `(,console-yscroll set))
     (console 'insert 'end
 	     (string-append "Bintracker " *bintracker-version*
-			    "\n(c) 2019 utz/irrlicht project\n"
+			    "\n(c) 2019-2020 utz/irrlicht project\n"
 			    "Ready.\n"))
     (tk/bind* console '<ButtonPress-1>
 	      (lambda () (switch-ui-zone-focus 'console))))
