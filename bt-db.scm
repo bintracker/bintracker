@@ -6,6 +6,26 @@
 ;;; # Bintracker Database Interface
 ;; -----------------------------------------------------------------------------
 
+;;; The Bintracker Database holds information concerning an existing
+;;; installation of Bintracker. The database implementation is SQLite3.
+;;; The database is automatically created and populated on the first run of a
+;;; new installation.
+;;;
+;;; ## Default Tables
+;;;
+;;; ### configs
+;;;
+;;; The `configs` table contains information about the installed MDAL
+;;; configurations. It contains the following columns:
+;;;
+;;; - `id` - configuration name
+;;; - `version` - plugin version
+;;; - `hash` - MD5 hash of the .mdconf file
+;;; - `platform` - target platform
+;;; - `description` - configuration description
+;;;
+;;; The `configs` table is automatically updated during startup of Bintracker.
+
 (module bt-db
     *
 
@@ -77,7 +97,7 @@
 			 "', '" (car info)
   			 "', '" (cadr info)
 			 "', '" (third info)
-  			 "', '" (fourth info) "');"))))))
+  			 "', '" (or (fourth info) "") "');"))))))
 
   ;;; Remove the MDAL configuration named `mdconf-id` from the Bintracker
   ;;; database.
