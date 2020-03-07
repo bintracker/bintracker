@@ -15,11 +15,13 @@
 
   (define btdb #f)
 
+  ;;; Open the Bintracker database, and point the symbol `btdb` to it.
   (define (btdb-init!)
     (unless btdb
       (set! btdb (open-database "bt.db"))
       (btdb-update!)))
 
+  ;;; Close the Bintracker database.
   (define (btdb-close!)
     (unless (database-closed? btdb)
       (close-database btdb)
@@ -65,6 +67,7 @@
 		 (target-platform-id (config-target mdconf))
 		 (config-description mdconf)))))
 
+  ;;; Add the MDAL configuration named `mdconf-id` to the Bintracker database.
   (define (btdb-add-config! mdconf-id)
     (let ((info (gather-config-info mdconf-id)))
       (when info
@@ -76,10 +79,14 @@
 			 "', '" (third info)
   			 "', '" (fourth info) "');"))))))
 
-  ;; TODO implement
+  ;;; Remove the MDAL configuration named `mdconf-id` from the Bintracker
+  ;;; database.
   (define (btdb-remove-config! mdconf-id)
-    '())
+    (exec (sql btdb (string-append "DELETE FROM configs WHERE id='"
+				   mdconf-id "';"))))
 
+  ;;; Update the MDAL configuration named `mdconf-id` in the Bintracker
+  ;;; database.
   (define (btdb-update-config! mdconf-id)
     (let ((info (gather-config-info mdconf-id)))
       (exec (sql btdb (string-append "UPDATE configs SET "
@@ -89,6 +96,10 @@
 				     "', description='" (fourth info)
 				     "' WHERE id='" mdconf-id "';")))))
 
+  ;;; Scan the MDAL config directory, and update the Bintracker database
+  ;;; accordingly. Configurations no longer found in the config directory are
+  ;;; deleted from the database, newly found configurations are added, and
+  ;;; entries for modified configurations are updated.
   (define (btdb-scan-mdal-configs!)
     (let ((config-dirs (get-config-dir-subdirs)))
       (for-each (lambda (db-entry)
