@@ -11,12 +11,13 @@
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  (chicken file)
 	  srfi-1 srfi-13 srfi-69 pstk typed-records matchable list-utils
-	  simple-exceptions mdal
+	  sql-de-lite simple-exceptions mdal
 	  bt-state bt-types bt-db bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
-  (reexport mdal pstk bt-types bt-state bt-gui (chicken bitwise)
-	    srfi-1 srfi-13 srfi-69 list-utils simple-exceptions)
+  (reexport mdal pstk bt-types bt-state bt-db bt-gui (chicken bitwise)
+	    srfi-1 srfi-13 srfi-69 list-utils simple-exceptions
+	    (only sql-de-lite exec sql))
 
 
   ;; ---------------------------------------------------------------------------
@@ -48,6 +49,8 @@
 
   ;;; Shut down the running application.
   (define (exit-bintracker)
+    ;; TODO must not close db if not exiting
+    (btdb-close!)
     (do-proc-with-exit-dialogue "exit" tk-end))
 
   (define on-close-file-hooks
@@ -228,7 +231,7 @@
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
-    (list load-config update-window-title!
+    (list load-config btdb-init! update-window-title!
 	  update-ttk-style update-key-bindings! init-main-menu
 	  (lambda ()
 	    (when (settings 'show-menu)
