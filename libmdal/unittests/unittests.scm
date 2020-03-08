@@ -564,10 +564,10 @@
 		   global-node:
 		   `(GLOBAL
 		     (0 #f
-			(AUTHOR (0 #f "unknown"))
-			(TITLE (0 #f "untitled"))
-			(LICENSE (0 #f "All Rights Reserved"))
-			(BPM (0 #f 140))
+			(AUTHOR (0 #f . "unknown"))
+			(TITLE (0 #f . "untitled"))
+			(LICENSE (0 #f . "All Rights Reserved"))
+			(BPM (0 #f . 140))
 			(PATTERNS
 			 (0 #f
 			    (DRUMS ,(append '(0 #f) (make-list 16 '(()))))

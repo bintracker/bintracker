@@ -248,8 +248,8 @@
     (append '(0 #f)
 	    (case (inode-config-type (car (hash-table-ref (config-inodes mdconf)
 							  node-id)))
-	      ((field) (list (command-default (config-get-inode-source-command
-					       node-id mdconf))))
+	      ((field) (command-default (config-get-inode-source-command
+					 node-id mdconf)))
 	      ((block)
 	       (if (symbol-contains node-id "_ORDER")
 		   (list (cons block-length
