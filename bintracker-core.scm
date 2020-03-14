@@ -96,6 +96,22 @@
 		 (set-state! 'current-file filename)
 		 (execute-hooks after-load-file-hooks))))))
 
+  (define (create-new-module mdconf-id)
+    (close-file)
+    (set-state! 'current-mdmod (generate-new-mdmod
+  				"Huby"
+  				(file->config "libmdal/unittests/config/"
+  					      "Huby" "libmdal/")
+  				16))
+    (set-state! 'modified #t)
+    (execute-hooks after-load-file-hooks))
+
+  ;; TODO abort when user aborts closing of current workfile
+  ;;; Create a new module. Opens a dialog for users to chose a target
+  ;;; configuration.
+  (define (new-file)
+    (mdal-config-selector create-new-module))
+
   (define on-save-file-hooks
     (list (lambda () (mdmod->file (current-mod) (state 'current-file)))
 	  (lambda () (set-state! 'modified #f))
@@ -159,7 +175,7 @@
      'menu (construct-menu
 	    (map (lambda (item) (cons 'submenu item))
 		 `((file "File" 0
-			 ((command new "New..." 0 "Ctrl+N" #f)
+			 ((command new "New..." 0 "Ctrl+N" ,new-file)
 			  (command open "Open..." 0 "Ctrl+O"
 				   ,load-file)
 			  (command save "Save" 0 "Ctrl+S" ,save-file)

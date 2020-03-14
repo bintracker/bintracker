@@ -1,6 +1,7 @@
 (keymap
  global: ((<Control-q> exit-bintracker)
 	  (<Control-w> close-file)
+	  (<Control-n> new-file)
 	  (<Control-o> load-file)
 	  (<Control-s> save-file)
 	  (<Control-S> save-file-as)

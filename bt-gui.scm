@@ -47,7 +47,9 @@
 					(if (state 'modified)
 					    "*" "")
 					" - Bintracker")
-			 "Bintracker")))
+			 (if (current-mod)
+			     "unknown* - Bintracker"
+			     "Bintracker"))))
 
   ;;; Thread-safe version of tk/bind. Wraps the procedure `proc` in a thunk
   ;;; that is safe to execute as a callback from Tk.
@@ -74,7 +76,11 @@
   ;;; ## Dialogues
   ;; ---------------------------------------------------------------------------
 
-  ;;; Various general-purpose dialogue procedures.
+  ;;; This section provides abstractions over Tk dialogues and pop-ups. This
+  ;;; includes both native Tk widgets and Bintracker-specific metawidgets.
+  ;;; `tk/safe-dialogue` and `custom-dialog` are potentially the most useful
+  ;;; entry points for creating native resp. custom dialogues from user code,
+  ;;; eg. when calling from a plugin.
 
   ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
   ;;; tk/get-save-file that block the main application window  while the pop-up
@@ -120,6 +126,137 @@
 					     "Save before " exit-or-closing
 					     "?")
 		     type: 'yesnocancel))
+
+  ;; TODO instead of destroying, should we maybe just tk/forget?
+  ;;; Create a custom dialogue user dialogue popup. The dialogue widget sets up
+  ;;; a default widget layout with `Cancel` and `Confirm` buttons and
+  ;;; corresponding key handlers for `<Escape>` and `<Return>`.
+  ;;;
+  ;;; Returns a closure c, which can be used as follows:
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'add 'widget id widget-specification)
+  ;;; ```
+  ;;; Add a widget named `id`, where `widget-specification` is the list of
+  ;;; widget arguments that will be passed to Tk as the remaining arguments of
+  ;;; a call to `(parent 'create-widget ...)`.
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'add 'binding event p)
+  ;;; ```
+  ;;; Bind the procedure `p` to the Tk event sequence specifier `Event`.
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'add 'procedure id p)
+  ;;; ```
+  ;;; Add a custom procedure ;; TODO redundant?
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'add 'finalizer p)
+  ;;; ```
+  ;;; Add the procedure `p` to the list of finalizers that will run on a
+  ;;; successful exit from the dialogue.
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'ref id)
+  ;;; ```
+  ;;; Returns the user-defined widget or procedure named `id` Use this to
+  ;;; cross-reference elements created with `(c 'add [widget|procedure])` within
+  ;;; user code.
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'destroy)
+  ;;; ```
+  ;;; Executes any user defined finalizers, then destroys the dialogue window.
+  ;;; You normally do not need to call this explicitly unless you are handling
+  ;;; exceptions.
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'show)
+  ;;; ```
+  ;;; Display the dialogue widget. Call this procedure *after* you have added
+  ;;; your widgets, bindings, procedures, and finalizers.
+  (define (make-dialogue)
+    (let* ((tl #f)
+	   (widgets '())
+	   (procedures '())
+	   (bindings '())
+	   (get-ref (lambda (id)
+		      (let ((ref (alist-ref id (append widgets procedures))))
+			(and ref (car ref)))))
+	   (extra-finalizers '())
+	   (finalize (lambda (success)
+		       (when success
+			 (for-each (lambda (x) (x)) extra-finalizers))
+		       (tk/destroy tl))))
+      (lambda args
+	(case (car args)
+	  ((show)
+	   (unless tl
+	     (set! tl (tk 'create-widget 'toplevel))
+	     (set! widgets `((content ,(tl 'create-widget 'frame))
+			     (footer ,(tl 'create-widget 'frame))))
+	     (set! widgets
+	       (append widgets
+		       `((confirm ,((get-ref 'footer) 'create-widget
+				    'button text: "Confirm"
+				    command: (lambda () (finalize #t))))
+			 (cancel ,((get-ref 'footer) 'create-widget
+				   'button text: "Cancel"
+				   command: (lambda () (finalize #f)))))))
+	     (tk/bind tl '<Escape> (lambda () (finalize #f)))
+	     (tk/bind tl '<Return> (lambda () (finalize #t)))
+	     (for-each (lambda (b)
+			 (apply tk/bind (cons tl b)))
+		       bindings)
+	     (tk/pack (get-ref 'confirm) side: 'right)
+	     (tk/pack (get-ref 'cancel) side: 'right)
+	     (tk/pack (get-ref 'content) side: 'top)
+	     (tk/pack (get-ref 'footer) side: 'top)))
+	  ((add)
+	   (case (cadr args)
+	     ((binding) (set! bindings (cons (cddr args)
+					     bindings)))
+	     ((finalizer) (set! extra-finalizers
+			    (cons (caddr args) extra-finalizers)))
+	     ((widget) (let ((user-widget (apply (get-ref 'content)
+						 (cons 'create-widget
+						       (cadddr args)))))
+			 (set! widgets (cons (list (caddr args) user-widget)
+					     widgets))
+			 (tk/pack user-widget side: 'top)))
+	     ((procedure)
+	      (set! procedures (cons (caddr args) procedures)))))
+	  ((ref) (get-ref (cadr args)))
+	  ((destroy)
+	   (when tl
+	     (finalize #f)
+	     (set! tl #f)))
+	  (else (warning (string-append "Error: Unsupported dialog action"
+					(->string args))))))))
+
+  (define (mdal-config-selector callback)
+    (let ((d (make-dialogue)))
+      (d 'show)
+      (d 'add 'widget 'platform-selector '(listbox selectmode: single))
+      (d 'add 'widget 'config-selector
+	 '(treeview columns: (Name Version Platform)))
+      (for-each (lambda (p)
+		  ((d 'ref 'platform-selector) 'insert 'end p))
+		(cons "any" (btdb-list-platforms)))
+      (for-each (lambda (config)
+  		  ((d 'ref 'config-selector) 'insert '{} 'end
+  		   text: (car config)
+  		   values: (list (cadr config) (third config))))
+  		;; TODO btdb-list-configs should always return a list!
+  		(list (btdb-list-configs)))
+      (d 'add 'finalizer (lambda a
+			   (display a)
+			   (newline)
+			   (callback ((d 'ref 'config-selector)
+				      'item ((d 'ref 'config-selector) 'focus)
+				      text:))))
+      d))
 
 
   ;; ---------------------------------------------------------------------------

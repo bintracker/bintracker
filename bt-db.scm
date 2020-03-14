@@ -71,6 +71,9 @@
 					"'"))
 		     ";"))))
 
+  (define (btdb-list-platforms)
+    (exec (sql btdb "SELECT DISTINCT platform FROM configs")))
+
   ;;; Collect information on the MDAL configuration named `config-id` into a
   ;;; list, which has the form `(version hash target-platform description)`.
   ;;; Returns #f if the config is not found in the MDAL configuration directory.
