@@ -10,7 +10,7 @@
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  (chicken file)
-	  srfi-1 srfi-13 srfi-69 pstk typed-records matchable list-utils
+	  srfi-1 srfi-13 srfi-18 srfi-69 pstk typed-records matchable list-utils
 	  sql-de-lite simple-exceptions mdal
 	  bt-state bt-types bt-db bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
@@ -250,6 +250,12 @@
   ;;; ## Main Loop
   ;; ---------------------------------------------------------------------------
 
-  (tk-event-loop)
+  (let ((gui-thread (make-thread (lambda () (handle-exceptions
+						exn
+						(begin (tk-end)
+						       (raise exn))
+					      (tk-event-loop))))))
+    (thread-start! gui-thread)
+    (thread-join! gui-thread))
 
   ) ;; end module bintracker
