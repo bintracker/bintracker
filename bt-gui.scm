@@ -132,7 +132,13 @@
   ;;; a default widget layout with `Cancel` and `Confirm` buttons and
   ;;; corresponding key handlers for `<Escape>` and `<Return>`.
   ;;;
-  ;;; Returns a closure c, which can be used as follows:
+  ;;; Returns a closure *c*, which can be used as follows:
+  ;;;
+  ;;; ```Scheme
+  ;;; (c 'show)
+  ;;; ```
+  ;;; Display the dialogue widget. Call this procedure **before** you add any
+  ;;; user-defined widgets, bindings, procedures, and finalizers.
   ;;;
   ;;; ```Scheme
   ;;; (c 'add 'widget id widget-specification)
@@ -170,17 +176,10 @@
   ;;; Executes any user defined finalizers, then destroys the dialogue window.
   ;;; You normally do not need to call this explicitly unless you are handling
   ;;; exceptions.
-  ;;;
-  ;;; ```Scheme
-  ;;; (c 'show)
-  ;;; ```
-  ;;; Display the dialogue widget. Call this procedure *after* you have added
-  ;;; your widgets, bindings, procedures, and finalizers.
   (define (make-dialogue)
     (let* ((tl #f)
 	   (widgets '())
 	   (procedures '())
-	   (bindings '())
 	   (get-ref (lambda (id)
 		      (let ((ref (alist-ref id (append widgets procedures))))
 			(and ref (car ref)))))
@@ -206,17 +205,13 @@
 				   command: (lambda () (finalize #f)))))))
 	     (tk/bind tl '<Escape> (lambda () (finalize #f)))
 	     (tk/bind tl '<Return> (lambda () (finalize #t)))
-	     (for-each (lambda (b)
-			 (apply tk/bind (cons tl b)))
-		       bindings)
 	     (tk/pack (get-ref 'confirm) side: 'right)
 	     (tk/pack (get-ref 'cancel) side: 'right)
 	     (tk/pack (get-ref 'content) side: 'top)
 	     (tk/pack (get-ref 'footer) side: 'top)))
 	  ((add)
 	   (case (cadr args)
-	     ((binding) (set! bindings (cons (cddr args)
-					     bindings)))
+	     ((binding) (apply tk/bind (cons tl (cddr args))))
 	     ((finalizer) (set! extra-finalizers
 			    (cons (caddr args) extra-finalizers)))
 	     ((widget) (let ((user-widget (apply (get-ref 'content)
@@ -234,29 +229,6 @@
 	     (set! tl #f)))
 	  (else (warning (string-append "Error: Unsupported dialog action"
 					(->string args))))))))
-
-  (define (mdal-config-selector callback)
-    (let ((d (make-dialogue)))
-      (d 'show)
-      (d 'add 'widget 'platform-selector '(listbox selectmode: single))
-      (d 'add 'widget 'config-selector
-	 '(treeview columns: (Name Version Platform)))
-      (for-each (lambda (p)
-		  ((d 'ref 'platform-selector) 'insert 'end p))
-		(cons "any" (btdb-list-platforms)))
-      (for-each (lambda (config)
-  		  ((d 'ref 'config-selector) 'insert '{} 'end
-  		   text: (car config)
-  		   values: (list (cadr config) (third config))))
-  		;; TODO btdb-list-configs should always return a list!
-  		(list (btdb-list-configs)))
-      (d 'add 'finalizer (lambda a
-			   (display a)
-			   (newline)
-			   (callback ((d 'ref 'config-selector)
-				      'item ((d 'ref 'config-selector) 'focus)
-				      text:))))
-      d))
 
 
   ;; ---------------------------------------------------------------------------

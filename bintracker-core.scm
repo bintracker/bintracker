@@ -107,10 +107,27 @@
     (execute-hooks after-load-file-hooks))
 
   ;; TODO abort when user aborts closing of current workfile
-  ;;; Create a new module. Opens a dialog for users to chose a target
-  ;;; configuration.
+  ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
+  ;;; user's choice, a new MDAL module is created and displayed.
   (define (new-file)
-    (mdal-config-selector create-new-module))
+    (let ((d (make-dialogue)))
+      (d 'show)
+      (d 'add 'widget 'platform-selector '(listbox selectmode: single))
+      (d 'add 'widget 'config-selector
+	 '(treeview columns: (Name Version Platform)))
+      (for-each (lambda (p)
+		  ((d 'ref 'platform-selector) 'insert 'end p))
+		(cons "any" (btdb-list-platforms)))
+      (for-each (lambda (config)
+  		  ((d 'ref 'config-selector) 'insert '{} 'end
+  		   text: (car config)
+  		   values: (list (cadr config) (third config))))
+  		;; TODO btdb-list-configs should always return a list!
+  		(list (btdb-list-configs)))
+      (d 'add 'finalizer (lambda a
+			   (create-new-module
+			    ((d 'ref 'config-selector)
+			     'item ((d 'ref 'config-selector) 'focus)))))))
 
   (define on-save-file-hooks
     (list (lambda () (mdmod->file (current-mod) (state 'current-file)))
