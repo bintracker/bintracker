@@ -6,6 +6,7 @@ libmdal/docs/html
 libmdal/docs/generated
 tclkit/
 cfg/
+roms/
 *.swp
 *.org~
 .#*
