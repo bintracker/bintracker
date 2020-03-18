@@ -1,49 +1,66 @@
+-- This file is part of Bintracker.
+-- Copyright (c) utz/irrlicht project 2019-2020
+-- See LICENSE for license details.
+
 -- io.stdin:setvbuf'line'
 
 local listener = emu.thread()
 local started = false
-local src = [[
-   print("thread started")  -- works
-   io.flush()
 
-   local input = io.stdin:read() -- this blocks  -- which is technically fine...
-   print("got input")   -- we do get here, but only we don't choke the thread before
-   if input then
-       io.stdout:write(input)
-       io.stdout:write('\n')
-       io.flush()
-       return input
+local print_machine_info = function ()
+   print("System: ", emu.gamename())
+   print("driver: ", emu.romname())
+   print("\nMachine devices [manager:machine().devices]")
+   for k,v in pairs(manager:machine().devices) do print(k) end
+   print("\nMachine options")
+   -- appearantly this is the same as calling manager:options().entries
+   for k,v in pairs(manager:machine():options().entries) do
+      print(k, "=", v:value())
    end
+   local cpu = manager:machine().devices[":maincpu"]
+   print("\nCPU State Registers")
+   for k,v in pairs(cpu.state) do print(k) end
+   print("\nMemory layout")
+   for k,v in pairs(cpu.spaces) do print(k) end
+end
 
-   -- for line in io.stdin:lines() do
-   --    io.stdout:write(line)
-   --    io.stdout:write('\n')
-   --    io.stdout:write("done")
-   --    io.stdout:write('\n')
-   --    io.flush()
-   --    local exec_input = loadstring(line)
-   --    exec_input()
-   --    emu.pause()
-   -- end
-]]
+-- Table of remote commands that Bintracker may send. The following commands
+-- are recognized:
+-- q - Quit emulator
+-- p - Pause emulator
+-- u - Unpause emulator
+-- x argstr - eXecute argstr as code
+local remote_commands = {
+   ["i"] = print_machine_info,
+   ["q"] = function () manager:machine():exit() end,
+   ["p"] = function () emu.pause() end,
+   ["u"] = function () emu.unpause() end,
+   ["x"] = function (argstr) loadstring(argstr)() end
+}
 
+-- Attempt to destructure and run the remote command `cmd`. Takes the first
+-- letter of `cmd` as key and looks up the associated function in
+-- `remote_commands`. When successful, runs the function with the remainder of
+-- `cmd` as argument.
+local dispatch_remote_command = function(cmd)
+   print("got command: ", cmd)
+   local exec_cmd = remote_commands[string.sub(cmd, 1, 1)]
+   if exec_cmd then exec_cmd(string.sub(cmd, 2)) end
+end
 
-
+-- Register a period callback from the main emulation thread. On first run, it
+-- starts a thread that listens to stdin, and returns the received input once it
+-- receives a newline. The callback procedure attempts to run the input from the
+-- listener as a remote command, then restarts the listener thread.
 emu.register_periodic(
    function()
       if listener.busy then
-	 print "busy"
 	 return
       elseif listener.yield then
-	 print "yielded"
 	 return
       elseif started then
-	 local res = listener.result
-	 print("got result:")
-	 print(res)
-	 local exec_input = loadstring(res)
-	 exec_input()
+	 dispatch_remote_command(listener.result)
       end
-      listener:start(src)
+      listener:start([[ return io.stdin:read() ]])
       started = true
 end)
