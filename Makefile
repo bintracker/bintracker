@@ -38,7 +38,7 @@ bt-types.import.so: bt-types.so
 	$(CSC) $(IMPORTFLAGS) bt-types.import.scm
 
 bt-state.so: bt-state.scm bt-types.import.so bt-db.import.so\
- libmdal/mdal.import.so
+ bt-emulation.import.so libmdal/mdal.import.so
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-state.scm -j bt-state
 

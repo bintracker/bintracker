@@ -114,11 +114,8 @@
   				16))
     (set-state! 'modified #t)
     (set-state! 'emulator
-		(make-emulator
-		 "mame64"
-		 '("-w" "-skip_gameinfo" "-autoboot_script"
-		   "mame-bridge/mame-startup.lua"
-		   "-autoboot_delay" "0" "spectrum")))
+		(platform->emulator
+		 (target-platform-id (config-target (current-config)))))
     (execute-hooks after-load-file-hooks))
 
   ;; TODO abort when user aborts closing of current workfile

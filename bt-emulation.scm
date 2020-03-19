@@ -4,8 +4,8 @@
 
 (module bt-emulation
     *
-  (import scheme (chicken base) (chicken keyword) (chicken file posix)
-	  (chicken process) (chicken string) (chicken port)
+  (import scheme (chicken base) (chicken file posix)
+	  (chicken process) (chicken string) ;; (chicken port)
 	  srfi-1 srfi-13 srfi-18 simple-exceptions)
 
   ;;; Create an emulator interface for the emulator `program`. `program-args`
@@ -14,15 +14,6 @@
   ;;;
   ;;; The returned emulator is not yet running. To run it, call
   ;;; `(<emulator> 'start)`.
-  ;;;
-  ;;; The following options may be available:
-  ;;;
-  ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
-  ;;; * `'info` - Display information about the emulated machine.
-  ;;; * `'pause` - Pause emulation.
-  ;;; * `'unpause` - Unpause emulation.
-  ;;; * `'start` - Launch emulator program in new thread.
-  ;;; * `'quit` - Exit the Emulator.
   (define (make-emulator program program-args)
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)
@@ -80,14 +71,5 @@
 	  ((exec) (send-command (string-append "x" (cadr args))))
 	  (else (warning (string-append "Unsupported emulator action"
 					(->string args))))))))
-
-  ;; (define (make-test-emul)
-  ;;   (make-emulator "mame64"
-  ;; 		   '("-w" "-skip_gameinfo"
-  ;; 		     "-autoboot_script" "mame-bridge/mame-startup.lua"
-  ;; 		     "-autoboot_delay" "0"
-  ;; 		     "spectrum"
-  ;; 		     ;; "a2600" "-cart" "roms/a2600/test.bin"
-  ;; 		     )))
 
   ) ;; end module bt-emulation
