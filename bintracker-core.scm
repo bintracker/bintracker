@@ -59,6 +59,7 @@
 	  (lambda () (set-play-buttons 'disabled))
 	  (lambda () (set-toolbar-button-state 'journal 'undo 'disabled))
 	  (lambda () (set-toolbar-button-state 'journal 'redo 'disabled))
+	  (lambda () (emulator 'quit))
 	  reset-state! update-window-title! reset-status-text!
 	  disable-edit-settings!))
 
@@ -77,7 +78,8 @@
 	  init-instances-record! show-module
 	  reset-status-text! update-window-title!
 	  (lambda () (blockview-focus (current-blocks-view)))
-	  enable-edit-settings!))
+	  enable-edit-settings!
+	  (lambda () (emulator 'start))))
 
   ;;; Load an MDAL module file.
   (define (load-file)
@@ -95,6 +97,12 @@
 					   "\n"))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
+		 (set-state! 'emulator
+			     (make-emulator
+			      "mame64"
+			      '("-w" "-skip_gameinfo" "-autoboot_script"
+				"mame-bridge/mame-startup.lua"
+				"-autoboot_delay" "0" "spectrum")))
 		 (execute-hooks after-load-file-hooks))))))
 
   (define (create-new-module mdconf-id)
@@ -105,6 +113,12 @@
   					      "Huby" "libmdal/")
   				16))
     (set-state! 'modified #t)
+    (set-state! 'emulator
+		(make-emulator
+		 "mame64"
+		 '("-w" "-skip_gameinfo" "-autoboot_script"
+		   "mame-bridge/mame-startup.lua"
+		   "-autoboot_delay" "0" "spectrum")))
     (execute-hooks after-load-file-hooks))
 
   ;; TODO abort when user aborts closing of current workfile

@@ -40,6 +40,9 @@
 			minor-row-highlight:
 			(settings 'default-minor-row-highlight)))))
 
+  (define (emulator . args)
+    (apply (state 'emulator) args))
+
   ;;; Get the global application settings, or a specific `param`eter of that
   ;;; state.
   (define (settings #!optional param)
