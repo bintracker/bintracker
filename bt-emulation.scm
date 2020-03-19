@@ -68,6 +68,9 @@
 		    (set! emul-started #f)))
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
+
+	  ((setpc) (send-command
+		    (string-append "s" (number->string (cadr args)))))
 	  ((exec) (send-command (string-append "x" (cadr args))))
 	  (else (warning (string-append "Unsupported emulator action"
 					(->string args))))))))

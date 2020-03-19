@@ -18,10 +18,21 @@ local print_machine_info = function ()
       print(k, "=", v:value())
    end
    local cpu = manager:machine().devices[":maincpu"]
-   print("\nCPU State Registers")
-   for k,v in pairs(cpu.state) do print(k) end
+   print("\nCPU State Registers\nState:")
+   for k,v in pairs(cpu.state) do print(k, v.value) end
+   -- print("\nSpaces:")
+   -- for k,v in pairs(cpu.spaces) do print(k) end
+   -- print("\nItems:")
+   -- for k,v in pairs(cpu.items) do print(k) end
    print("\nMemory layout")
    for k,v in pairs(cpu.spaces) do print(k) end
+end
+
+local machine_set_pc = function (addr)
+   emu.pause()
+   print "setting pc"
+   manager:machine().devices[":maincpu"].state["PC"].value = tonumber(addr)
+   -- emu.unpause()
 end
 
 -- Table of remote commands that Bintracker may send. The following commands
@@ -34,6 +45,7 @@ local remote_commands = {
    ["i"] = print_machine_info,
    ["q"] = function () manager:machine():exit() end,
    ["p"] = function () emu.pause() end,
+   ["s"] = machine_set_pc,
    ["u"] = function () emu.unpause() end,
    ["x"] = function (argstr) loadstring(argstr)() end
 }

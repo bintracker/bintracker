@@ -52,6 +52,7 @@
   (define (exit-bintracker)
     ;; TODO must not close db if not exiting
     (btdb-close!)
+    ;; TODO ?? (emulator 'quit)
     (do-proc-with-exit-dialogue "exit" tk-end))
 
   (define on-close-file-hooks
