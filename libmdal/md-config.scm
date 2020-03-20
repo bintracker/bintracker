@@ -1262,7 +1262,7 @@
   ;;; through `read-config`.
   (define (eval-mdalconfig config-dir path-prefix
 			   #!key mdconf-version plugin-version target commands
-			   input output (default-origin 0) (description ""))
+			   input output default-origin (description ""))
     (unless (and mdconf-version plugin-version target commands input output)
       (raise-local 'incomplete-config))
     (unless (in-range? mdconf-version *supported-config-versions*)
@@ -1279,7 +1279,10 @@
 	     plugin-version: _version
 	     target: _target
 	     commands: (get-config-commands commands itree path-prefix _target)
-	     itree: itree inodes: _input default-origin: default-origin)))
+	     itree: itree inodes: _input
+	     default-origin:
+	     (or default-origin
+		 (target-platform-default-start-address _target)))))
       (make-config plugin-version: _version target: _target
 		   description: description
 		   commands: (config-commands proto-config)
