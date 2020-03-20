@@ -5,8 +5,8 @@
 (module bt-emulation
     *
   (import scheme (chicken base) (chicken file posix)
-	  (chicken process) (chicken string) ;; (chicken port)
-	  srfi-1 srfi-13 srfi-18 simple-exceptions)
+	  (chicken process) (chicken string)
+	  srfi-1 srfi-13 srfi-18 simple-exceptions base64)
 
   ;;; Create an emulator interface for the emulator `program`. `program-args`
   ;;; shall be a list of command line argument strings that are passed to
@@ -68,9 +68,12 @@
 		    (set! emul-started #f)))
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
+	  ((run) (send-command
+		  (string-append "r" (number->string (cadr args))
+				 "%" (base64-encode (caddr args)))))
 
-	  ((setpc) (send-command
-		    (string-append "s" (number->string (cadr args)))))
+	  ;; ((setpc) (send-command
+	  ;; 	    (string-append "s" (number->string (cadr args)))))
 	  ((exec) (send-command (string-append "x" (cadr args))))
 	  (else (warning (string-append "Unsupported emulator action"
 					(->string args))))))))

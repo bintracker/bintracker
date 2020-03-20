@@ -196,6 +196,20 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ## Playback
+  ;; ---------------------------------------------------------------------------
+
+  (define (play-from-start)
+    (let ((origin (target-platform-default-start-address
+		   (config-target (current-config)))))
+      (emulator 'run origin
+		(list->string (map integer->char
+				   (mod->bin (current-mod) origin))))))
+
+  (define (stop-playback)
+    (emulator 'pause))
+
+  ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu
   ;; ---------------------------------------------------------------------------
 
@@ -254,6 +268,7 @@
 		(apply set-toolbar-button-command spec))
 	      `((file load-file ,load-file)
 		(file save-file ,save-file)
+		(play play-from-start ,play-from-start)
 		(journal undo ,undo)
 		(journal redo ,redo))))
 

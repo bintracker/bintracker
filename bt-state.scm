@@ -45,6 +45,7 @@
   ;;;
   ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
   ;;; * `'info` - Display information about the emulated machine.
+  ;;; * `'run address % code` - Load and run `code` at address.
   ;;; * `'pause` - Pause emulation.
   ;;; * `'unpause` - Unpause emulation.
   ;;; * `'start` - Launch emulator program in new thread.
