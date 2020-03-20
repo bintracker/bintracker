@@ -1,2 +1,5 @@
-
-(list "spectrum48" "z80" 3500000 '("zxspectrum-tap"))
+(id: "spectrum48"
+     cpu: "z80"
+     clock-speed: 3500000
+     default-start-address: #x8000
+     exports: ("zxspectrum-tap"))

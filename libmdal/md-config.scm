@@ -30,7 +30,7 @@
 
   ;;; Describe the target system of a sound driver.
   (defstruct target-platform
-    id cpu clock-speed)
+    id cpu clock-speed default-start-address exports)
 
   ;; ---------------------------------------------------------------------------
   ;; ## MDCONF: INPUT NODE CONFIGURATION
@@ -188,22 +188,27 @@
   (define (config-get-target-endianness cfg)
     ((o cpu-endianness target-platform-cpu config-target) cfg))
 
-  ;;; create an target from a target config file
-  (define (target-generator target-name path-prefix)
-    (let* ((eval-file (o eval car read-list open-input-file))
-	   (parameters
-	    (eval-file (string-append path-prefix "targets/" target-name
-				      ".scm")))
-	   (target-decl (car (read-list
-			      (open-input-file
-			       (string-append path-prefix "targets/cpu/"
-					      (second parameters) ".scm"))))))
-      (if (eqv? 'cpu (car target-decl))
-	  (make-target-platform id: (car parameters)
-				cpu: (apply make-cpu (cdr target-decl))
-				clock-speed: (third parameters))
-	  (error (string-append "Unsupported target "
-				(second parameters))))))
+  ;; ;;; create an target from a target config file
+ (define (target-generator target-id path-prefix)
+    (let* ((mk-target-decl
+	    (lambda (#!key id cpu clock-speed (default-start-address 0)
+			   (exports '()))
+	      (list id
+		    (apply make-cpu
+			   (read (open-input-file
+				  (string-append path-prefix "targets/cpu/"
+						 cpu ".scm"))))
+		    clock-speed default-start-address exports)))
+	   (target-decl
+	    (apply mk-target-decl
+		   (read (open-input-file (string-append path-prefix "targets/"
+							 target-id ".scm"))))))
+      (make-target-platform
+       id: (car target-decl)
+       cpu: (cadr target-decl)
+       clock-speed: (caddr target-decl)
+       default-start-address: (cadddr target-decl)
+       exports: (fifth target-decl))))
 
   ;;; return the ID of the parent of the given inode in the given inode tree
   (define (config-get-parent-node-id inode-id itree)

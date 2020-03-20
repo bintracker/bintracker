@@ -5,8 +5,8 @@
 	mdal test simple-md5 srfi-13 srfi-69)
 
 (define my-config-path "unittests/config/")
-(define my-target (eval (car (read-list
-			      (open-input-file "targets/spectrum48.scm")))))
+;; (define my-target (eval (car (read-list
+;; 			      (open-input-file "targets/spectrum48.scm")))))
 (define my-cfg (file->config my-config-path "Huby"))
 (define my-mod (file->mdmod "unittests/modules/huby-test.mdal"
 			    my-config-path))

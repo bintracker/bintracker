@@ -1,1 +1,1 @@
-(cpu id: "z80" endianness: little-endian)
+(id: "z80" endianness: little-endian)
