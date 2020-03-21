@@ -11,13 +11,9 @@ OP_INCL	.equ $2c
 
 begin
     ld hl,musicData
-    call play
-    jp begin
 
-;;; .(if (symbol-ref 'no-loop)
-;;;      " ret"
-;;;      " jp nz,begin\n ret")
-
+    .(unless (symbol-ref 'no-loop)
+        " call play\n jp begin\n")
 
 play
 	ld c,(hl)				;read speed word
