@@ -729,9 +729,8 @@
   ;; 4. store asm text somehow for retrieval on asm output generation?
   (define (make-oasm proto-config config-dir path-prefix #!key file code)
     (let* ((output (asm-file->bytes
-		    (string-append config-dir file)
 		    (cpu-id (target-platform-cpu (config-target proto-config)))
-		    3
+		    (string-append config-dir file)
 		    org: (config-default-origin proto-config)
 		    path-prefix: path-prefix))
 	   (output-length (length output)))

@@ -29,7 +29,7 @@
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69
 	  matchable byte-blob comparse typed-records simple-exceptions)
 
-  (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken.string))
+  (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string))
 
   (defstruct asm-target
     ((endian 'little) : symbol)
@@ -823,8 +823,8 @@
 			   (memq (car node) '(swap-namespace)))
 			 ast)))
 
-  (define (assemble source target-cpu max-passes
-		    #!key (org 0) (extra-symbols '()))
+  (define (assemble target-cpu source
+		    #!key (org 0) extra-symbols (max-passes 3))
     (letrec ((do-asm-passes (lambda (current-pass)
 			      (when (= current-pass max-passes)
 				(error "FAILED: number of passes exceeded"))
@@ -834,33 +834,36 @@
 				  (do-asm-passes (+ 1 current-pass))))))
       (set-target! target-cpu)
       (set-current-origin! org)
-      (set-symbols! (append extra-symbols (symbols)))
+      (set-symbols! (append (or extra-symbols '()) (symbols)))
       (set-ast-from-source! source)
       (do-asm-passes 0)))
 
-  (define (asm-file->bytes filename target-cpu max-passes
-			   #!key org path-prefix (extra-symbols '()))
+  (define (asm-file->bytes target-cpu filename #!key org extra-symbols
+			   (max-passes 3) path-prefix)
     (reset-asm-state!)
     ;; TODO this is bound to break
     (when path-prefix (set! *target-config-path*
 			(string-append path-prefix *target-config-path*)))
-    (assemble (string-intersperse (read-lines
+    (assemble target-cpu
+	      (string-intersperse (read-lines
 				   (open-input-file filename))
 				  "\n")
-	      target-cpu max-passes org: org extra-symbols: extra-symbols))
+	      org: org extra-symbols: extra-symbols max-passes: max-passes))
 
   (define (write-bytes bytes port)
     (byte-blob-write port (list->byte-blob bytes)))
 
-  (define (asm-file->bin-file infilename target-cpu max-passes
+  (define (asm-file->bin-file target-cpu infilename
 			      #!key (outfilename (string-append infilename
-								".bin"))
-			      (org 0) emit-symbols emit-listing
-			      (extra-symbols '()))
+							  ".bin"))
+			      org extra-symbols (max-passes 3)
+			      ;; TODO unused
+			      emit-symbols emit-listing)
     (call-with-output-file outfilename
       (lambda (port)
-	(write-bytes (asm-file->bytes infilename target-cpu max-passes org: org
-				      extra-symbols: extra-symbols)
+	(write-bytes (asm-file->bytes target-cpu infilename
+				      org: org extra-symbols: extra-symbols
+				      max-passes: max-passes)
 		     port))))
 
   ) ;; end module schemta
