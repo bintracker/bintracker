@@ -848,12 +848,32 @@
   ;;; `use-last-set` flag.
   (define (split-block-instance-contents size block-id mdconfig contents)
     (letrec*
-	((backtrace-targets
+	((field-ids (config-get-subnode-ids block-id (config-itree mdconfig)))
+
+	 (backtrace-targets
 	  (map (lambda (field-id)
 		 (command-has-flag? (config-get-inode-source-command
 				     field-id mdconfig)
 				    'use-last-set))
-	       (config-get-subnode-ids block-id (config-itree mdconfig))))
+	       field-ids))
+
+	 ;; Produces a chunk that resets all fields to their defaults on the
+	 ;; first row. Remaining rows are empty.
+	 (make-chunk-padding
+	  (lambda (len)
+	    (let ((field-defaults
+		   (map (lambda (cmd)
+			  (if (eqv? 'trigger (command-type cmd))
+			      '()
+			      (command-default cmd)))
+			(map (lambda (id)
+			       (config-get-inode-source-command id mdconfig))
+			     field-ids))))
+	      (append (list field-defaults)
+		      (make-list (sub1 len)
+				 (make-list (length field-defaults)
+					    '()))))))
+
 	 (make-chunks
 	  (lambda (remaining-chunk previous-chunk)
 	    (if (null? remaining-chunk)
@@ -865,17 +885,17 @@
 		       (current-chunk
 			(if need-padding?
 			    (append remaining-chunk
-				    (make-list
-				     (- size (length remaining-chunk))
-				     (make-list (length (car remaining-chunk))
-						'())))
+				    (make-chunk-padding
+				     (- size (length remaining-chunk))))
 			    (take remaining-chunk size)))
 		       (adjusted-current-chunk
 			(block-repeat-last-set current-chunk previous-chunk
 					       backtrace-targets)))
 		  (cons adjusted-current-chunk
 			(make-chunks next-chunk adjusted-current-chunk))))))
+
 	 (chunks (make-chunks contents '())))
+
       (map (lambda (chunk id)
 	     (append (list id #f) chunk))
 	   chunks (iota (length chunks)))))
