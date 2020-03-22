@@ -85,20 +85,19 @@
 
   ;;; compile an module to an onode tree
   ;;; TODO and a list of symbols for mod->asm?
-  (define (mod-compile mod origin)
-    ((config-compiler (mdmod-config mod)) mod origin))
+  (define (mod-compile mod origin #!optional extra-symbols)
+    ((config-compiler (mdmod-config mod)) mod origin extra-symbols))
 
-  ;; TODO
-  (define (mod->bin mod origin)
+  (define (mod->bin mod origin #!optional extra-symbols)
     (flatten (map onode-val
 		  (remove (lambda (onode)
 			    (memq (onode-type onode)
 				  '(comment symbol)))
-			  (mod-compile mod origin)))))
+			  (mod-compile mod origin extra-symbols)))))
 
   ;;; compile an module into an assembly source
-  (define (mod->asm mod origin)
-    (let ((otree (mod-compile mod origin)))
+  (define (mod->asm mod origin extra-symbols)
+    (let ((otree (mod-compile mod origin #!optional extra-symbols)))
       '()))
 
   ;;; compile the given module to a binary file

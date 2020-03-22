@@ -813,7 +813,7 @@
 		 (map integer->char
 		      (mod->bin (derive-single-row-mdmod
 				 (current-mod) group-id order-pos row)
-				origin))))))
+				origin '((no-loop #t))))))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Module Display Related Widgets and Procedures

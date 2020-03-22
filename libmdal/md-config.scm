@@ -721,20 +721,36 @@
 				      md-symbols))
 			  (list onode #f md-symbols)))))
 
-  ;; TODO
-  ;; 1. pass in current-org
-  ;; 2. DONE resolve source filepath
-  ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
-  ;;    oasm node
-  ;; 4. store asm text somehow for retrieval on asm output generation?
+  ;; ;; TODO
+  ;; ;; 1. pass in current-org
+  ;; ;; 2. DONE resolve source filepath
+  ;; ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
+  ;; ;;    oasm node
+  ;; ;; 4. store asm text somehow for retrieval on asm output generation?
+  ;; (define (make-oasm proto-config config-dir path-prefix #!key file code)
+  ;;   (let* ((output (asm-file->bytes
+  ;; 		    (cpu-id (target-platform-cpu (config-target proto-config)))
+  ;; 		    (string-append config-dir file)
+  ;; 		    org: (config-default-origin proto-config)
+  ;; 		    extra-symbols: '((no-loop #t))
+  ;; 		    path-prefix: path-prefix))
+  ;; 	   (output-length (length output)))
+  ;;     (make-onode type: 'asm size: output-length val: output)))
+
   (define (make-oasm proto-config config-dir path-prefix #!key file code)
-    (let* ((output (asm-file->bytes
-		    (cpu-id (target-platform-cpu (config-target proto-config)))
-		    (string-append config-dir file)
-		    org: (config-default-origin proto-config)
-		    path-prefix: path-prefix))
-	   (output-length (length output)))
-      (make-onode type: 'asm size: output-length val: output)))
+    (let ((cpu (cpu-id (target-platform-cpu (config-target proto-config)))))
+      (make-onode
+       type: 'asm
+       fn: (lambda (onode parent-inode config current-org md-symbols)
+  	     (let* ((output (asm-file->bytes
+  			     cpu
+  			     (string-append config-dir file)
+  			     org: current-org
+  			     extra-symbols: md-symbols
+  			     path-prefix: path-prefix))
+  		    (output-length (length output)))
+  	       (list (make-onode type: 'asm size: output-length val: output)
+		     #f md-symbols))))))
 
   ;;; Extract required md-symbols from a compose expression
   (define (get-required-symbols compose-expr)
@@ -1255,10 +1271,10 @@
 			(dispatch-onode-expr expr proto-config
 					     config-dir path-prefix))
 		      output-expr)))
-      (lambda (mod origin)
+      (lambda (mod origin #!optional extra-symbols)
 	(car (compile-otree otree (cadr (mdmod-global-node mod))
 			    (mdmod-config mod)
-			    origin '())))))
+			    origin (or extra-symbols '()))))))
 
 
   ;; ---------------------------------------------------------------------------
