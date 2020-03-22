@@ -575,6 +575,19 @@
 			    (CH2 ,(append '(0 #f) (make-list 16 '(()))))
 			    (PATTERNS_ORDER (0 #f (16 0 0 0))))))))
        (generate-new-mdmod "Huby" my-cfg 16))
+
+ (test "Generate a one-row module"
+       '(GLOBAL (0 #f
+		   (AUTHOR (0 #f . "utz"))
+		   (TITLE (0 #f . "Huby Test"))
+		   (LICENSE (0 #f . "Creative Commons CC0"))
+		   (BPM (0 #f . 120))
+		   (PATTERNS (0 #f
+				(DRUMS (0 #f (#t)))
+				(CH1 (0 #f (a3)))
+				(CH2 (0 #f (a2)))
+				(PATTERNS_ORDER (0 #f (1 0 0 0)))))))
+       (mdmod-global-node (derive-single-row-mdmod my-mod 'PATTERNS 0 0)))
  )
 
 

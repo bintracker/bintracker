@@ -277,4 +277,56 @@
 		global-node: `(GLOBAL ,(generate-new-inode-instance
 					mdconf 'GLOBAL block-length))))
 
+  ;;; Derive a new MDAL module from the module `mod`, which contains a single
+  ;;; row of block data in the group with `group-id`. The row is composed from
+  ;;; position `row` in the set of patterns represented by `order-pos`.
+  (define (derive-single-row-mdmod mod group-id order-pos row)
+    (letrec*
+	((config (mdmod-config mod))
+	 (order-id (symbol-append group-id '_ORDER))
+	 (make-single-row-group
+	  (lambda (node-instance)
+	    (let ((block-ids (remove (lambda (x) (eqv? x order-id))
+				     (config-get-subnode-ids
+				      group-id (config-itree config))))
+		  (order-pos (list-ref (cddr (mod-get-group-instance-order
+					      node-instance group-id))
+				       order-pos)))
+	      (append
+	       (take node-instance 2)
+	       (map (lambda (subnode)
+		      (if (eqv? order-id (car subnode))
+			  `(,order-id
+			    (0 #f ,(cons 1 (make-list (sub1 (length order-pos))
+						      0))))
+			  `(,(car subnode)
+			    (0 #f
+			       ,(list-ref
+				 (cddr (inode-instance-ref
+					(list-ref
+					 order-pos
+					 (+ 1 (list-index
+					       (lambda (id)
+						 (eqv? id (car subnode)))
+					       block-ids)))
+					subnode))
+				 row)))))
+		    (cddr node-instance))))))
+	 (extract-nodes
+	  (lambda (root)
+	    (cons (car root)
+		  (map (lambda (node-instance)
+			 (case (inode-config-type (config-inode-ref (car root)
+								    config))
+			   ((field block) node-instance)
+			   ((group) (if (eqv? group-id (car root))
+					(make-single-row-group node-instance)
+					(append (take node-instance 2)
+						(map extract-nodes
+						     (cddr node-instance)))))))
+		       (cdr root))))))
+      (make-mdmod config-id: (mdmod-config-id mod)
+		  config: config
+		  global-node: (extract-nodes (mdmod-global-node mod)))))
+
   ) ;; end module mdal
