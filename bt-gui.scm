@@ -804,6 +804,17 @@
       (set-state! 'modified #t)
       (update-window-title!)))
 
+  ;;; Play `row` of the blocks referenced by `order-pos` in the group
+  ;;; `group-id`.
+  (define (play-row group-id order-pos row)
+    (let ((origin (config-default-origin (current-config))))
+      (emulator 'run origin
+		(list->string
+		 (map integer->char
+		      (mod->bin (derive-single-row-mdmod
+				 (current-mod) group-id order-pos row)
+				origin))))))
+
   ;; ---------------------------------------------------------------------------
   ;;; ## Module Display Related Widgets and Procedures
   ;; ---------------------------------------------------------------------------
@@ -1833,6 +1844,11 @@
 			  ,new-value)))))
       (push-undo (make-reverse-action action))
       (apply-edit! action)
+      ;; TODO might want to make this behaviour user-configurable
+      (when (eqv? 'block (blockview-type b))
+	(play-row (blockview-group-id b)
+		  (blockview-get-current-order-pos b)
+		  (blockview-get-current-field-instance b)))
       (blockview-update b)
       (unless (zero? (state 'edit-step))
 	(blockview-move-cursor b 'Down))
