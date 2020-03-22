@@ -775,7 +775,7 @@
     (let ((res (eval (cadr node))))
       (if (string? res)
 	  (do-assembler-pass (parse-source res))
-	  (error "sexp directive did not return assembly code"))))
+	  '())))
 
   (define (do-swap-namespace node)
     (set-local-namespace! (cadr node))
