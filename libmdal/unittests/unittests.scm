@@ -636,15 +636,21 @@
 	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mdmod-global-node my-mod)))))
 
  (test "resize-block-instances"
-       '(CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
-	     (1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
-	     (2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
-	     (3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
-       (resize-block-instances
-	((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod))
-	8
-	((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mdmod-global-node my-mod))
-	my-cfg))
+       '((CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+	      (1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+	      (2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
+	      (3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
+	 (CH2 (0 #f (a2) (()) (()) (()))))
+       `(,(resize-block-instances
+	   ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod))
+	   8
+	   ((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mdmod-global-node my-mod))
+	   my-cfg)
+	 ,(resize-block-instances
+	   '(CH2 (0 #f (a2)))
+	   4
+	   '(PATTERNS_ORDER (0 #f (1 0 0 0)))
+	   my-cfg)))
 
  (test "resize-blocks"
        '(0 #f

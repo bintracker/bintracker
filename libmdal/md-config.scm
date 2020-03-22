@@ -860,7 +860,7 @@
 		'()
 		(let* ((need-padding? (< (length remaining-chunk) size))
 		       (next-chunk (if need-padding?
-				       remaining-chunk
+				       '()
 				       (drop remaining-chunk size)))
 		       (current-chunk
 			(if need-padding?
