@@ -743,9 +743,10 @@
   			(output-length (length output)))
   		   (list (make-onode type: 'asm size: output-length val: output)
 			 #f md-symbols))))
+	  ;; TODO we could pass in proto-config, at least
 	  (let* ((make-output (lambda (extra-syms)
 				(asm-file->bytes
-  				 (cpu-id (target-platform-cpu (config-target proto-config)))
+  				 cpu
   				 (string-append config-dir file)
   				 org: (config-default-origin proto-config)
   				 extra-symbols: extra-syms
