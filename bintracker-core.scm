@@ -200,8 +200,7 @@
   ;; ---------------------------------------------------------------------------
 
   (define (play-from-start)
-    (let ((origin (target-platform-default-start-address
-		   (config-target (current-config)))))
+    (let ((origin (config-default-origin (current-config))))
       (emulator 'run origin
 		(list->string (map integer->char
 				   (mod->bin (current-mod) origin))))))
