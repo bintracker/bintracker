@@ -90,6 +90,14 @@ local machine_run_bin = function (argstr)
    emu.unpause()
 end
 
+local machine_reset = function (reset_type)
+   if reset_type == "h" then
+      manager:machine():hard_reset()
+   elseif reset_type == "s" then
+      manager:machine():soft_reset()
+   end
+end
+
 -- Table of remote commands that Bintracker may send. The following commands
 -- are recognized:
 -- q - Quit emulator
@@ -97,10 +105,11 @@ end
 -- u - Unpause emulator
 -- x argstr - eXecute argstr as code
 local remote_commands = {
+   ["b"] = machine_run_bin,
    ["i"] = print_machine_info,
    ["q"] = function () manager:machine():exit() end,
    ["p"] = emu.pause,
-   ["r"] = machine_run_bin,
+   ["r"] = machine_reset,
    ["s"] = machine_set_pc,
    ["u"] = emu.unpause,
    ["x"] = function (argstr) loadstring(argstr)() end

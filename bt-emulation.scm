@@ -69,9 +69,11 @@
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
 	  ((run) (send-command
-		  (string-append "r" (number->string (cadr args))
+		  (string-append "b" (number->string (cadr args))
 				 "%" (base64-encode (caddr args)))))
-
+	  ((reset) (send-command (if (and (not (null? (cdr args)))
+					  (eqv? 'hard (cadr args)))
+				     "rh" "rs")))
 	  ;; ((setpc) (send-command
 	  ;; 	    (string-append "s" (number->string (cadr args)))))
 	  ((exec) (send-command (string-append "x" (cadr args))))
