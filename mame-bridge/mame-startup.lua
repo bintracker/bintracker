@@ -125,6 +125,13 @@ local dispatch_remote_command = function(cmd)
    if exec_cmd then exec_cmd(string.sub(cmd, 2)) end
 end
 
+-- -- not implemented yet in MAME 0.209?
+-- emu.register_mandatory_file_manager_override(
+--    function()
+--       print("have mandatory file callback")
+--    end
+-- )
+
 -- Register a period callback from the main emulation thread. On first run, it
 -- starts a thread that listens to stdin, and returns the received input once it
 -- receives a newline. The callback procedure attempts to run the input from the
@@ -140,4 +147,5 @@ emu.register_periodic(
       end
       listener:start([[ return io.stdin:read() ]])
       started = true
-end)
+   end
+)
