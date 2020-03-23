@@ -55,8 +55,8 @@
   (: *target-cache* (list-of (list symbol (struct asm-target))))
   (define *target-cache* '())
 
-  (: *target-config-path* string)
-  (define *target-config-path* "targets/")
+  (: *schemta-include-path* string)
+  (define *schemta-include-path* "targets/")
 
   (define (reset-asm-state!)
     (asm-state-target-set! *asm-state* #f)
@@ -113,14 +113,14 @@
   (define (target) (asm-state-target *asm-state*))
 
   ;;; Set the asm target to the target definition defined in {{target-name}}.
-  ;;; before calling this function, ensure that `*target-config-path* points
+  ;;; before calling this function, ensure that `*schemta-include-path* points
   ;;; to a folder containing the required target configurations.
   (define (set-target! target-name)
     (let* ((target-sym (string->symbol target-name))
 	   (target-ref (alist-ref target-sym *target-cache*)))
       (if target-ref
 	  (asm-state-target-set! *asm-state* (car target-ref))
-	  (let ((config-filename (string-append *target-config-path* target-name
+	  (let ((config-filename (string-append *schemta-include-path* target-name
 						".scm")))
 	    (if (file-exists? config-filename)
 		(begin
@@ -842,8 +842,8 @@
 			   (max-passes 3) path-prefix)
     (reset-asm-state!)
     ;; TODO this is bound to break
-    (when path-prefix (set! *target-config-path*
-			(string-append path-prefix *target-config-path*)))
+    (when path-prefix (set! *schemta-include-path*
+			(string-append path-prefix *schemta-include-path*)))
     (assemble target-cpu
 	      (string-intersperse (read-lines
 				   (open-input-file filename))
