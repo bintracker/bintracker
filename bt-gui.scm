@@ -438,98 +438,138 @@
   ;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
-  ;;; Create a toolbar button widget.
-  (define (toolbar-button icon #!optional (init-state 'disabled))
-    (toolbar-frame 'create-widget 'button image: (tk/icon icon)
-  		   state: init-state style: "Toolbutton"))
+  ;;; Create a toolbar metawidget, consisting of groups of buttons. `parent`
+  ;;; must be the Tk parent window that the toolbar itself will be packed to.
+  ;;; By default toolbars will be packed with `side: 'top padx: 0 fill: 'y`.
+  ;;; You can override these defaults with the optional `packing-arguments`
+  ;;; argument, which shall be a flat list.
+  ;;;
+  ;;; `button-groups` must be a list of button group specifications. The list
+  ;;; takes the form:
+  ;;;
+  ;;; ```Scheme
+  ;;; ((group-id (button-id info icon [init-state])
+  ;;;            (button-id2 ...))
+  ;;;  (group-id2 ...))
+  ;;; ```
+  ;;;
+  ;;; where `group-id` is a unique group name, `button-id` is a button name
+  ;;; that is unique within the parent group, `info` is a short text string
+  ;;; describing the button's function, and `icon` is a name of a file in the
+  ;;; `resources/icons/` directory. You may optionally specify the button's
+  ;;; initial state, which should be either 'enabled or 'disabled.
+  ;;;
+  ;;;
+  ;;; `make-toolbar` returns a procedure `p` that you can use as follows:
+  ;;;
+  ;;; `(p 'button group-id button-id state)`
+  ;;; Set the Tk widget state of button 'button-id' in group 'group-id', where
+  ;;; `state` is either 'enabled or 'disabled.
+  ;;;
+  ;;; `(p 'group group-id action)
+  ;;; Enable or disable the button group 'group-id', where `action` is either
+  ;;; 'enable or 'disable.
+  ;;;
+  ;;; `(p 'set-command group-id button-id proc)`
+  ;;; Set a button's callback procedure. `proc` must be a procedure that takes
+  ;;; no arguments.
+  ;;;
+  ;;; `(p 'show)`
+  ;;; Map the toolbar to the display.
+  ;;;
+  ;;; `(p 'hide)`
+  ;;; Hide the toolbar.
+  (define (make-toolbar parent button-groups #!optional
+			;; TODO packing args will change w/ new setup
+			(packing-arguments '(side: left padx: 0 fill: x)))
+    (let* ((box (parent 'create-widget 'frame 'padding: "0 1 0 1"))
 
-  ;;; The list of buttons in the main toolbar. It is a nested alist. The main
-  ;;; keys name button groups, where the associated values are another alist
-  ;;; containing the button names as keys. The key names must correspond to
-  ;;; the names of the procedure that the buttons will call.
-  ;;; The cdr of the button alist contains a button widget created with
-  ;;; `toolbar-button` in car, and a short description in cadr.
-  (define toolbar-button-groups
-    `((file (new-file ,(toolbar-button "new.png" 'enabled)
-		      "New File")
-	    (load-file ,(toolbar-button "load.png" 'enabled)
-		       "Load File...")
-	    (save-file ,(toolbar-button "save.png")
-		       "Save File"))
-      (journal (undo ,(toolbar-button "undo.png")
-		     "Undo last edit")
-	       (redo ,(toolbar-button "redo.png")
-		     "Redo last edit"))
-      (edit (copy ,(toolbar-button "copy.png")
-      		  "Copy Selection")
-      	    (cut ,(toolbar-button "cut.png")
-      	      "Cut Selection (delete with shift)")
-      	    (clear ,(toolbar-button "clear.png")
-      		   "Clear Selection (delete, no shift)")
-      	    (paste ,(toolbar-button "paste.png")
-      		   "Paste from Clipboard (no shift)")
-      	    (insert ,(toolbar-button "insert.png")
-      		    "Insert from Clipbard (with shift)")
-      	    (swap ,(toolbar-button "swap.png")
-      		  "Swap Selection with Clipboard"))
-      (play (stop ,(toolbar-button "stop.png")
-      		  "Stop Playback")
-      	    (play ,(toolbar-button "play.png")
-      		  "Play Track from Current Position")
-      	    (play-from-start ,(toolbar-button "play-from-start.png")
-      			     "Play Track from Start")
-      	    (play-pattern ,(toolbar-button "play-ptn.png")
-      			  "Play Pattern"))
-      (configure (toggle-prompt ,(toolbar-button "prompt.png" 'enabled)
-      				"Toggle Console")
-      		 (show-settings ,(toolbar-button "settings.png" 'enabled)
-      				"Settings..."))))
+	   (make-button (lambda (icon #!optional (init-state 'disabled))
+			  (box 'create-widget 'button image: (tk/icon icon)
+  			       state: init-state style: "Toolbutton")))
 
-  ;;; Returns the entry associated with `id` in the given toolbar
-  ;;; button `group`.
-  (define (toolbar-button-ref group-id button-id)
-    (let ((group (alist-ref group-id toolbar-button-groups)))
-      (and group (alist-ref button-id group))))
+	   (groups
+	    (map (lambda (group)
+		   (cons (car group)
+			 (map (lambda (button)
+				(list (car button)
+				      (apply make-button (cddr button))
+				      (cadr button)))
+			      (cdr group))))
+		 button-groups))
 
-  ;;; Associate the procedure `command` with a toolbar button.
-  (define (set-toolbar-button-command group-id button-id command)
-    ((car (toolbar-button-ref group-id button-id))
-     'configure command: command))
+	   (button-ref (lambda (group-id button-id)
+			 (let ((group (alist-ref group-id groups)))
+			   (and group (alist-ref button-id group)))))
 
-  ;;; Bind the mouse `<Enter>`/`<Leave>` events to display `description` in the
-  ;;; status bar.
-  (define (bind-toolbar-button-info group-id button-id)
-    (let ((button-entry (toolbar-button-ref group-id button-id)))
-      (bind-info-status (car button-entry)
-			(string-append (cadr button-entry)
-				       " "
-				       (key-binding->info 'global button-id)))))
+	   (group-ref (lambda (group-id)
+			(alist-ref group-id groups)))
 
-  ;;; Set the state of the toolbar button widget to `'enabled` or `'disabled`.
-  (define (set-toolbar-button-state group-id button-id state)
-    ((car (toolbar-button-ref group-id button-id))
-     'configure 'state: state))
+	   ;;'button ... 'enable/disable
+	   (button (lambda (group-id button-id state)
+		     ((car (button-ref group-id button-id))
+		      'configure state: state)))
+	   ;;'group ... 'enable/disable
+	   (group (lambda (group-id action)
+		    (for-each (lambda (b)
+				(button group-id (car b) action))
+			      (group-ref group-id))))
 
-  ;;; Set the state of the play button. `state` must be either `'enabled` or
-  ;;; `'disabled`.
-  (define (set-play-buttons state)
-    (for-each (lambda (button)
-		((cadr button) 'configure state: state))
-	      (alist-ref 'play toolbar-button-groups)))
+	   (bind-info
+	    (lambda (button-spec)
+	      (bind-info-status (cadr button-spec)
+				(string-append (caddr button-spec) " "
+					       (key-binding->info
+						'global (car button-spec))))))
 
-  ;;; construct and display the main toolbar
-  (define (show-toolbar)
-    (for-each (lambda (button-group)
-  		(for-each (lambda (button-entry)
-  			    (tk/pack (cadr button-entry)
-				     side: 'left padx: 0 fill: 'y)
-			    (bind-toolbar-button-info (car button-group)
-			    			      (car button-entry)))
-  			  (cdr button-group))
-  		(tk/pack (toolbar-frame 'create-widget 'separator
-  					orient: 'vertical)
-  			 side: 'left padx: 0 'fill: 'y))
-  	      toolbar-button-groups))
+	   (set-command (lambda (group-id button-id command)
+			  ((car (button-ref group-id button-id))
+			   'configure command: command)))
+
+	   (show (lambda ()
+		   (for-each
+		    (lambda (button-group)
+  		      (for-each (lambda (button-entry)
+  				  (tk/pack (cadr button-entry)
+					   side: 'left padx: 0 fill: 'y)
+				  (bind-info button-entry))
+  				(cdr button-group))
+  		      (tk/pack (box 'create-widget 'separator
+  				    orient: 'vertical)
+  			       side: 'left padx: 0 'fill: 'y))
+  		    groups)
+		   (apply tk/pack (cons box packing-arguments)))))
+
+      (lambda args
+	(case (car args)
+	  ((button) (apply button (cdr args)))
+	  ((group) (apply group (cdr args)))
+	  ((set-command) (apply set-command (cdr args)))
+	  ((show) (show))
+	  ((hide) (tk/pack 'forget box))
+	  (else (warning (string-append "Unsupported toolbar action "
+					(->string args))))))))
+
+  (define main-toolbar
+    (make-toolbar
+     toolbar-frame
+     '((file (new-file "New File" "new.png" enabled)
+	     (load-file "Load File..." "load.png" enabled)
+	     (save-file "Save File" "save.png"))
+       (journal (undo "Undo last edit" "undo.png")
+		(redo "Redo last edit" "redo.png"))
+       (edit (copy "Copy Selection" "copy.png")
+      	     (cut "Cut Selection (delete with shift)" "cut.png")
+      	     (clear "Clear Selection (delete, no shift)" "clear.png")
+      	     (paste "Paste from Clipboard (no shift)" "paste.png")
+      	     (insert "Insert from Clipbard (with shift)" "insert.png")
+      	     (swap "Swap Selection with Clipboard" "swap.png"))
+       (play (stop-playback "Stop Playback" "stop.png")
+      	     (play "Play Track from Current Position" "play.png")
+      	     (play-from-start "Play Track from Start" "play-from-start.png")
+      	     (play-pattern "Play Pattern" "play-ptn.png"))
+       (configure (toggle-prompt "Toggle Console" "prompt.png")
+      		  (show-settings "Settings..." "settings.png")))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -781,9 +821,9 @@
 	(blockview-update (current-order-view))
 	(blockview-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
-	(set-toolbar-button-state 'journal 'redo 'enabled)
+	(main-toolbar 'button 'journal 'redo 'enabled)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
-	  (set-toolbar-button-state 'journal 'undo 'disabled)))))
+	  (main-toolbar 'button 'journal 'undo 'disabled)))))
 
   ;;; Redo the latest undo action.
   (define (redo)
@@ -793,13 +833,13 @@
 	(blockview-update (current-order-view))
 	(blockview-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
-	(set-toolbar-button-state 'journal 'undo 'enabled)
+	(main-toolbar 'button 'journal 'undo 'enabled)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
-	  (set-toolbar-button-state 'journal 'redo 'disabled)))))
+	  (main-toolbar 'button 'journal 'redo 'disabled)))))
 
   ;;; Enable the undo toolbar button, and update the window title if necessary.
   (define (run-post-edit-actions)
-    (set-toolbar-button-state 'journal 'undo 'enabled)
+    (main-toolbar 'button 'journal 'undo 'enabled)
     (unless (state 'modified)
       (set-state! 'modified #t)
       (update-window-title!)))

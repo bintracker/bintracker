@@ -57,9 +57,8 @@
 
   (define on-close-file-hooks
     (list (lambda () (destroy-group-widget (state 'module-widget)))
-	  (lambda () (set-play-buttons 'disabled))
-	  (lambda () (set-toolbar-button-state 'journal 'undo 'disabled))
-	  (lambda () (set-toolbar-button-state 'journal 'redo 'disabled))
+	  (lambda () (main-toolbar 'group 'play 'disabled))
+	  (lambda () (main-toolbar 'group 'journal 'disabled))
 	  (lambda () (emulator 'quit))
 	  reset-state! update-window-title! reset-status-text!
 	  disable-edit-settings!))
@@ -75,7 +74,7 @@
   (define after-load-file-hooks
     (list (lambda ()
 	    (set-state! 'module-widget (make-module-widget main-frame)))
-	  (lambda () (set-play-buttons 'enabled))
+	  (lambda () (main-toolbar 'group 'play 'enabled))
 	  init-instances-record! show-module
 	  reset-status-text! update-window-title!
 	  (lambda () (blockview-focus (current-blocks-view)))
@@ -264,10 +263,11 @@
   ;;; Update the bindings for the toolbar buttons.
   (define (update-toolbar-bindings!)
     (for-each (lambda (spec)
-		(apply set-toolbar-button-command spec))
+		(apply main-toolbar (cons 'set-command spec)))
 	      `((file load-file ,load-file)
 		(file save-file ,save-file)
 		(play play-from-start ,play-from-start)
+		(play stop-playback ,stop-playback)
 		(journal undo ,undo)
 		(journal redo ,redo))))
 
@@ -299,7 +299,7 @@
 	  init-top-level-layout update-toolbar-bindings!
 	  (lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
-	      (show-toolbar)))
+	      (main-toolbar 'show)))
 	  (lambda () (set-schemta-include-path! "libmdal/targets/"))
 	  init-console init-status-bar disable-keyboard-traversal))
 
