@@ -58,6 +58,9 @@
   (: *schemta-include-path* string)
   (define *schemta-include-path* "targets/")
 
+  (define (set-schemta-include-path! p)
+    (set! *schemta-include-path* p))
+
   (define (reset-asm-state!)
     (asm-state-target-set! *asm-state* #f)
     (asm-state-symbols-set! *asm-state* '())
@@ -839,11 +842,8 @@
       (do-asm-passes 0)))
 
   (define (asm-file->bytes target-cpu filename #!key org extra-symbols
-			   (max-passes 3) path-prefix)
+			   (max-passes 3))
     (reset-asm-state!)
-    ;; TODO this is bound to break
-    (when path-prefix (set! *schemta-include-path*
-			(string-append path-prefix *schemta-include-path*)))
     (assemble target-cpu
 	      (string-intersperse (read-lines
 				   (open-input-file filename))

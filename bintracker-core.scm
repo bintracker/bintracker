@@ -300,6 +300,7 @@
 	  (lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
 	      (show-toolbar)))
+	  (lambda () (set-schemta-include-path! "libmdal/targets/"))
 	  init-console init-status-bar disable-keyboard-traversal))
 
   ;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!

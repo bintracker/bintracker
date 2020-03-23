@@ -738,8 +738,7 @@
   				 cpu
   				 (string-append config-dir file)
   				 org: current-org
-  				 extra-symbols: md-symbols
-  				 path-prefix: path-prefix))
+  				 extra-symbols: md-symbols))
   			(output-length (length output)))
   		   (list (make-onode type: 'asm size: output-length val: output)
 			 #f md-symbols))))
@@ -749,8 +748,7 @@
   				 cpu
   				 (string-append config-dir file)
   				 org: (config-default-origin proto-config)
-  				 extra-symbols: extra-syms
-  				 path-prefix: path-prefix)))
+  				 extra-symbols: extra-syms)))
 		 (looping-version (make-output '()))
 		 (loop-length (length looping-version))
 		 (non-looping-version (make-output '((no-loop #t))))
