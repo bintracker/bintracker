@@ -372,7 +372,7 @@
       (tk/pack toolbar-frame expand: 0 fill: 'x)
       (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
 	       expand: 0 fill: 'x)
-      (show-edit-settings)
+      (edit-settings 'show)
       (tk/pack edit-settings-frame expand: 0 'fill: 'x)
       (tk/pack main-panes expand: 1 fill: 'both)
       (main-panes 'add main-frame weight: 5)
@@ -561,92 +561,125 @@
   ;;; ## Edit Settings Display
   ;; ---------------------------------------------------------------------------
 
-  ;;; Display a label widget as description of an edit setting spinbox
-  (define (pack-edit-settings-label text description)
-    (let ((label (edit-settings-frame 'create-widget 'label text: text)))
-      (tk/pack label side: 'left padx: 5)
-      (bind-info-status label description)))
+  ;; TODO find a better name for this.
+  ;;; Create a settings-bar metawidget, consisting of labelled Spinboxes.
+  ;;; `parent` must be the Tk parent window that the settings-bar will be
+  ;;; packed to. By default toolbars are packed with
+  ;;; `side: 'top padx: 0 fill: 'y`. TODO
+  ;;; You can override these defaults with the optional `packing-arguments`
+  ;;; argument, which must be a list of keyword assignments.
+  ;;;
+  ;;; `elements` must be a list of element specifications. An element
+  ;;; specification is a list in the form:
+  ;;;
+  ;;; `(id label-text info default-var state-var from to callback)`
+  ;;;
+  ;;; where `id` is a unique identifier, `label-text` is the text of the label,
+  ;;; `info` is a short description of the element's function, `default-var` is
+  ;;; a symbol denoting an entry in `(settings)`, state-var is a symbol denoting
+  ;;; an entry in `(state)`, `from` and `to` are integers describing the range
+  ;;; of permitted values, and `callback` is an optional procedure of no
+  ;;; arguments that will be called when the user selects a new value.
+  (define (make-settings-bar parent elements #!optional
+			     (packing-arguments '(expand: 0 fill: x)))
+    (let* ((box (parent 'create-widget 'frame))
 
-  ;;; Create a spinbox in the edit settings toolbar.
-  ;;; `from` and `to` specify the permitted range of values, `statevar`
-  ;;; specifies the relevant field in `app-state`, and `action` specifies
-  ;;; an additional procedure to call on validation.
-  ;; TODO <<Increment>>/<<Decrement>> events are buggy, events are
-  ;; sometimes generated repeatedly
-  ;; see https://wiki.tcl-lang.org/page/ttk::spinbox
-  ;; TODO hex display is possible, see link above
-  (define (make-edit-settings-spinbox from to statevar action)
-    (letrec ((spinbox (edit-settings-frame
-		       'create-widget 'spinbox from: from to: to
-		       width: 4 state: 'disabled validate: 'none))
-	     (validate-new-value (lambda (new-val)
-				   (if (and (integer? new-val)
-					    (>= new-val from)
-					    (<= new-val to))
-				       (begin (set-state! statevar new-val)
-					      (when action (action)))
-				       (spinbox 'set (state statevar))))))
-      ;; (tk/bind* spinbox '<<Increment>>
-      ;; 		(lambda ()
-      ;; 		  (validate-new-value (add1 (string->number (spinbox 'get))))))
-      ;; (tk/bind* spinbox '<<Decrement>>
-      ;; 		(lambda ()
-      ;; 		  (validate-new-value (sub1 (string->number (spinbox 'get))))))
-      (tk/bind* spinbox '<Return>
-		(lambda ()
-		  (validate-new-value (string->number (spinbox 'get)))
-		  (switch-ui-zone-focus (state 'current-ui-zone))))
-      (tk/bind* spinbox '<FocusOut>
-		(lambda ()
-		  (validate-new-value (string->number (spinbox 'get)))))
-      spinbox))
+  	   (labels (map (lambda (elem)
+  			  (box 'create-widget 'label text: (cadr elem)))
+  			elements))
 
-  ;;; The list of edit setting widgets. Each element in the list must be a list
-  ;;; containing an identifier, a label string, a documentation string, a field
-  ;;; in `app-settings` from which to draw the default value, and a spinbox
-  ;;; widget which should be created with `make-edit-settings-spinbox`.
+  	   (spinboxes
+	    (map (lambda (elem)
+  		   (let* ((state-var (fifth elem))
+		   	  (from (sixth elem))
+		   	  (to (seventh elem))
+		   	  (callback (eighth elem))
+		   	  (sb (box 'create-widget 'spinbox from: from to: to
+		   		   width: 4 state: 'disabled validate: 'none))
+		   	  (validate-new-value
+			   (lambda (new-val)
+		   	     (if (and (integer? new-val)
+		   		      (>= new-val from)
+		   		      (<= new-val to))
+		   		 (begin (set-state! state-var new-val)
+		   			(when callback (callback)))
+		   		 (sb 'set (state state-var))))))
+		     ;; (tk/bind* sb '<<Increment>>
+		     ;; 	  (lambda ()
+		     ;; 	     (validate-new-value
+		     ;;               (add1 (string->number (sb 'get))))))
+		     ;; (tk/bind* sb '<<Decrement>>
+		     ;; 	  (lambda ()
+		     ;; 	     (validate-new-value
+		     ;;               (sub1 (string->number (sb 'get))))))
+		     (tk/bind* sb '<Return>
+		     	       (lambda ()
+		     		 (validate-new-value (string->number (sb 'get)))
+		     		 (switch-ui-zone-focus
+				  (state 'current-ui-zone))))
+		     (tk/bind* sb '<FocusOut>
+		     	       (lambda () (validate-new-value
+					   (string->number (sb 'get)))))
+		     sb))
+  		 elements))
+
+  	   (descriptions (map caddr elements))
+
+	   (default-vars (map cadddr elements))
+
+  	   (ref (lambda args
+  		  (list-ref (case (car args)
+  			      ((label) labels)
+  			      ((spinbox) spinboxes)
+  			      ((description) descriptions))
+  			    (list-index (lambda (x)
+  					  (eqv? x (cadr args)))
+  					(map car elements)))))
+
+  	   (set-state (lambda (s)
+  			(for-each (lambda (spinbox)
+  				    (spinbox 'configure state: s))
+  				  spinboxes))))
+
+      (for-each (lambda (label spinbox description default-var)
+  		  (tk/pack label side: 'left padx: 5)
+		  (tk/pack spinbox side: 'left)
+		  (spinbox 'set (settings default-var))
+		  ;; TODO FIXME cannot currently re-implement this. Must defer
+		  ;; binding until `bind-info-status` is initialized. But that's
+		  ;; ok since we also need to separate callback bindings.
+  		  ;; (bind-info-status label description)
+		  )
+  		labels spinboxes descriptions default-vars)
+
+      (lambda args
+  	(case (car args)
+  	  ((ref) (apply ref (cdr args)))
+  	  ((set-state) (set-state (cadr args)))
+  	  ((show) (apply tk/pack (cons box packing-arguments)))
+  	  ((hide) (tk/pack 'forget box))
+	  (else (warning (string-append "Unsupported settings-bar action "
+					(->string args))))))))
+
+
   (define edit-settings
-    `((edit-step "Step" "Set the edit step" default-edit-step
-		 ,(make-edit-settings-spinbox 0 64 'edit-step #f))
-      (base-octave "Octave" "Set the base octave" default-base-octave
-		   ,(make-edit-settings-spinbox 0 9 'base-octave #f))
-      (major-highlight "Major Row" "Set the major row highlight"
-		       default-major-row-highlight
-		       ,(make-edit-settings-spinbox
-			 2 64 'major-row-highlight
-			 (lambda ()
+    (make-settings-bar
+     edit-settings-frame
+     ;; id label-str doc-str default-var state-var from to command
+     `((edit-step "Step" "Set the edit step" default-edit-step
+		  edit-step 0 64 #f)
+       (base-octave "Octave" "Set the base octave" default-base-octave
+		    base-octave 0 9 #f)
+       (major-highlight "Major Row" "Set the major row highlight"
+			default-major-row-highlight major-row-highlight 2 64
+			,(lambda ()
 			   (blockview-update-row-highlights
-			    (current-blocks-view)))))
-      (minor-highlight "Minor Row" "Set the minor row highlight"
-		       default-minor-row-highlight
-		       ,(make-edit-settings-spinbox
-			 2 32 'minor-row-highlight
-			 (lambda ()
+			    (current-blocks-view))))
+       (minor-highlight "Minor Row" "Set the minor row highlight"
+			default-minor-row-highlight minor-row-highlight 2 32
+			,(lambda ()
 			   (blockview-update-row-highlights
 			    (current-blocks-view)))))))
-
-  ;;; Set the state of the edit settings spinboxes to `state`, which must be
-  ;;; either `'enabled` or `'disabled`.
-  (define (set-edit-settings-state! state)
-    (for-each (lambda (setting)
-		((fifth setting) 'configure state: state))
-	      edit-settings))
-
-  ;;; Enable the edit settings spinboxes.
-  (define (enable-edit-settings!)
-    (set-edit-settings-state! 'enabled))
-
-  ;;; Disable the edit settings spinboxes.
-  (define (disable-edit-settings!)
-    (set-edit-settings-state! 'disabled))
-
-  ;;; Display the edit settings in the main GUI.
-  (define (show-edit-settings)
-    (for-each (lambda (setting)
-		(pack-edit-settings-label (cadr setting) (third setting))
-		(tk/pack (fifth setting) side: 'left)
-		((fifth setting) 'set (settings (fourth setting))))
-	      edit-settings))
 
 
   ;; ---------------------------------------------------------------------------

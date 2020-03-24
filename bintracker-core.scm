@@ -62,7 +62,7 @@
 	  (lambda () (main-toolbar 'group 'journal 'disabled))
 	  (lambda () (emulator 'quit))
 	  reset-state! update-window-title! reset-status-text!
-	  disable-edit-settings!))
+	  (lambda () (edit-settings 'set-state 'disabled))))
 
   ;;; Close the currently opened module file.
   ;; TODO disable menu option
@@ -79,7 +79,7 @@
 	  init-instances-record! show-module
 	  reset-status-text! update-window-title!
 	  (lambda () (blockview-focus (current-blocks-view)))
-	  enable-edit-settings!
+	  (lambda () (edit-settings 'set-state 'enabled))
 	  (lambda () (emulator 'start))))
 
   ;;; Load an MDAL module file.
