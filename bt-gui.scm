@@ -132,47 +132,39 @@
   ;;; a default widget layout with `Cancel` and `Confirm` buttons and
   ;;; corresponding key handlers for `<Escape>` and `<Return>`.
   ;;;
-  ;;; Returns a closure *c*, which can be used as follows:
+  ;;; Returns a procedure, which can be called with the following arguments:
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'show)
-  ;;; ```
+  ;;; `'show`
+  ;;;
   ;;; Display the dialogue widget. Call this procedure **before** you add any
   ;;; user-defined widgets, bindings, procedures, and finalizers.
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'add 'widget id widget-specification)
-  ;;; ```
+  ;;; `'add 'widget id widget-specification`
+  ;;;
   ;;; Add a widget named `id`, where `widget-specification` is the list of
   ;;; widget arguments that will be passed to Tk as the remaining arguments of
   ;;; a call to `(parent 'create-widget ...)`.
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'add 'binding event p)
-  ;;; ```
+  ;;; `'add 'binding event p`
+  ;;;
   ;;; Bind the procedure `p` to the Tk event sequence specifier `Event`.
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'add 'procedure id p)
-  ;;; ```
+  ;;; `'add 'procedure id p`
+  ;;;
   ;;; Add a custom procedure ;; TODO redundant?
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'add 'finalizer p)
-  ;;; ```
+  ;;; `'add 'finalizer p`
+  ;;;
   ;;; Add the procedure `p` to the list of finalizers that will run on a
   ;;; successful exit from the dialogue.
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'ref id)
-  ;;; ```
+  ;;; `'ref id`
   ;;; Returns the user-defined widget or procedure named `id` Use this to
   ;;; cross-reference elements created with `(c 'add [widget|procedure])` within
   ;;; user code.
   ;;;
-  ;;; ```Scheme
-  ;;; (c 'destroy)
-  ;;; ```
+  ;;; `'destroy`
+  ;;;
   ;;; Executes any user defined finalizers, then destroys the dialogue window.
   ;;; You normally do not need to call this explicitly unless you are handling
   ;;; exceptions.
@@ -460,24 +452,25 @@
   ;;; initial state, which should be either 'enabled or 'disabled.
   ;;;
   ;;;
-  ;;; `make-toolbar` returns a procedure `p` that you can use as follows:
+  ;;; `make-toolbar` returns a procedure that you can call with the following
+  ;;; arguments:
   ;;;
-  ;;; `(p 'button group-id button-id state)`
+  ;;; `'button group-id button-id state`
   ;;; Set the Tk widget state of button 'button-id' in group 'group-id', where
   ;;; `state` is either 'enabled or 'disabled.
   ;;;
-  ;;; `(p 'group group-id action)
+  ;;; `'group group-id action`
   ;;; Enable or disable the button group 'group-id', where `action` is either
   ;;; 'enable or 'disable.
   ;;;
-  ;;; `(p 'set-command group-id button-id proc)`
+  ;;; `'set-command group-id button-id proc`
   ;;; Set a button's callback procedure. `proc` must be a procedure that takes
   ;;; no arguments.
   ;;;
-  ;;; `(p 'show)`
+  ;;; `'show`
   ;;; Map the toolbar to the display.
   ;;;
-  ;;; `(p 'hide)`
+  ;;; `'hide`
   ;;; Hide the toolbar.
   (define (make-toolbar parent button-groups #!optional
 			;; TODO packing args will change w/ new setup
@@ -505,11 +498,10 @@
 	   (group-ref (lambda (group-id)
 			(alist-ref group-id groups)))
 
-	   ;;'button ... 'enable/disable
 	   (button (lambda (group-id button-id state)
 		     ((car (button-ref group-id button-id))
 		      'configure state: state)))
-	   ;;'group ... 'enable/disable
+
 	   (group (lambda (group-id action)
 		    (for-each (lambda (b)
 				(button group-id (car b) action))
