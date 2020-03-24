@@ -50,10 +50,11 @@
 
   ;;; Shut down the running application.
   (define (exit-bintracker)
-    ;; TODO must not close db if not exiting
-    (btdb-close!)
-    ;; TODO ?? (emulator 'quit)
-    (do-proc-with-exit-dialogue "exit" tk-end))
+    (do-proc-with-exit-dialogue "exit"
+				(lambda ()
+				  (emulator 'quit)
+				  (btdb-close!)
+				  (tk-end))))
 
   (define on-close-file-hooks
     (list (lambda () (destroy-group-widget (state 'module-widget)))

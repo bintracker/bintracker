@@ -18,17 +18,18 @@
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)
 	      (emul-output-port #f)
+	      (emul-pid #f)
 	      (emul-thread #f)
 	      (emul-input-chars '())
 
 	      (launch-emul-process
 	       (lambda ()
-		 (let ((res (call-with-values
-				(lambda () (process program program-args))
-			      (lambda (in out pid)
-				(list in out)))))
-		   (set! emul-input-port (car res))
-		   (set! emul-output-port (cadr res)))))
+		 (call-with-values
+		     (lambda () (process program program-args))
+		   (lambda (in out pid)
+		     (set! emul-input-port in)
+		     (set! emul-output-port out)
+		     (set! emul-pid pid)))))
 
 	      (emul-event-loop
 	       (lambda ()
@@ -65,6 +66,13 @@
 	  ((start) (unless emul-started (start-emul)))
 	  ((quit) (when emul-started
 		    (send-command "q")
+		    (call-with-values
+			(lambda () (process-wait emul-pid))
+		      (lambda args
+			(unless (cadr args)
+			  (warning "Emulator process exited abnormally"))))
+		    ;; TODO exn handling
+		    (thread-join! emul-thread)
 		    (set! emul-started #f)))
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
