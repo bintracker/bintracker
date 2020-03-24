@@ -432,9 +432,9 @@
 
   ;;; Create a toolbar metawidget, consisting of groups of buttons. `parent`
   ;;; must be the Tk parent window that the toolbar itself will be packed to.
-  ;;; By default toolbars will be packed with `side: 'top padx: 0 fill: 'y`.
+  ;;; By default toolbars are packed with `side: 'top padx: 0 fill: 'y`.
   ;;; You can override these defaults with the optional `packing-arguments`
-  ;;; argument, which shall be a flat list.
+  ;;; argument, which must be a list of keyword assignments.
   ;;;
   ;;; `button-groups` must be a list of button group specifications. The list
   ;;; takes the form:
@@ -481,22 +481,20 @@
 			  (box 'create-widget 'button image: (tk/icon icon)
   			       state: init-state style: "Toolbutton")))
 
-	   (groups
-	    (map (lambda (group)
-		   (cons (car group)
-			 (map (lambda (button)
-				(list (car button)
-				      (apply make-button (cddr button))
-				      (cadr button)))
-			      (cdr group))))
-		 button-groups))
+	   (groups (map (lambda (group)
+			  (cons (car group)
+				(map (lambda (button)
+				       (list (car button)
+					     (apply make-button (cddr button))
+					     (cadr button)))
+				     (cdr group))))
+			button-groups))
 
 	   (button-ref (lambda (group-id button-id)
 			 (let ((group (alist-ref group-id groups)))
 			   (and group (alist-ref button-id group)))))
 
-	   (group-ref (lambda (group-id)
-			(alist-ref group-id groups)))
+	   (group-ref (lambda (group-id) (alist-ref group-id groups)))
 
 	   (button (lambda (group-id button-id state)
 		     ((car (button-ref group-id button-id))
@@ -507,37 +505,32 @@
 				(button group-id (car b) action))
 			      (group-ref group-id))))
 
-	   (bind-info
-	    (lambda (button-spec)
-	      (bind-info-status (cadr button-spec)
-				(string-append (caddr button-spec) " "
-					       (key-binding->info
-						'global (car button-spec))))))
+	   (set-command
+	    (lambda (group-id button-id command)
+	      (let ((b (button-ref group-id button-id)))
+		((car b) 'configure command: command)
+		(bind-info-status (car b)
+				  (string-append (cadr b) " "
+						 (key-binding->info
+						  'global button-id)))))))
 
-	   (set-command (lambda (group-id button-id command)
-			  ((car (button-ref group-id button-id))
-			   'configure command: command)))
-
-	   (show (lambda ()
-		   (for-each
-		    (lambda (button-group)
-  		      (for-each (lambda (button-entry)
-  				  (tk/pack (cadr button-entry)
-					   side: 'left padx: 0 fill: 'y)
-				  (bind-info button-entry))
-  				(cdr button-group))
-  		      (tk/pack (box 'create-widget 'separator
-  				    orient: 'vertical)
-  			       side: 'left padx: 0 'fill: 'y))
-  		    groups)
-		   (apply tk/pack (cons box packing-arguments)))))
+      ;; initialize descendant widgets
+      (for-each
+       (lambda (button-group)
+      	 (for-each (lambda (button-entry)
+      		     (tk/pack (cadr button-entry)
+      			      side: 'left padx: 0 fill: 'y))
+      		   (cdr button-group))
+      	 (tk/pack (box 'create-widget 'separator orient: 'vertical)
+      		  side: 'left padx: 0 'fill: 'y))
+       groups)
 
       (lambda args
 	(case (car args)
 	  ((button) (apply button (cdr args)))
 	  ((group) (apply group (cdr args)))
 	  ((set-command) (apply set-command (cdr args)))
-	  ((show) (show))
+	  ((show) (apply tk/pack (cons box packing-arguments)))
 	  ((hide) (tk/pack 'forget box))
 	  (else (warning (string-append "Unsupported toolbar action "
 					(->string args))))))))
