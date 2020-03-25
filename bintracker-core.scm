@@ -205,6 +205,18 @@
 		(list->string (map integer->char
 				   (mod->bin (current-mod) origin))))))
 
+  (define (play-pattern)
+    (let ((origin (config-default-origin (current-config))))
+      (emulator 'run origin
+		(list->string (map integer->char
+				   (mod->bin (derive-single-pattern-mdmod
+					      (current-mod)
+					      (blockview-group-id
+					       (current-blocks-view))
+					      (blockview-get-current-order-pos
+					       (current-blocks-view)))
+					     origin))))))
+
   (define (stop-playback)
     (emulator 'pause))
 
@@ -268,6 +280,7 @@
 	      `((file load-file ,load-file)
 		(file save-file ,save-file)
 		(play play-from-start ,play-from-start)
+		(play play-pattern ,play-pattern)
 		(play stop-playback ,stop-playback)
 		(journal undo ,undo)
 		(journal redo ,redo))))

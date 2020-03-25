@@ -11,6 +11,7 @@
 	  (<Control-Tab> focus-next-ui-zone)
 	  (<F1> launch-help)
 	  (<F5> play-from-start)
+	  (<F7> play-pattern)
 	  (<F8> stop-playback))
  console: ((<Return> eval-console)
 	   (<Control-l> clear-console))

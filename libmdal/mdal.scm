@@ -332,4 +332,30 @@
 		  config: config
 		  global-node: (extract-nodes (mdmod-global-node mod)))))
 
+  (define (derive-single-pattern-mdmod mod group-id order-pos)
+    (letrec*
+	((config (mdmod-config mod))
+	 (extract-nodes
+	  (lambda (root)
+	    (cons (car root)
+		  (map (lambda (node-instance)
+			 (case (inode-config-type (config-inode-ref (car root)
+								    config))
+			   ((field) node-instance)
+			   ((block)
+			    (if (eqv? (car root)
+				      (symbol-append group-id '_ORDER))
+				(append '(0 #f)
+					(list (list-ref (repeat-block-row-values
+							 (cddr node-instance))
+							order-pos)))
+				node-instance))
+			   ((group) (append (take node-instance 2)
+					    (map extract-nodes
+						 (cddr node-instance))))))
+		       (cdr root))))))
+      (make-mdmod config-id: (mdmod-config-id mod)
+		  config: config
+		  global-node: (extract-nodes (mdmod-global-node mod)))))
+
   ) ;; end module mdal
