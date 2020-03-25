@@ -52,7 +52,8 @@
   (define (exit-bintracker)
     (do-proc-with-exit-dialogue "exit"
 				(lambda ()
-				  (emulator 'quit)
+				  (when (state 'emulator)
+				    (emulator 'quit))
 				  (btdb-close!)
 				  (tk-end))))
 
