@@ -332,6 +332,8 @@
 		  config: config
 		  global-node: (extract-nodes (mdmod-global-node mod)))))
 
+  ;;; Derive a new MDAL module from the module `mod`, with the order list of
+  ;;; group `group-id` modified to only contain the step `order-pos`.
   (define (derive-single-pattern-mdmod mod group-id order-pos)
     (letrec*
 	((config (mdmod-config mod))
