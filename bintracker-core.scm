@@ -11,13 +11,13 @@
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  (chicken file)
 	  srfi-1 srfi-13 srfi-18 srfi-69 pstk typed-records matchable list-utils
-	  sql-de-lite simple-exceptions mdal
+	  coops sql-de-lite simple-exceptions mdal
 	  bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
 	    (chicken bitwise)
-	    srfi-1 srfi-13 srfi-18 srfi-69 list-utils simple-exceptions
+	    srfi-1 srfi-13 srfi-18 srfi-69 coops list-utils simple-exceptions
 	    (only sql-de-lite exec sql))
 
 
@@ -63,7 +63,7 @@
 	  (lambda () (main-toolbar 'group 'journal 'disabled))
 	  (lambda () (emulator 'quit))
 	  reset-state! update-window-title! reset-status-text!
-	  (lambda () (edit-settings 'set-state 'disabled))))
+	  (lambda () (ui-set-state edit-settings 'disabled))))
 
   ;;; Close the currently opened module file.
   ;; TODO disable menu option
@@ -80,7 +80,7 @@
 	  init-instances-record! show-module
 	  reset-status-text! update-window-title!
 	  (lambda () (blockview-focus (current-blocks-view)))
-	  (lambda () (edit-settings 'set-state 'enabled))
+	  (lambda () (ui-set-state edit-settings 'enabled))
 	  (lambda () (emulator 'start))))
 
   ;;; Load an MDAL module file.

@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
-	  typed-records simple-exceptions pstk stack
+	  coops typed-records simple-exceptions pstk stack
 	  bt-state bt-types bt-db mdal)
 
   ;; ---------------------------------------------------------------------------
@@ -70,6 +70,135 @@
   (define (tk/icon filename)
     (tk/image 'create 'photo format: "PNG"
 	      file: (string-append "resources/icons/" filename)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; GUI Elements
+  ;; ---------------------------------------------------------------------------
+
+  ;;; A collection of classes and methods that make up Bintracker's internal
+  ;;; GUI structure.
+
+  ;;; The basic GUI element class, from which all other GUI elements are
+  ;;; derived.
+  (define-class <ui-element> ()
+    ((initialized #f)
+     (setup (error "Cannot create <ui-element> without setup argument"))
+     (parent tk)
+     (packing-args '())
+     box
+     (children '())))
+
+  (define-method (initialize-instance after: (buf <ui-element>))
+    (display "calling initializer <ui-element>")
+    (newline)
+    (set! (slot-value buf 'box)
+      ((slot-value buf 'parent) 'create-widget 'frame))
+    (set! (slot-value buf 'children)
+      (map (lambda (child)
+    	     (list (car child) (apply make (cdr child))))
+    	   (slot-value buf 'children))))
+
+  ;;; Map the GUI element to the display.
+  (define-method (ui-show primary: (buf <ui-element>))
+    (unless (slot-value buf 'initialized)
+      (map (o ui-show cadr)
+    	   (slot-value buf 'children))
+      (set! (slot-value buf 'initialized) #t))
+    (apply tk/pack (cons (slot-value buf 'box)
+			 (slot-value buf 'packing-args))))
+
+  ;;; Remove the GUI element from the display.
+  (define-method (ui-hide primary: (buf <ui-element>))
+    (tk/pack 'forget (slot-value buf 'box)))
+
+  ;;; A class representing a labelled Tk spinbox. Create instances with
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-setting>
+  ;;;       'setup '(LABEL INFO DEFAULT-VAR STATE-VAR FROM TO [CALLBACK]))
+  ;;; ```
+  ;;;
+  ;;; where LABEL is the text of the label, INFO is a short description of the
+  ;;; element's function, DEFAULT-VAR is a symbol denoting an entry in
+  ;;; `(settings)`, STATE-VAR is a symbol denoting an entry in `(state)`, FROM
+  ;;; and TO are integers describing the range of permitted values, and
+  ;;; CALLBACK may optionally a procedure of no arguments that will be invoked
+  ;;; when the user selects a new value.
+  (define-class <ui-setting> (<ui-element>)
+    ((setup (error "Cannot create <ui-setting-buffer> without setup argument"))
+     (packing-args '(side: left))
+     label
+     spinbox))
+
+  (define-method (initialize-instance after: (buf <ui-setting>))
+    (display "calling initializer <ui-setting>")
+    (newline)
+    (let* ((setup (slot-value buf 'setup))
+	   (default-var (third setup))
+	   (state-var (fourth setup))
+	   (from (fifth setup))
+	   (to (sixth setup))
+	   (callback (and (= 7 (length setup))
+			  (seventh setup)))
+	   (box (slot-value buf 'box))
+	   (spinbox (box 'create-widget 'spinbox from: from to: to
+			 width: 4 state: 'disabled validate: 'none))
+	   (validate-new-value
+	    (lambda (new-val)
+	      (if (and (integer? new-val)
+		       (>= new-val from)
+		       (<= new-val to))
+		  (begin (set-state! state-var new-val)
+		   	 (when callback (callback)))
+		  (spinbox 'set (state state-var))))))
+      (set! (slot-value buf 'label)
+	(box 'create-widget 'label text: (car setup)))
+      ;; (tk/bind* spinbox '<<Increment>>
+      ;; 	  (lambda ()
+      ;; 	     (validate-new-value
+      ;;               (add1 (string->number (spinbox 'get))))))
+      ;; (tk/bind* spinbox '<<Decrement>>
+      ;; 	  (lambda ()
+      ;; 	     (validate-new-value
+      ;;               (sub1 (string->number (spinbox 'get))))))
+      (tk/bind* spinbox '<Return>
+		(lambda ()
+		  (validate-new-value (string->number (spinbox 'get)))
+		  (switch-ui-zone-focus (state 'current-ui-zone))))
+      (tk/bind* spinbox '<FocusOut>
+		(lambda ()
+		  (validate-new-value (string->number (spinbox 'get)))))
+      (set! (slot-value buf 'spinbox) spinbox)
+      (tk/pack (slot-value buf 'label) side: 'left padx: 5)
+      (tk/pack spinbox side: 'left)
+      (spinbox 'set (settings default-var))
+      ;; TODO FIXME cannot currently re-implement this. Must defer
+      ;; binding until `bind-info-status` is initialized. But that's
+      ;; ok since we also need to separate callback bindings.
+      ;; (bind-info-status label description)
+      ))
+
+  (define-method (ui-set-state primary: (buf <ui-setting>) state)
+    ((slot-value buf 'spinbox) 'configure state: state))
+
+  (define-class <ui-settings-bar> (<ui-element>)
+    ((packing-args '(expand: 0 fill: x))))
+
+  (define-method (initialize-instance after: (buf <ui-settings-bar>))
+    (display "calling initializer <ui-settings-bar>")
+    (newline)
+    (set! (slot-value buf 'children)
+      (map (lambda (child)
+	     (list (car child)
+		   (make <ui-setting>
+		     'parent (slot-value buf 'box) 'setup (cdr child))))
+	   (slot-value buf 'setup))))
+
+  (define-method (ui-set-state primary: (buf <ui-settings-bar>) state)
+    (for-each (lambda (child)
+		(ui-set-state child state))
+	      (map cadr (slot-value buf 'children))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -372,7 +501,7 @@
       (tk/pack toolbar-frame expand: 0 fill: 'x)
       (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
 	       expand: 0 fill: 'x)
-      (edit-settings 'show)
+      (ui-show edit-settings)
       (tk/pack edit-settings-frame expand: 0 'fill: 'x)
       (tk/pack main-panes expand: 1 fill: 'both)
       (main-panes 'add main-frame weight: 5)
@@ -561,125 +690,24 @@
   ;;; ## Edit Settings Display
   ;; ---------------------------------------------------------------------------
 
-  ;; TODO find a better name for this.
-  ;;; Create a settings-bar metawidget, consisting of labelled Spinboxes.
-  ;;; `parent` must be the Tk parent window that the settings-bar will be
-  ;;; packed to. By default toolbars are packed with
-  ;;; `side: 'top padx: 0 fill: 'y`. TODO
-  ;;; You can override these defaults with the optional `packing-arguments`
-  ;;; argument, which must be a list of keyword assignments.
-  ;;;
-  ;;; `elements` must be a list of element specifications. An element
-  ;;; specification is a list in the form:
-  ;;;
-  ;;; `(id label-text info default-var state-var from to callback)`
-  ;;;
-  ;;; where `id` is a unique identifier, `label-text` is the text of the label,
-  ;;; `info` is a short description of the element's function, `default-var` is
-  ;;; a symbol denoting an entry in `(settings)`, state-var is a symbol denoting
-  ;;; an entry in `(state)`, `from` and `to` are integers describing the range
-  ;;; of permitted values, and `callback` is an optional procedure of no
-  ;;; arguments that will be called when the user selects a new value.
-  (define (make-settings-bar parent elements #!optional
-			     (packing-arguments '(expand: 0 fill: x)))
-    (let* ((box (parent 'create-widget 'frame))
-
-  	   (labels (map (lambda (elem)
-  			  (box 'create-widget 'label text: (cadr elem)))
-  			elements))
-
-  	   (spinboxes
-	    (map (lambda (elem)
-  		   (let* ((state-var (fifth elem))
-		   	  (from (sixth elem))
-		   	  (to (seventh elem))
-		   	  (callback (eighth elem))
-		   	  (sb (box 'create-widget 'spinbox from: from to: to
-		   		   width: 4 state: 'disabled validate: 'none))
-		   	  (validate-new-value
-			   (lambda (new-val)
-		   	     (if (and (integer? new-val)
-		   		      (>= new-val from)
-		   		      (<= new-val to))
-		   		 (begin (set-state! state-var new-val)
-		   			(when callback (callback)))
-		   		 (sb 'set (state state-var))))))
-		     ;; (tk/bind* sb '<<Increment>>
-		     ;; 	  (lambda ()
-		     ;; 	     (validate-new-value
-		     ;;               (add1 (string->number (sb 'get))))))
-		     ;; (tk/bind* sb '<<Decrement>>
-		     ;; 	  (lambda ()
-		     ;; 	     (validate-new-value
-		     ;;               (sub1 (string->number (sb 'get))))))
-		     (tk/bind* sb '<Return>
-		     	       (lambda ()
-		     		 (validate-new-value (string->number (sb 'get)))
-		     		 (switch-ui-zone-focus
-				  (state 'current-ui-zone))))
-		     (tk/bind* sb '<FocusOut>
-		     	       (lambda () (validate-new-value
-					   (string->number (sb 'get)))))
-		     sb))
-  		 elements))
-
-  	   (descriptions (map caddr elements))
-
-	   (default-vars (map cadddr elements))
-
-  	   (ref (lambda args
-  		  (list-ref (case (car args)
-  			      ((label) labels)
-  			      ((spinbox) spinboxes)
-  			      ((description) descriptions))
-  			    (list-index (lambda (x)
-  					  (eqv? x (cadr args)))
-  					(map car elements)))))
-
-  	   (set-state (lambda (s)
-  			(for-each (lambda (spinbox)
-  				    (spinbox 'configure state: s))
-  				  spinboxes))))
-
-      (for-each (lambda (label spinbox description default-var)
-  		  (tk/pack label side: 'left padx: 5)
-		  (tk/pack spinbox side: 'left)
-		  (spinbox 'set (settings default-var))
-		  ;; TODO FIXME cannot currently re-implement this. Must defer
-		  ;; binding until `bind-info-status` is initialized. But that's
-		  ;; ok since we also need to separate callback bindings.
-  		  ;; (bind-info-status label description)
-		  )
-  		labels spinboxes descriptions default-vars)
-
-      (lambda args
-  	(case (car args)
-  	  ((ref) (apply ref (cdr args)))
-  	  ((set-state) (set-state (cadr args)))
-  	  ((show) (apply tk/pack (cons box packing-arguments)))
-  	  ((hide) (tk/pack 'forget box))
-	  (else (warning (string-append "Unsupported settings-bar action "
-					(->string args))))))))
-
-
   (define edit-settings
-    (make-settings-bar
-     edit-settings-frame
-     ;; id label-str doc-str default-var state-var from to command
-     `((edit-step "Step" "Set the edit step" default-edit-step
-		  edit-step 0 64 #f)
-       (base-octave "Octave" "Set the base octave" default-base-octave
-		    base-octave 0 9 #f)
-       (major-highlight "Major Row" "Set the major row highlight"
-			default-major-row-highlight major-row-highlight 2 64
-			,(lambda ()
-			   (blockview-update-row-highlights
-			    (current-blocks-view))))
-       (minor-highlight "Minor Row" "Set the minor row highlight"
-			default-minor-row-highlight minor-row-highlight 2 32
-			,(lambda ()
-			   (blockview-update-row-highlights
-			    (current-blocks-view)))))))
+    (make <ui-settings-bar> 'parent edit-settings-frame 'setup
+	  `((edit-step "Step" "Set the edit step" default-edit-step
+		       edit-step 0 64)
+	    (base-octave "Octave" "Set the base octave" default-base-octave
+			 base-octave 0 9)
+	    (major-highlight "Major Row" "Set the major row highlight"
+			     default-major-row-highlight major-row-highlight
+			     2 64
+			     ,(lambda ()
+				(blockview-update-row-highlights
+				 (current-blocks-view))))
+	    (minor-highlight "Minor Row" "Set the minor row highlight"
+			     default-minor-row-highlight minor-row-highlight
+			     2 32
+			     ,(lambda ()
+				(blockview-update-row-highlights
+				 (current-blocks-view)))))))
 
 
   ;; ---------------------------------------------------------------------------
