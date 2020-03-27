@@ -253,6 +253,40 @@
 				   (command about "About" 0 #f
 					    ,about-message))))))))
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Core GUI Layout
+  ;; ---------------------------------------------------------------------------
+
+  (define edit-settings
+    (make <ui-settings-group> 'parent top-frame 'setup
+	  `((edit-step "Step" "Set the edit step" default-edit-step
+		       edit-step 0 64)
+	    (base-octave "Octave" "Set the base octave" default-base-octave
+			 base-octave 0 9)
+	    (major-highlight "Major Row" "Set the major row highlight"
+			     default-major-row-highlight major-row-highlight
+			     2 64
+			     ,(lambda ()
+				(blockview-update-row-highlights
+				 (current-blocks-view))))
+	    (minor-highlight "Minor Row" "Set the minor row highlight"
+			     default-minor-row-highlight minor-row-highlight
+			     2 32
+			     ,(lambda ()
+				(blockview-update-row-highlights
+				 (current-blocks-view)))))))
+
+  (define (init-top-level-layout)
+    (begin
+      (tk/pack status-frame fill: 'x side: 'bottom)
+      (tk/pack top-frame expand: 1 fill: 'both)
+      (ui-show main-toolbar)
+      (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
+      	       expand: 0 fill: 'x)
+      (ui-show edit-settings)
+      (tk/pack main-panes expand: 1 fill: 'both)
+      (main-panes 'add main-frame weight: 5)
+      (main-panes 'add console-frame weight: 2)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Bindings
