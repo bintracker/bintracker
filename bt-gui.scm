@@ -77,9 +77,29 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; A collection of classes and methods that make up Bintracker's internal
-  ;;; GUI structure.
+  ;;; GUI structure. All UI classes are derived from `<ui-element>`. An instance
+  ;;; of `<ui-element>` or a derived class contains the following fields:
+  ;;;
+  ;;; - `setup` - an expression specifying how to construct the UI element.
+  ;;; Details depend on the specific class type of the element. For standard
+  ;;; `<ui-element>`s, this is the only mandatory field.
+  ;;;
+  ;;; - `parent` - the Tk parent widget, typically a tk::frame. Defaults to `tk`
+  ;;; if not specified.
+  ;;;
+  ;;; - `packing-args` - additional arguments that are passed to tk/pack when
+  ;;; the UI element's main widget container is packed to the display.
+  ;;;
+  ;;; - `children` - an alist of child UI elements, where keys are symbols
+  ;;; and values are instances of `<ui-element>` or a descendant class. The
+  ;;; list will be populated automatically from the `setup` field, so there is
+  ;;; normally no need for manual setup.
+  ;;;
+  ;;; The generic procedures `ui-show` and `ui-hide` are available for all
+  ;;; UI element classes. Many UI elements also provide `ui-set-state` and
+  ;;; `ui-set-callbacks` methods.
 
-  ;;; The basic GUI element class, from which all other GUI elements are
+  ;;; The basic UI element class, from which all other GUI elements are
   ;;; derived.
   (define-class <ui-element> ()
     ((initialized #f)
@@ -96,13 +116,13 @@
       ((slot-value buf 'parent) 'create-widget 'frame))
     (set! (slot-value buf 'children)
       (map (lambda (child)
-    	     (list (car child) (apply make (cdr child))))
+    	     (cons (car child) (apply make (cdr child))))
     	   (slot-value buf 'children))))
 
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (buf <ui-element>))
     (unless (slot-value buf 'initialized)
-      (map (o ui-show cadr)
+      (map (o ui-show cdr)
     	   (slot-value buf 'children))
       (set! (slot-value buf 'initialized) #t))
     (apply tk/pack (cons (slot-value buf 'box)
@@ -116,15 +136,16 @@
   ;;;
   ;;; ```Scheme
   ;;; (make <ui-setting>
+  ;;;       'parent PARENT
   ;;;       'setup '(LABEL INFO DEFAULT-VAR STATE-VAR FROM TO [CALLBACK]))
   ;;; ```
   ;;;
-  ;;; where LABEL is the text of the label, INFO is a short description of the
-  ;;; element's function, DEFAULT-VAR is a symbol denoting an entry in
-  ;;; `(settings)`, STATE-VAR is a symbol denoting an entry in `(state)`, FROM
-  ;;; and TO are integers describing the range of permitted values, and
-  ;;; CALLBACK may optionally a procedure of no arguments that will be invoked
-  ;;; when the user selects a new value.
+  ;;; where PARENT is the parent Tk widget, LABEL is the text of the label,
+  ;;; INFO is a short description of the element's function, DEFAULT-VAR is a
+  ;;; symbol denoting an entry in `(settings)`, STATE-VAR is a symbol denoting
+  ;;; an entry in `(state)`, FROM and TO are integers describing the range of
+  ;;; permitted values, and CALLBACK may optionally a procedure of no arguments
+  ;;; that will be invoked when the user selects a new value.
   (define-class <ui-setting> (<ui-element>)
     ((setup (error "Cannot create <ui-setting-buffer> without setup argument"))
      (packing-args '(side: left))
@@ -179,26 +200,142 @@
       ;; (bind-info-status label description)
       ))
 
+  ;;; Set the state of the UI element `buf`. `state` can be either `'disabled`
+  ;;; or `'enabled`.
   (define-method (ui-set-state primary: (buf <ui-setting>) state)
     ((slot-value buf 'spinbox) 'configure state: state))
 
-  (define-class <ui-settings-bar> (<ui-element>)
+  ;;; Returns the `buf`s child UI element with the ID `child-element`. The
+  ;;; requested element may be a direct descendant of `buf`, or an indirect
+  ;;; descendant in the tree of UI elements represented by `buf`.
+  (define-method (ui-ref primary: (buf <ui-element>) child-element)
+    (let ((children (slot-value buf 'children)))
+      (and children
+	   (or (alist-ref child-element children)
+	       (find (lambda (child)
+		       (ui-ref (cdr child) child-element))
+		     children)))))
+
+  (define-class <ui-settings-group> (<ui-element>)
     ((packing-args '(expand: 0 fill: x))))
 
-  (define-method (initialize-instance after: (buf <ui-settings-bar>))
+  (define-method (initialize-instance after: (buf <ui-settings-group>))
     (display "calling initializer <ui-settings-bar>")
     (newline)
     (set! (slot-value buf 'children)
       (map (lambda (child)
-	     (list (car child)
+	     (cons (car child)
 		   (make <ui-setting>
 		     'parent (slot-value buf 'box) 'setup (cdr child))))
 	   (slot-value buf 'setup))))
 
-  (define-method (ui-set-state primary: (buf <ui-settings-bar>) state)
+  (define-method (ui-set-state primary: (buf <ui-settings-group>) state)
     (for-each (lambda (child)
 		(ui-set-state child state))
-	      (map cadr (slot-value buf 'children))))
+	      (map cdr (slot-value buf 'children))))
+
+  ;;; A class representing a group of button widgets. Create instances with
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-button-group> 'parent PARENT
+  ;;;       'setup '((ID INFO ICON-FILE [INIT-STATE]) ...))
+  ;;; ```
+  ;;;
+  ;;; where PARENT is the parent Tk widget, ID is a unique identifier, INFO is
+  ;;; a string of text to be displayed in the status bar when the user hovers
+  ;;; the button, ICON-FILE is the name of a file in *resources/icons/*. You
+  ;;; may optionally set the initial state of the button (enabled/disabled) by
+  ;;; specifying INIT-STATE.
+  (define-class <ui-button-group> (<ui-element>)
+    ((packing-args '(expand: 0 side: left))
+     buttons))
+
+  (define-method (initialize-instance after: (buf <ui-button-group>))
+    (display "calling initializer <ui-button-group>")
+    (newline)
+    (let ((box (slot-value buf 'box)))
+      (set! (slot-value buf 'buttons)
+	(map (lambda (spec)
+	       (cons (car spec)
+		     (box 'create-widget 'button image: (tk/icon (third spec))
+		      state: (or (and (= 4 (length spec)) (fourth spec))
+				 'disabled)
+		      style: "Toolbutton")))
+	     (slot-value buf 'setup)))
+      (for-each (lambda (button)
+		  (tk/pack button side: 'left padx: 0 fill: 'y))
+		(map cdr (slot-value buf 'buttons)))
+      (tk/pack (box 'create-widget 'separator orient: 'vertical)
+	       side: 'left padx: 0 fill: 'y)))
+
+  (define-method (ui-set-state primary: (buf <ui-button-group>)
+			       state #!optional button-id)
+    (if button-id
+	(let ((button (alist-ref button-id (slot-value buf 'buttons))))
+	  (when button (button 'configure state: state)))
+	(for-each (lambda (button)
+		    ((cdr button) 'configure state: state))
+		  (slot-value buf 'buttons))))
+
+  ;;; Set callback procedures for buttons in the button group. `callbacks`
+  ;;; must be a list constructed as follows:
+  ;;;
+  ;;; `((ID THUNK) ...)`
+  ;;;
+  ;;; where ID is a button identifier, and THUNK is a callback procedure that
+  ;;; takes no arguments. If ID is found in Bintracker's `global` key bindings
+  ;;; table, the matching key binding information is added to the button's info
+  ;;; text.
+  (define-method (ui-set-callbacks primary: (buf <ui-button-group>)
+				   callbacks)
+    (let ((buttons (slot-value buf 'buttons)))
+      (for-each (lambda (cb)
+		  (let ((button (alist-ref (car cb) buttons)))
+		    (when button
+		      (button 'configure command: (cadr cb))
+		      (bind-info-status
+		       button
+		       (string-append (car (alist-ref (car cb)
+						      (slot-value buf 'setup)))
+			" " (key-binding->info 'global (car cb)))))))
+		callbacks)))
+
+
+  ;;; A class representing a toolbar metawidget, consisting of
+  ;;; `<ui-button-group>`s. Create instances with
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-toolbar> 'parent PARENT
+  ;;;       'setup '((ID1 BUTTON-SPEC1 ...) ...))
+  ;;; ```
+  ;;;
+  ;;; where PARENT is the parent Tk widget, ID1 is a unique identifier, and
+  ;;; BUTTON-SPEC1 is a setup expression passed to <ui-button-group>.
+  (define-class <ui-toolbar> (<ui-element>)
+    ((packing-args '(expand: 0 fill: x))))
+
+  (define-method (initialize-instance after: (buf <ui-toolbar>))
+    (set! (slot-value buf 'children)
+      (map (lambda (spec)
+	     (cons (car spec)
+		   (make <ui-button-group> 'parent (slot-value buf 'box)
+			 'setup (cdr spec))))
+	   (slot-value buf 'setup))))
+
+  ;;; Set callback procedures for buttons in the toolbar. `callbacks` must be
+  ;;; a list constructed as follows:
+  ;;;
+  ;;; `(ID BUTTON-GROUP-CALLBACK-SPEC ...)`
+  ;;;
+  ;;; where ID is a button group identifier and BUTTON-GROUP-CALLBACK-SPEC is
+  ;;; a callback specification as required by the `ui-set-callbacks` method of
+  ;;; `<ui-button-group>`.
+  (define-method (ui-set-callbacks primary: (buf <ui-toolbar>)
+				   callbacks)
+    (for-each (lambda (cb)
+		(let ((group (alist-ref (car cb) (slot-value buf 'children))))
+		  (when group (ui-set-callbacks group (cdr cb)))))
+	      callbacks))
 
 
   ;; ---------------------------------------------------------------------------
@@ -482,10 +619,6 @@
 
   (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
 
-  (define toolbar-frame (top-frame 'create-widget 'frame 'padding: "0 1 0 1"))
-
-  (define edit-settings-frame (top-frame 'create-widget 'frame))
-
   (define main-panes (top-frame 'create-widget 'panedwindow))
 
   (define main-frame (main-panes 'create-widget 'frame))
@@ -493,19 +626,6 @@
   (define console-frame (main-panes 'create-widget 'frame))
 
   (define status-frame (top-frame 'create-widget 'frame))
-
-  (define (init-top-level-layout)
-    (begin
-      (tk/pack status-frame fill: 'x side: 'bottom)
-      (tk/pack top-frame expand: 1 fill: 'both)
-      (tk/pack toolbar-frame expand: 0 fill: 'x)
-      (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
-	       expand: 0 fill: 'x)
-      (ui-show edit-settings)
-      (tk/pack edit-settings-frame expand: 0 'fill: 'x)
-      (tk/pack main-panes expand: 1 fill: 'both)
-      (main-panes 'add main-frame weight: 5)
-      (main-panes 'add console-frame weight: 2)))
 
   ;; TODO take into account which zones are actually active
   ;;; The list of all ui zones that can be focussed. The list consists of a list
@@ -559,114 +679,10 @@
   ;;; ## Toolbar
   ;; ---------------------------------------------------------------------------
 
-  ;;; Create a toolbar metawidget, consisting of groups of buttons. `parent`
-  ;;; must be the Tk parent window that the toolbar itself will be packed to.
-  ;;; By default toolbars are packed with `side: 'top padx: 0 fill: 'y`.
-  ;;; You can override these defaults with the optional `packing-arguments`
-  ;;; argument, which must be a list of keyword assignments.
-  ;;;
-  ;;; `button-groups` must be a list of button group specifications. The list
-  ;;; takes the form:
-  ;;;
-  ;;; ```Scheme
-  ;;; ((group-id (button-id info icon [init-state])
-  ;;;            (button-id2 ...))
-  ;;;  (group-id2 ...))
-  ;;; ```
-  ;;;
-  ;;; where `group-id` is a unique group name, `button-id` is a button name
-  ;;; that is unique within the parent group, `info` is a short text string
-  ;;; describing the button's function, and `icon` is a name of a file in the
-  ;;; `resources/icons/` directory. You may optionally specify the button's
-  ;;; initial state, which should be either 'enabled or 'disabled.
-  ;;;
-  ;;;
-  ;;; `make-toolbar` returns a procedure that you can call with the following
-  ;;; arguments:
-  ;;;
-  ;;; `'button group-id button-id state`
-  ;;; Set the Tk widget state of button 'button-id' in group 'group-id', where
-  ;;; `state` is either 'enabled or 'disabled.
-  ;;;
-  ;;; `'group group-id action`
-  ;;; Enable or disable the button group 'group-id', where `action` is either
-  ;;; 'enable or 'disable.
-  ;;;
-  ;;; `'set-command group-id button-id proc`
-  ;;; Set a button's callback procedure. `proc` must be a procedure that takes
-  ;;; no arguments.
-  ;;;
-  ;;; `'show`
-  ;;; Map the toolbar to the display.
-  ;;;
-  ;;; `'hide`
-  ;;; Hide the toolbar.
-  (define (make-toolbar parent button-groups #!optional
-			;; TODO packing args will change w/ new setup
-			(packing-arguments '(side: left padx: 0 fill: x)))
-    (let* ((box (parent 'create-widget 'frame 'padding: "0 1 0 1"))
-
-	   (make-button (lambda (icon #!optional (init-state 'disabled))
-			  (box 'create-widget 'button image: (tk/icon icon)
-  			       state: init-state style: "Toolbutton")))
-
-	   (groups (map (lambda (group)
-			  (cons (car group)
-				(map (lambda (button)
-				       (list (car button)
-					     (apply make-button (cddr button))
-					     (cadr button)))
-				     (cdr group))))
-			button-groups))
-
-	   (button-ref (lambda (group-id button-id)
-			 (let ((group (alist-ref group-id groups)))
-			   (and group (alist-ref button-id group)))))
-
-	   (group-ref (lambda (group-id) (alist-ref group-id groups)))
-
-	   (button (lambda (group-id button-id state)
-		     ((car (button-ref group-id button-id))
-		      'configure state: state)))
-
-	   (group (lambda (group-id action)
-		    (for-each (lambda (b)
-				(button group-id (car b) action))
-			      (group-ref group-id))))
-
-	   (set-command
-	    (lambda (group-id button-id command)
-	      (let ((b (button-ref group-id button-id)))
-		((car b) 'configure command: command)
-		(bind-info-status (car b)
-				  (string-append (cadr b) " "
-						 (key-binding->info
-						  'global button-id)))))))
-
-      ;; initialize descendant widgets
-      (for-each
-       (lambda (button-group)
-      	 (for-each (lambda (button-entry)
-      		     (tk/pack (cadr button-entry)
-      			      side: 'left padx: 0 fill: 'y))
-      		   (cdr button-group))
-      	 (tk/pack (box 'create-widget 'separator orient: 'vertical)
-      		  side: 'left padx: 0 'fill: 'y))
-       groups)
-
-      (lambda args
-	(case (car args)
-	  ((button) (apply button (cdr args)))
-	  ((group) (apply group (cdr args)))
-	  ((set-command) (apply set-command (cdr args)))
-	  ((show) (apply tk/pack (cons box packing-arguments)))
-	  ((hide) (tk/pack 'forget box))
-	  (else (warning (string-append "Unsupported toolbar action "
-					(->string args))))))))
+  ;; TODO this should move to bintracker-core.
 
   (define main-toolbar
-    (make-toolbar
-     toolbar-frame
+    (make <ui-toolbar> 'parent top-frame 'setup
      '((file (new-file "New File" "new.png" enabled)
 	     (load-file "Load File..." "load.png" enabled)
 	     (save-file "Save File" "save.png"))
@@ -684,30 +700,6 @@
       	     (play-pattern "Play Pattern" "play-ptn.png"))
        (configure (toggle-prompt "Toggle Console" "prompt.png")
       		  (show-settings "Settings..." "settings.png")))))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Edit Settings Display
-  ;; ---------------------------------------------------------------------------
-
-  (define edit-settings
-    (make <ui-settings-bar> 'parent edit-settings-frame 'setup
-	  `((edit-step "Step" "Set the edit step" default-edit-step
-		       edit-step 0 64)
-	    (base-octave "Octave" "Set the base octave" default-base-octave
-			 base-octave 0 9)
-	    (major-highlight "Major Row" "Set the major row highlight"
-			     default-major-row-highlight major-row-highlight
-			     2 64
-			     ,(lambda ()
-				(blockview-update-row-highlights
-				 (current-blocks-view))))
-	    (minor-highlight "Minor Row" "Set the minor row highlight"
-			     default-minor-row-highlight minor-row-highlight
-			     2 32
-			     ,(lambda ()
-				(blockview-update-row-highlights
-				 (current-blocks-view)))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -867,9 +859,9 @@
 	(blockview-update (current-order-view))
 	(blockview-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
-	(main-toolbar 'button 'journal 'redo 'enabled)
+	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'redo)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
-	  (main-toolbar 'button 'journal 'undo 'disabled)))))
+	  (ui-set-state (ui-ref main-toolbar 'journal) 'disabled 'undo)))))
 
   ;;; Redo the latest undo action.
   (define (redo)
@@ -879,13 +871,13 @@
 	(blockview-update (current-order-view))
 	(blockview-update (current-blocks-view))
 	(switch-ui-zone-focus (state 'current-ui-zone))
-	(main-toolbar 'button 'journal 'undo 'enabled)
+	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
-	  (main-toolbar 'button 'journal 'redo 'disabled)))))
+	  (ui-set-state (ui-ref main-toolbar 'journal) 'disabled 'redo)))))
 
   ;;; Enable the undo toolbar button, and update the window title if necessary.
   (define (run-post-edit-actions)
-    (main-toolbar 'button 'journal 'undo 'enabled)
+    (ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
     (unless (state 'modified)
       (set-state! 'modified #t)
       (update-window-title!)))
