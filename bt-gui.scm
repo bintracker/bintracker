@@ -77,8 +77,13 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; A collection of classes and methods that make up Bintracker's internal
-  ;;; GUI structure. All UI classes are derived from `<ui-element>`. An instance
-  ;;; of `<ui-element>` or a derived class contains the following fields:
+  ;;; GUI structure. All UI classes are derived from `<ui-element>`. The
+  ;;; OOP system used is [coops](https://wiki.call-cc.org/eggref/5/coops).
+
+  ;;; `<ui-element>` is a wrapper around Tk widgets. The widgets are wrapped in
+  ;;; a Tk Frame widget. A `<ui-element>` instance may contain child elements,
+  ;;; which are in turn instances of `<ui-element>. Any instance of
+  ;;; `<ui-element>` or a derived class contains the following fields:
   ;;;
   ;;; - `setup` - an expression specifying how to construct the UI element.
   ;;; Details depend on the specific class type of the element. For standard
@@ -91,16 +96,20 @@
   ;;; the UI element's main widget container is packed to the display.
   ;;;
   ;;; - `children` - an alist of child UI elements, where keys are symbols
-  ;;; and values are instances of `<ui-element>` or a descendant class. The
-  ;;; list will be populated automatically from the `setup` field, so there is
-  ;;; normally no need for manual setup.
+  ;;; and values are instances of `<ui-element>` or a descendant class. Children
+  ;;; are derived automatically from the `setup` field, so the user normally
+  ;;; does not need to interact with the `children` field directly.
   ;;;
-  ;;; The generic procedures `ui-show` and `ui-hide` are available for all
-  ;;; UI element classes. Many UI elements also provide `ui-set-state` and
-  ;;; `ui-set-callbacks` methods.
-
-  ;;; The basic UI element class, from which all other GUI elements are
-  ;;; derived.
+  ;;; The generic procedures `ui-show`, `ui-hide`, and `ui-ref` are implemented
+  ;;; for all UI element classes. Many UI elements also provide `ui-set-state`
+  ;;; and `ui-set-callbacks` methods.
+  ;;;
+  ;;; To implement your own custom UI elements, you should create a class
+  ;;; that inherits from `<ui-element>` or one of its descendants. You probably
+  ;;; want to define at least the `initialize-instance` method for your class,
+  ;;; which should be an `after:` method. Note that the `children` slot must
+  ;;; not contain anything but named instances of `<ui-element>`. You should
+  ;;; add your own custom slots for any Tk widgets you define.
   (define-class <ui-element> ()
     ((initialized #f)
      (setup (error "Cannot create <ui-element> without setup argument"))
@@ -131,6 +140,17 @@
   ;;; Remove the GUI element from the display.
   (define-method (ui-hide primary: (buf <ui-element>))
     (tk/pack 'forget (slot-value buf 'box)))
+
+  ;;; Returns the `buf`s child UI element with the ID `child-element`. The
+  ;;; requested element may be a direct descendant of `buf`, or an indirect
+  ;;; descendant in the tree of UI elements represented by `buf`.
+  (define-method (ui-ref primary: (buf <ui-element>) child-element)
+    (let ((children (slot-value buf 'children)))
+      (and children
+	   (or (alist-ref child-element children)
+	       (find (lambda (child)
+		       (ui-ref (cdr child) child-element))
+		     children)))))
 
   ;;; A class representing a labelled Tk spinbox. Create instances with
   ;;;
@@ -204,17 +224,6 @@
   ;;; or `'enabled`.
   (define-method (ui-set-state primary: (buf <ui-setting>) state)
     ((slot-value buf 'spinbox) 'configure state: state))
-
-  ;;; Returns the `buf`s child UI element with the ID `child-element`. The
-  ;;; requested element may be a direct descendant of `buf`, or an indirect
-  ;;; descendant in the tree of UI elements represented by `buf`.
-  (define-method (ui-ref primary: (buf <ui-element>) child-element)
-    (let ((children (slot-value buf 'children)))
-      (and children
-	   (or (alist-ref child-element children)
-	       (find (lambda (child)
-		       (ui-ref (cdr child) child-element))
-		     children)))))
 
   (define-class <ui-settings-group> (<ui-element>)
     ((packing-args '(expand: 0 fill: x))))
