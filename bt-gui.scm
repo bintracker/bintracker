@@ -87,10 +87,11 @@
   ;;;
   ;;; - `setup` - an expression specifying how to construct the UI element.
   ;;; Details depend on the specific class type of the element. For standard
-  ;;; `<ui-element>`s, this is the only mandatory field.
+  ;;; `<ui-element>`s, this is the only mandatory field. Provides a reader named
+  ;;; `ui-setup`.
   ;;;
   ;;; - `parent` - the Tk parent widget, typically a tk::frame. Defaults to `tk`
-  ;;; if not specified.
+  ;;; if not specified. Provides an accessor named `ui-parent`.
   ;;;
   ;;; - `packing-args` - additional arguments that are passed to tk/pack when
   ;;; the UI element's main widget container is packed to the display.
@@ -98,11 +99,12 @@
   ;;; - `children` - an alist of child UI elements, where keys are symbols
   ;;; and values are instances of `<ui-element>` or a descendant class. Children
   ;;; are derived automatically from the `setup` field, so the user normally
-  ;;; does not need to interact with the `children` field directly.
+  ;;; does not need to interact with the `children` field directly. Provides an
+  ;;; accessor named `ui-children`.
   ;;;
   ;;; The generic procedures `ui-show`, `ui-hide`, and `ui-ref` are implemented
-  ;;; for all UI element classes. Many UI elements also provide `ui-set-state`
-  ;;; and `ui-set-callbacks` methods.
+  ;;; for all UI element classes. UI elements commonly also provide
+  ;;; `ui-set-state` and `ui-set-callbacks` methods.
   ;;;
   ;;; To implement your own custom UI elements, you should create a class
   ;;; that inherits from `<ui-element>` or one of its descendants. You probably
@@ -112,41 +114,42 @@
   ;;; add your own custom slots for any Tk widgets you define.
   (define-class <ui-element> ()
     ((initialized #f)
-     (setup (error "Cannot create <ui-element> without setup argument"))
-     (parent tk)
+     (setup initform: (error
+		       "Cannot create <ui-element> without setup argument")
+	    reader: ui-setup)
+     (parent initform: tk accessor: ui-parent)
      (packing-args '())
-     box
-     (children '())))
+     (box accessor: ui-box)
+     (children initform: '() accessor: ui-children)))
 
   (define-method (initialize-instance after: (buf <ui-element>))
     (display "calling initializer <ui-element>")
     (newline)
-    (set! (slot-value buf 'box)
-      ((slot-value buf 'parent) 'create-widget 'frame))
-    (set! (slot-value buf 'children)
+    (set! (ui-box buf) ((ui-parent buf) 'create-widget 'frame))
+    (set! (ui-children buf)
       (map (lambda (child)
     	     (cons (car child) (apply make (cdr child))))
-    	   (slot-value buf 'children))))
+    	   (ui-children buf))))
 
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (buf <ui-element>))
     (unless (slot-value buf 'initialized)
       (map (o ui-show cdr)
-    	   (slot-value buf 'children))
+    	   (ui-children buf))
       (set! (slot-value buf 'initialized) #t))
-    (apply tk/pack (cons (slot-value buf 'box)
+    (apply tk/pack (cons (ui-box buf)
 			 (slot-value buf 'packing-args))))
 
   ;;; Remove the GUI element from the display.
   (define-method (ui-hide primary: (buf <ui-element>))
-    (tk/pack 'forget (slot-value buf 'box)))
+    (tk/pack 'forget (ui-box buf)))
 
   ;;; Returns the `buf`s child UI element with the ID `child-element`. The
   ;;; requested element may be a direct descendant of `buf`, or an indirect
   ;;; descendant in the tree of UI elements represented by `buf`.
   (define-method (ui-ref primary: (buf <ui-element>) child-element)
-    (let ((children (slot-value buf 'children)))
-      (and children
+    (let ((children (ui-children buf)))
+      (and (ui-children buf)
 	   (or (alist-ref child-element children)
 	       (find (lambda (child)
 		       (ui-ref (cdr child) child-element))
@@ -175,14 +178,14 @@
   (define-method (initialize-instance after: (buf <ui-setting>))
     (display "calling initializer <ui-setting>")
     (newline)
-    (let* ((setup (slot-value buf 'setup))
+    (let* ((setup (ui-setup buf))
 	   (default-var (third setup))
 	   (state-var (fourth setup))
 	   (from (fifth setup))
 	   (to (sixth setup))
 	   (callback (and (= 7 (length setup))
 			  (seventh setup)))
-	   (box (slot-value buf 'box))
+	   (box (ui-box buf))
 	   (spinbox (box 'create-widget 'spinbox from: from to: to
 			 width: 4 state: 'disabled validate: 'none))
 	   (validate-new-value
@@ -231,17 +234,17 @@
   (define-method (initialize-instance after: (buf <ui-settings-group>))
     (display "calling initializer <ui-settings-bar>")
     (newline)
-    (set! (slot-value buf 'children)
+    (set! (ui-children buf)
       (map (lambda (child)
 	     (cons (car child)
 		   (make <ui-setting>
-		     'parent (slot-value buf 'box) 'setup (cdr child))))
-	   (slot-value buf 'setup))))
+		     'parent (ui-box buf) 'setup (cdr child))))
+	   (ui-setup buf))))
 
   (define-method (ui-set-state primary: (buf <ui-settings-group>) state)
     (for-each (lambda (child)
 		(ui-set-state child state))
-	      (map cdr (slot-value buf 'children))))
+	      (map cdr (ui-children buf))))
 
   ;;; A class representing a group of button widgets. Create instances with
   ;;;
@@ -262,7 +265,7 @@
   (define-method (initialize-instance after: (buf <ui-button-group>))
     (display "calling initializer <ui-button-group>")
     (newline)
-    (let ((box (slot-value buf 'box)))
+    (let ((box (ui-box buf)))
       (set! (slot-value buf 'buttons)
 	(map (lambda (spec)
 	       (cons (car spec)
@@ -270,7 +273,7 @@
 		      state: (or (and (= 4 (length spec)) (fourth spec))
 				 'disabled)
 		      style: "Toolbutton")))
-	     (slot-value buf 'setup)))
+	     (ui-setup buf)))
       (for-each (lambda (button)
 		  (tk/pack button side: 'left padx: 0 fill: 'y))
 		(map cdr (slot-value buf 'buttons)))
@@ -305,7 +308,7 @@
 		      (bind-info-status
 		       button
 		       (string-append (car (alist-ref (car cb)
-						      (slot-value buf 'setup)))
+						      (ui-setup buf)))
 			" " (key-binding->info 'global (car cb)))))))
 		callbacks)))
 
@@ -324,12 +327,12 @@
     ((packing-args '(expand: 0 fill: x))))
 
   (define-method (initialize-instance after: (buf <ui-toolbar>))
-    (set! (slot-value buf 'children)
+    (set! (ui-children buf)
       (map (lambda (spec)
 	     (cons (car spec)
-		   (make <ui-button-group> 'parent (slot-value buf 'box)
+		   (make <ui-button-group> 'parent (ui-box buf)
 			 'setup (cdr spec))))
-	   (slot-value buf 'setup))))
+	   (ui-setup buf))))
 
   ;;; Set callback procedures for buttons in the toolbar. `callbacks` must be
   ;;; a list constructed as follows:
@@ -342,7 +345,7 @@
   (define-method (ui-set-callbacks primary: (buf <ui-toolbar>)
 				   callbacks)
     (for-each (lambda (cb)
-		(let ((group (alist-ref (car cb) (slot-value buf 'children))))
+		(let ((group (alist-ref (car cb) (ui-children buf))))
 		  (when group (ui-set-callbacks group (cdr cb)))))
 	      callbacks))
 
