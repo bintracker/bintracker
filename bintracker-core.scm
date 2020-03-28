@@ -321,11 +321,9 @@
   ;;; ## Hooks
   ;; ---------------------------------------------------------------------------
 
-  ;;; Execute the given list of {{hooks}}.
+  ;;; Execute the given list of `hooks`.
   (define (execute-hooks hooks)
-    (for-each (lambda (hook)
-		(hook))
-	      hooks))
+    (for-each (cut <>) hooks))
 
   ;; TODO: add-hooks procedure
 
