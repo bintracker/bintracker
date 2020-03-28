@@ -556,8 +556,7 @@
 
   (define (set-parser set-id collection sub-collection)
     (bind (apply any-of
-  		 (map (lambda (r)
-  			(char-seq (symbol->string r)))
+  		 (map (o char-seq symbol->string)
   		      (if (eq? 'all set-id)
   			  (map car (collection (target)))
   			  (car (alist-ref set-id (sub-collection (target)))))))
