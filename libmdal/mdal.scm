@@ -43,8 +43,7 @@
 	    contents))))
 
   (define (mod-node->node-expr node-id node-contents mdconfig)
-    (map (lambda (instance)
-	   (mod-node-instance->instance-expr node-id instance mdconfig))
+    (map (cute mod-node-instance->instance-expr node-id <> mdconfig)
 	 node-contents))
 
   (define (mod-group-instance-contents->node-expr group-id contents mdconfig)
@@ -118,8 +117,7 @@
   ;;; returns the group instance's block nodes, except the order node. The
   ;;; order node can be retrieved with `mod-get-group-instance-order` instead.
   (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
-    (map (lambda (id)
-  	   (subnode-ref id igroup-instance))
+    (map (cute subnode-ref <> igroup-instance)
   	 (filter (lambda (id)
   		   (not (symbol-contains id "_ORDER")))
   		 (config-get-subnode-type-ids igroup-id config 'block))))
@@ -213,14 +211,11 @@
   (define (node-remove! parent-node-instance node-id instances mdconf)
     (let ((parent-id (config-get-parent-node-id node-id (config-itree mdconf))))
       (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
-	  (for-each (lambda (instance)
-		      (remove-block-field! parent-node-instance node-id
-					   instance mdconf))
+	  (for-each (cute remove-block-field! parent-node-instance node-id
+			  <> mdconf)
 		    instances)
-	  (for-each (lambda (instance)
-		      (alist-delete! instance
-				     (alist-ref node-id
-						(cddr parent-node-instance))))
+	  (for-each (cute alist-delete!
+		      <> (alist-ref node-id (cddr parent-node-instance)))
 		    instances))))
 
   ;;; Insert one or more `instances` into the node with `node-id`. `instances`
@@ -289,7 +284,7 @@
 	 (order-id (symbol-append group-id '_ORDER))
 	 (make-single-row-group
 	  (lambda (node-instance)
-	    (let ((block-ids (remove (lambda (x) (eqv? x order-id))
+	    (let ((block-ids (remove (cute eqv? <> order-id)
 				     (config-get-subnode-ids
 				      group-id (config-itree config))))
 		  (order-pos (list-ref (cddr (mod-get-group-instance-order
@@ -303,17 +298,15 @@
 			    (0 #f ,(cons 1 (make-list (sub1 (length order-pos))
 						      0))))
 			  `(,(car subnode)
-			    (0 #f
-			       ,(list-ref
-				 (cddr (inode-instance-ref
-					(list-ref
-					 order-pos
-					 (+ 1 (list-index
-					       (lambda (id)
-						 (eqv? id (car subnode)))
-					       block-ids)))
-					subnode))
-				 row)))))
+			    (0 #f ,(list-ref
+				    (cddr (inode-instance-ref
+					   (list-ref
+					    order-pos
+					    (+ 1 (list-index
+						  (cute eqv? <> (car subnode))
+						  block-ids)))
+					   subnode))
+				    row)))))
 		    (cddr node-instance))))))
 	 (extract-nodes
 	  (lambda (root)
