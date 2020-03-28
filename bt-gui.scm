@@ -348,6 +348,63 @@
 		  (when group (ui-set-callbacks group (cdr cb)))))
 	      callbacks))
 
+  ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
+  ;;; the initial text to display on the prompt. To register the widget as
+  ;;; focussable in the Bintracker main UI, specify a ui-zone identifier as
+  ;;; initform to `'ui-zone`. The methods `repl-clear`, `repl-insert`, and
+  ;;; `repl-get` are provided for interaction with the prompt.
+  (define-class <ui-repl> (<ui-element>)
+    ((ui-zone #f)
+     repl
+     yscroll))
+
+  (define-method (initialize-instance after: (buf <ui-repl>))
+    (set! (slot-value buf 'repl)
+      ((ui-box buf) 'create-widget 'text))
+    (set! (slot-value buf 'yscroll)
+      ((ui-box buf) 'create-widget 'scrollbar orient: 'vertical))
+    (when (slot-value buf 'ui-zone)
+      (tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
+		(lambda () (switch-ui-zone-focus (slot-value buf 'ui-zone))))))
+
+  ;; TODO this becomes a before: method once things are sorted out
+  (define-method (ui-show primary: (buf <ui-repl>))
+    (let ((repl (slot-value buf 'repl))
+	  (yscroll (slot-value buf 'yscroll)))
+      (unless (slot-value buf 'initialized)
+	(repl 'configure  blockcursor: 'yes
+	      bd: 0 highlightthickness: 0 bg: (colors 'background)
+	      fg: (colors 'text)
+	      insertbackground: (colors 'text)
+	      font: (list family: (settings 'font-mono)
+			  size: (settings 'font-size)))
+	(tk/pack repl expand: 1 fill: 'both side: 'left)
+	(tk/pack yscroll side: 'right fill: 'y)
+	(configure-scrollbar-style yscroll)
+	(yscroll 'configure command: `(,repl yview))
+	(repl 'configure 'yscrollcommand: `(,yscroll set))
+	(repl 'insert 'end (ui-setup buf))
+	(set! (slot-value buf 'initialized) #t))))
+
+  ;;; Clear the prompt of the `<ui-repl>` object `buf`.
+  (define-method (repl-clear primary: (buf <ui-repl>))
+    ((slot-value buf 'repl) 'delete 0.0 'end))
+
+  ;;; Insert `str` at the end of the prompt of the `<ui-repl> object `buf`.
+  (define-method (repl-insert primary: (buf <ui-repl>) str)
+    (let ((repl (slot-value buf 'repl)))
+      (repl 'insert 'end str)
+      (repl 'see 'insert)))
+
+  ;;; Get the text contents of the `<ui-repl>` object `buf`. The remaining args
+  ;;; are evaluated as arguments to `Tk:Text 'get`. See
+  ;;; [Tk manual page](https://www.tcl.tk/man/tcl8.6/TkCmd/text.htm#M124).
+  (define-method (repl-get primary: (buf <ui-repl>) #!rest args)
+    (apply (slot-value buf 'repl) (cons 'get args)))
+
+  (define-method (ui-focus primary: (buf <ui-repl>))
+    (tk/focus (slot-value buf 'repl)))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Dialogues
@@ -628,15 +685,13 @@
 
   ;;; The core widgets that make up Bintracker's GUI.
 
-  (define top-frame (tk 'create-widget 'frame 'padding: "0 0 0 0"))
-
-  (define main-panes (top-frame 'create-widget 'panedwindow))
+  (define main-panes (tk 'create-widget 'panedwindow))
 
   (define main-frame (main-panes 'create-widget 'frame))
 
   (define console-frame (main-panes 'create-widget 'frame))
 
-  (define status-frame (top-frame 'create-widget 'frame))
+  (define status-frame (tk 'create-widget 'frame))
 
   ;; TODO take into account which zones are actually active
   ;;; The list of all ui zones that can be focussed. The list consists of a list
@@ -649,7 +704,7 @@
       	      ,(lambda () (blockview-unfocus (current-blocks-view))))
       (order ,(lambda () (blockview-focus (current-order-view)))
       	     ,(lambda () (blockview-unfocus (current-order-view))))
-      (console ,(lambda () (tk/focus console))
+      (console ,(lambda () (ui-focus console))
 	       ,(lambda () '()))))
 
   ;;; Switch keyboard focus to another UI zone. `new-zone` can be either an
@@ -693,7 +748,7 @@
   ;; TODO this should move to bintracker-core.
 
   (define main-toolbar
-    (make <ui-toolbar> 'parent top-frame 'setup
+    (make <ui-toolbar> 'setup
      '((file (new-file "New File" "new.png" enabled)
 	     (load-file "Load File..." "load.png" enabled)
 	     (save-file "Save File" "save.png"))
@@ -717,36 +772,14 @@
   ;;; ## Console
   ;; ---------------------------------------------------------------------------
 
-  (define console-wrapper (console-frame 'create-widget 'frame))
-
-  (define console (console-wrapper 'create-widget 'text))
-
-  (define console-yscroll (console-wrapper 'create-widget 'scrollbar
-					   orient: 'vertical))
-
-  (define (init-console)
-    (console 'configure  blockcursor: 'yes
-	     bd: 0 highlightthickness: 0 bg: (colors 'background)
-	     fg: (colors 'text)
-	     insertbackground: (colors 'text)
-	     font: (list family: (settings 'font-mono)
-			 size: (settings 'font-size)))
-    (tk/pack console-wrapper expand: 1 fill: 'both)
-    (tk/pack console expand: 1 fill: 'both side: 'left)
-    (tk/pack console-yscroll side: 'right fill: 'y)
-    (configure-scrollbar-style console-yscroll)
-    (console-yscroll 'configure command: `(,console yview))
-    (console 'configure 'yscrollcommand: `(,console-yscroll set))
-    (console 'insert 'end
-	     (string-append "Bintracker " *bintracker-version*
+  (define console
+    (make <ui-repl>
+      'setup (string-append "Bintracker " *bintracker-version*
 			    "\n(c) 2019-2020 utz/irrlicht project\n"
-			    "Ready.\n"))
-    (tk/bind* console '<ButtonPress-1>
-	      (lambda () (switch-ui-zone-focus 'console))))
+			    "Ready.\n")
+      'ui-zone 'console))
 
-  (define (clear-console)
-    (console 'delete 0.0 'end))
-
+  (define (clear-console) (repl-clear console))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Status Bar
@@ -759,16 +792,6 @@
       (reset-status-text!)
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
-
-  ;;; Returns a string containing the current target platform and MDAL config
-  ;;; name, separated by a pipe.
-  (define (get-module-info-text)
-    (string-append (if (current-mod)
-		       (string-append
-  			(target-platform-id (config-target (current-config)))
-  			" | " (mdmod-config-id (current-mod)))
-		       "No module loaded.")
-		   " | "))
 
   ;;; Set the message in the status to either a combination of the current
   ;;; module's target platform and configuration name, or the string
@@ -788,15 +811,6 @@
     (tk/bind* widget '<Enter>
 	      (lambda () (display-action-info-status! text)))
     (tk/bind* widget '<Leave> reset-status-text!))
-
-  ;;; Construct an info string for the key binding of the given action in the
-  ;;; given key-group
-  (define (key-binding->info key-group action)
-    (let ((binding (inverse-key-binding key-group action)))
-      (if binding
-	  (string-upcase (string-translate (->string binding) "<>" "()"))
-	  "")))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Editing

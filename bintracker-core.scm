@@ -89,14 +89,13 @@
     (let ((filename (tk/get-open-file*
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
-	(begin (console 'insert 'end
-			(string-append "\nLoading file: " filename "\n"))
+	(begin (repl-insert console
+			    (string-append "\nLoading file: " filename "\n"))
 	       (handle-exceptions
 		   exn
-		   (console 'insert 'end
-			    (string-append "\nError: " (->string exn)
-					   "\n" (message exn)
-					   "\n"))
+		   (repl-insert console
+				(string-append "\nError: " (->string exn)
+		   			       "\n" (message exn) "\n"))
 		 (set-current-mod! filename)
 		 (set-state! 'current-file filename)
 		 (set-state! 'emulator
@@ -182,18 +181,16 @@
   (define (eval-console)
     (handle-exceptions
 	exn
-	(console 'insert 'end (string-append "\nError: " (->string exn)
-					     (->string (arguments exn))
-					     "\n"))
-      (let ((input-str (console 'get "end-1l" "end-1c")))
+	(repl-insert console (string-append "\nError: " (->string exn)
+					    (->string (arguments exn))
+					    "\n"))
+      (let ((input-str (repl-get console "end-1l" "end-1c")))
 	(unless (string-null? input-str)
-	  (console 'insert 'end
-		   (string-append
-		    "\n"
-		    (->string
-		     (eval (read (open-input-string input-str))))
-		    "\n"))
-	  (console 'see 'insert)))))
+	  (repl-insert console (string-append
+				"\n"
+				(->string
+				 (eval (read (open-input-string input-str))))
+				"\n"))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -258,7 +255,7 @@
   ;; ---------------------------------------------------------------------------
 
   (define edit-settings
-    (make <ui-settings-group> 'parent top-frame 'setup
+    (make <ui-settings-group> 'setup
 	  `((edit-step "Step" "Set the edit step" default-edit-step
 		       edit-step 0 64)
 	    (base-octave "Octave" "Set the base octave" default-base-octave
@@ -279,14 +276,13 @@
   (define (init-top-level-layout)
     (begin
       (tk/pack status-frame fill: 'x side: 'bottom)
-      (tk/pack top-frame expand: 1 fill: 'both)
       (ui-show main-toolbar)
-      (tk/pack (top-frame 'create-widget 'separator orient: 'horizontal)
+      (tk/pack (tk 'create-widget 'separator orient: 'horizontal)
       	       expand: 0 fill: 'x)
       (ui-show edit-settings)
       (tk/pack main-panes expand: 1 fill: 'both)
       (main-panes 'add main-frame weight: 5)
-      (main-panes 'add console-frame weight: 2)))
+      (main-panes 'add (ui-box console) weight: 2)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Bindings
@@ -305,7 +301,7 @@
 			    	      " +break")))
 			  (get-keybinding-group group)))
 	      '(global console)
-	      (list tk console))
+	      (list tk (slot-value console 'repl)))
     (create-virtual-events))
 
   ;;; Update the bindings for the toolbar buttons.
@@ -350,7 +346,8 @@
 	    (when (app-settings-show-toolbar *bintracker-settings*)
 	      (ui-show main-toolbar)))
 	  (lambda () (set-schemta-include-path! "libmdal/targets/"))
-	  init-console init-status-bar disable-keyboard-traversal))
+	  (lambda () (ui-show console))
+	  init-status-bar disable-keyboard-traversal))
 
   ;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
 

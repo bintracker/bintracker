@@ -195,6 +195,14 @@
 			    (get-keybinding-group key-group)
 			    equal? #f)))
 
+  ;;; Construct an info string for the key binding of the given action in the
+  ;;; given key-group
+  (define (key-binding->info key-group action)
+    (let ((binding (inverse-key-binding key-group action)))
+      (if binding
+	  (string-upcase (string-translate (->string binding) "<>" "()"))
+	  "")))
+
   ;;; Load a keymap, `name` shall be the name of the keymap file to load,
   ;;; without extension or path. Keymaps are expected to reside in
   ;;; `config/keymaps`.
@@ -226,6 +234,16 @@
   ;;; this procedure if no module is currently loaded.
   (define (current-config)
     (mdmod-config (current-mod)))
+
+  ;;; Returns a string containing the current target platform and MDAL config
+  ;;; name, separated by a pipe.
+  (define (get-module-info-text)
+    (string-append (if (current-mod)
+		       (string-append
+  			(target-platform-id (config-target (current-config)))
+  			" | " (mdmod-config-id (current-mod)))
+		       "No module loaded.")
+		   " | "))
 
   ;;; Set the active MD command info string from the given MDCONF ifield ID.
   (define (set-active-md-command-info! field-id)
