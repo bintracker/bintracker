@@ -250,6 +250,7 @@
 				   (command about "About" 0 #f
 					    ,about-message))))))))
 
+
   ;; ---------------------------------------------------------------------------
   ;;; ## Core GUI Layout
   ;; ---------------------------------------------------------------------------
@@ -284,6 +285,7 @@
       (main-panes 'add main-frame weight: 5)
       (main-panes 'add (ui-box console) weight: 2)))
 
+
   ;; ---------------------------------------------------------------------------
   ;;; ## Bindings
   ;; ---------------------------------------------------------------------------
@@ -316,7 +318,6 @@
 				 (redo ,redo)))))
 
 
-
   ;; ---------------------------------------------------------------------------
   ;;; ## Hooks
   ;; ---------------------------------------------------------------------------
@@ -334,8 +335,8 @@
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
-    (list load-config btdb-init! update-window-title!
-	  update-ttk-style update-key-bindings! init-main-menu
+    (list load-config btdb-init! update-ttk-style
+	  update-key-bindings! update-window-title! init-main-menu
 	  (lambda ()
 	    (when (settings 'show-menu)
 	      (tk 'configure 'menu: (menu-widget (state 'menu)))))
