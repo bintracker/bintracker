@@ -1127,8 +1127,7 @@
 	    (make-bt-fields-widget
 	     toplevel-frame: tl-frame
 	     parent-node-id: parent-node-id
-	     fields: (map (lambda (id)
-			    (make-field-widget id tl-frame))
+	     fields: (map (cute make-field-widget <> tl-frame)
 			  subnode-ids))))))
 
   ;;; Show a group fields widget.
@@ -1231,8 +1230,7 @@
     (apply textgrid-do-tags (cons 'remove args)))
 
   (define (textgrid-remove-tags-globally tg tags)
-    (for-each (lambda (tag)
-		(tg 'tag 'remove tag "0.0" "end"))
+    (for-each (cute tg 'tag 'remove <> "0.0" "end")
 	      tags))
 
   ;;; Convert the `row`, `char` arguments into a Tk Text index string.
@@ -1384,16 +1382,13 @@
 	   (content-frame (packframe 'create-widget 'frame))
   	   (block-ids
   	    (and (eq? type 'block)
-  		 (remove (lambda (id)
-  			   (eq? id (symbol-append group-id '_ORDER)))
+  		 (remove (cute eq? <> (symbol-append group-id '_ORDER))
   			 (config-get-subnode-type-ids group-id (current-config)
   						      'block))))
   	   (field-ids (if (eq? type 'block)
-  			  (flatten (map (lambda (block-id)
-  					  (config-get-subnode-ids
-  					   block-id
-  					   (config-itree (current-config))))
-  					block-ids))
+  			  (flatten (map (cute config-get-subnode-ids <>
+					      (config-itree (current-config)))
+					block-ids))
   			  (config-get-subnode-ids
   			   (symbol-append group-id '_ORDER)
   			   (config-itree (current-config)))))
@@ -1675,8 +1670,7 @@
 	    (lambda (highlight-type)
 	      (flatten
 	       (map (lambda (chunk start)
-		      (map (lambda (i)
-			     (+ i start))
+		      (map (cute + <> start)
 			   (filter (lambda (i)
 				     (zero? (modulo i (state highlight-type))))
 				   (iota (length chunk)))))
@@ -1761,8 +1755,7 @@
   ;;; assume.
   (define (blockview-cursor-x-positions b)
     (flatten (map (lambda (field-cfg)
-		    (map (lambda (cursor-digit)
-			   (+ cursor-digit (bv-field-config-start field-cfg)))
+		    (map (cute + <> (bv-field-config-start field-cfg))
 			 (iota (bv-field-config-cursor-digits field-cfg))))
 		  (map cadr (blockview-field-configs b)))))
 
@@ -1806,8 +1799,7 @@
 		   (car (list-ref ui-zones (state 'current-ui-zone))))
 	(switch-ui-zone-focus ui-zone-id))
       (blockview-set-cursor b (car mouse-pos)
-			    (find (lambda (pos)
-				    (<= pos (cadr mouse-pos)))
+			    (find (cute <= <> (cadr mouse-pos))
 				  (reverse (blockview-cursor-x-positions b))))
       (blockview-update-current-command-info b)))
 
@@ -1847,12 +1839,10 @@
 			  (sub1 total-length)))))
 	 (else current-row))
        (case direction
-	 ((Left) (or (find (lambda (pos)
-			     (< pos current-char))
+	 ((Left) (or (find (cute < <> current-char)
 			   (reverse (blockview-cursor-x-positions b)))
 		     (car (reverse (blockview-cursor-x-positions b)))))
-	 ((Right) (or (find (lambda (pos)
-			      (> pos current-char))
+	 ((Right) (or (find (cute > <> current-char)
 			    (blockview-cursor-x-positions b))
 		      0))
 	 (else current-char)))
@@ -1879,16 +1869,13 @@
       (let* ((current-instance (blockview-get-current-field-instance b))
 	     (field-index (blockview-get-current-field-index b))
 	     (field-values (drop (remove null?
-					 (map (lambda (row)
-						(list-ref row field-index))
+					 (map (cute list-ref <> field-index)
 					      (blockview-get-current-chunk b)))
 				 (+ 1 current-instance)))
 	     (action (list 'set (blockview-get-current-block-instance-path b)
 			   (blockview-get-current-field-id b)
-			   (map (lambda (i val)
-				  (list i val))
-				(iota (length field-values)
-				      current-instance 1)
+			   (map list (iota (length field-values)
+					   current-instance 1)
 				(append field-values '(()))))))
 	(push-undo (make-reverse-action action))
 	(apply-edit! action)
@@ -1904,16 +1891,14 @@
 	     (field-index (blockview-get-current-field-index b))
 	     (field-values (drop-right
 			    (remove null?
-				    (drop (map (lambda (row)
-						 (list-ref row field-index))
+				    (drop (map (cute list-ref <> field-index)
 					       (blockview-get-current-chunk b))
 					  current-instance))
 			    1))
 	     (action (list 'set (blockview-get-current-block-instance-path b)
 			   (blockview-get-current-field-id b)
 			   (cons (list current-instance '())
-				 (map (lambda (i val)
-					(list i val))
+				 (map list
 				      (iota (length field-values)
 					    (+ 1 current-instance)
 					    1)
@@ -2144,8 +2129,7 @@
 	      subgroup-ids: sg-ids
 	      tl-notebook: notebook
 	      notebook-frames: subgroup-frames
-	      subgroups: (map make-group-widget
-			      sg-ids subgroup-frames))))))
+	      subgroups: (map make-group-widget sg-ids subgroup-frames))))))
 
   ;;; Pack a bt-subgroups-widget to the display.
   (define (show-subgroups-widget w)
@@ -2158,10 +2142,7 @@
 		 'add sg-frame text: (symbol->string sg-id)))
 	      (bt-subgroups-widget-subgroup-ids w)
 	      (bt-subgroups-widget-notebook-frames w))
-    (for-each (lambda (group-widget group-id)
-		(show-group-widget group-widget))
-	      (bt-subgroups-widget-subgroups w)
-	      (bt-subgroups-widget-subgroup-ids w)))
+    (for-each show-group-widget (bt-subgroups-widget-subgroups w)))
 
   ;; Not exported.
   (defstruct bt-group-widget
