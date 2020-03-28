@@ -242,8 +242,7 @@
 	   (ui-setup buf))))
 
   (define-method (ui-set-state primary: (buf <ui-settings-group>) state)
-    (for-each (lambda (child)
-		(ui-set-state child state))
+    (for-each (cute ui-set-state <> state)
 	      (map cdr (ui-children buf))))
 
   ;;; A class representing a group of button widgets. Create instances with

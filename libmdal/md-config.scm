@@ -85,9 +85,8 @@
   ;;; auto-generated order inodes
   (define (create-order-commands itree)
     (alist->hash-table
-     (append (map (lambda (id)
-		    (list id (make-command type: 'uint bits: 16
-					   flags: '(use-last-set))))
+     (append (map (cute list <> (make-command type: 'uint bits: 16
+					      flags: '(use-last-set)))
 		  (filter (lambda (id)
 			    (string-contains (symbol->string id) "_LENGTH"))
 			  (flatten itree)))
@@ -264,8 +263,7 @@
     ;;; Returns the row index of the field subnode `field-id` in instances of
   ;;; the block node `block-id`.
   (define (config-get-block-field-index block-id field-id config)
-    (list-index (lambda (id)
-		  (eqv? id field-id))
+    (list-index (cute eqv? <> field-id)
 		(config-get-subnode-ids block-id (config-itree config))))
 
   ;; TODO rename to slighly more sane `config-get-inode-command`
@@ -288,9 +286,7 @@
   ;;; get the default value of a given inode config
   (define (config-get-node-default node-id config)
     (let ((node-cmd (config-get-inode-source-command node-id config)))
-      (if node-cmd
-	  (command-default node-cmd)
-	  '())))
+      (and node-cmd (command-default node-cmd))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -338,7 +334,7 @@
 			(list (symbol-append 'R_ (apply (lambda (#!key id) id)
 							(cdr node)))))
 		      (filter (lambda (node)
-				(eq? 'block (car node)))
+				(eqv? 'block (car node)))
 			      subnodes)))
 	   (concatenate
 	    (map (lambda (node)
@@ -606,8 +602,7 @@
   ;;; field node at `field-index` before `row` in the `block-instance`.
   (define (backtrace-block-fields block-instance start-row field-index)
     (find (complement null?)
-	  (reverse (map (lambda (row)
-			  (list-ref row field-index))
+	  (reverse (map (cute list-ref <> field-index)
 			(take (cddr block-instance)
 			      start-row)))))
 
@@ -648,14 +643,12 @@
 					     instance-id
 					     (subnode-ref node-id parent-node)))
 				     row)
-			  ,(list-index (lambda (x)
-					 (eqv? x node-id))
+			  ,(list-index (cute eqv? <> node-id)
 				       field-indices)))
 	     `(,(complement null?)
 	       (,list-ref (,list-ref (,cddr parent-node)
 				     instance-id)
-			  ,(list-index (lambda (x)
-			  		 (eqv? x node-id))
+			  ,(list-index (cute eqv? <> node-id)
 			  	       field-indices)))))
 	(else (error "Unsupported conditional in onode compose expr")))))
 
@@ -678,8 +671,7 @@
 		  instance-id ,command-config)
 		`(,eval-block-field
 		  parent-node
-		  ,(list-index (lambda (x)
-				 (eqv? x transformed-symbol))
+		  ,(list-index (cute eqv? <> transformed-symbol)
 			       field-indices)
 		  instance-id ;; row
 		  ,command-config))))
@@ -701,9 +693,8 @@
     ;; parent-node = block inst
     (eval (append (list 'lambda '(instance-id parent-node md-symbols config)
 			(if (pair? expr)
-			    (map (lambda (elem)
-				   (transform-compose-expr-element
-				    elem mdconfig field-indices))
+			    (map (cute transform-compose-expr-element
+				   <> mdconfig field-indices)
 				 expr)
 			    (transform-compose-expr-element expr mdconfig
 							    field-indices))))))
@@ -818,8 +809,7 @@
       (case layout
 	((shared-numeric-matrix)
 	 (lambda (raw-order)
-	   (flatten (map (lambda (order-pos)
-			   (transform-index order-pos (length raw-order) 0))
+	   (flatten (map (cute transform-index <> (length raw-order) 0)
 			 raw-order))))
 	((pointer-matrix) (lambda (raw-order) raw-order))
 	(else (error "unsupported order type")))))
@@ -835,10 +825,8 @@
 	     (if (alist-ref order-symbol md-symbols)
 		 (let* ((output
 			 (flatten
-			  (map (lambda (elem)
-				 (int->bytes elem element-size
-					     (config-get-target-endianness
-					      config)))
+			  (map (cute int->bytes <> element-size
+				     (config-get-target-endianness config))
 			       (transformer-proc
 				(car (alist-ref (symbol-append '_mdal_order_
 							       from)
@@ -860,8 +848,7 @@
 	(cons (map (lambda (backtrace? field field-index)
 		     (if (and backtrace? (null? field))
 			 (or (find (complement null?)
-				   (reverse (map (lambda (row)
-						   (list-ref row field-index))
+				   (reverse (map (cute list-ref <> field-index)
 						 previous-chunk)))
 			     '())
 			 field))
@@ -896,8 +883,7 @@
 			  (if (eqv? 'trigger (command-type cmd))
 			      '()
 			      (command-default cmd)))
-			(map (lambda (id)
-			       (config-get-inode-source-command id mdconfig))
+			(map (cute config-get-inode-source-command <> mdconfig)
 			     field-ids))))
 	      (append (list field-defaults)
 		      (make-list (sub1 len)
@@ -966,8 +952,7 @@
 		    (cddr parent-inode-instance)))
 	   (original-order (subnode-ref order-id parent-inode-instance))
 	   (resized-blocks
-	    (map (lambda (block)
-		   (resize-block-instances block size original-order config))
+	    (map (cute resize-block-instances <> size original-order config)
 		 original-blocks))
 	   (new-order
 	    (list
@@ -989,9 +974,8 @@
     (let ((compose-proc (transform-compose-expr
 			 compose proto-config
 			 (concatenate
-			  (map (lambda (block-id)
-				 (config-get-subnode-ids
-				  block-id (config-itree proto-config)))
+			  (map (cute config-get-subnode-ids
+				 <> (config-itree proto-config))
 			       parent-block-ids))))
 	  (endianness (config-get-target-endianness proto-config)))
       (make-onode
@@ -1012,8 +996,7 @@
   (define (make-order-alist order required-fields mdconfig)
     (let* ((order-instance (cadr order))
 	   (order-length (length (cddr order-instance)))
-	   (required-field-ids (map (lambda (sym)
-				      (symbol-append 'R_ sym))
+	   (required-field-ids (map (cute symbol-append 'R_ <>)
 				    required-fields))
 	   (order-fields (config-get-subnode-ids (car order)
 						 (config-itree mdconfig)))
@@ -1022,8 +1005,7 @@
 		   (map (lambda (field-id)
 			  (eval-block-field
 			   order-instance
-			   (list-index (lambda (id)
-					 (eqv? field-id id))
+			   (list-index (cute eqv? field-id <>)
 				       order-fields)
 			   order-pos
 			   (config-get-inode-source-command field-id mdconfig)))
@@ -1153,7 +1135,7 @@
 	 (map (lambda (node)
 		(apply (lambda (#!key id) id)
 		       (cdr node)))
-	      (filter (lambda (node) (eq? 'block (car node)))
+	      (filter (lambda (node) (eqv? 'block (car node)))
 		      group-nodes))))
 
   ;; TODO
@@ -1164,9 +1146,8 @@
   ;;            -> or generally use virtual pointers for everything and only
   ;;               resolve on final output -> most flexible solution
   (define (make-ogroup proto-config config-dir path-prefix #!key id from nodes)
-    (let* ((otree (map (lambda (expr)
-			 (dispatch-onode-expr expr proto-config
-					      config-dir path-prefix))
+    (let* ((otree (map (cute dispatch-onode-expr
+			 <> proto-config config-dir path-prefix)
 		       nodes))
 	   (generate-order
 	    (lambda (syms)
@@ -1281,9 +1262,8 @@
   ;; TODO haven't thought about optional fields at all yet (how about "only-if")
   ;;      also, more conditions, eg. required-if begin etc...
   (define (make-compiler output-expr proto-config config-dir path-prefix)
-    (let ((otree (map (lambda (expr)
-			(dispatch-onode-expr expr proto-config
-					     config-dir path-prefix))
+    (let ((otree (map (cute dispatch-onode-expr
+			<> proto-config config-dir path-prefix)
 		      output-expr)))
       (lambda (mod origin #!optional extra-symbols)
 	(car (compile-otree otree (cadr (mdmod-global-node mod))
