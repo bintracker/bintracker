@@ -845,9 +845,7 @@
 			   (max-passes 3))
     (reset-asm-state!)
     (assemble target-cpu
-	      (string-intersperse (read-lines
-				   (open-input-file filename))
-				  "\n")
+	      (string-append (read-string #f (open-input-file filename)) "\n")
 	      org: org extra-symbols: extra-symbols max-passes: max-passes))
 
   (define (write-bytes bytes port)
