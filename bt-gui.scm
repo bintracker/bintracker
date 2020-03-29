@@ -390,15 +390,16 @@
 	      (string-append (ui-setup buf) "\n" (slot-value buf 'prompt)))
 	(set! (slot-value buf 'initialized) #t))))
 
-  ;;; Clear the prompt of the `<ui-repl>` object `buf`.
-  (define-method (repl-clear primary: (buf <ui-repl>))
-    ((slot-value buf 'repl) 'delete 0.0 'end))
-
   ;;; Insert `str` at the end of the prompt of the `<ui-repl> object `buf`.
   (define-method (repl-insert primary: (buf <ui-repl>) str)
     (let ((repl (slot-value buf 'repl)))
       (repl 'insert 'end str)
       (repl 'see 'insert)))
+
+  ;;; Clear the prompt of the `<ui-repl>` object `buf`.
+  (define-method (repl-clear primary: (buf <ui-repl>))
+    ((slot-value buf 'repl) 'delete 0.0 'end)
+    (repl-insert buf (slot-value buf 'prompt)))
 
   ;;; Get the text contents of the `<ui-repl>` object `buf`. The remaining args
   ;;; are evaluated as arguments to `Tk:Text 'get`. See
