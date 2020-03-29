@@ -13,7 +13,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  srfi-1 srfi-13 srfi-69
-	  coops typed-records simple-exceptions pstk stack
+	  coops typed-records simple-exceptions pstk stack comparse
 	  bt-state bt-types bt-db mdal)
 
   ;; ---------------------------------------------------------------------------
@@ -356,7 +356,10 @@
   (define-class <ui-repl> (<ui-element>)
     ((ui-zone #f)
      repl
-     yscroll))
+     yscroll
+     (prompt "repl> ")
+     (history "")
+     (command-buffer "")))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
     (set! (slot-value buf 'repl)
@@ -383,7 +386,8 @@
 	(configure-scrollbar-style yscroll)
 	(yscroll 'configure command: `(,repl yview))
 	(repl 'configure 'yscrollcommand: `(,yscroll set))
-	(repl 'insert 'end (ui-setup buf))
+	(repl 'insert 'end
+	      (string-append (ui-setup buf) "\n" (slot-value buf 'prompt)))
 	(set! (slot-value buf 'initialized) #t))))
 
   ;;; Clear the prompt of the `<ui-repl>` object `buf`.
@@ -401,6 +405,22 @@
   ;;; [Tk manual page](https://www.tcl.tk/man/tcl8.6/TkCmd/text.htm#M124).
   (define-method (repl-get primary: (buf <ui-repl>) #!rest args)
     (apply (slot-value buf 'repl) (cons 'get args)))
+
+  ;;; Evaluate the latest command that the user entered into the repl prompt.
+  (define-method (repl-eval primary: (buf <ui-repl>))
+    (handle-exceptions
+	exn
+	(repl-insert buf (string-append "\nError: " (->string exn)
+					(->string (arguments exn))
+					"\n" (slot-value buf 'prompt)))
+      (let ((input-str (string-drop (repl-get buf "end-1l" "end-1c")
+				    (string-length (slot-value buf 'prompt)))))
+	(unless (string-null? input-str)
+	  (repl-insert buf (string-append
+			    "\n"
+			    (->string
+			     (eval (read (open-input-string input-str))))
+			    "\n" (slot-value buf 'prompt)))))))
 
   (define-method (ui-focus primary: (buf <ui-repl>))
     (tk/focus (slot-value buf 'repl)))
@@ -775,11 +795,12 @@
   (define console
     (make <ui-repl>
       'setup (string-append "Bintracker " *bintracker-version*
-			    "\n(c) 2019-2020 utz/irrlicht project\n"
-			    "Ready.\n")
+			    "\n(c) 2019-2020 utz/irrlicht project\n")
       'ui-zone 'console))
 
   (define (clear-console) (repl-clear console))
+
+  (define (eval-console) (repl-eval console))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Status Bar

@@ -83,28 +83,27 @@
 	  (lambda () (ui-set-state edit-settings 'enabled))
 	  (lambda () (emulator 'start))))
 
+  ;; TODO logging
   ;;; Load an MDAL module file.
   (define (load-file)
     (close-file)
     (let ((filename (tk/get-open-file*
 		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
-	(begin (repl-insert console
-			    (string-append "\nLoading file: " filename "\n"))
-	       (handle-exceptions
-		   exn
-		   (repl-insert console
-				(string-append "\nError: " (->string exn)
-		   			       "\n" (message exn) "\n"))
-		 (set-current-mod! filename)
-		 (set-state! 'current-file filename)
-		 (set-state! 'emulator
-			     (make-emulator
-			      "mame64"
-			      '("-w" "-skip_gameinfo" "-autoboot_script"
-				"mame-bridge/mame-startup.lua"
-				"-autoboot_delay" "0" "spectrum")))
-		 (execute-hooks after-load-file-hooks))))))
+	(handle-exceptions
+	    exn
+	    (repl-insert console
+			 (string-append "\nError: " (->string exn)
+		   			"\n" (message exn) "\n"))
+	  (set-current-mod! filename)
+	  (set-state! 'current-file filename)
+	  (set-state! 'emulator
+		      (make-emulator
+		       "mame64"
+		       '("-w" "-skip_gameinfo" "-autoboot_script"
+			 "mame-bridge/mame-startup.lua"
+			 "-autoboot_delay" "0" "spectrum")))
+	  (execute-hooks after-load-file-hooks)))))
 
   (define (create-new-module mdconf-id)
     (close-file)
@@ -175,22 +174,6 @@
 		      (macosx "open ")
 		      (windows "[list {*}[auto_execok start] {}] "))))
       (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
-
-  ;;; Evaluate the latest command that the user entered into the internal
-  ;;; command line prompt.
-  (define (eval-console)
-    (handle-exceptions
-	exn
-	(repl-insert console (string-append "\nError: " (->string exn)
-					    (->string (arguments exn))
-					    "\n"))
-      (let ((input-str (repl-get console "end-1l" "end-1c")))
-	(unless (string-null? input-str)
-	  (repl-insert console (string-append
-				"\n"
-				(->string
-				 (eval (read (open-input-string input-str))))
-				"\n"))))))
 
 
   ;; ---------------------------------------------------------------------------
