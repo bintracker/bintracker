@@ -358,7 +358,7 @@
      repl
      yscroll
      (prompt "repl> ")
-     (history "")
+     (history '())
      (command-buffer "")))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
@@ -413,14 +413,30 @@
 	(repl-insert buf (string-append "\nError: " (->string exn)
 					(->string (arguments exn))
 					"\n" (slot-value buf 'prompt)))
-      (let ((input-str (string-drop (repl-get buf "end-1l" "end-1c")
-				    (string-length (slot-value buf 'prompt)))))
+      (let* ((raw-input-str (repl-get buf "end-1l" "end-1c"))
+	     (input-str
+	      (if (string-null? (slot-value buf 'command-buffer))
+		  (string-drop raw-input-str
+			       (string-length (slot-value buf 'prompt)))
+		  (string-append (slot-value buf 'command-buffer)
+				 raw-input-str))))
 	(unless (string-null? input-str)
-	  (repl-insert buf (string-append
-			    "\n"
-			    (->string
-			     (eval (read (open-input-string input-str))))
-			    "\n" (slot-value buf 'prompt)))))))
+	  (if (parse a-sexp input-str)
+	      (begin
+		(repl-insert buf (string-append
+				  "\n"
+				  (->string
+				   (eval (read (open-input-string input-str))))
+				  "\n" (slot-value buf 'prompt)))
+		(set! (slot-value buf 'command-buffer) ""))
+	      (begin (set! (slot-value buf 'command-buffer)
+		       (string-append (slot-value buf 'command-buffer)
+				      input-str))
+		     (repl-insert
+		      buf (string-append
+			   "\n" (make-string
+				 (+ 3 (string-length
+				       (slot-value buf 'prompt))))))))))))
 
   (define-method (ui-focus primary: (buf <ui-repl>))
     (tk/focus (slot-value buf 'repl)))
