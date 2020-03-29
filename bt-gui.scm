@@ -123,8 +123,6 @@
      (children initform: '() accessor: ui-children)))
 
   (define-method (initialize-instance after: (buf <ui-element>))
-    (display "calling initializer <ui-element>")
-    (newline)
     (set! (ui-box buf) ((ui-parent buf) 'create-widget 'frame))
     (set! (ui-children buf)
       (map (lambda (child)
@@ -170,14 +168,11 @@
   ;;; permitted values, and CALLBACK may optionally a procedure of no arguments
   ;;; that will be invoked when the user selects a new value.
   (define-class <ui-setting> (<ui-element>)
-    ((setup (error "Cannot create <ui-setting-buffer> without setup argument"))
-     (packing-args '(side: left))
+    ((packing-args '(side: left))
      label
      spinbox))
 
   (define-method (initialize-instance after: (buf <ui-setting>))
-    (display "calling initializer <ui-setting>")
-    (newline)
     (let* ((setup (ui-setup buf))
 	   (default-var (third setup))
 	   (state-var (fourth setup))
@@ -232,8 +227,6 @@
     ((packing-args '(expand: 0 fill: x))))
 
   (define-method (initialize-instance after: (buf <ui-settings-group>))
-    (display "calling initializer <ui-settings-bar>")
-    (newline)
     (set! (ui-children buf)
       (map (lambda (child)
 	     (cons (car child)
@@ -262,8 +255,6 @@
      buttons))
 
   (define-method (initialize-instance after: (buf <ui-button-group>))
-    (display "calling initializer <ui-button-group>")
-    (newline)
     (let ((box (ui-box buf)))
       (set! (slot-value buf 'buttons)
 	(map (lambda (spec)
