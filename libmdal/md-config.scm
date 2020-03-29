@@ -173,7 +173,7 @@
   ;; internal helper
   (define (config-x-ref accessor id cfg)
     (let ((val (hash-table-ref/default (accessor cfg) id #f)))
-      (if val (car val) #f)))
+      (and val (car val))))
 
   ;;; return the command config for the given `id`
   (define (config-command-ref id cfg)
@@ -243,13 +243,12 @@
 			 (if (null? nodes)
 			     '()
 			     (map car (car nodes)))))))
-      (if (not (member inode-id (flatten itree)))
-	  #f
-	  (if (not (member inode-id (flatten (car itree))))
-	      (config-get-subnode-ids inode-id (cdr itree))
-	      (if (not (member inode-id (map car itree)))
-		  (config-get-subnode-ids inode-id (cadar itree))
-		  (get-nodes itree))))))
+      (and (member inode-id (flatten itree))
+	   (if (not (member inode-id (flatten (car itree))))
+	       (config-get-subnode-ids inode-id (cdr itree))
+	       (if (not (member inode-id (map car itree)))
+		   (config-get-subnode-ids inode-id (cadar itree))
+		   (get-nodes itree))))))
 
   ;;; return the IDs of the direct child nodes of a given parent inode ID
   ;;; in the given config, filtered by type
@@ -614,9 +613,8 @@
       (eval-effective-field-val
        (if (null? raw-val)
 	   (if (command-has-flag? command-config 'use-last-set)
-	       (let ((last-set (backtrace-block-fields block-instance
-						       row field-index)))
-		 (or last-set (command-default command-config)))
+	       (or (backtrace-block-fields block-instance row field-index)
+		   (command-default command-config))
 	       (command-default command-config))
 	   raw-val)
        command-config)))

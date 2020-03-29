@@ -14,15 +14,11 @@
 
   ;;; Returns the subnode with the given `subnode-id`
   (define (subnode-ref subnode-id inode-instance)
-    (find (lambda (node)
-	    (eqv? subnode-id (car node)))
-	  (cddr inode-instance)))
+    (assv subnode-id (cddr inode-instance)))
 
   ;;; Returns the inode instance witht the given `instance-id`.
   (define (inode-instance-ref instance-id inode)
-    (find (lambda (instance)
-	    (= instance-id (car instance)))
-	  (cdr inode)))
+    (assq instance-id (cdr inode)))
 
   ;;; Returns the value of the field at `field-index` in `row` of
   ;;; `block-instance`. Returns null if the requested `row` does not exist.
@@ -82,14 +78,14 @@
   ;;; configuration.
   (define (node-path p)
     (let* ((path (string-split p "/"))
+	   (path-suffix (last path))
+	   (last-path-elem (or (string->number path-suffix)
+			       (string->symbol path-suffix)))
 	   (accessor-proc
 	    (apply
 	     compose
 	     (cons (lambda (contents)
-		     (find (lambda (x)
-			     (eqv? (car x) (or (string->number (last path))
-					       (string->symbol (last path)))))
-			   contents))
+		     (assv last-path-elem contents))
 		   (cdr (reverse
 			 (map (lambda (path-elem subnode-access)
 				(if subnode-access
@@ -130,8 +126,7 @@
   ;;; Effectively calls md-mod-get-row-values on each row of the relevant
   ;;; blocks.
   (define (mod-get-block-values group-instance block-instance-ids)
-    (map (lambda (row)
-  	   (mod-get-row-values group-instance block-instance-ids row))
+    (map (cute mod-get-row-values group-instance block-instance-ids <>)
   	 (iota (length (cdr (alist-ref
 			     (car block-instance-ids)
 			     (cdr (find (lambda (subnode)

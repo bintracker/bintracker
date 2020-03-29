@@ -84,14 +84,12 @@
 
   ;;; compile an module to an onode tree
   ;;; TODO and a list of symbols for mod->asm?
-  (define (mod-compile mod origin #!optional extra-symbols)
-    ((config-compiler (mdmod-config mod)) mod origin
-     (if extra-symbols
-	 (cons `(mdal_current_module ,mod)
-	       extra-symbols)
-	 '())))
+  (define (mod-compile mod origin #!optional (extra-symbols '()))
+    ((config-compiler (mdmod-config mod))
+     mod origin (cons `(mdal_current_module ,mod)
+		      extra-symbols)))
 
-  (define (mod->bin mod origin #!optional extra-symbols)
+  (define (mod->bin mod origin #!optional (extra-symbols '()))
     (flatten (map onode-val
 		  (remove (lambda (onode)
 			    (memq (onode-type onode)
@@ -345,9 +343,9 @@
 							 (cddr node-instance))
 							order-pos)))
 				node-instance))
-			   ((group) (append (take node-instance 2)
-					    (map extract-nodes
-						 (cddr node-instance))))))
+			   ((group)
+			    (append (take node-instance 2)
+				    (map extract-nodes (cddr node-instance))))))
 		       (cdr root))))))
       (make-mdmod config-id: (mdmod-config-id mod)
 		  config: config
