@@ -358,8 +358,7 @@
      repl
      yscroll
      (prompt "repl> ")
-     (history '())
-     (command-buffer "")))
+     (history '())))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
     (set! (slot-value buf 'repl)
@@ -386,8 +385,9 @@
 	(configure-scrollbar-style yscroll)
 	(yscroll 'configure command: `(,repl yview))
 	(repl 'configure 'yscrollcommand: `(,yscroll set))
-	(repl 'insert 'end
-	      (string-append (ui-setup buf) "\n" (slot-value buf 'prompt)))
+	(repl-insert buf (ui-setup buf))
+	(repl-insert-prompt buf)
+	(repl 'mark 'gravity "prompt" 'left)
 	(set! (slot-value buf 'initialized) #t))))
 
   ;;; Insert `str` at the end of the prompt of the `<ui-repl> object `buf`.
@@ -396,10 +396,14 @@
       (repl 'insert 'end str)
       (repl 'see 'insert)))
 
+  (define-method (repl-insert-prompt primary: (buf <ui-repl>))
+    (repl-insert buf (string-append "\n" (slot-value buf 'prompt)))
+    ((slot-value buf 'repl) 'mark 'set "prompt" "end-1c"))
+
   ;;; Clear the prompt of the `<ui-repl>` object `buf`.
   (define-method (repl-clear primary: (buf <ui-repl>))
     ((slot-value buf 'repl) 'delete 0.0 'end)
-    (repl-insert buf (slot-value buf 'prompt)))
+    (repl-insert-prompt buf))
 
   ;;; Get the text contents of the `<ui-repl>` object `buf`. The remaining args
   ;;; are evaluated as arguments to `Tk:Text 'get`. See
@@ -411,33 +415,23 @@
   (define-method (repl-eval primary: (buf <ui-repl>))
     (handle-exceptions
 	exn
-	(repl-insert buf (string-append "\nError: " (->string exn)
-					(->string (arguments exn))
-					"\n" (slot-value buf 'prompt)))
-      (let* ((raw-input-str (repl-get buf "end-1l" "end-1c"))
-	     (input-str
-	      (if (string-null? (slot-value buf 'command-buffer))
-		  (string-drop raw-input-str
-			       (string-length (slot-value buf 'prompt)))
-		  (string-append (slot-value buf 'command-buffer)
-				 raw-input-str))))
+	(begin (repl-insert buf (string-append "\nError: " (->string exn)
+					       (->string (arguments exn))))
+	       (repl-insert-prompt buf))
+      (let ((input-str (repl-get buf "prompt" "end-1c"))
+	    (prompt (slot-value buf 'prompt)))
 	(unless (string-null? input-str)
 	  (if (parse a-sexp input-str)
 	      (begin
-		(repl-insert buf (string-append
-				  "\n"
-				  (->string
-				   (eval (read (open-input-string input-str))))
-				  "\n" (slot-value buf 'prompt)))
-		(set! (slot-value buf 'command-buffer) ""))
-	      (begin (set! (slot-value buf 'command-buffer)
-		       (string-append (slot-value buf 'command-buffer)
-				      input-str))
-		     (repl-insert
-		      buf (string-append
-			   "\n" (make-string
-				 (+ 3 (string-length
-				       (slot-value buf 'prompt))))))))))))
+		(repl-insert
+		 buf
+		 (string-append
+		  "\n" (->string (eval (read (open-input-string input-str))))))
+		(repl-insert-prompt buf))
+	      (repl-insert
+	       buf
+	       (string-append "\n"
+			      (make-string (+ 3 (string-length prompt))))))))))
 
   (define-method (ui-focus primary: (buf <ui-repl>))
     (tk/focus (slot-value buf 'repl)))
