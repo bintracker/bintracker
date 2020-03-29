@@ -19,9 +19,10 @@ nav:
       - "Style Guide": style-guide.md
       - "Bintracker API":
           - "bintracker-core": 'generated/bintracker-core.md'
-          - "bt-gui": 'generated/bt-gui.md'
           - "bt-types": 'generated/bt-types.md'
           - "bt-state": 'generated/bt-state.md'
+          - "bt-gui": 'generated/bt-gui.md'
+          - "bt-emulation": 'generated/bt-emulation.md'
   - MDAL:
       - Introduction: '../libmdal/docs/index.md'
       - MDMOD: '../libmdal/docs/MDMOD_SPECIFICATION.md'
