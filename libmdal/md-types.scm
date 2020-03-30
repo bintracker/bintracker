@@ -39,7 +39,12 @@
   ;;; ## MDMOD: MODULE
   ;; ---------------------------------------------------------------------------
 
-  ;;; The internal representation of an MDAL module.
+  ;;; The internal representation of an MDAL module is a pair containing
+  ;;; an MDAL `config` as the first element, and the global module node as the
+  ;;; second element, so `(config . global-node)`. libmdal provides the
+  ;;; accessors `mdmod-config` and `mdmod-global-node` for dealing with the
+  ;;; elements of a module.
+  ;;;
   ;;; The structure of `global-node` mirrors that of the MDAL module
   ;;; s-expression, with the following changes:
   ;;;
@@ -53,14 +58,9 @@
   ;;; - In block node instances, all rows are expanded to a list containing the
   ;;;   values for each block field subnode. Unset (empty) fields are
   ;;;   represented by `null` (the empty list).
-  (defstruct mdmod
-    config-id config global-node)
 
-  ;;; Printer for mdmod.
-  (define (display-mdmod mod)
-    (printf "#<mdmod>\n\nCONFIG ID: ~A\n\n" (mdmod-config-id mod))
-    (printf "CONFIG:\n~S\n" (mdmod-config mod)))
-
+  (define (mdmod-config m) (car m))
+  (define (mdmod-global-node m) (cdr m))
 
   ;;----------------------------------------------------------------------------
   ;;; ### mod accessor functions

@@ -560,20 +560,18 @@
  "Module Generator"
 
  (test "Generating an empty module"
-       (make-mdmod config-id: "Huby" config: my-cfg
-		   global-node:
-		   `(GLOBAL
-		     (0 #f
-			(AUTHOR (0 #f . "unknown"))
-			(TITLE (0 #f . "untitled"))
-			(LICENSE (0 #f . "All Rights Reserved"))
-			(BPM (0 #f . 140))
-			(PATTERNS
-			 (0 #f
-			    (DRUMS ,(append '(0 #f) (make-list 16 '(()))))
-			    (CH1 ,(append '(0 #f) (make-list 16 '(()))))
-			    (CH2 ,(append '(0 #f) (make-list 16 '(()))))
-			    (PATTERNS_ORDER (0 #f (16 0 0 0))))))))
+       (cons my-cfg `(GLOBAL
+		      (0 #f
+			 (AUTHOR (0 #f . "unknown"))
+			 (TITLE (0 #f . "untitled"))
+			 (LICENSE (0 #f . "All Rights Reserved"))
+			 (BPM (0 #f . 140))
+			 (PATTERNS
+			  (0 #f
+			     (DRUMS ,(append '(0 #f) (make-list 16 '(()))))
+			     (CH1 ,(append '(0 #f) (make-list 16 '(()))))
+			     (CH2 ,(append '(0 #f) (make-list 16 '(()))))
+			     (PATTERNS_ORDER (0 #f (16 0 0 0))))))))
        (generate-new-mdmod "Huby" my-cfg 16))
 
  (test "Generate a one-row module"

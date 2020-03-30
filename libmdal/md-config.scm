@@ -153,22 +153,20 @@
 	     (plugin-version-minor requested-version))))
 
   (defstruct config
-    target plugin-version description commands itree inodes default-origin
-    compiler)
+    id target plugin-version description commands
+    itree inodes default-origin compiler)
 
   (define (display-config cfg)
-    (printf "#<config>\n\n")
+    (printf "#<config ~S>\n\n" (config-id cfg))
     (when (config-description cfg)
       (printf "DESCRIPTION:\n~A\n\n" (config-description cfg)))
     (printf "COMMANDS:\n\n")
-    (for-each (lambda (x)
-                (printf "~A: ~S\n\n" (car x) (cadr x)))
-	      (hash-table->alist (config-commands cfg)))
-    (printf "\nINODE TREE:\n~S\n\n" (config-itree cfg))
-    (printf "\nINODES:\n\n")
-    (for-each (lambda (x)
-                (printf "~A: ~S\n\n" (car x) (cadr x)))
-	      (hash-table->alist (config-inodes cfg))))
+    (for-each (cute printf "~A\n" <>)
+	      (map car (hash-table->alist (config-commands cfg))))
+    (printf "\nINODE TREE:\n~S\n\n" (config-itree cfg)))
+
+  ;;; Return the configuration ID of the mdmod `m`.
+  (define (mdmod-config-id m) (config-id (car m)))
 
   ;; internal helper
   (define (config-x-ref accessor id cfg)
@@ -1287,9 +1285,11 @@
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
   ;;; through `read-config`.
-  (define (eval-mdalconfig config-dir path-prefix
+  (define (eval-mdalconfig id config-dir path-prefix
 			   #!key mdconf-version plugin-version target commands
 			   input output default-origin (description ""))
+    (display id)
+    (newline)
     (unless (and mdconf-version plugin-version target commands input output)
       (raise-local 'incomplete-config))
     (unless (in-range? mdconf-version *supported-config-versions*)
@@ -1303,6 +1303,7 @@
 			    (make-default-inode-configs))))
 	   (proto-config
 	    (make-config
+	     id: id
 	     plugin-version: _version
 	     target: _target
 	     commands: (get-config-commands commands itree path-prefix _target)
@@ -1310,7 +1311,7 @@
 	     default-origin:
 	     (or default-origin
 		 (target-platform-default-start-address _target)))))
-      (make-config plugin-version: _version target: _target
+      (make-config id: id plugin-version: _version target: _target
 		   description: description
 		   commands: (config-commands proto-config)
 		   itree: itree inodes: _input default-origin: default-origin
@@ -1318,11 +1319,11 @@
 					    path-prefix))))
 
   ;;; Evaluate the given `mdconf` s-expression, and return a config record.
-  (define (read-config mdconf config-dir path-prefix)
+  (define (read-config mdconf id config-dir path-prefix)
     (unless (and (pair? mdconf)
 		 (eqv? 'mdal-config (car mdconf)))
       (raise-local 'not-mdconf))
-    (apply eval-mdalconfig (append `(,config-dir ,path-prefix)
+    (apply eval-mdalconfig (append (list id config-dir path-prefix)
 				   (cdr mdconf))))
 
   ;;; Generate an config record from an .mdconf configuration file.
@@ -1348,6 +1349,6 @@
 	(call-with-input-file
 	    filepath
 	  (lambda (port)
-	    (read-config (read port) config-dir path-prefix))))))
+	    (read-config (read port) config-name config-dir path-prefix))))))
 
   )  ;; end module md-config

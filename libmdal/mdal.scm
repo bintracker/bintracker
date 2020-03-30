@@ -269,9 +269,12 @@
   ;;; blocks will have the length specified by `block-length`, unless other
   ;;; constraints apply from the config.
   (define (generate-new-mdmod config-id mdconf block-length)
-    (make-mdmod config-id: config-id config: mdconf
-		global-node: `(GLOBAL ,(generate-new-inode-instance
-					mdconf 'GLOBAL block-length))))
+    (cons mdconf `(GLOBAL ,(generate-new-inode-instance
+			    mdconf 'GLOBAL block-length)))
+    ;; (make-mdmod config-id: config-id config: mdconf
+    ;; 		global-node: `(GLOBAL ,(generate-new-inode-instance
+    ;; 					mdconf 'GLOBAL block-length)))
+    )
 
   ;;; Derive a new MDAL module from the module `mod`, which contains a single
   ;;; row of block data in the group with `group-id`. The row is composed from
@@ -319,9 +322,11 @@
 						(map extract-nodes
 						     (cddr node-instance)))))))
 		       (cdr root))))))
-      (make-mdmod config-id: (mdmod-config-id mod)
-		  config: config
-		  global-node: (extract-nodes (mdmod-global-node mod)))))
+      (cons config (extract-nodes (mdmod-global-node mod)))
+      ;; (make-mdmod config-id: (mdmod-config-id mod)
+      ;; 		  config: config
+      ;; 		  global-node: (extract-nodes (mdmod-global-node mod)))
+      ))
 
   ;;; Derive a new MDAL module from the module `mod`, with the order list of
   ;;; group `group-id` modified to only contain the step `order-pos`.
@@ -347,8 +352,11 @@
 			    (append (take node-instance 2)
 				    (map extract-nodes (cddr node-instance))))))
 		       (cdr root))))))
-      (make-mdmod config-id: (mdmod-config-id mod)
-		  config: config
-		  global-node: (extract-nodes (mdmod-global-node mod)))))
+      (cons (mdmod-config mod)
+	    (extract-nodes (mdmod-global-node mod)))
+      ;; (make-mdmod config-id: (mdmod-config-id mod)
+      ;; 		  config: config
+      ;; 		  global-node: (extract-nodes (mdmod-global-node mod)))
+      ))
 
   ) ;; end module mdal
