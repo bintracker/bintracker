@@ -85,21 +85,18 @@
   ;;; auto-generated order inodes
   (define (create-order-commands itree)
     (alist->hash-table
-     (append (map (cute cons <> (make-command type: 'uint bits: 16
-					      flags: '(use-last-set)))
-		  (filter (lambda (id)
-			    (string-contains (symbol->string id) "_LENGTH"))
-			  (flatten itree)))
-	     (map (lambda (id)
-  		    (cons id (make-command type: 'reference bits: 16
-  					   reference-to:
-					   (string->symbol
-					    (substring/shared
-  					     (symbol->string id) 2))
-  					   flags: '(use-last-set))))
-  		  (filter (lambda (id)
-  			    (string-prefix? "R_" (symbol->string id)))
-  			  (flatten itree))))))
+     (filter-map (lambda (id)
+		   (or (and (string-contains (symbol->string id) "_LENGTH")
+			    (cons id (make-command type: 'uint bits: 16
+						   flags: '(use-last-set))))
+		       (and (string-prefix? "R_" (symbol->string id))
+  			    (cons id (make-command type: 'reference bits: 16
+  						   reference-to:
+						   (string->symbol
+						    (substring/shared
+  						     (symbol->string id) 2))
+  						   flags: '(use-last-set))))))
+		 (flatten itree))))
 
   ;;; Verify that a parsed `field-value` is a legal input. Raises an exception
   ;;; of type `illegal-value` on failure, otherwise returns the field value.
