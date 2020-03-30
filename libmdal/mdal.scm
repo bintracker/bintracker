@@ -242,8 +242,8 @@
   ;;; Generate a new, empty inode instance based on the config `config`.
   (define (generate-new-inode-instance mdconf node-id block-length)
     (append '(0 #f)
-	    (case (inode-config-type (car (hash-table-ref (config-inodes mdconf)
-							  node-id)))
+	    (case (inode-config-type (hash-table-ref (config-inodes mdconf)
+						     node-id))
 	      ((field) (command-default (config-get-inode-source-command
 					 node-id mdconf)))
 	      ((block)

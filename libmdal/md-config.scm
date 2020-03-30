@@ -165,20 +165,13 @@
   ;;; Return the configuration ID of the mdmod `m`.
   (define (mdmod-config-id m) (config-id (car m)))
 
-  ;; internal helper
-  (define (config-x-ref accessor id cfg)
-    (let ((val (hash-table-ref/default (accessor cfg) id #f)))
-      (and val (car val))))
-
   ;;; return the command config for the given `id`
   (define (config-command-ref id cfg)
-    (hash-table-ref/default (config-commands cfg) id #f)
-    ;; (config-x-ref config-commands id cfg)
-    )
+    (hash-table-ref/default (config-commands cfg) id #f))
 
   ;;; return the inode config for the given `id`
   (define (config-inode-ref id cfg)
-    (config-x-ref config-inodes id cfg))
+    (hash-table-ref/default (config-inodes cfg) id #f))
 
   ;;; Returns the endianness of the configuration's target platform.
   (define (config-get-target-endianness cfg)
@@ -380,25 +373,25 @@
   ;;; Generate the input order node configurations for the given `group-id`
   ;;; and the list of subnode configurations.
   (define (make-order-config-nodes group-id subnodes)
-    (cons (list (symbol-append group-id '_ORDER)
+    (cons (cons (symbol-append group-id '_ORDER)
 		(make-inode-config type: 'block
 				   instance-range: (make-instance-range)))
 	  (cons (let ((length-node-id (symbol-append group-id '_LENGTH)))
-		  (list length-node-id
+		  (cons length-node-id
 			(make-inode-config
 			 type: 'field
 			 instance-range: (make-instance-range max: #f)
 			 cmd-id: length-node-id)))
-		(map (lambda (node)
-		       (let ((result-id (symbol-append 'R_ (car node))))
-			 (list result-id
-			       (make-inode-config
-				type: 'field
-				instance-range: (make-instance-range max: #f)
-				cmd-id: result-id))))
-		     (filter (lambda (node)
-			       (eq? 'block (inode-config-type (cadr node))))
-			     subnodes)))))
+		(filter-map
+		 (lambda (node)
+		   (and (eq? 'block (inode-config-type (cdr node)))
+			(let ((result-id (symbol-append 'R_ (car node))))
+			  (cons result-id
+				(make-inode-config
+				 type: 'field
+				 instance-range: (make-instance-range max: #f)
+				 cmd-id: result-id)))))
+		 subnodes))))
 
   ;;; Preliminary error checks for inode config specifications.
   (define (check-inode-spec type id from nodes parent-type)
@@ -442,7 +435,7 @@
 		    (order-nodes (if (and (pair? flags) (memq 'ordered flags))
 				     (make-order-config-nodes id subnodes)
 				     '())))
-	       (cons (list (if id id from)
+	       (cons (cons (if id id from)
 			   (make-inode-config
 			    type: type
 			    instance-range: (get-inode-range
@@ -459,10 +452,10 @@
 	  (nodes (eval-inode-config (third clone-expr) parent-type)))
       (concatenate (map (lambda (node)
 			  (map (lambda (clone instance)
-				 (list (symbol-append (car clone)
+				 (cons (symbol-append (car clone)
 						      (string->symbol
 						       (->string instance)))
-				       (second clone)))
+				       (cdr clone)))
 			       (make-list amount node)
 			       (iota amount 1 1)))
 			nodes))))
@@ -483,17 +476,17 @@
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
   (define (make-default-inode-configs)
-    `((GLOBAL ,(make-inode-config type: 'group
-				  instance-range: (make-instance-range)))
-      (AUTHOR ,(make-inode-config type: 'field
-				  instance-range: (make-instance-range)
-				  cmd-id: 'AUTHOR))
-      (TITLE ,(make-inode-config type: 'field
-				 instance-range: (make-instance-range)
-				 cmd-id: 'TITLE))
-      (LICENSE ,(make-inode-config type: 'field
+    `((GLOBAL . ,(make-inode-config type: 'group
+				    instance-range: (make-instance-range)))
+      (AUTHOR . ,(make-inode-config type: 'field
+				    instance-range: (make-instance-range)
+				    cmd-id: 'AUTHOR))
+      (TITLE . ,(make-inode-config type: 'field
 				   instance-range: (make-instance-range)
-				   cmd-id: 'LICENSE))))
+				   cmd-id: 'TITLE))
+      (LICENSE . ,(make-inode-config type: 'field
+				     instance-range: (make-instance-range)
+				     cmd-id: 'LICENSE))))
 
   ;;; Compiler helper: Get the current origin (compile address).
   ;;; Returns #f if current origin cannot be resolved.

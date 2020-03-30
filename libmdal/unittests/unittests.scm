@@ -131,7 +131,7 @@
 	     (config-command-ref 'INVALID my-cfg)))
 
  (test "config-inode-ref"
-       (list (car (hash-table-ref (config-inodes my-cfg) 'AUTHOR))
+       (list (hash-table-ref (config-inodes my-cfg) 'AUTHOR)
 	     #f)
        (list (config-inode-ref 'AUTHOR my-cfg)
 	     (config-inode-ref 'INVALID my-cfg)))

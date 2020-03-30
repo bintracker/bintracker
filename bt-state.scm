@@ -281,7 +281,7 @@
     		  (map (lambda (inode-cfg)
     			 (list (car inode-cfg) 0))
     		       (filter (lambda (inode-cfg)
-    				 (memq (inode-config-type (cadr inode-cfg))
+    				 (memq (inode-config-type (cdr inode-cfg))
     				       '(group block)))
     			       (hash-table->alist
     				(config-inodes (current-config))))))))
