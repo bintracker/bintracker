@@ -1288,8 +1288,6 @@
   (define (eval-mdalconfig id config-dir path-prefix
 			   #!key mdconf-version plugin-version target commands
 			   input output default-origin (description ""))
-    (display id)
-    (newline)
     (unless (and mdconf-version plugin-version target commands input output)
       (raise-local 'incomplete-config))
     (unless (in-range? mdconf-version *supported-config-versions*)
