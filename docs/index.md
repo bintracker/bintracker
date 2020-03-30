@@ -25,11 +25,25 @@ Bintracker does not handle emulation itself. Instead, it relies on [MAME™](htt
 
 ## Philosophy
 
-### Trackers as a Visual Programming Language
+### Trackers as Programming Tools
+
+Chip music tracker modules are commonly understood to be data. However, you could also interpret them as a script, a set of instructions that will be interpreted in a virtual machine (the music engine). In this sense, music trackers become domain specific programming environments.
+
+Bintracker is centered around the idea of being an audio-visual programming tool. It expands on the concept of a music tracker by adding a meta-layer in form of a general purpose language interpreter. This language interpreter enables the user to create music in many different ways beyond the tracker metaphor, as well as modify and extend the behavior of Bintracker itself.
+
+### Digital History Preservation
+
+Bintracker is a conscious effort in digital history preservation. It enables researchers and artists alike to explore the evolution of computer music, with a current focus on the home computer era.
+
+### Flexibility
+
+Bintracker should be a tool that you can adapt to your needs and habits, rather than you adapting to the tool.
 
 ### User Empowerment
 
-Bintracker aims to give as much power to the user as possible. Bintracker should be a tool that you can adapt to your needs, rather than you adapting to the tool. However, with great power comes great responsibility. Bintracker is by no means a *safe* tool. It does not prevent you from shooting yourself in the foot. Bintracker will happily wreck your file system if you ask it to, and more.
+Bintracker aims to give as much power to the user as possible. ...
+
+However, with great power comes great responsibility. Bintracker is by no means a *safe* tool. If you are concerned about system integrity, you should consider running Bintracker in a container or virtual machine.
 
 
 ## License
