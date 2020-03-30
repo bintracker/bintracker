@@ -108,7 +108,7 @@
   (define (create-new-module mdconf-id)
     (close-file)
     (set-state! 'current-mdmod (generate-new-mdmod
-  				"Huby"
+				;; TODO
   				(file->config "libmdal/unittests/config/"
   					      "Huby" "libmdal/")
   				16))

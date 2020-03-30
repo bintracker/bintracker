@@ -572,7 +572,7 @@
 			     (CH1 ,(append '(0 #f) (make-list 16 '(()))))
 			     (CH2 ,(append '(0 #f) (make-list 16 '(()))))
 			     (PATTERNS_ORDER (0 #f (16 0 0 0))))))))
-       (generate-new-mdmod "Huby" my-cfg 16))
+       (generate-new-mdmod my-cfg 16))
 
  (test "Generate a one-row module"
        '(GLOBAL (0 #f

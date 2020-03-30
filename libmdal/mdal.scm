@@ -268,7 +268,7 @@
   ;;; Generate a new, empty mdmod based on the config `config`. Generated
   ;;; blocks will have the length specified by `block-length`, unless other
   ;;; constraints apply from the config.
-  (define (generate-new-mdmod config-id mdconf block-length)
+  (define (generate-new-mdmod mdconf block-length)
     (cons mdconf `(GLOBAL ,(generate-new-inode-instance
 			    mdconf 'GLOBAL block-length))))
 
