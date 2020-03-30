@@ -269,16 +269,6 @@
 			 (config-inode-ref node-id config))
 			config))
 
-  ;; TODO this is practically identical to config-get-inot-source-command,
-  ;; except that this one takes a node instead of a node id. So these 2 should
-  ;; be merged. Resp. get-node-command-cfg will no longer work anyway, since
-  ;; block field nodes are no longer explicit.
-  ;;; return the command configuration associated with the given field node
-  (define (get-node-command-cfg node config)
-    (config-command-ref (inode-config-cmd-id (config-inode-ref (car node)
-							       config))
-     config))
-
   ;;; get the default value of a given inode config
   (define (config-get-node-default node-id config)
     (let ((node-cmd (config-get-inode-source-command node-id config)))
