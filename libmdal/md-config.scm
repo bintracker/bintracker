@@ -85,13 +85,13 @@
   ;;; auto-generated order inodes
   (define (create-order-commands itree)
     (alist->hash-table
-     (append (map (cute list <> (make-command type: 'uint bits: 16
+     (append (map (cute cons <> (make-command type: 'uint bits: 16
 					      flags: '(use-last-set)))
 		  (filter (lambda (id)
 			    (string-contains (symbol->string id) "_LENGTH"))
 			  (flatten itree)))
 	     (map (lambda (id)
-  		    (list id (make-command type: 'reference bits: 16
+  		    (cons id (make-command type: 'reference bits: 16
   					   reference-to:
 					   (string->symbol
 					    (substring/shared
@@ -175,7 +175,9 @@
 
   ;;; return the command config for the given `id`
   (define (config-command-ref id cfg)
-    (config-x-ref config-commands id cfg))
+    (hash-table-ref/default (config-commands cfg) id #f)
+    ;; (config-x-ref config-commands id cfg)
+    )
 
   ;;; return the inode config for the given `id`
   (define (config-inode-ref id cfg)

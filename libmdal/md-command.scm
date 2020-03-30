@@ -67,9 +67,9 @@
 
   ;;; construct an alist containing the default commands AUTHOR and TITLE
   (define (make-default-commands)
-    `((AUTHOR ,(make-command type: 'string default: "unknown"))
-      (TITLE ,(make-command type: 'string default: "untitled"))
-      (LICENSE ,(make-command type: 'string default: "All Rights Reserved"))))
+    `((AUTHOR . ,(make-command type: 'string default: "unknown"))
+      (TITLE . ,(make-command type: 'string default: "untitled"))
+      (LICENSE . ,(make-command type: 'string default: "All Rights Reserved"))))
 
   ;;; basic error checks for mdalconfig command specification
   (define (check-command-spec id type bits default reference-to keys range)
@@ -108,7 +108,7 @@
 				      (if id (->string id) "???")))))
 	      (else (abort exn)))
       (check-command-spec id type bits default reference-to keys range)
-      (list id (make-command
+      (cons id (make-command
 		type: type
 		bits: (case type
 			((string) 0)
@@ -117,16 +117,15 @@
 		default: default
 		reference-to: reference-to
 		keys: (eval `(let ((make-dividers
-				    (lambda (cycles bits rest . shift)
-				      (make-dividers ,cpu-speed cycles bits rest
-						     (if (null? shift)
-							 1 (car shift)))))
+				    (lambda (cycles bits rest
+						    #!optional (shift 1))
+				      (make-dividers ,cpu-speed cycles bits
+						     rest shift)))
 				   (make-inverse-dividers
-				    (lambda (cycles bits rest . shift)
+				    (lambda (cycles bits rest
+						    #!optional (shift 1))
 				      (make-inverse-dividers
-				       ,cpu-speed cycles bits rest
-				       (if (null? shift)
-					   1 (car shift))))))
+				       ,cpu-speed cycles bits rest shift))))
 			       ,keys))
 		flags: flags
 		range: (or range

@@ -125,7 +125,7 @@
  (define my-itree (config-itree my-cfg))
 
  (test "config-command-ref"
-       (list (car (hash-table-ref (config-commands my-cfg) 'AUTHOR))
+       (list (hash-table-ref (config-commands my-cfg) 'AUTHOR)
 	     #f)
        (list (config-command-ref 'AUTHOR my-cfg)
 	     (config-command-ref 'INVALID my-cfg)))
@@ -149,7 +149,7 @@
        (config-get-subnode-type-ids 'GLOBAL my-cfg 'field))
 
  (test "config-get-inode-source-command"
-       (car (hash-table-ref (config-commands my-cfg) 'DRUM))
+       (hash-table-ref (config-commands my-cfg) 'DRUM)
        (config-get-inode-source-command 'DRUM my-cfg))
 
  (test "config-get-node-default" #f
