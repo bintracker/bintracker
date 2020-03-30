@@ -154,6 +154,7 @@
       (repeat-values rows (make-list (length (car rows))
 				     0))))
 
+  ;; TODO swap argument order
   ;;; Returns the values of all order fields as a list of row value sets.
   ;;; Values are normalized, ie. empty positions are replaced with repeated
   ;;; values from an earlier row.
@@ -161,6 +162,7 @@
     (repeat-block-row-values (cddr (mod-get-group-instance-order group-instance
 								 group-id))))
 
+  ;; TODO swap argument order
   ;;; Returns the total number of all block rows in the given group node
   ;;; instance. The containing group node must be ordered. The result is equal
   ;;; to the length of the block nodes as if they were combined into a single

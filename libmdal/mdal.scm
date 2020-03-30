@@ -284,8 +284,8 @@
 	    (let ((block-ids (remove (cute eqv? <> order-id)
 				     (config-get-subnode-ids
 				      group-id (config-itree config))))
-		  (order-pos (list-ref (cddr (mod-get-group-instance-order
-					      node-instance group-id))
+		  (order-pos (list-ref (mod-get-order-values group-id
+							     node-instance)
 				       order-pos)))
 	      (append
 	       (take node-instance 2)
