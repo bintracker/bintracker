@@ -62,14 +62,14 @@
  "utils/MD-Note-Table"
 
  (test "note-table-range" '(a1 c2)
-       (note-table-range (alist->hash-table '((a1 1) (b1 2) (c2 3)))))
+       (note-table-range (alist->hash-table '((a1 . 1) (b1 . 2) (c2 . 3)))))
 
  (test-assert "make-counters"
    (let ((my-note-table (make-counters 12 47 1 0)))
      (and (= 37 (hash-table-size my-note-table))
 	  (eqv? 'c1 (lowest-note my-note-table))
 	  (eqv? 'b3 (highest-note my-note-table))
-	  (= 13 (car (hash-table-ref my-note-table 'c2))))))
+	  (= 13 (hash-table-ref my-note-table 'c2)))))
 
  (test-assert "make-dividers"
    (let ((my-note-table (make-dividers 3500000 118 8 0 -4)))
@@ -602,9 +602,9 @@
 	 0 (config-get-inode-source-command 'BPM my-cfg)))
 
  (test "eval-block-field"
-       (car (hash-table-ref (command-keys (config-get-inode-source-command
-					   'NOTE2 my-cfg))
-			    'a2))
+       (hash-table-ref (command-keys (config-get-inode-source-command
+				      'NOTE2 my-cfg))
+		       'a2)
        (eval-block-field ((node-path "0/PATTERNS/0/CH2/0")
 			  (mdmod-global-node my-mod))
 			 0 10 (config-command-ref 'NOTE my-cfg)))

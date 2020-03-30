@@ -581,8 +581,8 @@
   (define (eval-effective-field-val current-val command-config)
     (case (command-type command-config)
       ((int uint reference string trigger) current-val)
-      ((key ukey) (car (hash-table-ref (command-keys command-config)
-				       current-val)))
+      ((key ukey) (hash-table-ref (command-keys command-config)
+				  current-val))
       (else (error "cmd type not implemented"))))
 
   ;;; Evaluate a group field node instance, resolving key and ukey values as

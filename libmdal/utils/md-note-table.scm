@@ -89,8 +89,8 @@
   ;;;
   (define (make-dividers-range cycles beg end rest bits cpu-speed)
     (if (> beg end)
-        (list (list 'rest rest))
-        (cons (list (offset->note-name beg)
+        (list (cons 'rest rest))
+        (cons (cons (offset->note-name beg)
                     (offset->divider beg cycles bits cpu-speed))
               (make-dividers-range cycles (+ 1 beg) end rest bits
 				   cpu-speed))))
@@ -98,8 +98,8 @@
   ;;;
   (define (make-inverse-dividers-range cycles beg end rest cpu-speed)
     (if (> beg end)
-	(list (list 'rest rest))
-	(cons (list (offset->note-name beg)
+	(list (cons 'rest rest))
+	(cons (cons (offset->note-name beg)
                     (offset->inverse-divider beg cycles cpu-speed))
               (make-inverse-dividers-range cycles (+ 1 beg) end rest
 					   cpu-speed))))
@@ -146,8 +146,8 @@
     (letrec ((mkcounters
               (lambda (beg end first rest)
 		(if (> beg end)
-                    (list (list 'rest rest))
-                    (cons (list (offset->note-name beg) first)
+                    (list (cons 'rest rest))
+                    (cons (cons (offset->note-name beg) first)
                           (mkcounters (+ 1 beg) end (+ 1 first) rest))))))
       (alist->hash-table (mkcounters beg end first-index rest-index))))
 
