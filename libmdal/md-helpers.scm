@@ -15,6 +15,10 @@
   ;; MDAL: UTILITIES
   ;; ---------------------------------------------------------------------------
 
+  ;;; Standard matrix transposition.
+  (define (transpose matrix)
+    (apply map list matrix))
+
   ;;; Convert note names from MDAL's format to the conventional tracker naming
   ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
   (define (normalize-note-name n)

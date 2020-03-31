@@ -137,8 +137,12 @@
   ;;; Set one or more `instances` of the node with `node-id`. `instances` must
   ;;; be an alist containing the node instance id in car, and the new value in
   ;;; cdr.
-  (define (node-set! parent-node-instance node-id instances mdconf)
-    (let ((parent-id (config-get-parent-node-id node-id (config-itree mdconf))))
+  (define (node-set! parent-node-instance node-id instances mod)
+    (let* ((mdconf (mdmod-config mod))
+	   (parent-node ((node-path parent-node-instance)
+			 (mdmod-global-node mod)))
+	   (parent-id (config-get-parent-node-id node-id
+						 (config-itree mdconf))))
       (if (eqv? 'block (inode-config-type (config-inode-ref parent-id mdconf)))
 	  (let ((field-index (config-get-block-field-index parent-id node-id
 							   mdconf)))
@@ -146,91 +150,83 @@
 			;; TODO utterly messy work-around because applying
 			;; list-set! directly trashes the list contents
 			(let ((row (list-copy*
-				    (list-ref (cddr parent-node-instance)
+				    (list-ref (cddr parent-node)
 					      (car instance)))))
 			  (list-set! row field-index (cadr instance))
-			  (list-set! parent-node-instance (+ 2 (car instance))
+			  (list-set! parent-node (+ 2 (car instance))
 			  	     row)))
 		      instances))
 	  (for-each (lambda (instance)
 		      (alist-update! (car instance)
 				     (cdr instance)
-				     (alist-ref node-id
-						(cddr parent-node-instance))))
+				     (alist-ref node-id (cddr parent-node))))
 		    instances))))
 
   ;;; Delete the block field instance of `field-id` at `row`.
-  (define (remove-block-field! block-instance field-id row mdconf)
-    (letrec* ((field-index (config-get-block-field-index
-			    (config-get-parent-node-id field-id
-						       (config-itree mdconf))
-			    field-id mdconf))
-	      (move-up (lambda (rows)
-			 (if (= 1 (length rows))
-			     (append (take (car rows) field-index)
-				     (list '())
-				     (drop (car rows) (+ 1 field-index)))
-			     (cons (append (take (car rows) field-index)
-					   (list (list-ref (cadr rows)
-							   field-index))
-					   (drop (car rows) (+ 1 field-index)))
-				   (move-up (cdr rows)))))))
-      (set! block-instance
-	(append (take block-instance (+ 2 row))
-		(move-up (drop (cddr block-instance) row))))))
+  (define (remove-block-field block-instance field-id row mdconf)
+    (let* ((columns (transpose (cddr block-instance)))
+	   (block-id (config-get-parent-node-id field-id (config-itree mdconf)))
+	   (field-index (config-get-block-field-index block-id field-id
+						      mdconf)))
+      (transpose (map (lambda (column index)
+			(if (= index field-index)
+			    (append (take column row)
+				    (if (> (length column) 1)
+				        (append (drop column (+ 1 row)) '(()))
+					'()))
+			    column))
+		      columns (iota (length columns))))))
 
-  ;;; Insert a block field instance for the node `field-id` at `row` and set
-  ;;; it to `value`.
-  (define (insert-block-field! block-instance field-id row value mdconf)
-    (letrec* ((itree (config-itree mdconf))
-	      (block-id (config-get-parent-node-id field-id itree))
-	      (field-index (config-get-block-field-index block-id field-id
-							 mdconf))
-	      (move-down
-	       (lambda (rows insert-val)
-		 (if (null? rows)
-		     (append (make-list field-index '())
-			     (list insert-val)
-			     (make-list
-			      (- (length (config-get-subnode-ids block-id
-								 itree))
-				 (+ 1 field-index))
-			      '()))
-		     (cons (append (take (car rows) field-index)
-				   (list insert-val)
-				   (drop (car rows) (+ 1 field-index)))
-			   (move-down (cdr rows)
-				      (list-ref (car rows) field-index)))))))
-      (set! block-instance
-	(append (take block-instance (+ 2 row))
-		(move-down (drop (cddr block-instance) row) value)))))
+  ;;; Insert an instance of the block field `field-id` into the block node
+  ;;; instance `block-instance`, inserting at `row` and setting `value`.
+  (define (insert-block-field block-instance field-id row value mdconf)
+    (let* ((columns (transpose (cddr block-instance)))
+	   (block-id (config-get-parent-node-id field-id (config-itree mdconf)))
+	   (field-index (config-get-block-field-index block-id field-id
+						      mdconf)))
+      (transpose (map (lambda (column index)
+			(if (= index field-index)
+			    (append (take column row)
+				    (list value)
+				    (drop column row))
+			    (append column '(()))))
+		      columns (iota (length columns))))))
 
   ;;; Delete one or more `instances` from the node with `node-id`.
-  (define (node-remove! parent-node-instance node-id instances mdconf)
-    (let ((parent-id (config-get-parent-node-id node-id (config-itree mdconf))))
+  (define (node-remove! parent-instance-path node-id instances mod)
+    (let* ((mdconf (mdmod-config mod))
+	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
+	   (parent-instance ((node-path parent-instance-path)
+			     (mdmod-global-node mod))))
       (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
-	  (for-each (cute remove-block-field! parent-node-instance node-id
-			  <> mdconf)
+	  (for-each (lambda (instance)
+		      (set! (cddr parent-instance)
+			(remove-block-field parent-instance node-id
+					    (car instance) mdconf)))
 		    instances)
 	  (for-each (cute alist-delete!
-		      <> (alist-ref node-id (cddr parent-node-instance)))
+		      <> (alist-ref node-id (cddr parent-instance)))
 		    instances))))
 
   ;;; Insert one or more `instances` into the node with `node-id`. `instances`
   ;;; must be a list of node-instance-id, value pairs.
-  (define (node-insert! parent-node-instance node-id instances mdconf)
-    (let ((parent-id (config-get-parent-node-id node-id (config-itree mdconf))))
+  (define (node-insert! parent-instance-path node-id instances mod)
+    (let* ((mdconf (mdmod-config mod))
+	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
+	   (parent-instance ((node-path parent-instance-path)
+			     (mdmod-global-node mod))))
       (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
 	  (for-each (lambda (instance)
-		      (insert-block-field! parent-node-instance node-id
-					   (car instance) (cadr instance)
-					   mdconf))
+		      (set! (cddr parent-instance)
+			(insert-block-field parent-instance node-id
+					    (car instance) (cadr instance)
+					    mdconf)))
 		    instances)
 	  (for-each (lambda (instance)
 		      (alist-update! (car instance)
 				     (cdr instance)
 				     (alist-ref node-id
-						(cddr parent-node-instance))))
+						(cddr parent-instance))))
 		    instances))))
 
 

@@ -846,6 +846,7 @@
   ;;;
   ;;; An edit action is a list that may take one of the following forms:
   ;;;
+  ;; TODO documentation obsolete
   ;;; - `('set node-path ((instance value) ...))`
   ;;; - `('insert node-path ((instance value) ...))`
   ;;; - `('remove node-path (instance ...))`
@@ -895,8 +896,9 @@
 	   (else (warning (string-append "Unsupported edit action \""
 					 (->string (car action))
 					 "\""))))
-	 ((node-path (cadr action)) (mdmod-global-node (current-mod)))
-	 (third action) (fourth action) (current-config))))
+	 ;; ((node-path (cadr action)) (mdmod-global-node (current-mod)))
+	 (cadr action)
+	 (third action) (fourth action) (current-mod))))
 
   ;;; Undo the latest edit action, by retrieving the latest action from the undo
   ;;; stack, applying it, updating the redo stack, and refreshing the display.
@@ -1902,17 +1904,10 @@
   ;;; position, and insert an empty node at the end of the block instead.
   (define (blockview-cut-current-cell b)
     (unless (null? (blockview-get-current-field-value b))
-      (let* ((current-instance (blockview-get-current-field-instance b))
-	     (field-index (blockview-get-current-field-index b))
-	     (field-values (drop (remove null?
-					 (map (cute list-ref <> field-index)
-					      (blockview-get-current-chunk b)))
-				 (+ 1 current-instance)))
-	     (action (list 'set (blockview-get-current-block-instance-path b)
-			   (blockview-get-current-field-id b)
-			   (map list (iota (length field-values)
-					   current-instance 1)
-				(append field-values '(()))))))
+      (let ((action (list 'remove
+			  (blockview-get-current-block-instance-path b)
+			  (blockview-get-current-field-id b)
+			  `((,(blockview-get-current-field-instance b))))))
 	(push-undo (make-reverse-action action))
 	(apply-edit! action)
 	(blockview-update b)
@@ -1923,22 +1918,11 @@
   ;;; shifting the following node instances down and dropping the last instance.
   (define (blockview-insert-cell b)
     (unless (null? (blockview-get-current-field-value b))
-      (let* ((current-instance (blockview-get-current-field-instance b))
-	     (field-index (blockview-get-current-field-index b))
-	     (field-values (drop-right
-			    (remove null?
-				    (drop (map (cute list-ref <> field-index)
-					       (blockview-get-current-chunk b))
-					  current-instance))
-			    1))
-	     (action (list 'set (blockview-get-current-block-instance-path b)
+      (let ((action (list 'insert
+			   (blockview-get-current-block-instance-path b)
 			   (blockview-get-current-field-id b)
-			   (cons (list current-instance '())
-				 (map list
-				      (iota (length field-values)
-					    (+ 1 current-instance)
-					    1)
-				      field-values)))))
+			   `((,(blockview-get-current-field-instance b)
+			      ())))))
 	(push-undo (make-reverse-action action))
 	(apply-edit! action)
 	(blockview-update b)

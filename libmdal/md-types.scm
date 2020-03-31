@@ -109,13 +109,18 @@
   (define (mod-get-row-values group-instance block-instance-ids row)
     (flatten
      (map (lambda (block-inst-id block-node)
-	    (map (lambda (value)
-		   (and (not (null? value))
-			(if (boolean? value)
-			    value
-			    (->string value))))
-		 (list-ref (cddr (inode-instance-ref block-inst-id block-node))
-			   row)))
+	    (let ((block-contents (cddr (inode-instance-ref block-inst-id
+							    block-node))))
+	      (map (lambda (value)
+		     (and (not (null? value))
+			  (if (boolean? value)
+			      value
+			      (->string value))))
+		   (if (>= row (length block-contents))
+		       ;; TODO using row 0 to construct an empty row here. This
+		       ;; is unsafe, because even row 0 may not exist.
+		       (make-list (length (car block-contents)) '())
+		       (list-ref block-contents row)))))
 	  block-instance-ids
 	  (remove (lambda (node)
 		    (symbol-contains (car node) "_ORDER"))
