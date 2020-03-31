@@ -844,23 +844,30 @@
   ;;; All editing of the current MDAL module is communicated through so-called
   ;;; "edit actions".
   ;;;
-  ;;; An edit action is a list that may take one of the following forms:
+  ;;; An edit action is a list that takes the form
   ;;;
-  ;; TODO documentation obsolete
-  ;;; - `('set node-path ((instance value) ...))`
-  ;;; - `('insert node-path ((instance value) ...))`
-  ;;; - `('remove node-path (instance ...))`
-  ;;; - `('compound (edit-action ...))`
+  ;;; `(ACTION PARENT-INSTANCE-PATH NODE-ID INSTANCES)`
   ;;;
-  ;;; where **node-path** is a fully qualified MDAL node path string (ie. a path
+  ;;; where ACTION is one of the symbols `set`, `insert`, or `remove`,
+  ;;; PARENT-INSTANCE-PATH is a fully qualified MDAL node path string denoting
+  ;;; the parent node instance of the node that you want to edit (ie. a path
   ;;; starting at the global inode, see md-types/MDMOD for details),
-  ;;; **instance** is a node instance identifier, and **value** is an
-  ;;; MDAL-formatted node instance value.
+  ;;; NODE-ID is the ID of the node you want to edit, and INSTANCES is an
+  ;;; alist where the keys are node instance ID numbers and the values are the
+  ;;; values that you want to set. Values for a `remove` action are ignored, but
+  ;;; you must still provide the argument as a list of lists.
   ;;;
   ;;; As the respective names suggest, a `set` action sets one or more instances
-  ;;; of the node at **node-path** to (a) new value(s), an `insert` action
-  ;;; inserts one or more new instances into the node, and a `remove` action
-  ;;; removes one or more instances from the node. A `compound` action bundles
+  ;;; of the node NODE-ID at PARENT-INSTANCE-PATH to (a) new value(s), an
+  ;;; `insert` action inserts one or more new instances into the node, and a
+  ;;; `remove` action removes one or more instances from the node.
+  ;;;
+  ;;; Alternatively, an edit action may take the form
+  ;;;
+  ;;; `(compound ACTIONS))`
+  ;;;
+  ;;; where ACTIONS is a list of edit actions. In this case, the edit actions
+  ;;; are applied in the order provided. A `compound` action thus bundles
   ;;; one or more edit actions together.
   ;;;
   ;;; #### Applying edit actions
@@ -871,20 +878,7 @@
   ;;; generate an edit action that undoes the edit action you are applying, and
   ;;; push it to the undo stack with `push-undo`. See bt-state/The Journal for
   ;;; details on Bintracker's undo/redo mechanism.
-  ;;;
-  ;;; #### When to use which action
-  ;;;
-  ;;; As a general rule of thumb, use `set` actions unless the actual length of
-  ;;; the node should change. This may run counter to intuition at times. For
-  ;;; example, inserting a step in a block column may conceptually be an
-  ;;; `insert` action. However, logically it is a `set` action - the node
-  ;;; instance values change, but the total number of instances does not.
-  ;;;
-  ;;; Use a `compound` action if several edit actions form a logical unit, ie.
-  ;;; if the user would expect to be all of the actions to be reversed at once
-  ;;; on Undo.
 
-  ;; TODO only renumber if node-path names a field node.
   ;;; Apply an edit action to the current module.
   (define (apply-edit! action)
     (if (eqv? 'compound (car action))
@@ -896,7 +890,6 @@
 	   (else (warning (string-append "Unsupported edit action \""
 					 (->string (car action))
 					 "\""))))
-	 ;; ((node-path (cadr action)) (mdmod-global-node (current-mod)))
 	 (cadr action)
 	 (third action) (fourth action) (current-mod))))
 
