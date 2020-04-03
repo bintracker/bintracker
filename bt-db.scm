@@ -7,9 +7,10 @@
 ;; -----------------------------------------------------------------------------
 
 ;;; The Bintracker Database holds information concerning an existing
-;;; installation of Bintracker. The database implementation is SQLite3.
-;;; The database is automatically created and populated on the first run of a
-;;; new installation.
+;;; installation of Bintracker. It is an SQLite3 database, managed through the
+;;; [sql-de-lite](https://wiki.call-cc.org/eggref/5/sql-de-lite) extension.
+;;; If Bintracker does not find `bt.db` on application startup, it creates and
+;;; populates a fresh database.
 ;;;
 ;;; ## Default Tables
 ;;;
@@ -25,7 +26,6 @@
 ;;; - `description` - configuration description
 ;;;
 ;;; The `configs` table is automatically updated during startup of Bintracker.
-
 (module bt-db
     *
 
@@ -61,7 +61,7 @@
   ;;   '())
 
   ;;; Returns the list of available MDAL configurations. The returned list has
-  ;;; the form `(config-id, plugin-version, target-platform, description)`.
+  ;;; the form `(CONFIG-ID, PLUGIN-VERSION, TARGET-PLATFORM, DESCRIPTION)`.
   (define (btdb-list-configs #!optional (platform 'any))
     (exec (sql btdb (string-append
 		     "SELECT id, version, platform, description FROM configs"
@@ -74,9 +74,10 @@
   (define (btdb-list-platforms)
     (exec (sql btdb "SELECT DISTINCT platform FROM configs")))
 
-  ;;; Collect information on the MDAL configuration named `config-id` into a
-  ;;; list, which has the form `(version hash target-platform description)`.
-  ;;; Returns #f if the config is not found in the MDAL configuration directory.
+  ;;; Collect information on the MDAL configuration named MDCONF-ID into a
+  ;;; list, which has the form `(VERSION HASH TARGET-PLATFORM DESCRIPTION)`.
+  ;;; Returns `#f` if the config is not found in the MDAL configuration
+  ;;; directory.
   (define (gather-config-info mdconf-id)
     (let ((mdconf (file->config mdal-config-dir mdconf-id "libmdal/")))
       (and mdconf
@@ -90,7 +91,7 @@
 		 (target-platform-id (config-target mdconf))
 		 (config-description mdconf)))))
 
-  ;;; Add the MDAL configuration named `mdconf-id` to the Bintracker database.
+  ;;; Add the MDAL configuration named MDCONF-ID to the Bintracker database.
   (define (btdb-add-config! mdconf-id)
     (let ((info (gather-config-info mdconf-id)))
       (when info
@@ -102,13 +103,13 @@
 			 "', '" (third info)
   			 "', '" (or (fourth info) "") "');"))))))
 
-  ;;; Remove the MDAL configuration named `mdconf-id` from the Bintracker
+  ;;; Remove the MDAL configuration named MDCONF-ID from the Bintracker
   ;;; database.
   (define (btdb-remove-config! mdconf-id)
     (exec (sql btdb (string-append "DELETE FROM configs WHERE id='"
 				   mdconf-id "';"))))
 
-  ;;; Update the MDAL configuration named `mdconf-id` in the Bintracker
+  ;;; Update the MDAL configuration named MDCONF-ID in the Bintracker
   ;;; database.
   (define (btdb-update-config! mdconf-id)
     (let ((info (gather-config-info mdconf-id)))

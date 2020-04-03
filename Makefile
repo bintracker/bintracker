@@ -1,6 +1,6 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = bintracker-core.md bt-gui.md bt-state.md bt-types.md bt-emulation.md
+DOCS = bintracker-core.md bt-gui.md bt-state.md bt-types.md bt-db.md bt-emulation.md
 LIBFLAGS = -s -d3
 ifdef RELEASE
  LIBFLAGS += -O3
@@ -69,13 +69,14 @@ TAGS: $(ALL_SOURCE_FILES)
 	etags -r '"  (def.*? "' $(ALL_SOURCE_FILES)
 
 %.md: %.scm
-	$(DOCGEN) -i $< -o docs/generated/$@ -m
+	$(DOCGEN) -i $< -o docs/generated/$@
 
 bintracker-core.md: bintracker-core.scm
 bt-gui.md: bt-gui.scm
 bt-state.md: bt-state.scm
 bt-types.md: bt-types.scm
 bt-emulation.md: bt-emulation.scm
+bt-db.md: bt-db.scm
 
 docs: $(DOCS)
 	mkdocs build

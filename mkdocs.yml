@@ -1,9 +1,10 @@
 site_name: "Bintracker"
 
-theme:
-  name: 'material'
-  hljs_languages:
-    - scheme
+theme: 'material'
+
+extra:
+  logo: 'images/bintracker-icon.svg'
+  hljs_languages: scheme
 
 site_dir: 'documentation'
 
@@ -23,6 +24,7 @@ nav:
           - "bt-state": 'generated/bt-state.md'
           - "bt-gui": 'generated/bt-gui.md'
           - "bt-emulation": 'generated/bt-emulation.md'
+          - "bt-db": 'generated/bt-db.md'
   - MDAL:
       - Introduction: '../libmdal/docs/index.md'
       - MDMOD: '../libmdal/docs/MDMOD_SPECIFICATION.md'

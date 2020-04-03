@@ -17,11 +17,11 @@
 	  bt-state bt-types bt-db mdal)
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## PS/Tk Initialization
+  ;; ## PS/Tk Initialization
   ;; ---------------------------------------------------------------------------
 
-  ;;; Init pstk and fire up Tcl/Tk runtime.
-  ;;; This must be done prior to defining anything that depends on Tk.
+  ;; Init pstk and fire up Tcl/Tk runtime.
+  ;; This must be done prior to defining anything that depends on Tk.
 
   (tk-start)
 
@@ -51,7 +51,7 @@
 			     "unknown* - Bintracker"
 			     "Bintracker"))))
 
-  ;;; Thread-safe version of tk/bind. Wraps the procedure `proc` in a thunk
+  ;;; Thread-safe version of tk/bind. Wraps the procedure PROC in a thunk
   ;;; that is safe to execute as a callback from Tk.
   (define-syntax tk/bind*
     (syntax-rules ()
@@ -73,7 +73,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; GUI Elements
+  ;;; ## GUI Elements
   ;; ---------------------------------------------------------------------------
 
   ;;; A collection of classes and methods that make up Bintracker's internal
@@ -122,32 +122,32 @@
      (box accessor: ui-box)
      (children initform: '() accessor: ui-children)))
 
-  (define-method (initialize-instance after: (buf <ui-element>))
-    (set! (ui-box buf) ((ui-parent buf) 'create-widget 'frame))
-    (set! (ui-children buf)
+  (define-method (initialize-instance after: (elem <ui-element>))
+    (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame))
+    (set! (ui-children elem)
       (map (lambda (child)
     	     (cons (car child) (apply make (cdr child))))
-    	   (ui-children buf))))
+    	   (ui-children elem))))
 
   ;;; Map the GUI element to the display.
-  (define-method (ui-show primary: (buf <ui-element>))
-    (unless (slot-value buf 'initialized)
+  (define-method (ui-show primary: (elem <ui-element>))
+    (unless (slot-value elem 'initialized)
       (map (o ui-show cdr)
-    	   (ui-children buf))
-      (set! (slot-value buf 'initialized) #t))
-    (apply tk/pack (cons (ui-box buf)
-			 (slot-value buf 'packing-args))))
+    	   (ui-children elem))
+      (set! (slot-value elem 'initialized) #t))
+    (apply tk/pack (cons (ui-box elem)
+			 (slot-value elem 'packing-args))))
 
   ;;; Remove the GUI element from the display.
-  (define-method (ui-hide primary: (buf <ui-element>))
-    (tk/pack 'forget (ui-box buf)))
+  (define-method (ui-hide primary: (elem <ui-element>))
+    (tk/pack 'forget (ui-box elem)))
 
-  ;;; Returns the `buf`s child UI element with the ID `child-element`. The
-  ;;; requested element may be a direct descendant of `buf`, or an indirect
-  ;;; descendant in the tree of UI elements represented by `buf`.
-  (define-method (ui-ref primary: (buf <ui-element>) child-element)
-    (let ((children (ui-children buf)))
-      (and (ui-children buf)
+  ;;; Returns ELEMs child UI element with the identifier CHILD-ELEMENT. The
+  ;;; requested element may be a direct descendant of ELEM, or an indirect
+  ;;; descendant in the tree of UI elements represented by ELEM.
+  (define-method (ui-ref primary: (elem <ui-element>) child-element)
+    (let ((children (ui-children elem)))
+      (and (ui-children elem)
 	   (or (alist-ref child-element children)
 	       (find (lambda (child)
 		       (ui-ref (cdr child) child-element))
@@ -252,10 +252,12 @@
   ;;; specifying INIT-STATE.
   (define-class <ui-button-group> (<ui-element>)
     ((packing-args '(expand: 0 side: left))
+     (orient 'horizontal)
      buttons))
 
   (define-method (initialize-instance after: (buf <ui-button-group>))
-    (let ((box (ui-box buf)))
+    (let ((orient (slot-value buf 'orient))
+	  (box (ui-box buf)))
       (set! (slot-value buf 'buttons)
 	(map (lambda (spec)
 	       (cons (car spec)
@@ -265,10 +267,13 @@
 		      style: "Toolbutton")))
 	     (ui-setup buf)))
       (for-each (lambda (button)
-		  (tk/pack button side: 'left padx: 0 fill: 'y))
+		  (if (eqv? orient 'horizontal)
+		      (tk/pack button side: 'left padx: 0 fill: 'y)
+		      (tk/pack button side: 'top padx: 0 fill: 'x)))
 		(map cdr (slot-value buf 'buttons)))
-      (tk/pack (box 'create-widget 'separator orient: 'vertical)
-	       side: 'left padx: 0 fill: 'y)))
+      (when (eqv? orient 'horizontal)
+	(tk/pack (box 'create-widget 'separator orient: 'vertical)
+		 side: 'left padx: 0 fill: 'y))))
 
   (define-method (ui-set-state primary: (buf <ui-button-group>)
 			       state #!optional button-id)
@@ -339,12 +344,66 @@
 		  (when group (ui-set-callbacks group (cdr cb)))))
 	      callbacks))
 
+  ;;; This class acts as a superclass for most UI classes that represent user
+  ;;; data, such as `<ui-repl>`, ...
+  ;;;
+  ;;; In addition to `<ui-element>`'s slots, this
+  ;; TODO we're not using content-box at all. In order to do so, we must
+  ;; override the setup reader of whatever goes into content-box.
+  (define-class <ui-buffer> (<ui-element>)
+    ((title "")
+     (default-state 'expanded)
+     expand-button
+     collapse-button
+     (collapse-proc #f)
+     (expand-proc #f)
+     content-box))
+
+  (define-method (initialize-instance after: (buf <ui-buffer>))
+    (set! (slot-value buf 'expand-button)
+      (make <ui-button-group> 'parent (ui-box buf)
+	    'setup '((expand "Expand buffer" "expand.png" 'enabled))
+	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
+    (set! (slot-value buf 'collapse-button)
+      (make <ui-button-group> 'parent (ui-box buf)
+	    'setup '((collapse "Collapse buffer" "collapse.png" 'enabled))
+	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
+    (unless (slot-value buf 'collapse-proc)
+      (set! (slot-value buf 'collapse-proc)
+	(lambda (x)
+	  (ui-hide (slot-value x 'collapse-button))
+	  (ui-show (slot-value x 'expand-button)))))
+    (unless (slot-value buf 'expand-proc)
+      (set! (slot-value buf 'expand-proc)
+	(lambda (x)
+	  (ui-hide (slot-value x 'expand-button))
+	  (ui-show (slot-value x 'collapse-button))))))
+
+  (define-method (ui-show after: (buf <ui-buffer>))
+    (display "calling ui-show on ui-buffer")
+    (newline)
+    (ui-set-callbacks (slot-value buf 'expand-button)
+		      `((expand ,(lambda () (ui-expand buf)))))
+    (ui-set-callbacks (slot-value buf 'collapse-button)
+		      `((collapse ,(lambda () (ui-collapse buf)))))
+    (ui-show (slot-value buf
+			 (if (eqv? 'expanded (slot-value buf 'default-state))
+			     'collapse-button
+			     'expand-button))))
+
+  ;; TODO these two should call (slot-value buf 'collapse/expand-proc)
+  (define-method (ui-collapse primary: (buf <ui-buffer>))
+    ((slot-value buf 'collapse-proc) buf))
+
+  (define-method (ui-expand primary: (buf <ui-buffer>))
+    ((slot-value buf 'expand-proc) buf))
+
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
   ;;; focussable in the Bintracker main UI, specify a ui-zone identifier as
   ;;; initform to `'ui-zone`. The methods `repl-clear`, `repl-insert`, and
   ;;; `repl-get` are provided for interaction with the prompt.
-  (define-class <ui-repl> (<ui-element>)
+  (define-class <ui-repl> (<ui-buffer>)
     ((ui-zone #f)
      repl
      yscroll
@@ -362,17 +421,19 @@
 
   ;; TODO this becomes a before: method once things are sorted out
   (define-method (ui-show primary: (buf <ui-repl>))
+    (display "calling ui-show on ui-repl")
+    (newline)
     (let ((repl (slot-value buf 'repl))
 	  (yscroll (slot-value buf 'yscroll)))
       (unless (slot-value buf 'initialized)
 	(repl 'configure  blockcursor: 'yes
 	      bd: 0 highlightthickness: 0 bg: (colors 'background)
-	      fg: (colors 'text)
+ 	      fg: (colors 'text)
 	      insertbackground: (colors 'text)
 	      font: (list family: (settings 'font-mono)
 			  size: (settings 'font-size)))
-	(tk/pack repl expand: 1 fill: 'both side: 'left)
 	(tk/pack yscroll side: 'right fill: 'y)
+	(tk/pack repl expand: 1 fill: 'both side: 'right)
 	(configure-scrollbar-style yscroll)
 	(yscroll 'configure command: `(,repl yview))
 	(repl 'configure 'yscrollcommand: `(,yscroll set))
@@ -449,15 +510,15 @@
       (tk-eval "tk busy forget .")
       result))
 
-  ;;; Crash-safe variant of tk/message-box.
+  ;;; Crash-safe variant of `tk/message-box`.
   (define (tk/message-box* . args)
     (apply tk/safe-dialogue (cons tk/message-box args)))
 
-  ;;; Crash-safe variant of tk/get-open-file.
+  ;;; Crash-safe variant of `tk/get-open-file`.
   (define (tk/get-open-file* . args)
     (apply tk/safe-dialogue (cons tk/get-open-file args)))
 
-  ;;; Crash-safe variant of tk/get-save-file.
+  ;;; Crash-safe variant of `tk/get-save-file`.
   (define (tk/get-save-file* . args)
     (apply tk/safe-dialogue (cons tk/get-save-file args)))
 
@@ -470,7 +531,7 @@
 		     type: 'ok))
 
   ;;; Display a message box that asks the user whether to save unsaved changes
-  ;;; before exiting or closing. `exit-or-closing` should be the string
+  ;;; before exiting or closing. EXIT-OR-CLOSING should be the string
   ;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
     (tk/message-box* title: (string-append "Save before "
@@ -488,38 +549,38 @@
   ;;; a default widget layout with `Cancel` and `Confirm` buttons and
   ;;; corresponding key handlers for `<Escape>` and `<Return>`.
   ;;;
-  ;;; Returns a procedure, which can be called with the following arguments:
+  ;;; Returns a procedure *P*, which can be called as follows:
   ;;;
-  ;;; `'show`
+  ;;; `(P 'show)`
   ;;;
   ;;; Display the dialogue widget. Call this procedure **before** you add any
   ;;; user-defined widgets, bindings, procedures, and finalizers.
   ;;;
-  ;;; `'add 'widget id widget-specification`
+  ;;; `(P 'add 'widget ID WIDGET-SPECIFICATION)`
   ;;;
-  ;;; Add a widget named `id`, where `widget-specification` is the list of
+  ;;; Add a widget named ID, where WIDGET-SPECIFICATION is the list of
   ;;; widget arguments that will be passed to Tk as the remaining arguments of
   ;;; a call to `(parent 'create-widget ...)`.
   ;;;
-  ;;; `'add 'binding event p`
+  ;;; `(P 'add 'binding EVENT PROC)`
   ;;;
-  ;;; Bind the procedure `p` to the Tk event sequence specifier `Event`.
+  ;;; Bind PROC to the Tk event sequence specifier EVENT.
   ;;;
-  ;;; `'add 'procedure id p`
+  ;;; `(P 'add 'procedure ID PROC)`
   ;;;
   ;;; Add a custom procedure ;; TODO redundant?
   ;;;
-  ;;; `'add 'finalizer p`
+  ;;; `(P 'add 'finalizer PROC)`
   ;;;
-  ;;; Add the procedure `p` to the list of finalizers that will run on a
-  ;;; successful exit from the dialogue.
+  ;;; Add PROC to the list of finalizers that will run on a successful exit from
+  ;;; the dialogue.
   ;;;
-  ;;; `'ref id`
-  ;;; Returns the user-defined widget or procedure named `id` Use this to
+  ;;; `(P 'ref ID)`
+  ;;; Returns the user-defined widget or procedure named ID. Use this to
   ;;; cross-reference elements created with `(c 'add [widget|procedure])` within
   ;;; user code.
   ;;;
-  ;;; `'destroy`
+  ;;; `(P 'destroy)`
   ;;;
   ;;; Executes any user defined finalizers, then destroys the dialogue window.
   ;;; You normally do not need to call this explicitly unless you are handling
@@ -583,7 +644,7 @@
   ;;; ## Widget Style
   ;; ---------------------------------------------------------------------------
 
-  ;;; Configure ttk widget styles
+  ;;; Configure ttk widget styles.
   (define (update-ttk-style)
     (ttk/style 'configure 'BT.TFrame background: (colors 'background))
 
@@ -600,7 +661,7 @@
 			   size: (settings 'font-size)
 			   weight: 'bold)))
 
-  ;;; Configure the style of the scrollbar widget `s` to match Bintracker's
+  ;;; Configure the style of the scrollbar widget S to match Bintracker's
   ;;; style.
   (define (configure-scrollbar-style s)
     (s 'configure bd: 0 highlightthickness: 0 relief: 'flat
@@ -635,7 +696,7 @@
     (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
-  ;;; evaluated before the local bindings of `widget`. This is necessary to
+  ;;; evaluated before the local bindings of WIDGET. This is necessary to
   ;;; prevent keypresses that are handled globally being passed through to the
   ;;; widget.
   (define (reverse-binding-eval-order widget)
@@ -649,8 +710,9 @@
   ;;; ## Menus
   ;; ---------------------------------------------------------------------------
 
-  ;;; `submenus` shall be an alist, where keys are unique identifiers, and
-  ;;; values are the actual tk menus.
+  ;; `submenus` shall be an alist, where keys are unique identifiers, and
+  ;; values are the actual tk menus.
+
   (defstruct menu
     ((widget (tk 'create-widget 'menu)) : procedure)
     ((items '()) : list))
@@ -665,8 +727,8 @@
   ;;; position; *accelerator* is a string naming a keyboard shortcut for the
   ;;; item, command is a procedure to be associated with the item, and
   ;;; items-list is a list of item-specs.
-  ;; TODO add at position (insert)
   (define (add-menu-item! menu item-spec)
+    ;; TODO add at position (insert)
     (let ((append-to-item-list!
 	   (lambda (id item)
 	     (menu-items-set! menu (append (menu-items menu)

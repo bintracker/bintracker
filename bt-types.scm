@@ -10,7 +10,7 @@
 	  typed-records stack)
 
   ;;; Undo/Redo stack wrapper
-  ;;; Undo stack depth is limited to `stack-limit`. For performance reason,
+  ;;; Undo stack depth is limited to `stack-limit`. For performance reasons,
   ;;; undo stack depth is tracked manually. Redo stack size does not need to be
   ;;; tracked since it cannot grow beyond the undo stack depth.
   (defstruct app-journal

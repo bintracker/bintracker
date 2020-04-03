@@ -8,12 +8,12 @@
 	  (chicken process) (chicken string)
 	  srfi-1 srfi-13 srfi-18 simple-exceptions base64)
 
-  ;;; Create an emulator interface for the emulator `program`. `program-args`
+  ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
   ;;; shall be a list of command line argument strings that are passed to
   ;;; `program` on startup.
   ;;;
   ;;; The returned emulator is not yet running. To run it, call
-  ;;; `(<emulator> 'start)`.
+  ;;; `(EMULATOR 'start)`.
   (define (make-emulator program program-args)
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)

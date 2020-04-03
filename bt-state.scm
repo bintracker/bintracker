@@ -20,7 +20,7 @@
   (define *bintracker-state* (make-app-state))
   (define *bintracker-settings* (make-app-settings))
 
-  ;;; Get the global application state, or a specific `param`eter of that
+  ;;; Get the global application state, or a specific PARAMeter of that
   ;;; state.
   (define (state #!optional param)
     (if param
@@ -54,7 +54,7 @@
     (apply (state 'emulator) args))
 
   ;;; Generate an emulator object suitable for the target system with the MDAL
-  ;;; platform id `platform`. This relies on the system.scm and emulators.scm
+  ;;; platform id PLATFORM. This relies on the system.scm and emulators.scm
   ;;; lists in the Bintracker config directory. An exception is raised if no
   ;;; entry is found for either the target system, or the emulator program that
   ;;; the target system requests.
@@ -82,7 +82,7 @@
       (make-emulator (car platform-config)
 		     (append emulator-default-args (cdr platform-config)))))
 
-  ;;; Get the global application settings, or a specific `param`eter of that
+  ;;; Get the global application settings, or a specific PARAMeter of that
   ;;; state.
   (define (settings #!optional param)
     (if param
@@ -104,8 +104,6 @@
      obj val))
 
   ;;; Change Bintracker's global settings. Mainly an interface to config.scm.
-  ;;; set-conf! does not immediately affect the current state of the application.
-  ;;; You may need to call (reconfigure!) for the changes to take effect.
   (define (set-conf! param val)
     (set-global! "app-settings-" *bintracker-settings* param val))
 
@@ -115,7 +113,7 @@
 		 param val))
 
   ;;; Load and apply a color scheme from a scheme config file.
-  ;;; `scheme-name` must be the name of the scheme config, without path or
+  ;;; SCHEME-NAME must be the name of the scheme config, without path or
   ;;; extension.
   (define (load-color-scheme scheme-name)
     (let ((set-color-scheme
@@ -154,23 +152,23 @@
       (tk-eval (string-append "ttk::style theme use " (->string name)))))
 
 
-  ;;; Return the alist of key-bindings in the given `key-group`.
+  ;;; Return the alist of key-bindings in the given KEY-GROUP.
   (define (get-keybinding-group key-group)
     ((eval (symbol-append 'app-keys- key-group))
      (settings 'keymap)))
 
-  ;;; Set the alist of keybindings in the given `key-group` to `group-lst`.
+  ;;; Set the alist of keybindings in the given KEY-GROUP to GROUP-LST.
   (define (set-keybinding-group! key-group group-lst)
     ((eval (symbol-append 'app-keys- key-group '-set!))
      (settings 'keymap)
      group-lst))
 
-  ;;; Create a new key binding, or replace an existing one. `key-group` must
+  ;;; Create a new key binding, or replace an existing one. KEY-GROUP must
   ;;; be one of `'global`, `'console`, `'edit`, `'note-keys`, or `'plug-ins`.
-  ;;; `key-spec` shall be a key key binding specifier, using Tk's
+  ;;; KEY-SPEC shall be a key key binding specifier, using Tk's
   ;;; [angular bracket syntax](https://www.tcl.tk/man/tcl8.6/TkCmd/bind.htm).
-  ;;; `action` shall be the name of a procedure or quoted lambda definition,
-  ;;; except if `key-group` is `'note-entry`. In that case, it should be a note
+  ;;; ACTION shall be the name of a procedure or quoted lambda definition,
+  ;;; unless KEY-GROUP is `note-entry`. In that case, it should be a note
   ;;; name, optionally followed by an octave offset.
   (define (bind-keys! key-group key-spec action . args)
     (set-keybinding-group!
@@ -179,8 +177,8 @@
 	 '()
 	 (alist-update key-spec action (get-keybinding-group key-group)))))
 
-  ;;; Look up a key binding in the keymap table. Returns `#f` if the given
-  ;;; `key-spec` is not bound.
+  ;;; Look up a key binding in the keymap table. Returns `#f` if KEY-SPEC` is
+  ;;; not bound in KEY-GROUP.
   (define (key-binding key-group key-spec)
     (and (app-keys? (settings 'keymap))
 	 (let ((binding (alist-ref key-spec (get-keybinding-group key-group))))
@@ -188,27 +186,27 @@
 	       (car binding)
 	       #f))))
 
-  ;;; Look up the key binding for `action` in the given `key-group`.
+  ;;; Look up the key binding for ACTION in the given KEY-GROUP.
   (define (inverse-key-binding key-group action)
     (and (app-keys? (settings 'keymap))
 	 (alist-inverse-ref (list action)
 			    (get-keybinding-group key-group)
 			    equal? #f)))
 
-  ;;; Construct an info string for the key binding of the given action in the
-  ;;; given key-group
+  ;;; Construct an info string for the key binding of the given ACTION in the
+  ;;; given KEY-GROUP.
   (define (key-binding->info key-group action)
     (let ((binding (inverse-key-binding key-group action)))
       (if binding
 	  (string-upcase (string-translate (->string binding) "<>" "()"))
 	  "")))
 
-  ;;; Load a keymap, `name` shall be the name of the keymap file to load,
+  ;;; Load a keymap. NAME shall be the name of the keymap file to load,
   ;;; without extension or path. Keymaps are expected to reside in
   ;;; `config/keymaps`.
   ;;; Loading a keymap does not change active bindings in a running bintracker
-  ;;; instance. You need to call `update-key-bindings!` or `reconfigure!` for
-  ;;; changes to take effect.
+  ;;; instance. You need to call `update-key-bindings!` for changes to take
+  ;;; effect.
   (define (load-keymap name)
     (let ((my-keymap (call-with-input-file (string-append "config/keymaps/"
 							  name ".keymap")
@@ -222,7 +220,7 @@
   (define (current-mod)
     (app-state-current-mdmod *bintracker-state*))
 
-  ;;; Set the current module. Does not update GUI.
+  ;;; Set the current module from the result of parsing the .mdal file FILENAME.
   (define (set-current-mod! filename)
     (set-state! 'current-mdmod
 		(file->mdmod filename
@@ -245,7 +243,8 @@
 		       "No module loaded.")
 		   " | "))
 
-  ;;; Set the active MD command info string from the given MDCONF ifield ID.
+  ;;; Set the active MD command info string from the given mdconf config-inode
+  ;;; FIELD-ID.
   (define (set-active-md-command-info! field-id)
     (let ((command (config-get-inode-source-command field-id
 						    (current-config))))
@@ -287,16 +286,16 @@
     				(config-inodes (current-config))))))))
 
   ;;; Query the instance record for the currently visible instance of the
-  ;;; group or block node `node-id`.
+  ;;; group or block node NODE-ID.
   (define (get-current-instance node-id)
     (car (alist-ref node-id (state 'current-instances))))
 
-  ;;; Update the instance record for `node-id`.
+  ;;; Update the instance record for NODE-ID.
   (define (set-current-instance! node-id val)
     (alist-update! node-id val (state 'current-instances)))
 
   ;;; Return the node-instance path string for the currently visible instance
-  ;;; of the group or block node `node-id`. The result can be fed into
+  ;;; of the group or block node NODE-ID. The result can be fed into
   ;;; `node-instance-path`.
   (define (get-current-instance-path node-id)
     (let ((ancestors (config-get-node-ancestors-ids
@@ -309,7 +308,7 @@
 		       (cdr (reverse (cons node-id ancestors))))))))
 
   ;;; Return the currently visible inode-instance of the group or block node
-  ;;; `node-id`.
+  ;;; NODE-ID.
   (define (get-current-node-instance node-id)
     ((node-path (get-current-instance-path node-id))
      (mdmod-global-node (current-mod))))
@@ -352,7 +351,7 @@
 							 (state 'journal)))))))
 
   ;;; Generate an action specification that when applied, will revert the edit
-  ;;; that results from the given edit `action` specification.
+  ;;; that results from the given edit ACTION specification.
   (define (make-reverse-action action)
     (if (eqv? 'compound (car action))
 	(list 'compound (map make-reverse-action (reverse (cdr action))))
@@ -397,7 +396,7 @@
 	      ((insert) (list 'remove (cadr action) (third action)
 			      (map car (fourth action))))))))
 
-  ;;; Push `action` to the journal's undo stack. If the stack is full, half of
+  ;;; Push ACTION to the journal's undo stack. If the stack is full, half of
   ;;; the old entries are dropped.
   (define (push-undo action)
     (limit-undo-stack)
@@ -419,7 +418,7 @@
 	     (push-redo (make-reverse-action action))
 	     action))))
 
-  ;;; Push `action` to the redo stack.
+  ;;; Push ACTION to the redo stack.
   (define (push-redo action)
     (stack-push! (app-journal-redo-stack (state 'journal))
 		 action))

@@ -4,6 +4,7 @@
 ;; Copyright (c) utz/irrlicht project 2019
 ;; See LICENSE for license details.
 
+;;; This module controls the main application process.
 (module bintracker-core
     *
 
@@ -25,7 +26,7 @@
   ;;; ## Global Actions
   ;; ---------------------------------------------------------------------------
 
-  ;;; Load the main configuration file
+  ;;; Load the main configuration file.
   (define (load-config)
     (if (file-exists? "config/config.scm")
 	(handle-exceptions
@@ -37,8 +38,8 @@
 	(warning "Configuration file \"config/config.scm\" not found.")))
 
   ;;; If there are unsaved changes to the current module, ask user if they
-  ;;; should be saved, then execute the procedure {{proc}} unless the user
-  ;;; cancelled the action. With no unsaved changes, simply execute {{proc}}.
+  ;;; should be saved, then execute the procedure PROC unless the user
+  ;;; cancelled the action. With no unsaved changes, simply execute PROC.
   (define (do-proc-with-exit-dialogue dialogue-string proc)
     (if (state 'modified)
 	(match (exit-with-unsaved-changes-dialog dialogue-string)
@@ -66,8 +67,8 @@
 	  (lambda () (ui-set-state edit-settings 'disabled))))
 
   ;;; Close the currently opened module file.
-  ;; TODO disable menu option
   (define (close-file)
+    ;; TODO disable menu option
     (when (current-mod)
       (do-proc-with-exit-dialogue
        "closing"
@@ -84,7 +85,7 @@
 	  (lambda () (emulator 'start))))
 
   ;; TODO logging
-  ;;; Load an MDAL module file.
+  ;;; Prompt the user to load an MDAL module file.
   (define (load-file)
     (close-file)
     (let ((filename (tk/get-open-file*
@@ -305,7 +306,8 @@
   ;;; ## Hooks
   ;; ---------------------------------------------------------------------------
 
-  ;;; Execute the given list of `hooks`.
+  ;;; Execute the given list of HOOKS. Each hook shall be a thunk, ie. a
+  ;;; procedure that takes no arguments.
   (define (execute-hooks hooks)
     (for-each (cut <>) hooks))
 
@@ -336,9 +338,10 @@
   (execute-hooks on-startup-hooks)
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Main Loop
+  ;; ## Main Loop
   ;; ---------------------------------------------------------------------------
 
+  ;; Start up the GUI thread and pass control to it.
   (let ((gui-thread (make-thread (lambda () (handle-exceptions
 						exn
 						(begin (tk-end)
