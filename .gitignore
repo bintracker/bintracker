@@ -1,8 +1,8 @@
 _backup/
 docs/generated
+docs/libmdal
 documentation
 libmdal/unittests/test_builds/
-libmdal/docs/html
 libmdal/docs/generated
 tclkit/
 cfg/

@@ -79,8 +79,10 @@ bt-emulation.md: bt-emulation.scm
 bt-db.md: bt-db.scm
 
 docs: $(DOCS)
-	mkdocs build
 	$(MAKE) docs -C libmdal
+	cp -r libmdal/docs/ docs/libmdal/
+	mkdocs build
+
 
 libmdal/mdal.import.so:
 	$(MAKE) -C libmdal

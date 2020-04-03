@@ -26,9 +26,19 @@ nav:
           - "bt-emulation": 'generated/bt-emulation.md'
           - "bt-db": 'generated/bt-db.md'
   - MDAL:
-      - Introduction: '../libmdal/docs/index.md'
-      - MDMOD: '../libmdal/docs/MDMOD_SPECIFICATION.md'
-      - MDCONF: '../libmdal/docs/MDCONF_SPECIFICATION.md'
+      - Introduction: 'libmdal/index.md'
+      - MDMOD: 'libmdal/MDMOD_SPECIFICATION.md'
+      - MDCONF: 'libmdal/MDCONF_SPECIFICATION.md'
+      - "libmdal API":
+          - "mdal": 'libmdal/generated/mdal.md'
+          - "md-types": 'libmdal/generated/md-types.md'
+          - "md-helpers": 'libmdal/generated/md-helpers.md'
+          - "md-config" : 'libmdal/generated/md-config.md'
+          - "md-command": 'libmdal/generated/md-command.md'
+          - "md-parser": 'libmdal/generated/md-parser.md'
+          - "schemta": 'libmdal/generated/schemta.md'
+          - utils:
+              - "md-note-table": 'libmdal/generated/utils/md-note-table.md'
 
 markdown_extensions:
   - codehilite
