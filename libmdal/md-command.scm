@@ -28,11 +28,11 @@
     description ;;; `#f` or a string
     )
 
-  ;;; check if the given command has the given flag
+  ;;; check if the given command CMD has the given FLAG
   (define (command-has-flag? cmd flag)
     (memq flag (command-flags cmd)))
 
-  ;;; check if the given command has any flags
+  ;;; check if the given command CMD has any flags
   (define (command-has-flags? cmd)
     (not (null? (command-flags cmd))))
 
@@ -65,7 +65,8 @@
           (filter (lambda (x) (string-contains x "="))
                   (call-with-input-file filepath read-lines)))))
 
-  ;;; construct an alist containing the default commands AUTHOR and TITLE
+  ;;; construct an alist containing the default commands AUTHOR, TITLE, and
+  ;;; LICENSE
   (define (make-default-commands)
     `((AUTHOR . ,(make-command type: 'string default: "unknown"))
       (TITLE . ,(make-command type: 'string default: "untitled"))

@@ -1,6 +1,3 @@
-;; SCHEMTA
-;; The Scheme Multi Target Assembler
-
 ;; Copyright (c) 2019 Michael Neidel
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,6 +18,7 @@
 ;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ;; SOFTWARE.
 
+;;; The Scheme Multi Target Assembler
 (module schemta
     *
 
@@ -170,21 +168,20 @@
   ;; Assembler primitives
   ;; ---------------------------------------------------------------------------
 
-  ;;; Return the least significant byte of {{n}}.
+  ;;; Return the least significant byte of N.
   (: lsb (fixnum -> fixnum))
   (define (lsb n) (bitwise-and #xff n))
 
-  ;;; Return the most significant byte of word {{n}}. If {{n}} is a value larger
-  ;;; than what can be represented in a word (2 bytes), returns the msb of
-  ;;; n & 0xffff.
+  ;;; Return the most significant byte of word N. If N is a too large to be
+  ;;; be represented in a word (2 bytes), returns the msb of `N & 0xffff`.
   (: msb (fixnum -> fixnum))
   (define (msb n) (bitwise-and #xff (quotient n 256)))
 
-  ;;; Return the least significant word of {{n}}.
+  ;;; Return the least significant word of N.
   (: lsw (fixnum -> fixnum))
   (define (lsw n) (bitwise-and #xffff n))
 
-  ;;; Returns the most significant word of {{n}}.
+  ;;; Returns the most significant word of N.
   (: msw (fixnum -> fixnum))
   (define (msw n) (bitwise-and #xffff (quotient n #x10000)))
 
@@ -200,8 +197,7 @@
   (define (extra what)
     (car (alist-ref what (asm-target-extra (target)))))
 
-  ;;; Get the value of asm-level symbol {{s}}, or #f if symbol cannot be
-  ;;; resolved.
+  ;;; Get the value of asm-level symbol S, or `#f` if symbol cannot be resolved.
   (: symbol-ref (symbol -> fixnum))
   (define (symbol-ref s)
     (let ((v (alist-ref s (symbols))))
@@ -211,10 +207,10 @@
   ;;; ## Instruction Parser
   ;; ---------------------------------------------------------------------------
 
-  ;;; Get the list of symbols needed to resolve the s-expression directive
-  ;;; {{expr}}.
   ;; TODO This isn't very robust, will fail if argument to symbol-ref cannot
   ;;      be evaluated.
+  ;;; Get the list of symbols needed to resolve the s-expression directive
+  ;;; EXPR.
   (define (required-symbols expr)
     (flatten (cond ((or (not (pair? expr)) (null? expr)) '())
 		   ((pair? (car expr)) (cons (required-symbols (car expr))
@@ -222,7 +218,7 @@
 		   ((eq? 'symbol-ref (car expr)) (list (eval (cadr expr))))
 		   (else (required-symbols (cdr expr))))))
 
-  ;;; List the symbols required to evaluate the given {{operands}}
+  ;;; List the symbols required to evaluate the given OPERANDS
   (define (list-required-symbols operands)
     (flatten (remove null-list? (map (lambda (op)
 				       (if (pair? op)
@@ -258,7 +254,7 @@
 		  op))
 	 operands))
 
-  ;;; match the operands of an instruction against the options in the
+  ;;; Match the operands of an instruction against the options in the
   ;;; target instruction table, and return a list containing the parsed operands
   ;;; in car, and the output composition in cadr.
   (define (resolve-operands operands option-lst)
@@ -593,13 +589,13 @@
     (count (lambda (a) (equal? #\n a))
 	   (string->list str)))
 
-  ;;; Call `parse-source` on source and set *asm-state*-ast accoringly.
+  ;;; Call `parse-source` on SOURCE and set *asm-state*-ast accoringly.
   ;;; You may want to call `reset-asm-state!` before calling this function.
   (define (set-ast-from-source! source)
     (set-ast! (parse-source source)))
 
   ;;; parse the given assembly source and output the abstract source tree.
-  ;;; {{source}} must be a string. You may want to call `reset-asm-state!`
+  ;;; SOURCE must be a string. You may want to call `reset-asm-state!`
   ;;; before calling this function.
   (define (parse-source source)
     (let ((linecount (count-newlines source))
@@ -706,8 +702,8 @@
   (define (string->bytes str)
     (map char->integer (string->list str)))
 
+  ;; TODO .pseudo-org
   ;;; Execute asm directive
-  ;;; TODO .pseudo-org
   (define (do-directive node)
     (case (cadr node)
       ((db) (let* ((is-pair? (pair? (third node)))
@@ -783,7 +779,7 @@
     (set-local-namespace! (cadr node))
     (list node))
 
-  ;;; dispatch AST nodes to evaluator procedures
+  ;;; dispatch AST-NODE to evaluator procedures
   (define (assemble-node ast-node)
     (if (number? (car ast-node))
 	(begin (inc-current-origin! (length ast-node))
@@ -825,6 +821,12 @@
 			   (memq (car node) '(swap-namespace)))
 			 ast)))
 
+  ;;; Assemble the string SOURCE, returning a list of byte values.
+  ;;; TARGET-CPU must be a symbol identifying the instruction set to use.
+  ;;; `#:org` takes a start address (origin, defaults to 0). `#:extra-symbols`
+  ;;; takes a list of key, value pairs that will be defined as assembly-level
+  ;;; symbols. Note that the values may be arbitrary types. You can change the
+  ;;; maximum number of assembler passes to run by specifying `#:max-passes`.
   (define (assemble target-cpu source
 		    #!key (org 0) extra-symbols (max-passes 3))
     (letrec ((do-asm-passes (lambda (current-pass)
@@ -840,6 +842,8 @@
       (set-ast-from-source! source)
       (do-asm-passes 0)))
 
+  ;;; Read and assemble the source file FILENAME, returning a list of byte
+  ;;; values. See `assemble` for further details.
   (define (asm-file->bytes target-cpu filename #!key org extra-symbols
 			   (max-passes 3))
     (reset-asm-state!)
@@ -850,9 +854,11 @@
   (define (write-bytes bytes port)
     (byte-blob-write port (list->byte-blob bytes)))
 
+  ;;; Read and assemble INFILENAME, and write the result to OUTFILENAME.
+  ;;; See `assemble` for further details.
   (define (asm-file->bin-file target-cpu infilename
 			      #!key (outfilename (string-append infilename
-							  ".bin"))
+								".bin"))
 			      org extra-symbols (max-passes 3)
 			      ;; TODO unused
 			      emit-symbols emit-listing)

@@ -137,11 +137,15 @@
         (get-upper-bound-inverse prescaled-cycles bits cpu-speed)
         rest cpu-speed))))
 
-  ;;; generate a note table with simple note-name->index mappings
-  ;;; beg   lowest note, as offset from c-0
-  ;;; end   highest note, as offset from c-0
-  ;;; first-index   index of the lowest note
-  ;;; rest-index    index of the rest/note-off
+  ;;; Generate a note table with simple note-name->index mappings.
+  ;;;
+  ;;; BEG - lowest note, as offset from c-0
+  ;;;
+  ;;; END - highest note, as offset from c-0
+  ;;;
+  ;;; FIRST-INDEX - index of the lowest note
+  ;;;
+  ;;; REST-INDEX - index of the rest/note-off
   (define (make-counters beg end first-index rest-index)
     (letrec ((mkcounters
               (lambda (beg end first rest)
@@ -151,7 +155,7 @@
                           (mkcounters (+ 1 beg) end (+ 1 first) rest))))))
       (alist->hash-table (mkcounters beg end first-index rest-index))))
 
-  ;;; returns the lowest note in the given note table
+  ;;; Returns the lowest note in the given note table.
   (define (lowest-note table)
     (letrec
 	((try-lower
@@ -161,7 +165,7 @@
 		(try-lower (+ offset 1) tbl)))))
       (try-lower 0 table)))
 
-  ;;; returns the highest note in the given note table
+  ;;; Returns the highest note in the given note table.
   (define (highest-note table)
     (letrec
 	((try-upper
@@ -171,7 +175,7 @@
 		(try-upper (- offset 1) tbl)))))
       (try-upper 131 table)))
 
-  ;;; returns (lowest highest) notes in the given note table
+  ;;; Returns (lowest highest) notes in the given note table.
   (define (note-table-range table)
     (list (lowest-note table) (highest-note table)))
 

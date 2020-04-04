@@ -14,7 +14,7 @@
   (define-constant mdal-version 2)
 
   ;;----------------------------------------------------------------------------
-  ;;; ### output generation
+  ;;; ### Output generation
   ;;----------------------------------------------------------------------------
 
   (define (mod-block-instance-contents->expr block-id contents mdconfig)
@@ -71,7 +71,7 @@
 		    ((group) (mod-group-instance-contents->node-expr
 			      node-id (cddr instance) mdconfig))))))
 
-  ;;; write the MDAL module `mod` to an .mdal file.
+  ;;; Write the MDAL module MOD to an .mdal file.
   (define (mdmod->file mod filename)
     (call-with-output-file filename
       (lambda (port)
@@ -82,13 +82,14 @@
 		     (mdmod-config mod)))
 	    port))))
 
-  ;;; compile an module to an onode tree
-  ;;; TODO and a list of symbols for mod->asm?
+  ;; TODO and a list of symbols for mod->asm?
+  ;;; Compile a module to an onode tree.
   (define (mod-compile mod origin #!optional (extra-symbols '()))
     ((config-compiler (mdmod-config mod))
      mod origin (cons `(mdal_current_module ,mod)
 		      extra-symbols)))
 
+  ;;; Compile a module into a list of byte values.
   (define (mod->bin mod origin #!optional (extra-symbols '()))
     (flatten (map onode-val
 		  (remove (lambda (onode)
@@ -96,12 +97,12 @@
 				  '(comment symbol)))
 			  (mod-compile mod origin extra-symbols)))))
 
-  ;;; compile an module into an assembly source
+  ;;; Compile an module into an assembly source
   (define (mod->asm mod origin extra-symbols)
     (let ((otree (mod-compile mod origin #!optional extra-symbols)))
       '()))
 
-  ;;; compile the given module to a binary file
+  ;;; Compile the given module to a binary file.
   (define (mod-export-bin filename mod origin)
     (call-with-output-file filename
       (lambda (port)
@@ -109,10 +110,10 @@
 			port))))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### additional accessors
+  ;;; ### Additional accessors
   ;; ---------------------------------------------------------------------------
 
-  ;;; returns the group instance's block nodes, except the order node. The
+  ;;; Returns the group instance's block nodes, except the order node. The
   ;;; order node can be retrieved with `mod-get-group-instance-order` instead.
   (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
     (map (cute subnode-ref <> igroup-instance)
@@ -121,7 +122,7 @@
   		 (config-get-subnode-type-ids igroup-id config 'block))))
 
   ;; TODO this is very inefficient
-  ;;; Get the value of field `field-id` in `row` of `block-instance`
+  ;;; Get the value of field FIELD-ID in ROW of BLOCK-INSTANCE.
   (define (mod-get-block-field-value block-instance row field-id mdconf)
     (list-ref (list-ref (cddr block-instance)
 			row)
@@ -130,11 +131,11 @@
 					    field-id mdconf)))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### inode mutators
+  ;;; ### Inode mutators
   ;; ---------------------------------------------------------------------------
 
   ;; TODO error checks, bounds check/adjustment for block nodes
-  ;;; Set one or more `instances` of the node with `node-id`. `instances` must
+  ;;; Set one or more INSTANCES of the node with NODE-ID. INSTANCES must
   ;;; be an alist containing the node instance id in car, and the new value in
   ;;; cdr.
   (define (node-set! parent-node-instance node-id instances mod)
@@ -162,7 +163,7 @@
 				     (alist-ref node-id (cddr parent-node))))
 		    instances))))
 
-  ;;; Delete the block field instance of `field-id` at `row`.
+  ;;; Delete the block field instance of FIELD-ID at ROW.
   (define (remove-block-field block-instance field-id row mdconf)
     (let* ((columns (transpose (cddr block-instance)))
 	   (block-id (config-get-parent-node-id field-id (config-itree mdconf)))
@@ -177,8 +178,8 @@
 			    column))
 		      columns (iota (length columns))))))
 
-  ;;; Insert an instance of the block field `field-id` into the block node
-  ;;; instance `block-instance`, inserting at `row` and setting `value`.
+  ;;; Insert an instance of the block field FIELD-ID into the block node
+  ;;; instance BLOCK-INSTANCE, inserting at ROW and setting VALUE.
   (define (insert-block-field block-instance field-id row value mdconf)
     (let* ((columns (transpose (cddr block-instance)))
 	   (block-id (config-get-parent-node-id field-id (config-itree mdconf)))
@@ -192,7 +193,7 @@
 			    (append column '(()))))
 		      columns (iota (length columns))))))
 
-  ;;; Delete one or more `instances` from the node with `node-id`.
+  ;;; Delete one or more INSTANCES from the node with NODE-ID.
   (define (node-remove! parent-instance-path node-id instances mod)
     (let* ((mdconf (mdmod-config mod))
 	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
@@ -208,7 +209,7 @@
 		      <> (alist-ref node-id (cddr parent-instance)))
 		    instances))))
 
-  ;;; Insert one or more `instances` into the node with `node-id`. `instances`
+  ;;; Insert one or more INSTANCES into the node with NODE-ID. INSTANCES
   ;;; must be a list of node-instance-id, value pairs.
   (define (node-insert! parent-instance-path node-id instances mod)
     (let* ((mdconf (mdmod-config mod))
@@ -235,7 +236,7 @@
   ;; ---------------------------------------------------------------------------
 
   ;; TODO respect config constraints on number of instances to generate
-  ;;; Generate a new, empty inode instance based on the config `config`.
+  ;;; Generate a new, empty inode instance based on the config MDCONF.
   (define (generate-new-inode-instance mdconf node-id block-length)
     (append '(0 #f)
 	    (case (inode-config-type (hash-table-ref (config-inodes mdconf)
@@ -261,16 +262,16 @@
 			    (config-get-subnode-ids node-id
 						    (config-itree mdconf)))))))
 
-  ;;; Generate a new, empty mdmod based on the config `config`. Generated
-  ;;; blocks will have the length specified by `block-length`, unless other
+  ;;; Generate a new, empty mdmod based on the config MDCONF. Block instances
+  ;;; are generated with length BLOCK-LENGTH by default, unless other
   ;;; constraints apply from the config.
   (define (generate-new-mdmod mdconf block-length)
     (cons mdconf `(GLOBAL ,(generate-new-inode-instance
 			    mdconf 'GLOBAL block-length))))
 
-  ;;; Derive a new MDAL module from the module `mod`, which contains a single
-  ;;; row of block data in the group with `group-id`. The row is composed from
-  ;;; position `row` in the set of patterns represented by `order-pos`.
+  ;;; Derive a new MDAL module from the module MOD, which contains a single
+  ;;; row of block data in the group with GROUP-ID. The row is composed from
+  ;;; position ROW in the set of patterns represented by ORDER-POS.
   (define (derive-single-row-mdmod mod group-id order-pos row)
     (letrec*
 	((config (mdmod-config mod))
@@ -316,8 +317,8 @@
 		       (cdr root))))))
       (cons config (extract-nodes (mdmod-global-node mod)))))
 
-  ;;; Derive a new MDAL module from the module `mod`, with the order list of
-  ;;; group `group-id` modified to only contain the step `order-pos`.
+  ;;; Derive a new MDAL module from the module MOD, with the order list of
+  ;;; group GROUP-ID modified to only contain the step ORDER-POS.
   (define (derive-single-pattern-mdmod mod group-id order-pos)
     (letrec*
 	((config (mdmod-config mod))

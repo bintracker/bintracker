@@ -9,19 +9,19 @@
 	  srfi-1 srfi-13 md-helpers)
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDMOD: INPUT NODES
+  ;;; ## MDMOD: Input Nodes
   ;; ---------------------------------------------------------------------------
 
-  ;;; Returns the subnode with the given `subnode-id`
+  ;;; Returns the subnode with the given SUBNODE-ID.
   (define (subnode-ref subnode-id inode-instance)
     (assv subnode-id (cddr inode-instance)))
 
-  ;;; Returns the inode instance witht the given `instance-id`.
+  ;;; Returns the inode instance witht the given INSTANCE-ID.
   (define (inode-instance-ref instance-id inode)
     (assq instance-id (cdr inode)))
 
-  ;;; Returns the value of the field at `field-index` in `row` of
-  ;;; `block-instance`. Returns null if the requested `row` does not exist.
+  ;;; Returns the value of the field at FIELD-INDEX in ROW of
+  ;;; `block-instance`. Returns null if the requested ROW does not exist.
   (define (block-field-ref block-instance row field-index)
     (let ((rows (cddr block-instance)))
       (if (>= row (length rows))
@@ -30,13 +30,13 @@
 		    field-index))))
 
   ;; TODO obsolete?
-  ;;; return the number of instances in the given inode
+  ;;; Return the number of instances in the given inode
   (define (inode-count-instances node)
     (length (cdr node)))
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDMOD: MODULE
+  ;;; ## MDMOD: Module
   ;; ---------------------------------------------------------------------------
 
   ;;; The internal representation of an MDAL module is a pair containing
@@ -67,11 +67,13 @@
   ;;----------------------------------------------------------------------------
 
   ;;; Generate a function that takes an inode as parameter, and returns the
-  ;;; subnode or node instance matching the given path `p`, where `p` is a
+  ;;; subnode or node instance matching the given path P, which must be a
   ;;; string in the form "instance-id/node-id...". For example,
+  ;;;
   ;;; ```Scheme
   ;;; (node-path "0/PATTERNS/0/CH1")
   ;;; ```
+  ;;;
   ;;; will return a procedure that, when called with the global node as
   ;;; argument, will return the node CH1 in instance 0 of the PATTERN node,
   ;;; assuming that the node exists and is defined in the module's
@@ -99,13 +101,13 @@
       (lambda (node)
 	(accessor-proc (cdr node)))))
 
-  ;;; Returns the values of all field node instances of the given `row` of the
-  ;;; given non-order block-instances in the given `group-instance` as a
+  ;;; Returns the values of all field node instances of the given ROW of the
+  ;;; given non-order block-instances in the given GROUP-INSTANCE as a
   ;;; flat list.
-  ;;; `block-instance-ids` must be a list containing the requested numerical
+  ;;; BLOCK-INSTANCE-IDS must be a list containing the requested numerical
   ;;; block instance IDs for each non-order block in the group.
   ;;; Values are returned as strings, except for trigger fields.
-  ;;; Empty (unset) instance values will be returned as #f.
+  ;;; Empty (unset) instance values will be returned as `#f`.
   (define (mod-get-row-values group-instance block-instance-ids row)
     (flatten
      (map (lambda (block-inst-id block-node)
@@ -139,7 +141,7 @@
 								"_ORDER")))
   					(cddr group-instance)))))))))
 
-  ;;; returns the group instance's order node (instance 0)
+  ;;; Returns the group instance's order node (instance 0)
   (define (mod-get-group-instance-order igroup-instance igroup-id)
     (cadr (subnode-ref (symbol-append igroup-id '_ORDER) igroup-instance)))
 

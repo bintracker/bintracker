@@ -10,9 +10,9 @@
 	  srfi-1 srfi-13 srfi-14 simple-exceptions typed-records
 	  md-helpers md-types md-config)
 
-  ;;; Parse `group-contents` for an assignment to the field node `field-id`.
+  ;;; Parse GROUP-CONTENTS for an assignment to the field node FIELD-ID.
   ;;; Returns a field node with a single instance with ID 0. If no assignment
-  ;;; is found, the instance value will be `'()`.
+  ;;; is found, the instance value will be `()`.
   (define (mod-parse-group-field field-id mdconfig parent-group-contents)
     (let ((field-contents (alist-ref field-id parent-group-contents)))
       (list field-id
@@ -61,7 +61,7 @@
 
   ;;; Parse the contents of a block node instance into the internal
   ;;; representation. This parser should be applied to a mdmod node expression,
-  ;;; with the appropriate `mdconfig` cons'd.
+  ;;; with the appropriate MDCONFIG cons'd.
   (define (mod-parse-block-instance mdconfig block-id #!rest contents
 				    #!key name (id 0))
     (let* ((actual-contents (remove-keyword-args (cdr contents)
@@ -92,21 +92,21 @@
 			   (eqv? actual-subnode-id (car subnode)))
 			 parent-group-contents)))))
 
-  ;;; Parse the block node expressions belonging to `block-id` in
-  ;;; `parent-group-contents`.
+  ;;; Parse the block node expressions belonging to BLOCK-ID in
+  ;;; PARENT-GROUP-CONTENTS.
   (define (mod-parse-block block-id mdconfig parent-group-contents)
     (mod-parse-group-subnode block-id mod-parse-block-instance
 			     mdconfig parent-group-contents))
 
-  ;;; Parse the subgroup node expressions belonging to `subgroup-id` in
-  ;;; `parent-group-contents`.
+  ;;; Parse the subgroup node expressions belonging to SUBGROUP-ID in
+  ;;; PARENT-GROUP-CONTENTS.
   (define (mod-parse-subgroup subgroup-id mdconfig parent-group-contents)
     (mod-parse-group-subnode subgroup-id mod-parse-group-instance
 			     mdconfig parent-group-contents))
 
   ;;; Parse the contents of a group node instance into the internal
   ;;; representation. This parser should be applied to a mdmod node expression,
-  ;;; with the appropriate `mdconfig` cons'd.
+  ;;; with the appropriate MDCONFIG cons'd.
   (define (mod-parse-group-instance mdconfig node-id #!rest contents
 				    #!key name (id 0))
     (let ((actual-contents (remove-keyword-args contents '(id: name:))))
@@ -120,7 +120,7 @@
 		      subnode-id mdconfig actual-contents))
 		   (config-get-subnode-ids node-id (config-itree mdconfig))))))
 
-  ;;; check if mdmod s-expression specifies a supported MDAL version
+  ;;; Check if mdmod s-expression specifies a supported MDAL version
   ;;; This procedure should be applied to a mod-sexp.
   (define (check-mdmod-version head #!rest args #!key version)
     (unless (eqv? head 'mdal-module)
@@ -130,7 +130,7 @@
       (raise-local 'unsupported-mdal-version version))
     version)
 
-  ;;; get the name of the mdconfig used by the module
+  ;;; Get the name of the mdconfig used by the module
   ;;; This procedure should be applied to a mod-sexp.
   (define (mod-get-config-name head #!rest args #!key config)
     (unless config (raise-local 'no-config))
@@ -140,7 +140,7 @@
   (define (mod-get-config-version head #!rest args #!key config-version)
     (read-config-plugin-version config-version))
 
-  ;;; construct an mdmod object from a given .mdal module file
+  ;;; Construct an mdmod object from a given .mdal module file
   (define (file->mdmod filepath config-dir-path #!optional (path-prefix ""))
     (handle-exceptions
 	exn

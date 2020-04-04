@@ -2,7 +2,7 @@
 ;; Copyright (c) utz/irrlicht project 2018
 ;; See LICENSE for license details.
 
-;;; handle MDCONF configurations
+;;; The Interface to MDCONF configurations.
 (module md-config *
 
   (import scheme (chicken base) (chicken string) (chicken format)
@@ -56,14 +56,14 @@
       (printf "order node: ~S\n" (inode-config-order-id cfg)))
     (printf ">"))
 
-  ;;; Returns #t if the given `inode-config` specifies that only one instance
+  ;;; Returns `#t` if the given INODE-CONFIG specifies that only one instance
   ;;; of this inode may exist.
   (define (single-instance-node? inode-config)
     (equal? (make-instance-range)
 	    (inode-config-instance-range inode-config)))
 
-  ;;; clone a given inode tree `amount` times, post-fixing `times` to the ID
-  ;;; names
+  ;;; Clone a given inode tree AMOUNT times, post-fixing IDs of the *nth* clone
+  ;;; with *n*.
   (define (clone-inode-tree tree amount)
     (letrec*
   	((rename-lst (lambda (lst postfix)
@@ -81,7 +81,7 @@
   			(create-id-list-copies (+ beg 1) end l))))))
       (create-id-list-copies 1 amount tree)))
 
-  ;;; generate a hash list of reference commands required by
+  ;;; Generate a hash list of reference commands required by
   ;;; auto-generated order inodes
   (define (create-order-commands itree)
     (alist->hash-table
@@ -98,7 +98,7 @@
   						   flags: '(use-last-set))))))
 		 (flatten itree))))
 
-  ;;; Verify that a parsed `field-value` is a legal input. Raises an exception
+  ;;; Verify that a parsed FIELD-VALUE is a legal input. Raises an exception
   ;;; of type `illegal-value` on failure, otherwise returns the field value.
   ;;; Note that for modifier, reference, and label commands, only a type check
   ;;; is performed.
@@ -139,16 +139,17 @@
   (defstruct plugin-version
     major minor)
 
-  ;;; Check whether the MDCONF plugin-version `available-version` is compatible
-  ;;; with `requested-version`. Versions are considered compatible if the major
-  ;;; versions match, and the minor version of the `available-version` is
-  ;;; greater than or equal to the minor version of the `requested-version`.
+  ;;; Check whether the MDCONF plugin-version AVAILABLE-VERSION is compatible
+  ;;; with REQUESTED-VERSION. Versions are considered compatible if the major
+  ;;; versions match, and the minor version argument of AVAILABLE-VERSION is
+  ;;; greater than or equal to the minor version argument of REQUESTED-VERSION.
   (define (plugin-versions-compatible? available-version requested-version)
     (and (= (plugin-version-major available-version)
 	    (plugin-version-major requested-version))
 	 (>= (plugin-version-minor available-version)
 	     (plugin-version-minor requested-version))))
 
+  ;;; The datatype that represents MDCONFigurations internally.
   (defstruct config
     id target plugin-version description commands
     itree inodes default-origin compiler)
@@ -162,14 +163,14 @@
 	      (map car (hash-table->alist (config-commands cfg))))
     (printf "\nINODE TREE:\n~S\n\n" (config-itree cfg)))
 
-  ;;; Return the configuration ID of the mdmod `m`.
+  ;;; Return the configuration ID of the mdmod M.
   (define (mdmod-config-id m) (config-id (car m)))
 
-  ;;; return the command config for the given `id`
+  ;;; Return the command config for the given ID.
   (define (config-command-ref id cfg)
     (hash-table-ref/default (config-commands cfg) id #f))
 
-  ;;; return the inode config for the given `id`
+  ;;; Return the inode config for the given ID.
   (define (config-inode-ref id cfg)
     (hash-table-ref/default (config-inodes cfg) id #f))
 
@@ -177,8 +178,8 @@
   (define (config-get-target-endianness cfg)
     ((o cpu-endianness target-platform-cpu config-target) cfg))
 
-  ;; ;;; create an target from a target config file
- (define (target-generator target-id path-prefix)
+  ;;; Create an target from a target config file
+  (define (target-generator target-id path-prefix)
     (let* ((mk-target-decl
 	    (lambda (#!key id cpu clock-speed (default-start-address 0)
 			   (exports '()))
@@ -199,7 +200,7 @@
        default-start-address: (cadddr target-decl)
        exports: (fifth target-decl))))
 
-  ;;; return the ID of the parent of the given inode in the given inode tree
+  ;;; Return the ID of the parent of the given inode in the given inode tree
   (define (config-get-parent-node-id inode-id itree)
     (cond ((not (member inode-id (flatten (cdar itree)))) #f)
 	  ((member inode-id (map car (cadar itree))) (caar itree))
@@ -209,7 +210,7 @@
 			   (member inode-id (flatten node)))
 			 (cadar itree))))))
 
-  ;;; Return the inode type of the parent node of `inode-id`.
+  ;;; Return the inode type of the parent node of INODE-ID.
   (define (config-get-parent-node-type inode-id mdconf)
     (and (not (eqv? inode-id 'GLOBAL))
 	 (inode-config-type
@@ -225,8 +226,8 @@
 	  '()
 	  (cons parent (config-get-node-ancestors-ids parent itree)))))
 
-  ;;; return the IDs of the direct child nodes of a given inode ID in the given
-  ;;; inode tree
+  ;;; Return the IDs of the direct child nodes of INODE-ID in the given
+  ;;; inode tree ITREE.
   (define (config-get-subnode-ids inode-id itree)
     (let ((get-nodes (lambda (tree)
 		       (let ((nodes (alist-ref inode-id tree eq?)))
@@ -240,29 +241,29 @@
 		   (config-get-subnode-ids inode-id (cadar itree))
 		   (get-nodes itree))))))
 
-  ;;; return the IDs of the direct child nodes of a given parent inode ID
-  ;;; in the given config, filtered by type
   ;; TODO inconsistent with other itree traversers as it accepts a config,
   ;; rather than an itree
+  ;;; return the IDs of the direct child nodes of a given parent inode ID
+  ;;; in the given config, filtered by type
   (define (config-get-subnode-type-ids inode-id config type)
     (filter (lambda (id)
 	      (eq? type (inode-config-type (config-inode-ref id config))))
 	    (config-get-subnode-ids inode-id (config-itree config))))
 
-    ;;; Returns the row index of the field subnode `field-id` in instances of
-  ;;; the block node `block-id`.
+  ;;; Returns the row index of the field subnode FIELD-ID in instances of
+  ;;; the block node BLOCK-ID.
   (define (config-get-block-field-index block-id field-id config)
     (list-index (cute eqv? <> field-id)
 		(config-get-subnode-ids block-id (config-itree config))))
 
   ;; TODO rename to slighly more sane `config-get-inode-command`
-  ;;; return the source command of a given inode
+  ;;; Return the source command of a given inode
   (define (config-get-inode-source-command node-id config)
     (config-command-ref (inode-config-cmd-id
 			 (config-inode-ref node-id config))
 			config))
 
-  ;;; get the default value of a given inode config
+  ;;; Get the default value of a given inode config
   (define (config-get-node-default node-id config)
     (let ((node-cmd (config-get-inode-source-command node-id config)))
       (and node-cmd (command-default node-cmd))))
@@ -370,7 +371,7 @@
 		   commands)))
      (create-order-commands itree)))
 
-  ;;; Generate the input order node configurations for the given `group-id`
+  ;;; Generate the input order node configurations for the given GROUP-ID
   ;;; and the list of subnode configurations.
   (define (make-order-config-nodes group-id subnodes)
     (cons (cons (symbol-append group-id '_ORDER)
@@ -423,7 +424,7 @@
 	   (make-instance-range))
 	  (else (make-instance-range max: #f))))
 
-  ;;; Evaluate an input node config expression. `parent-type` is the type of
+  ;;; Evaluate an input node config expression. PARENT-TYPE is the type of
   ;;; the parent node. Returns an alist of the resulting inode config and its
   ;;; subnode configs.
   (define (eval-inode-config node-expr parent-type)
@@ -489,7 +490,7 @@
 				     cmd-id: 'LICENSE))))
 
   ;;; Compiler helper: Get the current origin (compile address).
-  ;;; Returns #f if current origin cannot be resolved.
+  ;;; Returns `#f` if current origin cannot be resolved.
   (define (get-current-origin preceding-otree symbols)
     (and (any (lambda (node)
 		(not (onode-size node)))
@@ -558,8 +559,8 @@
   ;;; address (if it can be deduced, otherwise #f), and the updated list of
   ;;; symbols.
 
-  ;;; Transform the field node instance value `current-val` according to
-  ;;; the given MDAL `command-config`.
+  ;;; Transform the field node instance value CURRENT-VAL according to
+  ;;; the given MDAL COMMAND-CONFIG.
   (define (eval-effective-field-val current-val command-config)
     (case (command-type command-config)
       ((int uint reference string trigger) current-val)
@@ -567,7 +568,7 @@
 				  current-val))
       (else (error "cmd type not implemented"))))
 
-  ;;; Evaluate a group field node instance, resolving key and ukey values as
+  ;;; Evaluate a group field node instance, resolving `key` and `ukey` values as
   ;;; needed. This always returns the effective field value, ie. an empty node
   ;;; instance returns the default value of the underlying command.
   (define (eval-group-field field-node instance-id command-config)
@@ -578,16 +579,16 @@
       (eval-effective-field-val raw-val command-config)))
 
   ;;; Helper for 'eval-block-field`. Finds the last set field instance of the
-  ;;; field node at `field-index` before `row` in the `block-instance`.
+  ;;; field node at FIELD-INDEX before ROW in the BLOCK-INSTANCE.
   (define (backtrace-block-fields block-instance start-row field-index)
     (find (complement null?)
 	  (reverse (map (cute list-ref <> field-index)
 			(take (cddr block-instance)
 			      start-row)))))
 
-  ;;; Evaluate the field in position `field-index` in `row` of the
-  ;;; given `block-instance`. Evaluation will backtrace if the field node
-  ;;; `command-config` has the `use-last-set` flag.
+  ;;; Evaluate the field in position FIELD-INDEX in ROW of the given
+  ;;; BLOCK-INSTANCE. Evaluation will backtrace if the field node
+  ;;; COMMAND-CONFIG has the `use-last-set` flag.
   (define (eval-block-field block-instance field-index row command-config)
     (let ((raw-val (block-field-ref block-instance row field-index)))
       (eval-effective-field-val
@@ -599,7 +600,7 @@
 	   raw-val)
        command-config)))
 
-  ;;; Get the inode type of the parent of node `node-id`.
+  ;;; Get the inode type of the parent of node NODE-ID.
   (define (get-parent-node-type node-id mdconfig)
     (inode-config-type
      (config-inode-ref (config-get-parent-node-id node-id
@@ -607,7 +608,7 @@
 		       mdconfig)))
 
   ;;; Transform a conditional special form in an onode compose expression into
-  ;;; a resolver procedure call. `expr` must be a list containing the form
+  ;;; a resolver procedure call. EXPR must be a list containing the form
   ;;; symbol in car, and an inode name in cadr.
   (define (transform-compose-expr-conditional expr mdconfig field-indices)
     (let* ((node-id (string->symbol (string-drop (symbol->string (cadr expr))
@@ -677,7 +678,7 @@
 			    (transform-compose-expr-element expr mdconfig
 							    field-indices))))))
 
-  ;;; Generate an onode config of type 'symbol. Call this procedure by
+  ;;; Generate an onode config of type `symbol`. Call this procedure by
   ;;; `apply`ing it to an onode config expression.
   (define (make-osymbol proto-config config-dir path-prefix #!key id)
     (unless id (raise-local 'missing-onode-id))
@@ -818,9 +819,9 @@
 		       (list onode #f md-symbols)))
 		 (list onode #f md-symbols))))))
 
-  ;;; Helper for `split-block-instance-contents`. Backtrace on `previous-chunk`
-  ;;; to replace values in the first row of `current-chunk` with the last set
-  ;;; value as specified by `backtrace-targets`.
+  ;;; Helper for `split-block-instance-contents`. Backtrace on PREVIOUS-CHUNK
+  ;;; to replace values in the first row of CURRENT-CHUNK with the last set
+  ;;; value as specified by BACKTRACE-TARGETS.
   (define (block-repeat-last-set current-chunk previous-chunk backtrace-targets)
     (if (any (lambda (x) (and x #t)) backtrace-targets)
 	(cons (map (lambda (backtrace? field field-index)
@@ -837,7 +838,7 @@
 	current-chunk))
 
   ;;; Helper for `resize-block-instances`. Split the raw block instance
-  ;;; `contents` into consecutively numbered node instances of length `size`.
+  ;;; CONTENTS into consecutively numbered node instances of length SIZE.
   ;;; Empty field instances in the first row of a block instance will be
   ;;; replaced with the last set value if the field's command has the
   ;;; `use-last-set` flag.
@@ -894,8 +895,8 @@
 	     (append (list id #f) chunk))
 	   chunks (iota (length chunks)))))
 
-  ;;; Resize instances of the given `iblock` to `size` by merging all
-  ;;; instances according to `order`, then splitting into chunks.
+  ;;; Resize instances of the given IBLOCK to SIZE by merging all
+  ;;; instances according to ORDER, then splitting into chunks.
   (define (resize-block-instances iblock size order config)
     (let ((order-index (config-get-block-field-index
 			(car order) (symbol-append 'R_ (car iblock)) config)))
@@ -914,7 +915,7 @@
 
   ;; TODO must work for unordered groups as well
   ;;; Resize all non-order blocks in the given igroup instance to
-  ;;; `size`, and emit a new igroup instance with a new order.
+  ;;; SIZE, and emit a new igroup instance with a new order.
   (define (resize-blocks parent-inode-instance parent-inode-id size config)
     (let* ((order-id (symbol-append parent-inode-id '_ORDER))
 	   (block-subnode-ids (config-get-subnode-type-ids
@@ -946,7 +947,7 @@
 	      (append original-fields+groups resized-blocks new-order))))
 
   ;; TODO in theory we do not need to emit md-symbols (see resolve-oblock)
-  ;;; Helper function for make-oblock.
+  ;;; Helper function for `make-oblock`.
   (define (make-oblock-rowfield proto-config parent-block-ids
 				#!key bytes compose)
     (let ((compose-proc (transform-compose-expr
@@ -967,7 +968,7 @@
 	       (and current-org (+ current-org bytes))
 	       md-symbols)))))
 
-  ;;; Helper function for make-oblock.
+  ;;; Helper function for `make-oblock`.
   ;;; Generate an alist where the keys represent the oblock's output order, and
   ;;; the values represent the associated input order rows. Rows are sorted
   ;;; according to how the required-fields are specified.
@@ -1000,9 +1001,8 @@
 			newkey+val)))
 		raw-order))))
 
-  ;;; Helper for make-oblock
-  ;;; Constructs pseudo iblock instances that contain all the subnodes required
-  ;;; by an oblock field.
+  ;;; Helper for `make-oblock`. Constructs pseudo iblock instances that contain
+  ;;; all the subnodes required by an oblock field.
   (define (make-pseudo-block-instances parent sources
 				       unique-order-combinations)
     (let ((make-subnode-list
@@ -1018,7 +1018,7 @@
 		     (make-subnode-list (cadr order-pos))))
 	   unique-order-combinations)))
 
-  ;;; Helper for make-oblock. Resolve the oblock node value.
+  ;;; Helper for `make-oblock`. Resolve the oblock node value.
   ;;; Returns a list containing the oblock in car and updated origin in cadr.
   ;; Do not need to track symbols because oblock fields will not emit any. This
   ;; may change in the future though. TODO
@@ -1152,7 +1152,7 @@
 		     (cons (generate-order new-symbols)
 			   new-symbols)))))))
 
-  ;;; dispatch output note config expressions to the appropriate onode
+  ;;; Dispatch output note config expressions to the appropriate onode
   ;;; generators
   (define (dispatch-onode-expr expr proto-config config-dir path-prefix)
     (apply (case (car expr)
@@ -1167,16 +1167,16 @@
 	     (else (error "unsupported output node type")))
 	   (append (list proto-config config-dir path-prefix) (cdr expr))))
 
+  ;; TODO currently dead code, is it still useful?
   ;;; Compute the total size of the binary output of a list of onodes. Returns
   ;;; `#f` if any of the onodes does not have it's size argument resolved.
-  ;; TODO currently dead code, is it still useful?
   (define (mod-output-size onodes)
     (and (not (any (lambda (node)
 		     (not (onode-size node)))
 		   onodes))
 	 (apply + (map onode-size onodes))))
 
-  ;;; returns true if all onodes have been resolved, false otherwise
+  ;;; Returns true if all onodes have been resolved, false otherwise
   (define (mod-all-resolved? onodes)
     (not (any onode-fn onodes)))
 
@@ -1229,6 +1229,8 @@
       ;; (newline)
       (run-compiler otree md-symbols 0)))
 
+  ;; TODO haven't thought about optional fields at all yet (how about "only-if")
+  ;;      also, more conditions, eg. required-if begin etc...
   ;;; Generate a compiler from the given output config expression.
   ;;; `proto-config` must be a config struct with all fields resolved
   ;;; except the config-comiler itself.
@@ -1237,8 +1239,6 @@
   ;;; nodes, which can be further processed by `write-bin` or `write-asm`.
   ;;; The compiler will throw an exception of type 'compiler-failed
   ;;; if it cannot resolve all output nodes after 3 passes.
-  ;; TODO haven't thought about optional fields at all yet (how about "only-if")
-  ;;      also, more conditions, eg. required-if begin etc...
   (define (make-compiler output-expr proto-config config-dir path-prefix)
     (let ((otree (map (cute dispatch-onode-expr
 			<> proto-config config-dir path-prefix)
