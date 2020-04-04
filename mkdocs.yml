@@ -34,7 +34,7 @@ extra_javascript:
 site_dir: 'documentation'
 
 nav:
-  - Home: index.md
+  - Overview: index.md
   - User Manual:
       - Setup: setup.md
       - "Getting Started": getting-started.md
