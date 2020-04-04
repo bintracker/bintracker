@@ -1,6 +1,8 @@
 site_name: "Bintracker"
 
-theme: 'material'
+theme:
+  name: 'material'
+  custom_dir: 'resources/material/'
 
 extra:
   logo: 'images/bintracker-icon.svg'
