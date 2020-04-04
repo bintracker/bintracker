@@ -1,0 +1,16 @@
+<li class="md-nav__item">
+  <a href="{{ toc_item.url }}" title="{{ toc_item.title }}" class="md-nav__link">
+    {{ toc_item.title | replace("&amp;lt;", "&lt;") | replace("&amp;gt;", "&gt;") }}
+  </a>
+  {% if toc_item.children %}
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        {% for toc_item in toc_item.children %}
+	  {% if toc_item.level < 4 %}
+	    {% include "partials/toc-item.html" %}
+	  {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  {% endif %}
+</li>

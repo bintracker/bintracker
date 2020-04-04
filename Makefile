@@ -80,7 +80,7 @@ bt-db.md: bt-db.scm
 
 docs: $(DOCS)
 	$(MAKE) docs -C libmdal
-	- mkdir docs/libmdal
+	mkdir -p docs/libmdal
 	cp -r libmdal/docs/* docs/libmdal/
 	mkdocs build
 

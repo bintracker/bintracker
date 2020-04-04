@@ -1,12 +1,35 @@
-site_name: "Bintracker"
+site_name: "Bintracker Documentation"
+
+repo_name: utz82/bintracker
+repo_url: 'https://github.com/utz82/bintracker'
+edit_uri: ""
 
 theme:
   name: 'material'
   custom_dir: 'resources/material/'
+  font: false
+  favicon: 'assets/images/favicon.png'
+  language: en
+  palette:
+    primary: teal
+    accent: cyan
+  logo: 'assets/images/logo.svg'
+  feature:
+    tabs: false
+  include_search_page: false
+  search_index_only: true
+  static_templates:
+    - 404.html
 
 extra:
-  logo: 'images/bintracker-icon.svg'
-  hljs_languages: scheme
+  hljs_languages:
+    - scheme
+
+plugins:
+  - localsearch
+
+extra_javascript:
+  - search/search_index.js
 
 site_dir: 'documentation'
 
