@@ -1,14 +1,15 @@
 ;; #!/home/heinz/chickens/use-this/bin/csi -script
 ;; -*- geiser-scheme-implementation: 'chicken -*-
 
-;; This file is part of Bintracker NG.
-;; Copyright (c) utz/irrlicht project 2019
+;; This file is part of Bintracker.
+;; Copyright (c) utz/irrlicht project 2019-2020
 ;; See LICENSE for license details.
 
 (import scheme (chicken platform))
 
 ;; Make modules in libmdal/ available
 (repository-path (cons "libmdal" (repository-path)))
+
 
 ;; ---------------------------------------------------------------------------
 ;; ## PS/Tk Initialization
@@ -29,6 +30,11 @@
 			  labelframe notebook panedwindow
 			  progressbar combobox separator scale sizegrip
 			  spinbox treeview))
+
+
+;; ---------------------------------------------------------------------------
+;; ## Core Initialization
+;; ---------------------------------------------------------------------------
 
 (import bintracker-core)
 (eval '(import bintracker-core))
