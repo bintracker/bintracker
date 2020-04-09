@@ -61,9 +61,11 @@ nav:
           - "md-config" : 'libmdal/generated/md-config.md'
           - "md-command": 'libmdal/generated/md-command.md'
           - "md-parser": 'libmdal/generated/md-parser.md'
-          - "schemta": 'libmdal/generated/schemta.md'
           - utils:
               - "md-note-table": 'libmdal/generated/utils/md-note-table.md'
+      - "Schemta Assembler":
+          - Introduction: 'libmdal/schemta.md'
+          - Schemta API: 'libmdal/generated/schemta.md'
 
 markdown_extensions:
   - codehilite
