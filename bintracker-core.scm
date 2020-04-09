@@ -17,9 +17,9 @@
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
-	    (chicken bitwise)
-	    srfi-1 srfi-13 srfi-18 srfi-69 coops list-utils simple-exceptions
-	    (only sql-de-lite exec sql))
+  	    (chicken bitwise)
+  	    srfi-1 srfi-13 srfi-18 srfi-69 coops list-utils simple-exceptions
+  	    (only sql-de-lite exec sql))
 
 
   ;; ---------------------------------------------------------------------------
@@ -177,6 +177,7 @@
       (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
 
 
+
   ;; ---------------------------------------------------------------------------
   ;;; ## Playback
   ;; ---------------------------------------------------------------------------
@@ -239,24 +240,27 @@
   ;;; ## Core GUI Layout
   ;; ---------------------------------------------------------------------------
 
-  (define edit-settings
-    (make <ui-settings-group> 'setup
-	  `((edit-step "Step" "Set the edit step" default-edit-step
-		       edit-step 0 64)
-	    (base-octave "Octave" "Set the base octave" default-base-octave
-			 base-octave 0 9)
-	    (major-highlight "Major Row" "Set the major row highlight"
-			     default-major-row-highlight major-row-highlight
-			     2 64
-			     ,(lambda ()
-				(blockview-update-row-highlights
-				 (current-blocks-view))))
-	    (minor-highlight "Minor Row" "Set the minor row highlight"
-			     default-minor-row-highlight minor-row-highlight
-			     2 32
-			     ,(lambda ()
-				(blockview-update-row-highlights
-				 (current-blocks-view)))))))
+  (define edit-settings #f)
+
+  (define (init-edit-settings)
+    (set! edit-settings
+      (make <ui-settings-group> 'setup
+	    `((edit-step "Step" "Set the edit step" default-edit-step
+			 edit-step 0 64)
+	      (base-octave "Octave" "Set the base octave" default-base-octave
+			   base-octave 0 9)
+	      (major-highlight "Major Row" "Set the major row highlight"
+			       default-major-row-highlight major-row-highlight
+			       2 64
+			       ,(lambda ()
+				  (blockview-update-row-highlights
+				   (current-blocks-view))))
+	      (minor-highlight "Minor Row" "Set the minor row highlight"
+			       default-minor-row-highlight minor-row-highlight
+			       2 32
+			       ,(lambda ()
+				  (blockview-update-row-highlights
+				   (current-blocks-view))))))))
 
   (define (init-top-level-layout)
     (begin
@@ -315,39 +319,29 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Startup Procedure
+  ;;; ## Startup Hooks
   ;; ---------------------------------------------------------------------------
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
-    (list load-config btdb-init! update-ttk-style
-	  update-key-bindings! update-window-title! init-main-menu
+    (list load-config
+	  btdb-init!
+	  update-ttk-style
+	  update-key-bindings!
+	  update-window-title!
+	  init-main-menu
+	  init-edit-settings
 	  (lambda ()
 	    (when (settings 'show-menu)
 	      (tk 'configure 'menu: (menu-widget (state 'menu)))))
-	  init-top-level-layout update-toolbar-bindings!
+	  init-top-level-layout
+	  update-toolbar-bindings!
 	  (lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
 	      (ui-show main-toolbar)))
 	  (lambda () (set-schemta-include-path! "libmdal/targets/"))
 	  (lambda () (ui-show console))
-	  init-status-bar disable-keyboard-traversal))
+	  init-status-bar
+	  disable-keyboard-traversal))
 
-  ;; WARNING: YOU ARE LEAVING THE FUNCTIONAL SECTOR!
-
-  (execute-hooks on-startup-hooks)
-
-  ;; ---------------------------------------------------------------------------
-  ;; ## Main Loop
-  ;; ---------------------------------------------------------------------------
-
-  ;; Start up the GUI thread and pass control to it.
-  (let ((gui-thread (make-thread (lambda () (handle-exceptions
-						exn
-						(begin (tk-end)
-						       (raise exn))
-					      (tk-event-loop))))))
-    (thread-start! gui-thread)
-    (thread-join! gui-thread))
-
-  ) ;; end module bintracker
+  ) ;; end module bintracker-core

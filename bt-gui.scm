@@ -1,6 +1,6 @@
 
-;; This file is part of Bintracker NG.
-;; Copyright (c) utz/irrlicht project 2019
+;; This file is part of Bintracker.
+;; Copyright (c) utz/irrlicht project 2019-2020
 ;; See LICENSE for license details.
 
 ;; -----------------------------------------------------------------------------
@@ -15,25 +15,6 @@
 	  srfi-1 srfi-13 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
 	  bt-state bt-types bt-db mdal)
-
-  ;; ---------------------------------------------------------------------------
-  ;; ## PS/Tk Initialization
-  ;; ---------------------------------------------------------------------------
-
-  ;; Init pstk and fire up Tcl/Tk runtime.
-  ;; This must be done prior to defining anything that depends on Tk.
-
-  (tk-start)
-
-  ;; disable "tearoff" style menus
-  (tk-eval "option add *tearOff 0")
-
-  ;; automatically map the following tk widgets to their ttk equivalent
-  (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
-			    labelframe notebook panedwindow
-			    progressbar combobox separator scale sizegrip
-			    spinbox treeview))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Utilities

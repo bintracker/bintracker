@@ -15,7 +15,10 @@ roms/
 *.so
 *.import.*
 *.backup
+PROFILE.*
+*.so.PROFILE
 bt.db
+bintracker
 libmdal/unittests/modules/save-test.mdal
 chicken-repository-path
 TAGS

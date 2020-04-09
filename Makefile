@@ -1,7 +1,7 @@
 CSC = csc
 DOCGEN = scm2wiki
 DOCS = bintracker-core.md bt-gui.md bt-state.md bt-types.md bt-db.md bt-emulation.md
-LIBFLAGS = -s -d3
+LIBFLAGS = -s -d3 #-profile-name $@.PROFILE
 ifdef RELEASE
  LIBFLAGS += -O3
 endif
@@ -23,12 +23,22 @@ ifeq ($(MAKE_ETAGS),yes)
  DO_TAGS = TAGS
 endif
 
+# Might need to use csc -compile-syntax in places. See:
+# https://lists.nongnu.org/archive/html/chicken-users/2017-08/msg00004.html
+
+bintracker: bintracker.scm bintracker-core.import.so
+	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
+	$(CSC) bintracker.scm -d3 -O2 -compile-syntax -profile -o bintracker
+
 # build bintracker-core
 bintracker-core.so: bintracker-core.scm bt-state.import.so bt-types.import.so\
 	bt-gui.import.so bt-db.import.so bt-emulation.import.so\
 	libmdal/mdal.import.so $(DO_TAGS)
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bintracker-core.scm -j bintracker-core
+	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
+
+bintracker-core.import.so: bintracker-core.so
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
 
 bt-types.so: bt-types.scm

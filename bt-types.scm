@@ -4,7 +4,8 @@
 ;; Copyright (c) utz/irrlicht project 2019
 ;; See LICENSE for license details.
 
-(module bt-types *
+(module bt-types
+    *
 
   (import scheme (chicken base) (chicken bitwise) srfi-1 srfi-13
 	  typed-records stack)
