@@ -28,7 +28,7 @@ endif
 
 bintracker: bintracker.scm bintracker-core.import.so
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
-	$(CSC) bintracker.scm -d3 -O2 -compile-syntax -profile -o bintracker
+	$(CSC) bintracker.scm -d3 -O2 -compile-syntax -o bintracker
 
 # build bintracker-core
 bintracker-core.so: bintracker-core.scm bt-state.import.so bt-types.import.so\

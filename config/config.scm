@@ -1,5 +1,3 @@
-;; -*- geiser-scheme-implementation: 'chicken -*-
-
 ;; -----------------------------------------------------------------------------
 ;; BINTRACKER CONFIGURATION
 ;; -----------------------------------------------------------------------------
@@ -14,6 +12,6 @@
 ;; (install-theme! 'awdark "themes/awthemes.tcl")
 ;; (set-theme! 'awdark)
 
-(load-color-scheme "gruvbox")
+(colors 'load "gruvbox")
 
 (set-conf! 'font-mono "Roboto Mono for Powerline")

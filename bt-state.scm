@@ -91,13 +91,67 @@
 	 *bintracker-settings*)
 	*bintracker-settings*))
 
-  (define (colors param)
-    ((eval (string->symbol (string-append "app-colors-" (->string param))))
-     (app-settings-color-scheme *bintracker-settings*)))
+  ;;; This is the interface to Bintracker's application colors. It is a
+  ;;; procedure that can be called as follows:
+  ;;;
+  ;;; `(colors SETTING)`
+  ;;;
+  ;;; Returns the current value of SETTING.
+  ;;;
+  ;;; `(colors 'set SETTING VAL)`
+  ;;;
+  ;;; Sets the current value of SETTING. VAL may be a string containing an HTML
+  ;;; RGB color code, or a valid Tk color name.
+  ;;;
+  ;;; `(colors 'load COLOR-SCHEME)`
+  ;;;
+  ;;; Loads and applies a color scheme from a configuration file in
+  ;;; `config/color-schemes`. COLOR-SCHEME must a string naming the config file,
+  ;;; without path or extension.
+  (define colors
+    (let* ((color-scheme '())
+	   (set-colors
+	    (lambda (#!key background background-inactive row-highlight-major
+			   row-highlight-minor cursor text text-inactive
+			   text-1 text-2 text-3 text-4 text-5 text-6 text-7)
+	      (set! color-scheme
+		`((background . ,(or background "#222222"))
+		  (background-inactive . ,(or background-inactive "#111111"))
+		  (row-highlight-major . ,(or row-highlight-major "#444444"))
+		  (row-highlight-minor . ,(or row-highlight-minor "#333333"))
+		  (cursor . ,(or cursor "#0066cc"))
+		  (text . ,(or text "#00ee00"))
+		  (text-inactive . ,(or text-inactive "#00aa00"))
+		  (text-1 . ,(or text-1 "#00ee00"))
+		  (text-2 . ,(or text-2 "#00ee00")) ;;; numeric commands
+		  (text-3 . ,(or text-3 "#00ee00")) ;;; key commands
+		  (text-4 . ,(or text-4 "#00ee00")) ;;; reference commands
+		  (text-5 . ,(or text-5 "#00ee00")) ;;; trigger commands
+		  (text-6 . ,(or text-6 "#00ee00")) ;;; string commands
+		  (text-7 . ,(or text-7 "#00ee00")) ;;; modifier commands
+		  )))))
+      (begin
+	(set-colors)
+	(lambda args
+	  (case (car args)
+	    ((load)
+	     (call-with-input-file
+		 (string-append "config/color-schemes/" (cadr args) ".scm")
+	       (lambda (port)
+		 (let ((cs (read port)))
+		   (if (and cs (pair? cs) (eqv? 'bt-color-scheme (car cs)))
+		       (apply set-colors (cdr cs))
+		       (warning
+			(string-append
+			 "config/color-schemes/" (cadr args) ".scm"
+			 " is not a valid Bintracker color scheme")))))))
+	    ((set)
+	     (alist-update! (cadr args) (caddr args) color-scheme))
+	    (else
+	     (alist-ref (car args) color-scheme)))))))
 
 
-  ;;; All-purpose shorthand setter, used to implement `set-conf!`, `set-color`,
-  ;;; etc.
+  ;;; All-purpose shorthand setter, used to implement `set-conf!`, etc.
   (define (set-global! prefix obj param val)
     ((eval (string->symbol (string-append prefix (->string param)
 					  "-set!")))
@@ -106,28 +160,6 @@
   ;;; Change Bintracker's global settings. Mainly an interface to config.scm.
   (define (set-conf! param val)
     (set-global! "app-settings-" *bintracker-settings* param val))
-
-  ;;; Change Bintracker's color scheme
-  (define (set-color! param val)
-    (set-global! "app-colors-" (app-settings-color-scheme *bintracker-settings*)
-		 param val))
-
-  ;;; Load and apply a color scheme from a scheme config file.
-  ;;; SCHEME-NAME must be the name of the scheme config, without path or
-  ;;; extension.
-  (define (load-color-scheme scheme-name)
-    (let ((set-color-scheme
-	   (lambda (scheme)
-	     (if (and (pair? scheme)
-		      (eqv? 'bt-color-scheme (car scheme)))
-		 (set-conf! 'color-scheme (apply make-app-colors (cdr scheme)))
-		 (warning
-		  (string-append "config/color-schemes/" scheme-name ".scm"
-				 " is not a valid Bintracker color scheme"))))))
-      (call-with-input-file (string-append "config/color-schemes/" scheme-name
-					   ".scm")
-	(lambda (port)
-	  (set-color-scheme (read port))))))
 
   ;;; Change Bintracker's internal state variables.
   (define (set-state! param val)
