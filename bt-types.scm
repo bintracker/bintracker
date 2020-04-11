@@ -1,7 +1,5 @@
-;; -*- geiser-scheme-implementation: 'chicken -*-
-
-;; This file is part of Bintracker NG.
-;; Copyright (c) utz/irrlicht project 2019
+;; This file is part of Bintracker.
+;; Copyright (c) utz/irrlicht project 2019-2020
 ;; See LICENSE for license details.
 
 (module bt-types

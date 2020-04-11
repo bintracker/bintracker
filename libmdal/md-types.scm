@@ -1,5 +1,5 @@
 ;; This file is part of the libmdal library.
-;; Copyright (c) utz/irrlicht project 2018
+;; Copyright (c) utz/irrlicht project 2018-2020
 ;; See LICENSE for license details.
 
 ;;; md-module record types and additional accessors

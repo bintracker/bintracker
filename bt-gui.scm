@@ -1,4 +1,3 @@
-
 ;; This file is part of Bintracker.
 ;; Copyright (c) utz/irrlicht project 2019-2020
 ;; See LICENSE for license details.
