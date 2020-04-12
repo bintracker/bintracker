@@ -439,7 +439,7 @@
        (any-of a-quoted-string
 	       (one-or-more
 		(in (char-set-union char-set:letter+digit
-				    (string->char-set "#\\+-:/'@`,%=\"")))))
+				    (string->char-set "<>#\\+-:/'@`,%=\"")))))
        (zero-or-more (in char-set:whitespace)))))
 
   (define a-toplevel-atom
@@ -448,19 +448,21 @@
        (any-of a-quoted-string
 	       (one-or-more
 		(in (char-set-union char-set:letter+digit
-				    (string->char-set "#\\+-:/'@`,\"")))))
+				    (string->char-set "<>#\\+-:/'@`,\"")))))
        (zero-or-more (in horizontal-whitespace)))))
 
   (define a-cons
     (recursive-parser
-     (as-string (sequence (is #\()
-			  (one-or-more (any-of a-atom a-cons))
+     (as-string (sequence (maybe (is #\'))
+			  (is #\()
+			  (zero-or-more (any-of a-atom a-cons))
 			  (is #\))
 			  (zero-or-more (in char-set:whitespace))))))
 
   (define a-toplevel-cons
-    (as-string (sequence (is #\()
-			 (one-or-more (any-of a-atom a-cons))
+    (as-string (sequence (maybe (is #\'))
+			 (is #\()
+			 (zero-or-more (any-of a-atom a-cons))
 			 (is #\))
 			 (zero-or-more (in horizontal-whitespace)))))
 

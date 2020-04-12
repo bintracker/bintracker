@@ -453,7 +453,11 @@
       (let ((input-str (repl-get buf "prompt" "end-1c"))
 	    (prompt (slot-value buf 'prompt)))
 	(unless (string-null? input-str)
-	  (if (parse a-sexp input-str)
+	  ;; TODO This is bad. We're relying on schemta's sexp parser here,
+	  ;; which has it's own special requirements that may change. We should
+	  ;; use a separate parser here (and it should probably be derived from
+	  ;; scm2wiki as that's the most robust one).
+	  (if (parse (any-of a-atom a-cons) input-str)
 	      (begin
 		(repl-insert
 		 buf
