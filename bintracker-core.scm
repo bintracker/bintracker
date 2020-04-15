@@ -247,13 +247,13 @@
 			 edit-step 0 64)
 	      (base-octave "Octave" "Set the base octave" default-base-octave
 			   base-octave 0 9)
-	      (major-highlight "Major Row" "Set the major row highlight"
+	      (major-highlight "Signature" "Set number of measures per beat"
 			       default-major-row-highlight major-row-highlight
-			       2 64
+			       1 64
 			       ,(lambda ()
 				  (blockview-update-row-highlights
 				   (current-blocks-view))))
-	      (minor-highlight "Minor Row" "Set the minor row highlight"
+	      (minor-highlight "/" "Set number of steps per measure"
 			       default-minor-row-highlight minor-row-highlight
 			       2 32
 			       ,(lambda ()

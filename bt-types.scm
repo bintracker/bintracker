@@ -21,7 +21,7 @@
   (defstruct app-state
     ((edit-step 1) : fixnum)
     ((base-octave 4) : fixnum)
-    ((major-row-highlight 8) : fixnum)
+    ((major-row-highlight 2) : fixnum)
     ((minor-row-highlight 4) : fixnum)
     ((current-ui-zone 1) : fixnum)
     menu current-mdmod
@@ -50,7 +50,7 @@
     ((line-spacing 1) : fixnum)
     ((default-edit-step 1) : fixnum)
     ((default-base-octave 4) : fixnum)
-    ((default-major-row-highlight 8) : fixnum)
+    ((default-major-row-highlight 2) : fixnum)
     ((default-minor-row-highlight 4) : fixnum)
     ((journal-limit 100) : integer))
 
