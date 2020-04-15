@@ -276,6 +276,7 @@
   ;;; ## Bindings
   ;; ---------------------------------------------------------------------------
 
+  ;; TODO can let `bind-key` do the heavy lifting
   ;;; Update the key bindings, as specified in the current keymap setting.
   (define (update-key-bindings!)
     (for-each (lambda (group widget)
@@ -288,8 +289,8 @@
 			    	      " " (symbol->string (car key-mapping))
 			    	      " +break")))
 			  (get-keybinding-group group)))
-	      '(global console)
-	      (list tk (slot-value console 'repl)))
+	      '(global)
+	      (list tk))
     (create-virtual-events))
 
   ;;; Update the bindings for the toolbar buttons.

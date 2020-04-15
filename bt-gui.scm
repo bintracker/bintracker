@@ -46,6 +46,16 @@
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
+  ;;; Bind the keypress event for WIDGET to PROC. ACTION must be a mapping
+  ;;; listed in the group GROUP of the active keymap.
+  (define (bind-key widget group action proc)
+    (let ((mapping (inverse-key-binding group action)))
+      (when mapping
+	(tk/bind* widget mapping proc)
+	(tk-eval (string-append "bind " (widget 'get-id)
+				" " (symbol->string mapping)
+				" +break")))))
+
   ;;; Create a tk image resource from a given PNG file.
   (define (tk/icon filename)
     (tk/image 'create 'photo format: "PNG"
@@ -401,8 +411,6 @@
 
   ;; TODO this becomes a before: method once things are sorted out
   (define-method (ui-show primary: (buf <ui-repl>))
-    (display "calling ui-show on ui-repl")
-    (newline)
     (let ((repl (slot-value buf 'repl))
 	  (yscroll (slot-value buf 'yscroll)))
       (unless (slot-value buf 'initialized)
@@ -420,6 +428,11 @@
 	(repl-insert buf (ui-setup buf))
 	(repl-insert-prompt buf)
 	(repl 'mark 'gravity "prompt" 'left)
+	(repl 'see 'end)
+	(bind-key (slot-value buf 'repl) 'console 'eval-console
+		  (lambda () (repl-eval buf)))
+	(bind-key (slot-value buf 'repl) 'console 'eval-console
+		  (lambda () (repl-eval buf)))
 	(set! (slot-value buf 'initialized) #t))))
 
   ;;; Insert `str` at the end of the prompt of the `<ui-repl> object `buf`.
@@ -467,7 +480,8 @@
 	      (repl-insert
 	       buf
 	       (string-append "\n"
-			      (make-string (+ 3 (string-length prompt))))))))))
+			      (make-string (+ 3 (string-length prompt))))))
+	  ((slot-value buf 'repl) 'see 'end)))))
 
   (define-method (ui-focus primary: (buf <ui-repl>))
     (tk/focus (slot-value buf 'repl)))
