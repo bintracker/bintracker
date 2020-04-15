@@ -113,7 +113,8 @@
      (children initform: '() accessor: ui-children)))
 
   (define-method (initialize-instance after: (elem <ui-element>))
-    (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame))
+    (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame
+			 style: 'BT.TFrame))
     (set! (ui-children elem)
       (map (lambda (child)
     	     (cons (car child) (apply make (cdr child))))
@@ -122,8 +123,8 @@
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (elem <ui-element>))
     (unless (slot-value elem 'initialized)
-      (map (o ui-show cdr)
-    	   (ui-children elem))
+      (for-each (o ui-show cdr)
+    		(ui-children elem))
       (set! (slot-value elem 'initialized) #t))
     (apply tk/pack (cons (ui-box elem)
 			 (slot-value elem 'packing-args))))
@@ -370,8 +371,6 @@
 	  (ui-show (slot-value x 'collapse-button))))))
 
   (define-method (ui-show after: (buf <ui-buffer>))
-    (display "calling ui-show on ui-buffer")
-    (newline)
     (ui-set-callbacks (slot-value buf 'expand-button)
 		      `((expand ,(lambda () (ui-expand buf)))))
     (ui-set-callbacks (slot-value buf 'collapse-button)
@@ -600,6 +599,8 @@
 	  ((show)
 	   (unless tl
 	     (set! tl (tk 'create-widget 'toplevel))
+	     ;; TODO appears to have no effect
+	     ;; (tk/wm 'attributes tl type: 'dialog)
 	     (set! widgets `((content ,(tl 'create-widget 'frame))
 			     (footer ,(tl 'create-widget 'frame))))
 	     (set! widgets
