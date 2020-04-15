@@ -387,6 +387,16 @@
   (define-method (ui-expand primary: (buf <ui-buffer>))
     ((slot-value buf 'expand-proc) buf))
 
+  (define-class <ui-welcome-buffer> (<ui-element>)
+    ((packing-args '(expand: 1 fill: both))))
+
+  (define-method (initialize-instance after: (buf <ui-welcome-buffer>))
+    (let ((box (ui-box buf)))
+      (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker.")
+	       padx: 20 pady: 20)
+      (tk/pack (box 'create-widget 'button text: "Create new module..."))
+      (tk/pack (box 'create-widget 'button text: "Open existing module..."))))
+
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
   ;;; focussable in the Bintracker main UI, specify a ui-zone identifier as
