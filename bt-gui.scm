@@ -99,14 +99,16 @@
   ;;; To implement your own custom UI elements, you should create a class
   ;;; that inherits from `<ui-element>` or one of its descendants. You probably
   ;;; want to define at least the `initialize-instance` method for your class,
-  ;;; which should be an `after:` method. Note that the `children` slot must
-  ;;; not contain anything but named instances of `<ui-element>`. You should
-  ;;; add your own custom slots for any Tk widgets you define.
+  ;;; which should be an `after:` method. Note that `<ui-element>`'s constructor
+  ;;; does not initialize the child elements. `ui-show`, however, will
+  ;;; recursively apply `ui-show` on an `<ui-element>`. Therefore the `children`
+  ;;; slot must not contain anything but named instances of `<ui-element>`,
+  ;;; unless you override `ui-show` with your own **primary** method. The
+  ;;; recommended way is to add new slots to your derived class for any custom
+  ;;; widgets not derived from `<ui-element>`.
   (define-class <ui-element> ()
     ((initialized #f)
-     (setup initform: (error
-		       "Cannot create <ui-element> without setup argument")
-	    reader: ui-setup)
+     (setup reader: ui-setup)
      (parent initform: tk accessor: ui-parent)
      (packing-args '())
      (box accessor: ui-box)
@@ -114,11 +116,7 @@
 
   (define-method (initialize-instance after: (elem <ui-element>))
     (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame
-			 style: 'BT.TFrame))
-    (set! (ui-children elem)
-      (map (lambda (child)
-    	     (cons (car child) (apply make (cdr child))))
-    	   (ui-children elem))))
+			 style: 'BT.TFrame)))
 
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (elem <ui-element>))
@@ -183,7 +181,8 @@
 		   	 (when callback (callback)))
 		  (spinbox 'set (state state-var))))))
       (set! (slot-value buf 'label)
-	(box 'create-widget 'label text: (car setup)))
+	(box 'create-widget 'label text: (car setup)
+	     style: 'BT.TLabel foreground: (colors 'text)))
       ;; (tk/bind* spinbox '<<Increment>>
       ;; 	  (lambda ()
       ;; 	     (validate-new-value
@@ -253,9 +252,9 @@
 	(map (lambda (spec)
 	       (cons (car spec)
 		     (box 'create-widget 'button image: (tk/icon (third spec))
-		      state: (or (and (= 4 (length spec)) (fourth spec))
-				 'disabled)
-		      style: "Toolbutton")))
+			  state: (or (and (= 4 (length spec)) (fourth spec))
+				     'disabled)
+			  style: "Toolbutton")))
 	     (ui-setup buf)))
       (for-each (lambda (button)
 		  (if (eqv? orient 'horizontal)
@@ -497,6 +496,8 @@
       (make <ui-button-group> 'parent (ui-box buf)
 	    'setup '((collapse "Collapse buffer" "collapse.png" 'enabled))
 	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
+    (set! (slot-value buf 'content-box)
+      ((ui-box buf) 'create-widget 'frame style: 'BT.TFrame))
     (unless (slot-value buf 'collapse-proc)
       (set! (slot-value buf 'collapse-proc)
 	(lambda (x)
@@ -513,6 +514,7 @@
 		      `((expand ,(lambda () (ui-expand buf)))))
     (ui-set-callbacks (slot-value buf 'collapse-button)
 		      `((collapse ,(lambda () (ui-collapse buf)))))
+    (tk/pack (slot-value buf 'content-box) side: 'right expand: 1 fill: 'both)
     (ui-show (slot-value buf
 			 (if (eqv? 'expanded (slot-value buf 'default-state))
 			     'collapse-button
@@ -535,6 +537,7 @@
       (tk/pack (box 'create-widget 'button text: "Create new module..."))
       (tk/pack (box 'create-widget 'button text: "Open existing module..."))))
 
+  ;; TODO Buffers should also be scrollable.
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
   ;;; focussable in the Bintracker main UI, specify a ui-zone identifier as
@@ -549,9 +552,9 @@
 
   (define-method (initialize-instance after: (buf <ui-repl>))
     (set! (slot-value buf 'repl)
-      ((ui-box buf) 'create-widget 'text))
+      ((slot-value buf 'content-box) 'create-widget 'text))
     (set! (slot-value buf 'yscroll)
-      ((ui-box buf) 'create-widget 'scrollbar orient: 'vertical))
+      ((slot-value buf 'content-box) 'create-widget 'scrollbar orient: 'vertical))
     (when (slot-value buf 'ui-zone)
       (tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
 		(lambda () (switch-ui-zone-focus (slot-value buf 'ui-zone))))))
@@ -569,6 +572,7 @@
 			  size: (settings 'font-size)))
 	(tk/pack yscroll side: 'right fill: 'y)
 	(tk/pack repl expand: 1 fill: 'both side: 'right)
+	(tk/pack (slot-value buf 'content-box) side: 'right fill: 'both)
 	(configure-scrollbar-style yscroll)
 	(yscroll 'configure command: `(,repl yview))
 	(repl 'configure 'yscrollcommand: `(,yscroll set))
@@ -578,8 +582,8 @@
 	(repl 'see 'end)
 	(bind-key (slot-value buf 'repl) 'console 'eval-console
 		  (lambda () (repl-eval buf)))
-	(bind-key (slot-value buf 'repl) 'console 'eval-console
-		  (lambda () (repl-eval buf)))
+	(bind-key (slot-value buf 'repl) 'console 'clear-console
+		  (lambda () (repl-clear buf)))
 	(set! (slot-value buf 'initialized) #t))))
 
   ;;; Insert `str` at the end of the prompt of the `<ui-repl> object `buf`.
@@ -632,6 +636,74 @@
 
   (define-method (ui-focus primary: (buf <ui-repl>))
     (tk/focus (slot-value buf 'repl)))
+
+  (define-class <ui-group-field> (<ui-element>)
+    (label
+     entry
+     (node-id
+      (error "Cannot create <ui-group-field> without node-id"))
+     (parent-instance-path
+      (error "Cannot create <ui-group-field> without parent-instance-path"))
+     (packing-args '(expand: 0 fill: x))))
+
+  (define-method (initialize-instance after: (buf <ui-group-field>))
+    (let* ((node-id (slot-value buf 'node-id))
+	   (color (get-field-color node-id)))
+      (set! (slot-value buf 'label)
+	((ui-box buf) 'create-widget 'label style: 'BT.TLabel
+	 foreground: color text: (symbol->string node-id)
+	 width: 12))
+      (set! (slot-value buf 'entry)
+	((ui-box buf) 'create-widget 'entry
+	 bg: (colors 'row-highlight-minor) fg: color
+	 bd: 0 highlightthickness: 0 insertborderwidth: 1
+	 font: (list family: (settings 'font-mono)
+		     size: (settings 'font-size)
+		     weight: 'bold)))
+      (tk/pack (slot-value buf 'label)
+	       (slot-value buf 'entry)
+	       side: 'left padx: 4 pady: 4)
+      ((slot-value buf 'entry) 'insert 'end
+       (normalize-field-value (cddr
+    			       ((node-path
+    				 (string-append
+    				  (slot-value buf 'parent-instance-path)
+    				  (symbol->string node-id)
+    				  "/0/"))
+    				(mdmod-global-node (current-mod))))
+    			      node-id))))
+
+  (define-method (ui-focus primary: (buf <ui-group-field>))
+    (let ((entry (slot-value buf 'entry)))
+      (entry 'configure bg: (colors 'cursor))
+      (tk/focus entry)))
+
+  (define-method (ui-unfocus primary: (buf <ui-group-field>))
+    ((slot-value buf 'entry)
+     'configure bg: (colors 'row-highlight-minor)))
+
+  (define-class <ui-group-fields> (<ui-buffer>)
+    ((parent-node-id
+      (error "Cannot create <ui-group-fields> without parent-node-id"))
+     (parent-instance-path
+      (error "Cannot create <ui-group-fields> without parent-instance-path"))
+     (active-index 0)
+     (packing-args '(expand: 0 fill: x))))
+
+  (define-method (initialize-instance after: (buf <ui-group-fields>))
+    (let ((subnode-ids
+	   (config-get-subnode-type-ids (slot-value buf 'parent-node-id)
+					(current-config)
+					'field)))
+      (set! (ui-children buf)
+	(map (lambda (field-id)
+	       (cons field-id
+		     (make <ui-group-field>
+		       'parent (slot-value buf 'content-box)
+		       'node-id field-id
+		       'parent-instance-path
+		       (slot-value buf 'parent-instance-path))))
+	     subnode-ids))))
 
 
   ;; ---------------------------------------------------------------------------
