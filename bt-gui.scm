@@ -860,10 +860,6 @@
 			    "\n(c) 2019-2020 utz/irrlicht project\n")
       'ui-zone 'console))
 
-  (define (clear-console) (repl-clear console))
-
-  (define (eval-console) (repl-eval console))
-
   ;; ---------------------------------------------------------------------------
   ;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
