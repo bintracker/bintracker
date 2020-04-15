@@ -276,21 +276,12 @@
   ;;; ## Bindings
   ;; ---------------------------------------------------------------------------
 
-  ;; TODO can let `bind-key` do the heavy lifting
   ;;; Update the key bindings, as specified in the current keymap setting.
-  (define (update-key-bindings!)
-    (for-each (lambda (group widget)
-		(for-each (lambda (key-mapping)
-			    (tk/bind widget (car key-mapping)
-				     (eval (cadr key-mapping)))
-			    ;; prevent propagation of keypress events
-			    (tk-eval (string-append
-				      "bind " (widget 'get-id)
-			    	      " " (symbol->string (car key-mapping))
-			    	      " +break")))
-			  (get-keybinding-group group)))
-	      '(global)
-	      (list tk))
+  (define (update-global-key-bindings!)
+    (for-each (lambda (key-mapping)
+		(bind-key tk 'global (cadr key-mapping)
+			  (eval (cadr key-mapping))))
+	      (get-keybinding-group 'global))
     (create-virtual-events))
 
   ;;; Update the bindings for the toolbar buttons.
@@ -326,7 +317,7 @@
     (list load-config
 	  btdb-init!
 	  update-ttk-style
-	  update-key-bindings!
+	  update-global-key-bindings!
 	  update-window-title!
 	  init-main-menu
 	  init-edit-settings
