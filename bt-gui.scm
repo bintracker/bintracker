@@ -11,7 +11,7 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  srfi-1 srfi-13 srfi-69
+	  (chicken sort) list-utils srfi-1 srfi-13 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
 	  bt-state bt-types bt-db mdal)
 
@@ -334,6 +334,144 @@
 		(let ((group (alist-ref (car cb) (ui-children buf))))
 		  (when group (ui-set-callbacks group (cdr cb)))))
 	      callbacks))
+
+  ;;; A class representing a container widget that wraps multiple resizable
+  ;;; ui-buffers in a ttk
+  ;;; [panedwindow](https://www.tcl.tk/man/tcl8.6/TkCmd/ttk_panedwindow.htm).
+  ;;;
+  ;;; Create instances with
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-multibuffer> 'parent PARENT
+  ;;;       'setup ((ID1 VISIBLE WEIGHT CHILD-SPEC ...) ...))
+  ;;; ```
+  ;;;
+  ;;; where PARENT is the parent Tk widget (defaults to `tk`), ID1 is a unique
+  ;;; identifier for a child buffer, VISIBLE is a boolean specifying if the
+  ;;; child widget should initially be mapped to the display, WEIGHT is an
+  ;;; integer specifying how large the child buffer should be in relation to the
+  ;;; remaining child buffers, and CHILD-SPEC ... is the name of a UI buffer
+  ;;; class, followed by the arguments that shall be passed to `make` when
+  ;;; creating the child buffer instance.
+  ;;;
+  ;;; The optional ORIENT argument specifies the orientation of the metabuffer;
+  ;;; it shall be one of the symbols `'vertical` or `'horizontal`. By default,
+  ;;; metabuffers are oriented vertically, meaning new child buffers will be
+  ;;; added below the current ones.
+  (define-class <ui-multibuffer> (<ui-element>)
+    ((packing-args '(expand: 1 fill: both))
+     ;; id, index, visible, weigth
+     state))
+
+  ;; TODO: to properly hide a child, we must receive the "forget" event from
+  ;; the child and act on it. Likewise, the "pack" event must propagate up.
+  ;; Also collapse/expand events should likely propagate. Create virtual events
+  ;; for collapse/expand/hide-child/show-child?
+
+  (define-method (initialize-instance after: (buf <ui-multibuffer>)
+				      #!key (orient 'vertical))
+    (set! (ui-box buf)
+      ((ui-parent buf)'create-widget 'panedwindow orient: orient))
+    (set! (ui-children buf)
+      (map (lambda (child)
+	     (cons (car child)
+		   (apply make (append (cdddr child)
+				       `(parent ,(ui-box buf))))))
+	   (ui-setup buf)))
+    (set! (slot-value buf 'state)
+      (map (lambda (child-spec idx)
+	     (cons (car child-spec)
+		   (cons idx (take (cdr child-spec) 2))))
+	   (ui-setup buf)
+	   (iota (length (ui-setup buf))))))
+
+  ;;; Returns the actively managed children of BUF sorted by position.
+  (define-method (multibuffer-active+sorted-children
+		  primary: (buf <ui-multibuffer>))
+    (let ((get-index (lambda (child)
+		       (car (alist-ref (car child)
+				       (slot-value buf 'state))))))
+      (filter (lambda (child)
+		(cadr (alist-ref (car child)
+				 (slot-value buf 'state))))
+	      (sort (ui-children buf)
+		    (lambda (x1 x2)
+		      (<= (get-index x1) (get-index x2)))))))
+
+  (define-method (ui-show before: (buf <ui-multibuffer>))
+    (unless (slot-value buf 'initialized)
+      ;; TODO In theory, we could let `ui-show` of `<ui-element>` do the work,
+      ;; but there seem to be some issues with Tk when adding children that
+      ;; are not under control of the display manager yet.
+      (for-each (o ui-show cdr)
+		(ui-children buf))
+      (for-each (lambda (child)
+		  ((ui-box buf) 'add (ui-box (cdr child))
+		   weight: (caddr (alist-ref (car child)
+					     (slot-value buf 'state)))))
+		(multibuffer-active+sorted-children buf))
+      (set! (slot-value buf 'initialized) #t)))
+
+  ;; (define-method (multibuffer-visibility primary: (buf <ui-multibuffer>)
+  ;; 					 child visible)
+  ;;   (let ((child-index (list-index (lambda (elem)
+  ;; 				     (eqv? child (car elem)))
+  ;; 				   (ui-children buf))))
+  ;;     (when (and (slot-value buf 'initialized)
+  ;; 		 ;; do not add to display again if already added
+  ;; 		 (not (and visible (list-ref (slot-value buf 'visibility)
+  ;; 					     child-index))))
+  ;; 	((ui-box buf)
+  ;; 	 (if visible 'add 'forget)
+  ;; 	 (ui-box (alist-ref child (ui-children buf)))))
+  ;;     (list-set! (slot-value buf 'visibility)
+  ;; 		 child-index visible)))
+
+  ;;; Add a new child buffer. CHILD-SPEC shall have the same form as the
+  ;;; elements in the `'setup` argument to `(make <ui-multibuffer ...)`.
+  ;;; The new child buffer will be added before the child named BEFORE, or at
+  ;;; the end if BEFORE is not specified.
+  (define-method (multibuffer-add primary: (buf <ui-multibuffer>)
+				  child-spec #!key before)
+    (when (alist-ref (car child-spec)
+		     (ui-children buf))
+      (error (string-append "Error: Child \"" (symbol->string (car child-spec))
+			    " \" already exists.")))
+    (set! (ui-children buf)
+      (alist-update (car child-spec)
+		    (apply make (append (cdddr child-spec)
+					`(parent ,(ui-box buf))))
+		    (ui-children buf)))
+    (set! (slot-value buf 'state)
+      (if before
+	  (let ((before-child? (lambda (child-state)
+				 (not (eqv? before (car child-state)))))
+		(state (slot-value buf 'state)))
+	    (map (lambda (child-state idx)
+		   (display child-state)
+		   (newline)
+		   (cons (car child-state)
+			 (cons idx (cddr child-state))))
+		 (append (take-while before-child? state)
+			 (list (cons (car child-spec)
+				     (cons 0 (take (cdr child-spec) 2))))
+			 (drop-while before-child? state))
+		 (iota (+ 1 (length state)))))
+	  (alist-update
+	   (car child-spec)
+	   (cons (length (slot-value buf 'state))
+		 (take (cdr child-spec) 2))
+	   (slot-value buf 'state))))
+    (ui-show (alist-ref (car child-spec)
+			(ui-children buf)))
+    (when (and (slot-value buf 'initialized)
+	       (caddr child-spec))
+      ((ui-box buf) 'insert (if before (ui-box (ui-ref buf before)) 'end)
+       (ui-box (ui-ref buf (car child-spec)))
+       weight: (cadr (alist-ref (car child-spec)
+				(slot-value buf 'state))))))
+
+
 
   ;;; This class acts as a superclass for most UI classes that represent user
   ;;; data, such as `<ui-repl>`, ...
