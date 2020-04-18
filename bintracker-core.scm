@@ -76,7 +76,7 @@
 				 ((before) (or base-idx 0))
 				 ((after) (or (and base-idx (+ 1 base-idx))
 					      (length hooks)))
-				 ((instead)
+				 ((instead-of)
 				  (or base-idx
 				      (error (string-append
 					      "Unknown hook "
@@ -87,7 +87,8 @@
 			 (append (take hooks effective-idx)
 				 (cons `(,(cadr args) . ,(caddr args))
 				       (drop hooks
-					     (if (eqv? 'instead (cadddr args))
+					     (if (eqv? 'instead-of
+						       (cadddr args))
 						 (+ 1 effective-idx)
 						 effective-idx)))))
 		       (alist-update (cadr args) (caddr args) hooks))))
