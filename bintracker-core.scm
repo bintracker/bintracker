@@ -21,6 +21,82 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ## Hooks
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Bintracker defines various hook sets for different tasks, including
+  ;;; application start-up (`on-startup-hooks`), and file operations
+  ;;; (`after-load-file-hooks`, `on-close-file-hooks`, `on-save-file-hooks`).
+  ;;; Plug-ins, `config/config.scm`, and other user code may extend and modify
+  ;;; these sets. For details, see documentation for the `make-hooks` procedure
+  ;;; below.
+
+  ;;; Create a set of hooks. HOOKS must be key-value pairs, where keys are
+  ;;; identifier and values are thunks, ie. procedures that take no arguments.
+  ;;; You can call the resulting hook set HS as follows:
+  ;;;
+  ;;; `(HS 'execute)`
+  ;;;
+  ;;; Execute the hooks in order.
+  ;;;
+  ;;; `(HS 'add ID HOOK [WHERE [OTHER-HOOK]])`
+  ;;;
+  ;;; Append ID . HOOK to the set of hooks. You can control the execution order
+  ;;; with the optional WHERE and OTHER-HOOK arguments. WHERE must be either
+  ;;; `'before`, `'after` or `'instead-of`, and OTHER-HOOK may be the identifier
+  ;;; of an already existing hook. In this case, HOOK is inserted before, after,
+  ;;; or instead of OTHER-HOOK. If WHERE is `'before` or `'after` and OTHER-HOOK
+  ;;; is omitted, then the new hook will be added in first resp. last position.
+  ;;; Note that the latter has the same result as calling `(HS 'add ID HOOK)`
+  ;;; with no additional arguments.
+  ;;;
+  ;;; `(HS 'remove ID)`
+  ;;;
+  ;;; Remove the hook with the identifier ID.
+  ;;;
+  ;;; `(HS 'list)`
+  ;;;
+  ;;; Returns the list of hook identifiers.
+  (define (make-hooks . hooks)
+    (let* ((hooks hooks)
+	   (hook-index (lambda (id)
+			 (list-index (lambda (hook) (eqv? id (car hook)))
+				     hooks))))
+      (lambda args
+	(case (car args)
+	  ((execute) (for-each (lambda (hook)
+				 ((cdr hook)))
+			       hooks))
+	  ((add) (set! hooks
+		   (if (> (length args) 3)
+		       (let* ((base-idx (and (> (length args) 4)
+					     (hook-index (fifth args))))
+			      (effective-idx
+			       (case (cadddr args)
+				 ((before) (or base-idx 0))
+				 ((after) (or (and base-idx (+ 1 base-idx))
+					      (length hooks)))
+				 ((instead)
+				  (or base-idx
+				      (error (string-append
+					      "Unknown hook "
+					      (->string (fifth args))))))
+				 (else (error (string-append
+					       "Unknow position "
+					       (->string (cadddr args))))))))
+			 (append (take hooks effective-idx)
+				 (cons `(,(cadr args) . ,(caddr args))
+				       (drop hooks
+					     (if (eqv? 'instead (cadddr args))
+						 (+ 1 effective-idx)
+						 effective-idx)))))
+		       (alist-update (cadr args) (caddr args) hooks))))
+	  ((remove) (set! hooks (alist-delete (cadr args) hooks)))
+	  ((list) (map car hooks))
+	  (else (error (string-append "Invalid hooks command "
+				      (->string args))))))))
+
+  ;; ---------------------------------------------------------------------------
   ;;; ## Global Actions
   ;; ---------------------------------------------------------------------------
 
@@ -57,12 +133,20 @@
 				  (tk-end))))
 
   (define on-close-file-hooks
-    (list (lambda () (destroy-group-widget (state 'module-widget)))
-	  (lambda () (ui-set-state (ui-ref main-toolbar 'play) 'disabled))
-	  (lambda () (ui-set-state (ui-ref main-toolbar 'journal) 'disabled))
-	  (lambda () (emulator 'quit))
-	  reset-state! update-window-title! reset-status-text!
-	  (lambda () (ui-set-state edit-settings 'disabled))))
+    (make-hooks
+     `(destroy-group-widget
+       . ,(lambda () (destroy-group-widget (state 'module-widget))))
+     `(disable-play-buttons
+       . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'disabled)))
+     `(disable-journal-buttons
+       . ,(lambda () (ui-set-state (ui-ref main-toolbar 'journal) 'disabled)))
+     `(quit-emulator
+       . ,(lambda () (emulator 'quit)))
+     `(reset-state . ,reset-state!)
+     `(update-window-title . ,update-window-title!)
+     `(reset-status-text . ,reset-status-text!)
+     `(disable-edit-settings
+       . ,(lambda () (ui-set-state edit-settings 'disabled)))))
 
   ;;; Close the currently opened module file.
   (define (close-file)
@@ -70,17 +154,23 @@
     (when (current-mod)
       (do-proc-with-exit-dialogue
        "closing"
-       (lambda () (execute-hooks on-close-file-hooks)))))
+       (lambda () (on-close-file-hooks 'execute)))))
 
   (define after-load-file-hooks
-    (list (lambda ()
-	    (set-state! 'module-widget (make-module-widget main-frame)))
-	  (lambda () (ui-set-state (ui-ref main-toolbar 'play) 'enabled))
-	  init-instances-record! show-module
-	  reset-status-text! update-window-title!
-	  (lambda () (blockview-focus (current-blocks-view)))
-	  (lambda () (ui-set-state edit-settings 'enabled))
-	  (lambda () (emulator 'start))))
+    (make-hooks
+     `(set-current-module
+       . ,(lambda ()
+	    (set-state! 'module-widget (make-module-widget main-frame))))
+     `(enable-play-buttons
+       . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
+     `(init-instances-record . ,init-instances-record!)
+     `(show-module . ,show-module)
+     `(reset-status . ,reset-status-text!)
+     `(update-window-title . ,update-window-title!)
+     `(focus-blocks . ,(lambda () (blockview-focus (current-blocks-view))))
+     `(enable-edit-settings
+       . ,(lambda () (ui-set-state edit-settings 'enabled)))
+     `(start-emulator . ,(lambda () (emulator 'start)))))
 
   ;; TODO logging
   ;;; Prompt the user to load an MDAL module file.
@@ -102,7 +192,7 @@
 		       '("-w" "-skip_gameinfo" "-autoboot_script"
 			 "mame-bridge/mame-startup.lua"
 			 "-autoboot_delay" "0" "spectrum")))
-	  (execute-hooks after-load-file-hooks)))))
+	  (after-load-file-hooks 'execute)))))
 
   (define (create-new-module mdconf-id)
     (close-file)
@@ -115,7 +205,7 @@
     (set-state! 'emulator
 		(platform->emulator
 		 (target-platform-id (config-target (current-config)))))
-    (execute-hooks after-load-file-hooks))
+    (after-load-file-hooks 'execute))
 
   ;; TODO abort when user aborts closing of current workfile
   ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
@@ -141,16 +231,18 @@
 			     'item ((d 'ref 'config-selector) 'focus)))))))
 
   (define on-save-file-hooks
-    (list (lambda () (mdmod->file (current-mod) (state 'current-file)))
-	  (lambda () (set-state! 'modified #f))
-	  update-window-title!))
+    (make-hooks
+     `(write-file
+       . ,(lambda () (mdmod->file (current-mod) (state 'current-file))))
+     `(clear-modified-flag . ,(lambda () (set-state! 'modified #f)))
+     `(update-window-title . ,update-window-title!)))
 
   ;;; Save the current MDAL module. If no file name has been specified yet,
   ;;; promt the user for one.
   (define (save-file)
     (when (state 'modified)
       (if (state 'current-file)
-	  (execute-hooks on-save-file-hooks)
+	  (on-save-file-hooks 'execute)
 	  (save-file-as))))
 
   ;;; Save the current MDAL module under a new, different name.
@@ -160,7 +252,7 @@
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
 	(set-state! 'current-file filename)
-	(execute-hooks on-save-file-hooks))))
+	(on-save-file-hooks 'execute))))
 
   ;;; Launch the online help in the user's default system web browser.
   (define (launch-help)
@@ -297,41 +389,33 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Hooks
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Execute the given list of HOOKS. Each hook shall be a thunk, ie. a
-  ;;; procedure that takes no arguments.
-  (define (execute-hooks hooks)
-    (for-each (cut <>) hooks))
-
-  ;; TODO: add-hooks procedure
-
-
-  ;; ---------------------------------------------------------------------------
   ;;; ## Startup Hooks
   ;; ---------------------------------------------------------------------------
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
-    (list load-config
-	  btdb-init!
-	  update-ttk-style
-	  update-global-key-bindings!
-	  update-window-title!
-	  init-main-menu
-	  init-edit-settings
-	  (lambda ()
+    (make-hooks
+     `(load-config . ,load-config)
+     `(init-db . ,btdb-init!)
+     `(update-style . ,update-ttk-style)
+     `(update-global-key-bindings . ,update-global-key-bindings!)
+     `(update-window-title . ,update-window-title!)
+     `(init-main-menu . ,init-main-menu)
+     `(init-edit-settings . ,init-edit-settings)
+     `(maybe-show-menu
+       . ,(lambda ()
 	    (when (settings 'show-menu)
-	      (tk 'configure 'menu: (menu-widget (state 'menu)))))
-	  init-top-level-layout
-	  update-toolbar-bindings!
-	  (lambda ()
+	      (tk 'configure 'menu: (menu-widget (state 'menu))))))
+     `(init-top-level-layout . ,init-top-level-layout)
+     `(update-toolbar-bindings . ,update-toolbar-bindings!)
+     `(maybe-show-toolbar
+       . ,(lambda ()
 	    (when (app-settings-show-toolbar *bintracker-settings*)
-	      (ui-show main-toolbar)))
-	  (lambda () (set-schemta-include-path! "libmdal/targets/"))
-	  (lambda () (ui-show console))
-	  init-status-bar
-	  disable-keyboard-traversal))
+	      (ui-show main-toolbar))))
+     `(set-schemta-include-path
+       . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
+     `(show-console . ,(lambda () (ui-show console)))
+     `(init-status-bar . ,init-status-bar)
+     `(disable-keyboard-traversal . ,disable-keyboard-traversal)))
 
   ) ;; end module bintracker-core

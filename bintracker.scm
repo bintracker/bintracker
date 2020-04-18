@@ -39,7 +39,7 @@
 (import bintracker-core)
 (eval '(import bintracker-core))
 
-(execute-hooks on-startup-hooks)
+(on-startup-hooks 'execute)
 
 ;; ---------------------------------------------------------------------------
 ;; ## Main Loop
