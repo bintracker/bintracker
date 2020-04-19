@@ -470,8 +470,6 @@
 				 (not (eqv? before (car child-state)))))
 		(state (slot-value buf 'state)))
 	    (map (lambda (child-state idx)
-		   (display child-state)
-		   (newline)
 		   (cons (car child-state)
 			 (cons idx (cddr child-state))))
 		 (append (take-while before-child? state)
@@ -1691,9 +1689,6 @@
      subgroups))
 
   (define-method (initialize-instance after: (buf <ui-subgroups>))
-    (display "in make ui-subgroups, group id: ")
-    (display (slot-value buf 'group-id))
-    (newline)
     (set! (slot-value buf 'tabs)
       ((slot-value buf 'content-box)
        'create-widget 'notebook style: 'BT.TNotebook))
@@ -1703,9 +1698,6 @@
 	   (config-get-subnode-type-ids (slot-value buf 'group-id)
 					(current-config)
 					'group)))
-    (display "subgroup ids: ")
-    (display (slot-value buf 'subgroups))
-    (newline)
     (for-each (lambda (subgroup)
 		((slot-value buf 'tabs) 'add (ui-box (cdr subgroup))
 		 text: (symbol->string (car subgroup))))
@@ -1719,9 +1711,6 @@
 
   (define-method (initialize-instance after: (buf <ui-group>))
     (let ((group-id (slot-value buf 'group-id)))
-      (display "in make ui-group, group-id: ")
-      (display group-id)
-      (newline)
       (unless (null? (config-get-subnode-type-ids
 		      group-id (current-config) 'field))
 	(multibuffer-add
@@ -1741,19 +1730,13 @@
 			       (cdr (config-get-node-ancestors-ids
 				     group-id
 				     (config-itree (current-config))))))))))))
-      (display "done fields")
-      (newline)
       (unless (null? (config-get-subnode-type-ids
 		      group-id (current-config) 'block))
 	(multibuffer-add buf `(blocks #t 2 ,<ui-blocks> group-id ,group-id)))
-      (display "done blocks")
-      (newline)
       (unless (null? (config-get-subnode-type-ids
 		      group-id (current-config) 'group))
         (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
-					 group-id ,group-id)))
-      (display "done subgroups")
-      (newline)))
+					 group-id ,group-id)))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Dialogues
