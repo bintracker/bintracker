@@ -1674,16 +1674,86 @@
   ;;; ```
   ;;;
   ;;; where ID is the identifier of the group in `(current-module)` to display.
-  (define-class <ui-group-blocks> (<ui-multibuffer>)
+  (define-class <ui-blocks> (<ui-multibuffer>)
     ((orient 'horizontal)
      (group-id (error "Cannot construct <ui-group-blocks> without group-id."))))
 
-  (define-method (initialize-instance after: (buf <ui-group-blocks>))
+  (define-method (initialize-instance after: (buf <ui-blocks>))
     (multibuffer-add buf `(blocks #t 2 ,<ui-block-view> group-id
 				  ,(slot-value buf 'group-id)))
     (multibuffer-add buf `(order #t 1 ,<ui-order-view> group-id
 				 ,(slot-value buf 'group-id))))
 
+  (define-class <ui-subgroups> (<ui-buffer>)
+    ((packing-args '(expand: 1 fill: both))
+     (group-id (error "Cannot construct <ui-subgroups> without a group-id."))
+     tabs
+     subgroups))
+
+  (define-method (initialize-instance after: (buf <ui-subgroups>))
+    (display "in make ui-subgroups, group id: ")
+    (display (slot-value buf 'group-id))
+    (newline)
+    (set! (slot-value buf 'tabs)
+      ((slot-value buf 'content-box)
+       'create-widget 'notebook style: 'BT.TNotebook))
+    (set! (slot-value buf 'subgroups)
+      (map (lambda (id)
+	     (cons id (make <ui-group> 'group-id id)))
+	   (config-get-subnode-type-ids (slot-value buf 'group-id)
+					(current-config)
+					'group)))
+    (display "subgroup ids: ")
+    (display (slot-value buf 'subgroups))
+    (newline)
+    (for-each (lambda (subgroup)
+		((slot-value buf 'tabs) 'add (ui-box (cdr subgroup))
+		 text: (symbol->string (car subgroup))))
+	      (slot-value buf 'subgroups)))
+
+  (define-method (ui-show before: (buf <ui-subgroups>))
+    (tk/pack (slot-value buf 'tabs) expand: 1 fill: 'both))
+
+  (define-class <ui-group> (<ui-multibuffer>)
+    (group-id))
+
+  (define-method (initialize-instance after: (buf <ui-group>))
+    (let ((group-id (slot-value buf 'group-id)))
+      (display "in make ui-group, group-id: ")
+      (display group-id)
+      (newline)
+      (unless (null? (config-get-subnode-type-ids
+		      group-id (current-config) 'field))
+	(multibuffer-add
+	 buf
+	 `(fields #t 1 ,<ui-group-fields> group-id ,group-id
+		  parent-instance-path
+		  ;; TODO handle groups with multiple instances
+		  ,(if (eqv? group-id 'GLOBAL)
+		       "0/"
+		       (string-append
+			"0/"
+			(string-concatenate
+			 (map (lambda (id)
+				(string-append (symbol->string id)
+					       "/0/"))
+			      (reverse
+			       (cdr (config-get-node-ancestors-ids
+				     group-id
+				     (config-itree (current-config))))))))))))
+      (display "done fields")
+      (newline)
+      (unless (null? (config-get-subnode-type-ids
+		      group-id (current-config) 'block))
+	(multibuffer-add buf `(blocks #t 2 ,<ui-blocks> group-id ,group-id)))
+      (display "done blocks")
+      (newline)
+      (unless (null? (config-get-subnode-type-ids
+		      group-id (current-config) 'group))
+        (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
+					 group-id ,group-id)))
+      (display "done subgroups")
+      (newline)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Dialogues
