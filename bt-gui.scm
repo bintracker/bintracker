@@ -811,7 +811,7 @@
 	((slot-value buf 'content-frame)
 	 'create-widget 'scrollbar orient: 'vertical
 	 command: (lambda args
-		    (apply (slot-value buf 'content-frame) (cons 'yview args))
+		    (apply (slot-value buf 'block-content) (cons 'yview args))
 		    (apply (slot-value buf 'rownums) (cons 'yview args)))))))
 
   (define-method (ui-show before: (buf <ui-basic-block-view>))
