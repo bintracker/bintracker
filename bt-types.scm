@@ -19,6 +19,7 @@
 
   ;;; Record type that wraps application state variables
   (defstruct app-state
+    ui
     ((edit-step 1) : fixnum)
     ((base-octave 4) : fixnum)
     ((major-row-highlight 2) : fixnum)

@@ -557,6 +557,7 @@
   (define-method (ui-expand primary: (buf <ui-buffer>))
     ((slot-value buf 'expand-proc) buf))
 
+  ;; TODO: Allow adding buttons.
   ;;; A welcome screen with two buttons for creating and opening an MDAL module,
   ;;; respectively. Create instances with `(make <ui-welcome-buffer>)`.
   (define-class <ui-welcome-buffer> (<ui-element>)
@@ -564,10 +565,15 @@
 
   (define-method (initialize-instance after: (buf <ui-welcome-buffer>))
     (let ((box (ui-box buf)))
-      (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker.")
+      (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker."
+		    style: 'BT.TLabel)
 	       padx: 20 pady: 20)
-      (tk/pack (box 'create-widget 'button text: "Create new module..."))
-      (tk/pack (box 'create-widget 'button text: "Open existing module..."))))
+      (for-each (lambda (text)
+		  (tk/pack (box 'create-widget 'button text: text)
+			   pady: 4))
+		'("Create new module (Ctrl-N)"
+		  "Open existing module (Ctrl-O)"
+		  "Help (F1)"))))
 
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
@@ -2020,11 +2026,11 @@
 
   ;;; The core widgets that make up Bintracker's GUI.
 
-  (define main-panes (tk 'create-widget 'panedwindow))
+  ;; (define main-panes (tk 'create-widget 'panedwindow))
 
-  (define main-frame (main-panes 'create-widget 'frame))
+  ;; (define main-frame (main-panes 'create-widget 'frame))
 
-  (define console-frame (main-panes 'create-widget 'frame))
+  ;; (define console-frame (main-panes 'create-widget 'frame))
 
   (define status-frame (tk 'create-widget 'frame))
 
@@ -2039,7 +2045,8 @@
       	      ,(lambda () (blockview-unfocus (current-blocks-view))))
       (order ,(lambda () (blockview-focus (current-order-view)))
       	     ,(lambda () (blockview-unfocus (current-order-view))))
-      (console ,(lambda () (ui-focus console))
+      (console ,(lambda () '(;; TODO ui-focus console
+			     ))
 	       ,(lambda () '()))))
 
   ;;; Switch keyboard focus to another UI zone. `new-zone` can be either an
@@ -2081,6 +2088,7 @@
   ;; ---------------------------------------------------------------------------
 
   ;; TODO this should move to bintracker-core.
+  ;; ed: No, to bintracker-state.
 
   (define main-toolbar
     (make <ui-toolbar> 'setup
@@ -2103,15 +2111,15 @@
       		  (show-settings "Settings..." "settings.png")))))
 
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Console
-  ;; ---------------------------------------------------------------------------
+  ;; ;; ---------------------------------------------------------------------------
+  ;; ;;; ## Console
+  ;; ;; ---------------------------------------------------------------------------
 
-  (define console
-    (make <ui-repl>
-      'setup (string-append "Bintracker " *bintracker-version*
-			    "\n(c) 2019-2020 utz/irrlicht project\n")
-      'ui-zone 'console))
+  ;; (define console
+  ;;   (make <ui-repl>
+  ;;     'setup (string-append "Bintracker " *bintracker-version*
+  ;; 			    "\n(c) 2019-2020 utz/irrlicht project\n")
+  ;;     'ui-zone 'console))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Status Bar

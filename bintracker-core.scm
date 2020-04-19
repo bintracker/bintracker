@@ -135,8 +135,8 @@
 
   (define on-close-file-hooks
     (make-hooks
-     `(destroy-group-widget
-       . ,(lambda () (destroy-group-widget (state 'module-widget))))
+     ;; `(destroy-group-widget
+     ;;   . ,(lambda () (destroy-group-widget (state 'module-widget))))
      `(disable-play-buttons
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'disabled)))
      `(disable-journal-buttons
@@ -159,16 +159,21 @@
 
   (define after-load-file-hooks
     (make-hooks
-     `(set-current-module
-       . ,(lambda ()
-	    (set-state! 'module-widget (make-module-widget main-frame))))
+     ;; `(set-current-module
+     ;;   . ,(lambda ()
+     ;; 	    (set-state! 'module-widget (make-module-widget main-frame))))
      `(enable-play-buttons
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
      `(init-instances-record . ,init-instances-record!)
-     `(show-module . ,show-module)
+     ;; `(show-module . ,show-module)
+     `(show-module
+       . ,(lambda ()
+	    (multibuffer-add (ui)
+			     `(module-view #t 5 ,<ui-group> group-id GLOBAL)
+			     before: 'repl)))
      `(reset-status . ,reset-status-text!)
      `(update-window-title . ,update-window-title!)
-     `(focus-blocks . ,(lambda () (blockview-focus (current-blocks-view))))
+     ;; `(focus-blocks . ,(lambda () (blockview-focus (current-blocks-view))))
      `(enable-edit-settings
        . ,(lambda () (ui-set-state edit-settings 'enabled)))
      `(start-emulator . ,(lambda () (emulator 'start)))))
@@ -182,9 +187,8 @@
       (unless (string-null? filename)
 	(handle-exceptions
 	    exn
-	    (repl-insert console
-			 (string-append "\nError: " (->string exn)
-		   			"\n" (message exn) "\n"))
+	    (repl-insert (repl) (string-append "\nError: " (->string exn)
+		   			       "\n" (message exn) "\n"))
 	  (set-current-mod! filename)
 	  (set-state! 'current-file filename)
 	  (set-state! 'emulator
@@ -360,9 +364,21 @@
       (tk/pack (tk 'create-widget 'separator orient: 'horizontal)
       	       expand: 0 fill: 'x)
       (ui-show edit-settings)
-      (tk/pack main-panes expand: 1 fill: 'both)
-      (main-panes 'add main-frame weight: 5)
-      (main-panes 'add (ui-box console) weight: 2)))
+      (set-state! 'ui
+		  (make <ui-multibuffer>
+		    'setup `((welcome #t 5 ,<ui-welcome-buffer>)
+			     (repl #t 2 ,<ui-repl> setup
+				   ,(string-append
+				     "Bintracker " *bintracker-version*
+				     "\n(c) 2019-2020 utz/irrlicht project\n"
+				     "For help, type \"(info)\" at the prompt."
+				     "\n")
+				   ui-zone console))))
+      (ui-show (ui))
+      ;; (tk/pack main-panes expand: 1 fill: 'both)
+      ;; (main-panes 'add main-frame weight: 5)
+      ;; (main-panes 'add (ui-box console) weight: 2)
+      ))
 
 
   ;; ---------------------------------------------------------------------------
@@ -415,7 +431,7 @@
 	      (ui-show main-toolbar))))
      `(set-schemta-include-path
        . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
-     `(show-console . ,(lambda () (ui-show console)))
+     ;; `(show-console . ,(lambda () (ui-show console)))
      `(init-status-bar . ,init-status-bar)
      `(disable-keyboard-traversal . ,disable-keyboard-traversal)))
 
