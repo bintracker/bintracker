@@ -135,15 +135,15 @@
 
   (define on-close-file-hooks
     (make-hooks
-     ;; `(destroy-group-widget
-     ;;   . ,(lambda () (destroy-group-widget (state 'module-widget))))
+     `(delete-module-view . ,(lambda () (multibuffer-delete (ui) 'module-view)))
+     `(show-welcome-buffer . ,(lambda () (multibuffer-show (ui) 'welcome)))
      `(disable-play-buttons
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'disabled)))
      `(disable-journal-buttons
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'journal) 'disabled)))
      `(quit-emulator
        . ,(lambda () (emulator 'quit)))
-     `(reset-state . ,reset-state!)
+     `(reset-state . ,state-reset-after-file-close)
      `(update-window-title . ,update-window-title!)
      `(reset-status-text . ,reset-status-text!)
      `(disable-edit-settings

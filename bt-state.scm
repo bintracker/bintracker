@@ -27,17 +27,15 @@
 	 *bintracker-state*)
 	*bintracker-state*))
 
-  ;;; Reset `*bintracker-state*` to the default state. This procedure must be
-  ;;; called on unloading (closing) the currently loaded module.
-  (define (reset-state!)
-    (let ((menu (state 'menu)))
-      (set! *bintracker-state*
-	(make-app-state menu: menu edit-step: (settings 'default-edit-step)
-			base-octave: (settings 'default-base-octave)
-			major-row-highlight:
-			(settings 'default-major-row-highlight)
-			minor-row-highlight:
-			(settings 'default-minor-row-highlight)))))
+  ;;; Clean up global state after closing a file.
+  (define (state-reset-after-file-close)
+    (set-state! 'current-mdmod #f)
+    (set-state! 'current-file #f)
+    (set-state! 'current-instances '())
+    (set-state! 'modified #f)
+    (set-state! 'emulator #f)
+    (set-state! 'journal (make-app-journal))
+    (set-state! 'active-md-command-info ""))
 
   ;;; Accessor for the main application's GUI widget structure, which is a
   ;;; `<ui-metabuffer>` instance.
@@ -339,8 +337,7 @@
   ;;;
   ;;; `(FC 'remove ID)`
   ;;;
-  ;;; Remove the focus control entry ID from the ring. It is an error to remove
-  ;;; a control entry for a buffer that is currently focussed.
+  ;;; Remove the focus control entry ID from the ring.
   ;;;
   ;;; `(FC 'next)`
   ;;;
@@ -374,6 +371,8 @@
   ;;; element.
   (define (make-focus-control #!optional (zones '()))
     (let* ((zones zones)
+	   ;; TODO calling suspend/resume regardless of whether the zone has
+	   ;; focus or not is inefficient as it leads to many redundant calls
 	   (suspend (lambda ()
 			      (unless (null? zones) ((caddar zones)))))
 	   (resume (lambda ()
@@ -417,7 +416,10 @@
 			   (list (take (cdr args) 3))
 			   (drop zones after-id-index)))
 		 (append zones (list (take (cdr args) 3))))))
-	  ((remove) (alist-delete! (cadr args) zones))
+	  ((remove)
+	   (suspend)
+	   (set! zones (alist-delete (cadr args) zones))
+	   (resume))
 	  ((which) (car zones))
 	  ((list) zones)
 	  (else (error (string-append "Unsupported ui-zones action"

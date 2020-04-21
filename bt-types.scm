@@ -24,11 +24,10 @@
     ((base-octave 4) : fixnum)
     ((major-row-highlight 2) : fixnum)
     ((minor-row-highlight 4) : fixnum)
-    ((current-ui-zone 1) : fixnum)
     menu current-mdmod
     (current-file : (or boolean string))
-    module-widget selection
     ((current-instances '()) : list)
+    selection
     ((active-md-command-info "") : string)
     (modified : boolean)
     ((font-height-cached 10) : fixnum)

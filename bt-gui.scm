@@ -727,6 +727,14 @@
   (define-method (ui-hide primary: (elem <ui-element>))
     (tk/pack 'forget (ui-box elem)))
 
+  ;;; Remove the GUI element ELEM from the display and destroy it. Destroying an
+  ;;; element will recursively call `ui-destroy` on ELEM's child elements,
+  ;;; before destroying its associated Tk widgets. You cannot resurrect ELEM
+  ;;; after calling this method.
+  (define-method (ui-destroy primary: (elem <ui-element>))
+    (for-each ui-destroy (map cdr (ui-children elem)))
+    (tk/destroy (ui-box elem)))
+
   ;;; Returns ELEMs child UI element with the identifier CHILD-ELEMENT. The
   ;;; requested element may be a direct descendant of ELEM, or an indirect
   ;;; descendant in the tree of UI elements represented by ELEM.
@@ -1111,9 +1119,9 @@
   (define-method (multibuffer-delete primary: (buf <ui-multibuffer>)
 				     child)
     (when (alist-ref child (ui-children buf))
-      (when (cadr (alist-ref child (slot-value buf 'state)))
-	(multibuffer-hide buf child))
-      (tk/destroy (ui-box (alist-ref child (ui-children))))
+      ;; (when (cadr (alist-ref child (slot-value buf 'state)))
+      ;; 	(multibuffer-hide buf child))
+      (ui-destroy (alist-ref child (ui-children buf)))
       (set! (ui-children buf)
 	(alist-delete child (ui-children buf)))
       (set! (slot-value buf 'state)
@@ -1227,11 +1235,9 @@
       (focus-controller 'add (slot-value buf 'ui-zone)
        (lambda () (ui-focus buf))
        (lambda () #t))
-      (when (slot-value buf 'ui-zone)
-	(tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
-		  (lambda ()
-		    ;; (switch-ui-zone-focus (slot-value buf 'ui-zone))
-		    (focus-controller 'set (slot-value buf 'ui-zone)))))))
+      (tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
+		(lambda ()
+		  (focus-controller 'set (slot-value buf 'ui-zone))))))
 
   ;; TODO this becomes a before: method once things are sorted out
   (define-method (ui-show primary: (buf <ui-repl>))
@@ -1259,6 +1265,9 @@
 	(bind-key (slot-value buf 'repl) 'console 'clear-console
 		  (lambda () (repl-clear buf)))
 	(set! (slot-value buf 'initialized) #t))))
+
+  (define-method (ui-destroy before: (buf <ui-repl>))
+    ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   ;;; Insert STR at the end of the prompt of the `<ui-repl>` instance BUF.
   (define-method (repl-insert primary: (buf <ui-repl>) str)
@@ -1403,6 +1412,9 @@
        (lambda () (ui-focus (cdar (ui-children buf))))
        (lambda () (ui-unfocus (cdar (ui-children buf)))))))
 
+  (define-method (ui-destroy before: (buf <ui-group-fields>))
+    ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
+
   ;; TODO expand: 1 fill: both?
   ;; bt-blockview -> <ui-basic-block-view>
   ;; packframe       content-frame
@@ -1488,6 +1500,9 @@
 	(block-content 'mark 'set 'insert "1.0")
 	(ui-blockview-bind-events buf)
 	(ui-blockview-update buf))))
+
+  (define-method (ui-destroy before: (buf <ui-basic-block-view>))
+    ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   ;;; Generic procedure for mapping tags to the field columns of a textgrid.
   ;;; This can be used either on `block-header`, or on `block-content` slots.
@@ -2362,6 +2377,9 @@
 
   (define-method (ui-show before: (buf <ui-subgroups>))
     (tk/pack (slot-value buf 'tabs) expand: 1 fill: 'both))
+
+  (define-method (ui-destroy before: (buf <ui-subgroups>))
+    (for-each ui-destroy (map cdr (slot-value buf 'subgroups))))
 
   (define-class <ui-group> (<ui-multibuffer>)
     (group-id))
