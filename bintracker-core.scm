@@ -289,17 +289,15 @@
 
   (define (play-pattern)
     (let ((origin (config-default-origin (current-config))))
-      '()
-      ;; (emulator 'run origin
-      ;; 		(list->string (map integer->char
-      ;; 				   (mod->bin (derive-single-pattern-mdmod
-      ;; 					      (current-mod)
-      ;; 					      (blockview-group-id
-      ;; 					       (current-blocks-view))
-      ;; 					      (blockview-get-current-order-pos
-      ;; 					       (current-blocks-view)))
-      ;; 					     origin))))
-      ))
+      (emulator 'run origin
+      		(list->string
+		 (map integer->char
+      		      (mod->bin (derive-single-pattern-mdmod
+      				 (current-mod)
+      				 (slot-value (current-blocks-view) 'group-id)
+      				 (ui-blockview-get-current-order-pos
+      				  (current-blocks-view)))
+      				origin))))))
 
   (define (stop-playback)
     (emulator 'pause))
@@ -354,18 +352,14 @@
 			       default-major-row-highlight major-row-highlight
 			       1 64
 			       ,(lambda ()
-				  #t
-				  ;; (blockview-update-row-highlights
-				  ;;  (current-blocks-view))
-				  ))
+				  (ui-blockview-update-row-highlights
+				   (current-blocks-view))))
 	      (minor-highlight "/" "Set number of steps per measure"
 			       default-minor-row-highlight minor-row-highlight
 			       2 32
 			       ,(lambda ()
-				  #t
-				  ;; (blockview-update-row-highlights
-				  ;;  (current-blocks-view))
-				  ))))))
+				  (ui-blockview-update-row-highlights
+				   (current-blocks-view))))))))
 
   (define (init-top-level-layout)
     (begin

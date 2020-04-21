@@ -2395,6 +2395,48 @@
         (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
 					 group-id ,group-id)))))
 
+  (define-method (ui-ref-by-zone-id primary: (buf <ui-group>)
+				    zone-id)
+    (let* ((group-blocks (alist-ref 'blocks (ui-children buf)))
+	   (ref-block (and group-blocks
+			   (find (lambda (child)
+				   (eqv? zone-id (slot-value (cdr child)
+							     'ui-zone)))
+				 (ui-children group-blocks)))))
+      (or (and ref-block (cdr ref-block))
+	  ;; TODO Awful contraption that needlessly runs `ui-ref-by-zone` twice,
+	  ;; but can't wrap my head around how to do it otherwise atm
+	  (and-let* ((subgroups (alist-ref 'subgroups (ui-children buf)))
+		     (target (find (lambda (subgroup)
+				     (ui-ref-by-zone-id (cdr subgroup) zone-id))
+				   (slot-value subgroups 'subgroups))))
+	    (ui-ref-by-zone-id (cdr target) zone-id)))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Auxiliary module UI accessor procedures
+  ;; ---------------------------------------------------------------------------
+
+  ;;; These accessors use `(state 'ui) to determine which part of a module
+  ;;; interface the user is currently interacting with. This is inevitably a
+  ;;; brittle solution, so be careful when using these.
+
+  (define (current-module-view)
+    (and (ui) (ui-ref (ui) 'module-view)))
+
+  ;; TODO this is very brittle.
+  (define (current-blocks-view)
+    (and-let* ((mv (current-module-view))
+	       (zone-id (find (cute symbol-contains <> "block-view")
+			      (map car (focus 'list)))))
+      (ui-ref-by-zone-id mv zone-id)))
+
+  ;; TODO this is very brittle.
+  (define (current-order-view)
+    (and-let* ((mv (current-module-view))
+	       (zone-id (find (cute symbol-contains <> "order-view")
+			      (map car (focus 'list)))))
+      (ui-ref-by-zone-id mv zone-id)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Top Level Layout
@@ -2528,8 +2570,8 @@
     (let ((action (pop-undo)))
       (when action
 	(apply-edit! action)
-	;; (blockview-update (current-order-view))
-	;; (blockview-update (current-blocks-view))
+	(ui-blockview-update (current-order-view))
+	(ui-blockview-update (current-blocks-view))
 	(focus 'resume)
 	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'redo)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
@@ -2540,8 +2582,8 @@
     (let ((action (pop-redo)))
       (when action
 	(apply-edit! action)
-	;; (blockview-update (current-order-view))
-	;; (blockview-update (current-blocks-view))
+	(ui-blockview-update (current-order-view))
+	(ui-blockview-update (current-blocks-view))
 	(focus 'resume)
 	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))

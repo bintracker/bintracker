@@ -47,7 +47,7 @@
   ;;; Accessor for the default repl buffer widget which is an instance of
   ;;; `<ui-repl>`.
   (define (repl)
-    (and (state 'ui)
+    (and (ui)
 	 (alist-ref 'repl (slot-value (ui) 'children))))
 
   ;;; Send a command to the currently running emulator.
