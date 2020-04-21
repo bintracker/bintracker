@@ -433,13 +433,16 @@
 			       (list-required-symbols parsed-operands)
 			       composition)))))
 
+  ;; FIXME somewhat incorrectly recognizing quoted forms as atoms, but it's
+  ;; convenient...
   (define a-atom
     (as-string
      (sequence
        (any-of a-quoted-string
 	       (one-or-more
 		(in (char-set-union char-set:letter+digit
-				    (string->char-set "<>#\\+-:/'@`,%=?\"")))))
+				    (string->char-set
+				     ".<>#\\+-:/'@`,%=?!\"")))))
        (zero-or-more (in char-set:whitespace)))))
 
   (define a-toplevel-atom
@@ -448,7 +451,8 @@
        (any-of a-quoted-string
 	       (one-or-more
 		(in (char-set-union char-set:letter+digit
-				    (string->char-set "<>#\\+-:/'@`,%=?\"")))))
+				    (string->char-set
+				     "<>#\\+-:/'@`,%=?!\"")))))
        (zero-or-more (in horizontal-whitespace)))))
 
   (define a-cons
