@@ -63,12 +63,608 @@
 
 
   ;; ---------------------------------------------------------------------------
+  ;;; ## Dialogues
+  ;; ---------------------------------------------------------------------------
+
+  ;;; This section provides abstractions over Tk dialogues and pop-ups. This
+  ;;; includes both native Tk widgets and Bintracker-specific metawidgets.
+  ;;; `tk/safe-dialogue` and `custom-dialog` are potentially the most useful
+  ;;; entry points for creating native resp. custom dialogues from user code,
+  ;;; eg. when calling from a plugin.
+
+  ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
+  ;;; tk/get-save-file that block the main application window  while the pop-up
+  ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
+  ;;; once they lose focus. tk-with-lock does not help in these cases.
+  (define (tk/safe-dialogue type . args)
+    (tk-eval "tk busy .")
+    (tk/update)
+    (let ((result (apply type args)))
+      (tk-eval "tk busy forget .")
+      result))
+
+  ;;; Crash-safe variant of `tk/message-box`.
+  (define (tk/message-box* . args)
+    (apply tk/safe-dialogue (cons tk/message-box args)))
+
+  ;;; Crash-safe variant of `tk/get-open-file`.
+  (define (tk/get-open-file* . args)
+    (apply tk/safe-dialogue (cons tk/get-open-file args)))
+
+  ;;; Crash-safe variant of `tk/get-save-file`.
+  (define (tk/get-save-file* . args)
+    (apply tk/safe-dialogue (cons tk/get-save-file args)))
+
+  ;;; Display the "About Bintracker" message.
+  (define (about-message)
+    (tk/message-box* title: "About"
+		     message: (string-append "Bintracker\nversion "
+					     *bintracker-version*)
+		     detail: "Dedicated to Ján Deák"
+		     type: 'ok))
+
+  ;;; Display a message box that asks the user whether to save unsaved changes
+  ;;; before exiting or closing. EXIT-OR-CLOSING should be the string
+  ;;; `"exit"` or `"closing"`, respectively.
+  (define (exit-with-unsaved-changes-dialog exit-or-closing)
+    (tk/message-box* title: (string-append "Save before "
+					   exit-or-closing "?")
+		     default: 'yes
+		     icon: 'warning
+		     parent: tk
+		     message: (string-append "There are unsaved changes. "
+					     "Save before " exit-or-closing
+					     "?")
+		     type: 'yesnocancel))
+
+  ;; TODO instead of destroying, should we maybe just tk/forget?
+  ;;; Create a custom dialogue user dialogue popup. The dialogue widget sets up
+  ;;; a default widget layout with `Cancel` and `Confirm` buttons and
+  ;;; corresponding key handlers for `<Escape>` and `<Return>`.
+  ;;;
+  ;;; Returns a procedure *P*, which can be called as follows:
+  ;;;
+  ;;; `(P 'show)`
+  ;;;
+  ;;; Display the dialogue widget. Call this procedure **before** you add any
+  ;;; user-defined widgets, bindings, procedures, and finalizers.
+  ;;;
+  ;;; `(P 'add 'widget ID WIDGET-SPECIFICATION)`
+  ;;;
+  ;;; Add a widget named ID, where WIDGET-SPECIFICATION is the list of
+  ;;; widget arguments that will be passed to Tk as the remaining arguments of
+  ;;; a call to `(parent 'create-widget ...)`.
+  ;;;
+  ;;; `(P 'add 'binding EVENT PROC)`
+  ;;;
+  ;;; Bind PROC to the Tk event sequence specifier EVENT.
+  ;;;
+  ;;; `(P 'add 'procedure ID PROC)`
+  ;;;
+  ;;; Add a custom procedure ;; TODO redundant?
+  ;;;
+  ;;; `(P 'add 'finalizer PROC)`
+  ;;;
+  ;;; Add PROC to the list of finalizers that will run on a successful exit from
+  ;;; the dialogue.
+  ;;;
+  ;;; `(P 'ref ID)`
+  ;;; Returns the user-defined widget or procedure named ID. Use this to
+  ;;; cross-reference elements created with `(c 'add [widget|procedure])` within
+  ;;; user code.
+  ;;;
+  ;;; `(P 'destroy)`
+  ;;;
+  ;;; Executes any user defined finalizers, then destroys the dialogue window.
+  ;;; You normally do not need to call this explicitly unless you are handling
+  ;;; exceptions.
+  (define (make-dialogue)
+    (let* ((tl #f)
+	   (widgets '())
+	   (procedures '())
+	   (get-ref (lambda (id)
+		      (let ((ref (alist-ref id (append widgets procedures))))
+			(and ref (car ref)))))
+	   (extra-finalizers '())
+	   (finalize (lambda (success)
+		       (when success
+			 (for-each (lambda (x) (x)) extra-finalizers))
+		       (tk/destroy tl))))
+      (lambda args
+	(case (car args)
+	  ((show)
+	   (unless tl
+	     (set! tl (tk 'create-widget 'toplevel))
+	     ;; TODO appears to have no effect
+	     ;; (tk/wm 'attributes tl type: 'dialog)
+	     (set! widgets `((content ,(tl 'create-widget 'frame))
+			     (footer ,(tl 'create-widget 'frame))))
+	     (set! widgets
+	       (append widgets
+		       `((confirm ,((get-ref 'footer) 'create-widget
+				    'button text: "Confirm"
+				    command: (lambda () (finalize #t))))
+			 (cancel ,((get-ref 'footer) 'create-widget
+				   'button text: "Cancel"
+				   command: (lambda () (finalize #f)))))))
+	     (tk/bind tl '<Escape> (lambda () (finalize #f)))
+	     (tk/bind tl '<Return> (lambda () (finalize #t)))
+	     (tk/pack (get-ref 'confirm) side: 'right)
+	     (tk/pack (get-ref 'cancel) side: 'right)
+	     (tk/pack (get-ref 'content) side: 'top)
+	     (tk/pack (get-ref 'footer) side: 'top)))
+	  ((add)
+	   (case (cadr args)
+	     ((binding) (apply tk/bind (cons tl (cddr args))))
+	     ((finalizer) (set! extra-finalizers
+			    (cons (caddr args) extra-finalizers)))
+	     ((widget) (let ((user-widget (apply (get-ref 'content)
+						 (cons 'create-widget
+						       (cadddr args)))))
+			 (set! widgets (cons (list (caddr args) user-widget)
+					     widgets))
+			 (tk/pack user-widget side: 'top)))
+	     ((procedure)
+	      (set! procedures (cons (caddr args) procedures)))))
+	  ((ref) (get-ref (cadr args)))
+	  ((destroy)
+	   (when tl
+	     (finalize #f)
+	     (set! tl #f)))
+	  (else (warning (string-append "Error: Unsupported dialog action"
+					(->string args))))))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Widget Style
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Configure ttk widget styles.
+  (define (update-ttk-style)
+    (let ((user-font-bold (list family: (settings 'font-mono)
+			   size: (settings 'font-size)
+			   weight: 'bold)))
+      (ttk/style 'configure 'BT.TFrame background: (colors 'background))
+
+      (ttk/style 'configure 'BT.TLabel background: (colors 'background)
+		 foreground: (colors 'text)
+		 font: user-font-bold)
+      ;;  Dynamic states: active, disabled, pressed, readonly.
+
+      ;; TButton styling options configurable with ttk::style are:
+
+      ;; -anchor anchor
+      ;; -background color
+      ;; -bordercolor color
+      ;; -compound compound
+      ;; -darkcolor color
+      ;; -foreground color
+      ;; -font font
+      ;; -highlightcolor color
+      ;; -highlightthickness amount
+      ;; -lightcolor color
+      ;; -padding padding
+      ;; -relief relief
+      ;; -shiftrelief amount
+
+      ;;     -shiftrelief specifies how far the button contents are shifted down and right in the pressed state. This action provides additional skeumorphic feedback.
+
+      ;; -width amount
+
+      (ttk/style 'configure 'BT.TButton
+		 ;; highlightthickness: 5
+		 ;; lightcolor: (colors 'text)
+		 ;; darkcolor: (colors 'text)
+		 ;; bordercolor: (colors 'text)
+		 ;; highlightcolor: (colors 'text)
+		 ;; padding: 5
+		 font: user-font-bold
+		 relief: 'flat)
+      ;; (ttk/style 'configure 'BT.Button.border
+      ;; 		 background: (colors 'text)
+      ;; 		 border: 4)
+      (ttk/style 'map 'BT.TButton background:
+		 (list 'disabled (colors 'background)
+		       'active (colors 'row-highlight-major)
+		       '!active (colors 'row-highlight-minor)))
+      (ttk/style 'map 'BT.TButton foreground:
+		 (list 'disabled (colors 'text-inactive)
+		       'active (colors 'text)
+		       '!active (colors 'text)))
+      ;; (ttk/style 'map 'BT.Button.border borderwidth:
+      ;; 		 (list 'disabled 0 'active 2 '!active 1))
+
+      (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
+      (ttk/style 'configure 'BT.TNotebook.Tab
+		 background: (colors 'background)
+		 font: user-font-bold)))
+
+  ;;; Configure the style of the scrollbar widget S to match Bintracker's
+  ;;; style.
+  (define (configure-scrollbar-style s)
+    (s 'configure bd: 0 highlightthickness: 0 relief: 'flat
+       activebackground: (colors 'row-highlight-major)
+       bg: (colors 'row-highlight-minor)
+       troughcolor: (colors 'background)
+       elementborderwidth: 0))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Events
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Disable automatic keyboard traversal. Needed because it messes with key
+  ;;; binding involving Tab.
+  (define (disable-keyboard-traversal)
+    (tk/event 'delete '<<NextWindow>>)
+    (tk/event 'delete '<<PrevWindow>>))
+
+  ;;; Create default virtual events for Bintracker. This procedure only needs
+  ;;; to be called on startup, or after updating key bindings.
+  (define (create-virtual-events)
+    (apply tk/event (append '(add <<BlockEntry>>)
+			    (map car
+				 (app-keys-note-entry (settings 'keymap)))))
+    (tk/event 'add '<<BlockMotion>>
+	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
+    (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
+    (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
+    (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
+    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
+    (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step)))
+
+  ;;; Reverse the evaluation order for tk bindings, so that global bindings are
+  ;;; evaluated before the local bindings of WIDGET. This is necessary to
+  ;;; prevent keypresses that are handled globally being passed through to the
+  ;;; widget.
+  (define (reverse-binding-eval-order widget)
+    (let ((widget-id (widget 'get-id)))
+      (tk-eval (string-append "bindtags " widget-id " {all . "
+			      (tk/winfo 'class widget)
+			      " " widget-id "}"))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Menus
+  ;; ---------------------------------------------------------------------------
+
+  ;; `submenus` shall be an alist, where keys are unique identifiers, and
+  ;; values are the actual tk menus.
+
+  (defstruct menu
+    ((widget (tk 'create-widget 'menu)) : procedure)
+    ((items '()) : list))
+
+  ;;; Destructively add an item to menu-struct `menu` according to
+  ;;; `item-spec`. `item-spec` must be a list containing either
+  ;;; - `('separator)`
+  ;;; - `('command id label underline accelerator command)`
+  ;;; - `('submenu id label underline items-list)`
+  ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
+  ;;; name that will be shown in the menu for this item, and its underline
+  ;;; position; *accelerator* is a string naming a keyboard shortcut for the
+  ;;; item, command is a procedure to be associated with the item, and
+  ;;; items-list is a list of item-specs.
+  (define (add-menu-item! menu item-spec)
+    ;; TODO add at position (insert)
+    (let ((append-to-item-list!
+	   (lambda (id item)
+	     (menu-items-set! menu (append (menu-items menu)
+					   (list id item))))))
+      (case (car item-spec)
+	((command)
+	 (append-to-item-list! (second item-spec) #f)
+	 ((menu-widget menu) 'add 'command label: (third item-spec)
+	  underline: (fourth item-spec)
+	  accelerator: (or (fifth item-spec) "")
+	  command: (sixth item-spec)))
+	((submenu)
+	 (let* ((submenu (construct-menu (fifth item-spec))))
+	   (append-to-item-list! (second item-spec)
+				 submenu)
+	   ((menu-widget menu) 'add 'cascade
+	    menu: (menu-widget submenu)
+	    label: (third item-spec)
+	    underline: (fourth item-spec))))
+	((separator)
+	 (append-to-item-list! 'separator #f)
+	 ((menu-widget menu) 'add 'separator))
+	(else (error (string-append "Unknown menu item type \""
+				    (->string (car item-spec))
+				    "\""))))))
+
+  (define (construct-menu items)
+    (let* ((my-menu (make-menu widget: (tk 'create-widget 'menu))))
+      (for-each (lambda (item)
+		  (add-menu-item! my-menu item))
+		items)
+      my-menu))
+
+
+  ;; ---------------------------------------------------------------------------
   ;;; ## GUI Elements
   ;; ---------------------------------------------------------------------------
 
   ;;; A collection of classes and methods that make up Bintracker's internal
   ;;; GUI structure. All UI classes are derived from `<ui-element>`. The
   ;;; OOP system used is [coops](https://wiki.call-cc.org/eggref/5/coops).
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Auxilliary procedures used by various BT meta-widgets
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Determine how many characters are needed to print values of a given
+  ;;; command.
+  ;; TODO results should be cached
+  (define (value-display-size command-config)
+    (case (command-type command-config)
+      ;; FIXME this is incorrect for negative numbers
+      ((int uint) (inexact->exact
+		   (ceiling
+		    (/ (log (expt 2 (command-bits command-config)))
+		       (log (settings 'number-base))))))
+      ((key ukey) (if (memq 'is-note (command-flags command-config))
+		      3 (apply max
+			       (map (o string-length car)
+				    (hash-table-keys
+				     (command-keys command-config))))))
+      ((reference) (if (>= 16 (settings 'number-base))
+		       2 3))
+      ((trigger) 1)
+      ((string) 32)))
+
+  ;;; Transform an ifield value from MDAL format to tracker display format.
+  ;;; Replaces empty values with dots, changes numbers depending on number
+  ;;; format setting, and turns everything into a string.
+  (define (normalize-field-value val field-id)
+    (let* ((command-config (config-get-inode-source-command
+  			    field-id (current-config)))
+	   (display-size (value-display-size command-config)))
+      (cond ((not val) (list->string (make-list display-size #\.)))
+	    ((null? val) (list->string (make-list display-size #\space)))
+	    (else (case (command-type command-config)
+		    ((int uint reference)
+		     (string-pad (number->string val (settings 'number-base))
+				 display-size #\0))
+		    ((key ukey) (if (memq 'is-note
+					  (command-flags command-config))
+				    (normalize-note-name val)
+				    val))
+		    ((trigger) "x")
+		    ((string) val))))))
+
+  ;;; Get the color tag asscociated with the field's command type.
+  (define (get-field-color-tag field-id)
+    (let ((command-config (config-get-inode-source-command
+			   field-id (current-config))))
+      (if (memq 'is-note (command-flags command-config))
+	  'text-1
+	  (case (command-type command-config)
+	    ((int uint) 'text-2)
+	    ((key ukey) 'text-3)
+	    ((reference) 'text-4)
+	    ((trigger) 'text-5)
+	    ((string) 'text-6)
+	    ((modifier) 'text-7)
+	    (else 'text)))))
+
+  ;;; Get the RGB color string associated with the field's command type.
+  (define (get-field-color field-id)
+    (colors (get-field-color-tag field-id)))
+
+  ;;; Convert a keysym (as returned by a tk-event `%K` placeholder) to an
+  ;;; MDAL note name.
+  (define (keypress->note key)
+    (let ((entry-spec (alist-ref (string->symbol
+				  (string-append "<Key-" (->string key)
+						 ">"))
+				 (app-keys-note-entry (settings 'keymap)))))
+      (and entry-spec
+	   (if (string= "rest" (car entry-spec))
+	       'rest
+	       (let* ((octave-modifier (if (> (length entry-spec) 1)
+					   (cadr entry-spec)
+					   0))
+		      (mod-octave (+ octave-modifier (state 'base-octave))))
+		 ;; TODO proper range check
+		 (and (and (>= mod-octave 0)
+			   (<= mod-octave 9)
+			   (string->symbol
+			    (string-append (car entry-spec)
+					   (->string mod-octave))))))))))
+
+  ;;; Get the appropriate command type tag to set the item color.
+  (define (get-command-type-tag field-id)
+    (let ((command-config (config-get-inode-source-command
+			   field-id (current-config))))
+      (if (memq 'is-note (command-flags command-config))
+	  'note
+	  (case (command-type command-config)
+	    ((int uint) 'int)
+	    ((key ukey) 'key)
+	    (else (command-type command-config))))))
+
+
+  ;;; Generate an abbrevation of `len` characters from the given MDAL inode
+  ;;; identifier `id`. Returns the abbrevation as a string. The string is
+  ;;; padded to `len` characters if necessary.
+  (define (node-id-abbreviate id len)
+    (let ((chars (string->list (symbol->string id))))
+      (if (>= len (length chars))
+	  (string-pad-right (list->string chars)
+			    len)
+	  (case len
+	    ((1) (->string (car chars)))
+	    ((2) (list->string (list (car chars) (car (reverse chars)))))
+	    (else (list->string (append (take chars (- len 2))
+					(list #\. (car (reverse chars))))))))))
+
+
+  ;; (define (select-next-field fields-widget)
+  ;;   (let ((current-index (bt-fields-widget-active-index fields-widget)))
+  ;;     (unfocus-fields-widget fields-widget)
+  ;;     (bt-fields-widget-active-index-set!
+  ;;      fields-widget
+  ;;      (if (< current-index (sub1 (length (bt-fields-widget-fields
+  ;; 					   fields-widget))))
+  ;; 	   (add1 current-index)
+  ;; 	   0))
+  ;;     (focus-fields-widget fields-widget)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### TextGrid
+  ;; ---------------------------------------------------------------------------
+
+  ;;; TextGrids are Tk Text widgets with default bindings removed and/or
+  ;;; replaced with Bintracker-specific bindings. TextGrids form the basis of
+  ;;; Bintrackers <ui-basic-blockview> metawidget, which is used to display sets
+  ;;; of blocks or order lists. A number of abstractions are provided to
+  ;;; facilitate this.
+
+  ;;; Configure TextGrid widget tags.
+  (define (textgrid-configure-tags tg)
+    (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
+    (tg 'tag 'configure 'rowhl-major background: (colors 'row-highlight-major))
+    (tg 'tag 'configure 'active-cell background: (colors 'cursor))
+    (tg 'tag 'configure 'txt foreground: (colors 'text))
+    (tg 'tag 'configure 'note foreground: (colors 'text-1))
+    (tg 'tag 'configure 'int foreground: (colors 'text-2))
+    (tg 'tag 'configure 'key foreground: (colors 'text-3))
+    (tg 'tag 'configure 'reference foreground: (colors 'text-4))
+    (tg 'tag 'configure 'trigger foreground: (colors 'text-5))
+    (tg 'tag 'configure 'string foreground: (colors 'text-6))
+    (tg 'tag 'configure 'modifier foreground: (colors 'text-7))
+    (tg 'tag 'configure 'active font: (list (settings 'font-mono)
+  					     (settings 'font-size)
+  					     "bold")))
+
+  ;;; Abstraction over Tk's `textwidget tag add` command.
+  ;;; Contrary to Tk's convention, `row` uses 0-based indexing.
+  ;;; `tags` may be a single tag, or a list of tags.
+  (define (textgrid-do-tags method tg tags first-row #!optional
+			    (first-col 0) (last-col 'end) (last-row #f))
+    (for-each (lambda (tag)
+		(tg 'tag method tag
+		    (string-append (->string (+ 1 first-row))
+				   "." (->string first-col))
+		    (string-append (->string (+ 1 (or last-row first-row)))
+				   "." (->string last-col))))
+	      (if (pair? tags)
+		  tags (list tags))))
+
+  (define (textgrid-add-tags . args)
+    (apply textgrid-do-tags (cons 'add args)))
+
+  (define (textgrid-remove-tags . args)
+    (apply textgrid-do-tags (cons 'remove args)))
+
+  (define (textgrid-remove-tags-globally tg tags)
+    (for-each (cute tg 'tag 'remove <> "0.0" "end")
+	      tags))
+
+  ;;; Convert the `row`, `char` arguments into a Tk Text index string.
+  ;;; `row` is adjusted from 0-based indexing to 1-based indexing.
+  (define (textgrid-position->tk-index row char)
+    (string-append (->string (add1 row))
+		   "." (->string char)))
+
+  ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
+  ;;; widget with class bindings removed.
+  (define (textgrid-create-basic parent)
+    (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
+		       selectborderwidth: 0 padx: 0 pady: 4
+		       bg: (colors 'background)
+		       fg: (colors 'text-inactive)
+		       insertbackground: (colors 'text)
+		       insertontime: 0 spacing3: (settings 'line-spacing)
+		       font: (list family: (settings 'font-mono)
+				   size: (settings 'font-size))
+		       cursor: '"" undo: 0 wrap: 'none))
+	   (id (tg 'get-id)))
+      (tk-eval (string-append "bindtags " id " {all . " id "}"))
+      (textgrid-configure-tags tg)
+      tg))
+
+  (define (textgrid-create parent)
+    (textgrid-create-basic parent))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Block View Field Configurations
+  ;; ---------------------------------------------------------------------------
+
+  ;;; A record type used internally by <ui-basic-block-view and its descendants.
+  (defstruct bv-field-config
+    (type-tag : symbol)
+    (width : fixnum)
+    (start : fixnum)
+    (cursor-width : fixnum)
+    (cursor-digits : fixnum))
+
+  ;;; Returns the number of characters that the blockview cursor should span
+  ;;; for the given `field-id`.
+  (define (field-id->cursor-size field-id)
+    (let ((cmd-config (config-get-inode-source-command field-id
+						       (current-config))))
+      (if (memq 'is-note (command-flags cmd-config))
+	  3
+	  (if (memq (command-type cmd-config)
+		    '(key ukey))
+	      (value-display-size cmd-config)
+	      1))))
+
+  ;;; Returns the number of cursor positions for the the field node
+  ;;; `field-id`. For fields that are based on note/key/ukey commands, the
+  ;;; result will be one, otherwise it will be equal to the number of characters
+  ;;; needed to represent the valid input range for the field's source command.
+  (define (field-id->cursor-digits field-id)
+    (let ((cmd-config (config-get-inode-source-command field-id
+						       (current-config))))
+      (if (memq (command-type cmd-config)
+		'(key ukey))
+	  1 (value-display-size cmd-config))))
+
+  ;;; Generate the alist of bv-field-configs.
+  (define (blockview-make-field-configs block-ids field-ids)
+    (letrec* ((type-tags (map get-command-type-tag field-ids))
+	      (sizes (map (lambda (id)
+	      		    (value-display-size (config-get-inode-source-command
+	      					 id (current-config))))
+	      		  field-ids))
+	      (cursor-widths (map field-id->cursor-size field-ids))
+	      (cursor-ds (map field-id->cursor-digits field-ids))
+	      (tail-fields
+	       (map (lambda (id)
+	      	      (car (reverse (config-get-subnode-ids
+				     id (config-itree (current-config))))))
+	      	    (drop-right block-ids 1)))
+	      (convert-sizes
+	       (lambda (sizes start)
+		 (if (null-list? sizes)
+		     '()
+		     (cons start
+			   (convert-sizes (cdr sizes)
+					  (+ start (car sizes)))))))
+	      (start-positions (convert-sizes
+	      			(map (lambda (id size)
+	      			       (if (memq id tail-fields)
+	      				   (+ size 2)
+	      				   (+ size 1)))
+	      			     field-ids sizes)
+	      			0)))
+      (map (lambda (field-id type-tag size start c-width c-digits)
+	     (list field-id (make-bv-field-config type-tag: type-tag
+						  width: size start: start
+						  cursor-width: c-width
+						  cursor-digits: c-digits)))
+	   field-ids type-tags sizes start-positions cursor-widths
+	   cursor-ds)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### UI Element Classes
+  ;; ---------------------------------------------------------------------------
 
   ;;; `<ui-element>` is a wrapper around Tk widgets. The widgets are wrapped in
   ;;; a Tk Frame widget. A `<ui-element>` instance may contain child elements,
@@ -1801,325 +2397,6 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Dialogues
-  ;; ---------------------------------------------------------------------------
-
-  ;;; This section provides abstractions over Tk dialogues and pop-ups. This
-  ;;; includes both native Tk widgets and Bintracker-specific metawidgets.
-  ;;; `tk/safe-dialogue` and `custom-dialog` are potentially the most useful
-  ;;; entry points for creating native resp. custom dialogues from user code,
-  ;;; eg. when calling from a plugin.
-
-  ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
-  ;;; tk/get-save-file that block the main application window  while the pop-up
-  ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
-  ;;; once they lose focus. tk-with-lock does not help in these cases.
-  (define (tk/safe-dialogue type . args)
-    (tk-eval "tk busy .")
-    (tk/update)
-    (let ((result (apply type args)))
-      (tk-eval "tk busy forget .")
-      result))
-
-  ;;; Crash-safe variant of `tk/message-box`.
-  (define (tk/message-box* . args)
-    (apply tk/safe-dialogue (cons tk/message-box args)))
-
-  ;;; Crash-safe variant of `tk/get-open-file`.
-  (define (tk/get-open-file* . args)
-    (apply tk/safe-dialogue (cons tk/get-open-file args)))
-
-  ;;; Crash-safe variant of `tk/get-save-file`.
-  (define (tk/get-save-file* . args)
-    (apply tk/safe-dialogue (cons tk/get-save-file args)))
-
-  ;;; Display the "About Bintracker" message.
-  (define (about-message)
-    (tk/message-box* title: "About"
-		     message: (string-append "Bintracker\nversion "
-					     *bintracker-version*)
-		     detail: "Dedicated to Ján Deák"
-		     type: 'ok))
-
-  ;;; Display a message box that asks the user whether to save unsaved changes
-  ;;; before exiting or closing. EXIT-OR-CLOSING should be the string
-  ;;; `"exit"` or `"closing"`, respectively.
-  (define (exit-with-unsaved-changes-dialog exit-or-closing)
-    (tk/message-box* title: (string-append "Save before "
-					   exit-or-closing "?")
-		     default: 'yes
-		     icon: 'warning
-		     parent: tk
-		     message: (string-append "There are unsaved changes. "
-					     "Save before " exit-or-closing
-					     "?")
-		     type: 'yesnocancel))
-
-  ;; TODO instead of destroying, should we maybe just tk/forget?
-  ;;; Create a custom dialogue user dialogue popup. The dialogue widget sets up
-  ;;; a default widget layout with `Cancel` and `Confirm` buttons and
-  ;;; corresponding key handlers for `<Escape>` and `<Return>`.
-  ;;;
-  ;;; Returns a procedure *P*, which can be called as follows:
-  ;;;
-  ;;; `(P 'show)`
-  ;;;
-  ;;; Display the dialogue widget. Call this procedure **before** you add any
-  ;;; user-defined widgets, bindings, procedures, and finalizers.
-  ;;;
-  ;;; `(P 'add 'widget ID WIDGET-SPECIFICATION)`
-  ;;;
-  ;;; Add a widget named ID, where WIDGET-SPECIFICATION is the list of
-  ;;; widget arguments that will be passed to Tk as the remaining arguments of
-  ;;; a call to `(parent 'create-widget ...)`.
-  ;;;
-  ;;; `(P 'add 'binding EVENT PROC)`
-  ;;;
-  ;;; Bind PROC to the Tk event sequence specifier EVENT.
-  ;;;
-  ;;; `(P 'add 'procedure ID PROC)`
-  ;;;
-  ;;; Add a custom procedure ;; TODO redundant?
-  ;;;
-  ;;; `(P 'add 'finalizer PROC)`
-  ;;;
-  ;;; Add PROC to the list of finalizers that will run on a successful exit from
-  ;;; the dialogue.
-  ;;;
-  ;;; `(P 'ref ID)`
-  ;;; Returns the user-defined widget or procedure named ID. Use this to
-  ;;; cross-reference elements created with `(c 'add [widget|procedure])` within
-  ;;; user code.
-  ;;;
-  ;;; `(P 'destroy)`
-  ;;;
-  ;;; Executes any user defined finalizers, then destroys the dialogue window.
-  ;;; You normally do not need to call this explicitly unless you are handling
-  ;;; exceptions.
-  (define (make-dialogue)
-    (let* ((tl #f)
-	   (widgets '())
-	   (procedures '())
-	   (get-ref (lambda (id)
-		      (let ((ref (alist-ref id (append widgets procedures))))
-			(and ref (car ref)))))
-	   (extra-finalizers '())
-	   (finalize (lambda (success)
-		       (when success
-			 (for-each (lambda (x) (x)) extra-finalizers))
-		       (tk/destroy tl))))
-      (lambda args
-	(case (car args)
-	  ((show)
-	   (unless tl
-	     (set! tl (tk 'create-widget 'toplevel))
-	     ;; TODO appears to have no effect
-	     ;; (tk/wm 'attributes tl type: 'dialog)
-	     (set! widgets `((content ,(tl 'create-widget 'frame))
-			     (footer ,(tl 'create-widget 'frame))))
-	     (set! widgets
-	       (append widgets
-		       `((confirm ,((get-ref 'footer) 'create-widget
-				    'button text: "Confirm"
-				    command: (lambda () (finalize #t))))
-			 (cancel ,((get-ref 'footer) 'create-widget
-				   'button text: "Cancel"
-				   command: (lambda () (finalize #f)))))))
-	     (tk/bind tl '<Escape> (lambda () (finalize #f)))
-	     (tk/bind tl '<Return> (lambda () (finalize #t)))
-	     (tk/pack (get-ref 'confirm) side: 'right)
-	     (tk/pack (get-ref 'cancel) side: 'right)
-	     (tk/pack (get-ref 'content) side: 'top)
-	     (tk/pack (get-ref 'footer) side: 'top)))
-	  ((add)
-	   (case (cadr args)
-	     ((binding) (apply tk/bind (cons tl (cddr args))))
-	     ((finalizer) (set! extra-finalizers
-			    (cons (caddr args) extra-finalizers)))
-	     ((widget) (let ((user-widget (apply (get-ref 'content)
-						 (cons 'create-widget
-						       (cadddr args)))))
-			 (set! widgets (cons (list (caddr args) user-widget)
-					     widgets))
-			 (tk/pack user-widget side: 'top)))
-	     ((procedure)
-	      (set! procedures (cons (caddr args) procedures)))))
-	  ((ref) (get-ref (cadr args)))
-	  ((destroy)
-	   (when tl
-	     (finalize #f)
-	     (set! tl #f)))
-	  (else (warning (string-append "Error: Unsupported dialog action"
-					(->string args))))))))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Widget Style
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Configure ttk widget styles.
-  (define (update-ttk-style)
-    (let ((user-font-bold (list family: (settings 'font-mono)
-			   size: (settings 'font-size)
-			   weight: 'bold)))
-      (ttk/style 'configure 'BT.TFrame background: (colors 'background))
-
-      (ttk/style 'configure 'BT.TLabel background: (colors 'background)
-		 foreground: (colors 'text)
-		 font: user-font-bold)
-      ;;  Dynamic states: active, disabled, pressed, readonly.
-
-      ;; TButton styling options configurable with ttk::style are:
-
-      ;; -anchor anchor
-      ;; -background color
-      ;; -bordercolor color
-      ;; -compound compound
-      ;; -darkcolor color
-      ;; -foreground color
-      ;; -font font
-      ;; -highlightcolor color
-      ;; -highlightthickness amount
-      ;; -lightcolor color
-      ;; -padding padding
-      ;; -relief relief
-      ;; -shiftrelief amount
-
-      ;;     -shiftrelief specifies how far the button contents are shifted down and right in the pressed state. This action provides additional skeumorphic feedback.
-
-      ;; -width amount
-
-      (ttk/style 'configure 'BT.TButton
-		 ;; highlightthickness: 5
-		 ;; lightcolor: (colors 'text)
-		 ;; darkcolor: (colors 'text)
-		 ;; bordercolor: (colors 'text)
-		 ;; highlightcolor: (colors 'text)
-		 ;; padding: 5
-		 font: user-font-bold
-		 relief: 'flat)
-      ;; (ttk/style 'configure 'BT.Button.border
-      ;; 		 background: (colors 'text)
-      ;; 		 border: 4)
-      (ttk/style 'map 'BT.TButton background:
-		 (list 'disabled (colors 'background)
-		       'active (colors 'row-highlight-major)
-		       '!active (colors 'row-highlight-minor)))
-      (ttk/style 'map 'BT.TButton foreground:
-		 (list 'disabled (colors 'text-inactive)
-		       'active (colors 'text)
-		       '!active (colors 'text)))
-      ;; (ttk/style 'map 'BT.Button.border borderwidth:
-      ;; 		 (list 'disabled 0 'active 2 '!active 1))
-
-      (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
-      (ttk/style 'configure 'BT.TNotebook.Tab
-		 background: (colors 'background)
-		 font: user-font-bold)))
-
-  ;;; Configure the style of the scrollbar widget S to match Bintracker's
-  ;;; style.
-  (define (configure-scrollbar-style s)
-    (s 'configure bd: 0 highlightthickness: 0 relief: 'flat
-       activebackground: (colors 'row-highlight-major)
-       bg: (colors 'row-highlight-minor)
-       troughcolor: (colors 'background)
-       elementborderwidth: 0))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Events
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Disable automatic keyboard traversal. Needed because it messes with key
-  ;;; binding involving Tab.
-  (define (disable-keyboard-traversal)
-    (tk/event 'delete '<<NextWindow>>)
-    (tk/event 'delete '<<PrevWindow>>))
-
-  ;;; Create default virtual events for Bintracker. This procedure only needs
-  ;;; to be called on startup, or after updating key bindings.
-  (define (create-virtual-events)
-    (apply tk/event (append '(add <<BlockEntry>>)
-			    (map car
-				 (app-keys-note-entry (settings 'keymap)))))
-    (tk/event 'add '<<BlockMotion>>
-	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
-    (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
-    (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
-    (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
-    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
-    (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step)))
-
-  ;;; Reverse the evaluation order for tk bindings, so that global bindings are
-  ;;; evaluated before the local bindings of WIDGET. This is necessary to
-  ;;; prevent keypresses that are handled globally being passed through to the
-  ;;; widget.
-  (define (reverse-binding-eval-order widget)
-    (let ((widget-id (widget 'get-id)))
-      (tk-eval (string-append "bindtags " widget-id " {all . "
-			      (tk/winfo 'class widget)
-			      " " widget-id "}"))))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Menus
-  ;; ---------------------------------------------------------------------------
-
-  ;; `submenus` shall be an alist, where keys are unique identifiers, and
-  ;; values are the actual tk menus.
-
-  (defstruct menu
-    ((widget (tk 'create-widget 'menu)) : procedure)
-    ((items '()) : list))
-
-  ;;; Destructively add an item to menu-struct `menu` according to
-  ;;; `item-spec`. `item-spec` must be a list containing either
-  ;;; - `('separator)`
-  ;;; - `('command id label underline accelerator command)`
-  ;;; - `('submenu id label underline items-list)`
-  ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
-  ;;; name that will be shown in the menu for this item, and its underline
-  ;;; position; *accelerator* is a string naming a keyboard shortcut for the
-  ;;; item, command is a procedure to be associated with the item, and
-  ;;; items-list is a list of item-specs.
-  (define (add-menu-item! menu item-spec)
-    ;; TODO add at position (insert)
-    (let ((append-to-item-list!
-	   (lambda (id item)
-	     (menu-items-set! menu (append (menu-items menu)
-					   (list id item))))))
-      (case (car item-spec)
-	((command)
-	 (append-to-item-list! (second item-spec) #f)
-	 ((menu-widget menu) 'add 'command label: (third item-spec)
-	  underline: (fourth item-spec)
-	  accelerator: (or (fifth item-spec) "")
-	  command: (sixth item-spec)))
-	((submenu)
-	 (let* ((submenu (construct-menu (fifth item-spec))))
-	   (append-to-item-list! (second item-spec)
-				 submenu)
-	   ((menu-widget menu) 'add 'cascade
-	    menu: (menu-widget submenu)
-	    label: (third item-spec)
-	    underline: (fourth item-spec))))
-	((separator)
-	 (append-to-item-list! 'separator #f)
-	 ((menu-widget menu) 'add 'separator))
-	(else (error (string-append "Unknown menu item type \""
-				    (->string (car item-spec))
-				    "\""))))))
-
-  (define (construct-menu items)
-    (let* ((my-menu (make-menu widget: (tk 'create-widget 'menu))))
-      (for-each (lambda (item)
-		  (add-menu-item! my-menu item))
-		items)
-      my-menu))
-
-
-  ;; ---------------------------------------------------------------------------
   ;;; ## Top Level Layout
   ;; ---------------------------------------------------------------------------
 
@@ -2287,317 +2564,5 @@
 		      (mod->bin (derive-single-row-mdmod
 				 (current-mod) group-id order-pos row)
 				origin '((no-loop #t))))))))
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Module Display Related Widgets and Procedures
-  ;; ---------------------------------------------------------------------------
-
-  ;;; The module display is constructed as follows:
-  ;;;
-  ;;; Within the module display frame provided by Bintracker's top level layout,
-  ;;; a `bt-group-widget` is constructed, and the GLOBAL group is associated
-  ;;; with it. The `bt-group-widget` meta-widget consists of a Tk frame, which
-  ;;; optionally creates a `bt-fields-widget`, a `bt-blocks-widget`, and a
-  ;;; `bt-subgroups-widget` as children, for the group's fields, blocks, and
-  ;;; subgroups, respectively.
-  ;;;
-  ;;; The `bt-fields-widget` consists of a Tk frame, which packs one or more
-  ;;; `bt-field-widget` meta-widgets. A `bt-field-widget` consists of a Tk frame
-  ;;; that contains a label displaying the field ID, and an input field for the
-  ;;; associated value. `bt-fields-widget` and its children are only used for
-  ;;; group fields, block fields are handled differently.
-  ;;;
-  ;;; The `bt-blocks-widget` consists of a ttk::panedwindow, containing 2 panes.
-  ;;; The first pane contains the actual block display (all of the parent
-  ;;; group's block members except the order block displayed next to each
-  ;;; other), and the second pane contains the order or block list display.
-  ;;; Both the block display and the order display are based on the `metatree`
-  ;;; meta-widget, which is documented below.
-  ;;;
-  ;;; The `bt-subgroups-widget` consists of a Tk frame, which packs a Tk
-  ;;; notebook (tab view), with tabs for each of the parent node's subgroups.
-  ;;; A Tk frame is created in each of the tabs. For each subgroup, a
-  ;;; `bt-group-widget` is created as a child of the corresponding tab frame.
-  ;;; This allows for infinite nested groups, as required by MDAL.
-  ;;;
-  ;;; All `bt-*` widgets should be created by calling the corresponding
-  ;;; `make-*-widget` procedures (named after the underlying `bt-*` structs, but
-  ;;; dropping the `bt-*` prefix. Widgets should be packed to the display by
-  ;;; calling the corresponding `show-*-widget` procedures.
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ### Auxilliary procedures used by various BT meta-widgets
-  ;; ---------------------------------------------------------------------------
-
-  ;;; Determine how many characters are needed to print values of a given
-  ;;; command.
-  ;; TODO results should be cached
-  (define (value-display-size command-config)
-    (case (command-type command-config)
-      ;; FIXME this is incorrect for negative numbers
-      ((int uint) (inexact->exact
-		   (ceiling
-		    (/ (log (expt 2 (command-bits command-config)))
-		       (log (settings 'number-base))))))
-      ((key ukey) (if (memq 'is-note (command-flags command-config))
-		      3 (apply max
-			       (map (o string-length car)
-				    (hash-table-keys
-				     (command-keys command-config))))))
-      ((reference) (if (>= 16 (settings 'number-base))
-		       2 3))
-      ((trigger) 1)
-      ((string) 32)))
-
-  ;;; Transform an ifield value from MDAL format to tracker display format.
-  ;;; Replaces empty values with dots, changes numbers depending on number
-  ;;; format setting, and turns everything into a string.
-  (define (normalize-field-value val field-id)
-    (let* ((command-config (config-get-inode-source-command
-  			    field-id (current-config)))
-	   (display-size (value-display-size command-config)))
-      (cond ((not val) (list->string (make-list display-size #\.)))
-	    ((null? val) (list->string (make-list display-size #\space)))
-	    (else (case (command-type command-config)
-		    ((int uint reference)
-		     (string-pad (number->string val (settings 'number-base))
-				 display-size #\0))
-		    ((key ukey) (if (memq 'is-note
-					  (command-flags command-config))
-				    (normalize-note-name val)
-				    val))
-		    ((trigger) "x")
-		    ((string) val))))))
-
-  ;;; Get the color tag asscociated with the field's command type.
-  (define (get-field-color-tag field-id)
-    (let ((command-config (config-get-inode-source-command
-			   field-id (current-config))))
-      (if (memq 'is-note (command-flags command-config))
-	  'text-1
-	  (case (command-type command-config)
-	    ((int uint) 'text-2)
-	    ((key ukey) 'text-3)
-	    ((reference) 'text-4)
-	    ((trigger) 'text-5)
-	    ((string) 'text-6)
-	    ((modifier) 'text-7)
-	    (else 'text)))))
-
-  ;;; Get the RGB color string associated with the field's command type.
-  (define (get-field-color field-id)
-    (colors (get-field-color-tag field-id)))
-
-  ;;; Convert a keysym (as returned by a tk-event `%K` placeholder) to an
-  ;;; MDAL note name.
-  (define (keypress->note key)
-    (let ((entry-spec (alist-ref (string->symbol
-				  (string-append "<Key-" (->string key)
-						 ">"))
-				 (app-keys-note-entry (settings 'keymap)))))
-      (and entry-spec
-	   (if (string= "rest" (car entry-spec))
-	       'rest
-	       (let* ((octave-modifier (if (> (length entry-spec) 1)
-					   (cadr entry-spec)
-					   0))
-		      (mod-octave (+ octave-modifier (state 'base-octave))))
-		 ;; TODO proper range check
-		 (and (and (>= mod-octave 0)
-			   (<= mod-octave 9)
-			   (string->symbol
-			    (string-append (car entry-spec)
-					   (->string mod-octave))))))))))
-
-  ;;; Get the appropriate command type tag to set the item color.
-  (define (get-command-type-tag field-id)
-    (let ((command-config (config-get-inode-source-command
-			   field-id (current-config))))
-      (if (memq 'is-note (command-flags command-config))
-	  'note
-	  (case (command-type command-config)
-	    ((int uint) 'int)
-	    ((key ukey) 'key)
-	    (else (command-type command-config))))))
-
-
-  ;;; Generate an abbrevation of `len` characters from the given MDAL inode
-  ;;; identifier `id`. Returns the abbrevation as a string. The string is
-  ;;; padded to `len` characters if necessary.
-  (define (node-id-abbreviate id len)
-    (let ((chars (string->list (symbol->string id))))
-      (if (>= len (length chars))
-	  (string-pad-right (list->string chars)
-			    len)
-	  (case len
-	    ((1) (->string (car chars)))
-	    ((2) (list->string (list (car chars) (car (reverse chars)))))
-	    (else (list->string (append (take chars (- len 2))
-					(list #\. (car (reverse chars))))))))))
-
-
-  ;; (define (select-next-field fields-widget)
-  ;;   (let ((current-index (bt-fields-widget-active-index fields-widget)))
-  ;;     (unfocus-fields-widget fields-widget)
-  ;;     (bt-fields-widget-active-index-set!
-  ;;      fields-widget
-  ;;      (if (< current-index (sub1 (length (bt-fields-widget-fields
-  ;; 					   fields-widget))))
-  ;; 	   (add1 current-index)
-  ;; 	   0))
-  ;;     (focus-fields-widget fields-widget)))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ### TextGrid
-  ;; ---------------------------------------------------------------------------
-
-  ;;; TextGrids are Tk Text widgets with default bindings removed and/or
-  ;;; replaced with Bintracker-specific bindings. TextGrids form the basis of
-  ;;; Bintrackers blockview metawidget, which is used to display sets of blocks
-  ;;; or order lists. A number of abstractions are provided to facilitate this.
-
-  ;;; Configure TextGrid widget tags.
-  (define (textgrid-configure-tags tg)
-    (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
-    (tg 'tag 'configure 'rowhl-major background: (colors 'row-highlight-major))
-    (tg 'tag 'configure 'active-cell background: (colors 'cursor))
-    (tg 'tag 'configure 'txt foreground: (colors 'text))
-    (tg 'tag 'configure 'note foreground: (colors 'text-1))
-    (tg 'tag 'configure 'int foreground: (colors 'text-2))
-    (tg 'tag 'configure 'key foreground: (colors 'text-3))
-    (tg 'tag 'configure 'reference foreground: (colors 'text-4))
-    (tg 'tag 'configure 'trigger foreground: (colors 'text-5))
-    (tg 'tag 'configure 'string foreground: (colors 'text-6))
-    (tg 'tag 'configure 'modifier foreground: (colors 'text-7))
-    (tg 'tag 'configure 'active font: (list (settings 'font-mono)
-  					     (settings 'font-size)
-  					     "bold")))
-
-  ;;; Abstraction over Tk's `textwidget tag add` command.
-  ;;; Contrary to Tk's convention, `row` uses 0-based indexing.
-  ;;; `tags` may be a single tag, or a list of tags.
-  (define (textgrid-do-tags method tg tags first-row #!optional
-			    (first-col 0) (last-col 'end) (last-row #f))
-    (for-each (lambda (tag)
-		(tg 'tag method tag
-		    (string-append (->string (+ 1 first-row))
-				   "." (->string first-col))
-		    (string-append (->string (+ 1 (or last-row first-row)))
-				   "." (->string last-col))))
-	      (if (pair? tags)
-		  tags (list tags))))
-
-  (define (textgrid-add-tags . args)
-    (apply textgrid-do-tags (cons 'add args)))
-
-  (define (textgrid-remove-tags . args)
-    (apply textgrid-do-tags (cons 'remove args)))
-
-  (define (textgrid-remove-tags-globally tg tags)
-    (for-each (cute tg 'tag 'remove <> "0.0" "end")
-	      tags))
-
-  ;;; Convert the `row`, `char` arguments into a Tk Text index string.
-  ;;; `row` is adjusted from 0-based indexing to 1-based indexing.
-  (define (textgrid-position->tk-index row char)
-    (string-append (->string (add1 row))
-		   "." (->string char)))
-
-  ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
-  ;;; widget with class bindings removed.
-  (define (textgrid-create-basic parent)
-    (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
-		       selectborderwidth: 0 padx: 0 pady: 4
-		       bg: (colors 'background)
-		       fg: (colors 'text-inactive)
-		       insertbackground: (colors 'text)
-		       insertontime: 0 spacing3: (settings 'line-spacing)
-		       font: (list family: (settings 'font-mono)
-				   size: (settings 'font-size))
-		       cursor: '"" undo: 0 wrap: 'none))
-	   (id (tg 'get-id)))
-      (tk-eval (string-append "bindtags " id " {all . " id "}"))
-      (textgrid-configure-tags tg)
-      tg))
-
-  (define (textgrid-create parent)
-    (textgrid-create-basic parent))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## BlockView
-  ;; ---------------------------------------------------------------------------
-
-  ;;; The BlockView metawidget is a generic widget that implements a spreadsheet
-  ;;; display. In Bintracker, it is used to display both MDAL blocks (patterns,
-  ;;; tables, etc.) and the corresponding order or list view.
-
-  (defstruct bv-field-config
-    (type-tag : symbol)
-    (width : fixnum)
-    (start : fixnum)
-    (cursor-width : fixnum)
-    (cursor-digits : fixnum))
-
-  ;;; Returns the number of characters that the blockview cursor should span
-  ;;; for the given `field-id`.
-  (define (field-id->cursor-size field-id)
-    (let ((cmd-config (config-get-inode-source-command field-id
-						       (current-config))))
-      (if (memq 'is-note (command-flags cmd-config))
-	  3
-	  (if (memq (command-type cmd-config)
-		    '(key ukey))
-	      (value-display-size cmd-config)
-	      1))))
-
-  ;;; Returns the number of cursor positions for the the field node
-  ;;; `field-id`. For fields that are based on note/key/ukey commands, the
-  ;;; result will be one, otherwise it will be equal to the number of characters
-  ;;; needed to represent the valid input range for the field's source command.
-  (define (field-id->cursor-digits field-id)
-    (let ((cmd-config (config-get-inode-source-command field-id
-						       (current-config))))
-      (if (memq (command-type cmd-config)
-		'(key ukey))
-	  1 (value-display-size cmd-config))))
-
-  ;;; Generate the alist of bv-field-configs.
-  (define (blockview-make-field-configs block-ids field-ids)
-    (letrec* ((type-tags (map get-command-type-tag field-ids))
-	      (sizes (map (lambda (id)
-	      		    (value-display-size (config-get-inode-source-command
-	      					 id (current-config))))
-	      		  field-ids))
-	      (cursor-widths (map field-id->cursor-size field-ids))
-	      (cursor-ds (map field-id->cursor-digits field-ids))
-	      (tail-fields
-	       (map (lambda (id)
-	      	      (car (reverse (config-get-subnode-ids
-				     id (config-itree (current-config))))))
-	      	    (drop-right block-ids 1)))
-	      (convert-sizes
-	       (lambda (sizes start)
-		 (if (null-list? sizes)
-		     '()
-		     (cons start
-			   (convert-sizes (cdr sizes)
-					  (+ start (car sizes)))))))
-	      (start-positions (convert-sizes
-	      			(map (lambda (id size)
-	      			       (if (memq id tail-fields)
-	      				   (+ size 2)
-	      				   (+ size 1)))
-	      			     field-ids sizes)
-	      			0)))
-      (map (lambda (field-id type-tag size start c-width c-digits)
-	     (list field-id (make-bv-field-config type-tag: type-tag
-						  width: size start: start
-						  cursor-width: c-width
-						  cursor-digits: c-digits)))
-	   field-ids type-tags sizes start-positions cursor-widths
-	   cursor-ds)))
 
   ) ;; end module bt-gui
