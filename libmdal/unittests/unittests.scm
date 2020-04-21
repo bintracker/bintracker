@@ -37,8 +37,6 @@
        (list 0 0 0 8)
        (int->bytes 8 4 'big-endian))
 
- (test "make-pairs" '((a 1) (b 2)) (make-pairs '(a 1 b 2)))
-
  (test "remove-keyword-args"
        '(0 1 baz 4)
        (remove-keyword-args '(0 1 foo: 2 bar: 3 baz 4)

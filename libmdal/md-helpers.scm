@@ -62,13 +62,6 @@
 	  byte-list
 	  (reverse byte-list))))
 
-  ;;; Pair elements in a list
-  (define (make-pairs lst)
-    (if (null? lst)
-	'()
-	(cons (list (car lst) (cadr lst))
-	      (make-pairs (cddr lst)))))
-
   ;;; Add a key/value pair to the hash-table HT.
   ;;; Will be ignored if KEY is already in HT.
   (define (add-hash-table-entry ht key value)
