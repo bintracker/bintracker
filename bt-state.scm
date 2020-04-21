@@ -171,25 +171,6 @@
   (define (set-state! param val)
     (set-global! "app-state-" *bintracker-state* param val))
 
-  ;;; Install additional themes.
-  (define (install-theme! name implementation-filepath)
-    (set-conf! 'themes-map (cons (list name implementation-filepath)
-				 (settings 'themes-map))))
-
-  ;;; Set the Tk widget theme.
-  (define (set-theme! name)
-    (begin
-      (unless (string-contains (tk-eval "ttk::style theme names")
-			       (->string name))
-	(let ((impl-file (alist-ref name (settings 'themes-map))))
-	  (if impl-file
-	      (tk-eval (string-append "source \"" (car impl-file) "\""))
-	      (raise
-	       (make-exn (string-append "No implementation file found for theme"
-					(->string name)))))))
-      (tk-eval (string-append "ttk::style theme use " (->string name)))))
-
-
   ;;; Return the alist of key-bindings in the given KEY-GROUP.
   (define (get-keybinding-group key-group)
     ((eval (symbol-append 'app-keys- key-group))
