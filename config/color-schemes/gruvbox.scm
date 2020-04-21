@@ -1,7 +1,7 @@
 ;; A color scheme based on Gruvbox Dark by Pavel Pertsev
 ;; https://github.com/morhetz/gruvbox
 
-(bt-color-scheme background: "#282828" ; bg
+(bt-color-scheme background: "#242424" ; bg-modified
 		 background-inactive: "#282828" ; bg
 		 row-highlight-major: "#504945" ; bg2
 		 row-highlight-minor: "#3c3836" ; bg1
