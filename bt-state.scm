@@ -39,9 +39,13 @@
 			minor-row-highlight:
 			(settings 'default-minor-row-highlight)))))
 
+  ;;; Accessor for the main application's GUI widget structure, which is a
+  ;;; `<ui-metabuffer>` instance.
   (define (ui)
     (state 'ui))
 
+  ;;; Accessor for the default repl buffer widget which is an instance of
+  ;;; `<ui-repl>`.
   (define (repl)
     (and (state 'ui)
 	 (alist-ref 'repl (slot-value (ui) 'children))))
@@ -281,6 +285,157 @@
 		       "")
 		   (command-description command)))))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## UI Focus Control
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Returns a UI focus controller, which is a closure that manages the user
+  ;;; input focus of a window
+  ;;; (eg. a [Tk toplevel](https://www.tcl.tk/man/tcl8.6/TkCmd/toplevel.htm)). A
+  ;;; UI buffer within a window is focussed if the buffer's specific event
+  ;;; bindings (keypresses etc.) are active. In other words, the buffer that
+  ;;; the user currently interacts with that buffer has focus.
+  ;;;
+  ;;; A focus controller holds any number of control entries in a ring.
+  ;;; Each control entry specifies two procedures, which perform the necessary
+  ;;; steps to focus resp. unfocus a single UI buffer.
+  ;;;
+  ;;; If you are deriving classes from `<ui-buffer>`, you most likely want to
+  ;;; implement focus control support. To do so, you need to do the following:
+  ;;;
+  ;;; - provide a slot for a focus controller
+  ;;; - generate a unique focus entry ID
+  ;;; - provide a constructor that performs the necessary steps to add the
+  ;;; resulting widget to the focus controller (see documentation on adding
+  ;;; control entries below). Usually you will want to provide `ui-focus` and
+  ;;; `ui-unfocus` methods and register them as the focus/unfocus procedures.
+  ;;;
+  ;;; Bintracker uses a controller named `focus` to manage the main
+  ;;; application's top-level window. See below for more information.
+  ;;; When implementing your own top-level windows (eg. plugin dialogues) and
+  ;;; automatic focus traversal by Tk is not sufficient, you can use a focus
+  ;;; controller to manage input focus manually.
+  ;;;
+  ;;; The optional ZONES argument may be a list of initial focus control
+  ;;; entries. A control entry has the following structure:
+  ;;;
+  ;;; `(ID FOCUS-THUNK UNFOCUS-THUNK)`
+  ;;;
+  ;;; where ID is a unique identifier, FOCUS-THUNK is a procedure with no
+  ;;; arguments that will be called when the associated UI buffer takes focus,
+  ;;; and UNFOCUS-THUNK is a procedure with no arguments that will be called
+  ;;; when the UI buffer loses focus.
+  ;;;
+  ;;; You can interact with the resulting focus controller FC as follows:
+  ;;;
+  ;;; `(FC 'add ID FOCUS-THUNK UNFOCUS-THUNK ['after ID-AFTER])`
+  ;;;
+  ;;; Adds a focus control entry. ID, FOCUS-THUNK, and UNFOCUS-THUNK are as
+  ;;; described in the previous paragraph. If `after ID-AFTER` is specified,
+  ;;; then the new zone will be added after the control entry ID-AFTER in the
+  ;;; controller ring. It is an error to add an entry with an ID that already
+  ;;; exists in the ring.
+  ;;;
+  ;;; `(FC 'remove ID)`
+  ;;;
+  ;;; Remove the focus control entry ID from the ring. It is an error to remove
+  ;;; a control entry for a buffer that is currently focussed.
+  ;;;
+  ;;; `(FC 'next)`
+  ;;;
+  ;;; Pass input focus control to the next entry in the ring.
+  ;;;
+  ;;; `(FC 'previous)`
+  ;;;
+  ;;; Pass input focus control to the previous entry in the ring.
+  ;;;
+  ;;; `(FC 'set ID)`
+  ;;;
+  ;;; Pass input focus control to control entry ID.
+  ;;;
+  ;;; `(FC 'suspend)`
+  ;;;
+  ;;; Temporarily disable the focus controller. Unfocusses the currently active
+  ;;; entry. U
+  ;;;
+  ;;; `(FC 'resume)`
+  ;;;
+  ;;; Re-enable a suspended focus controller. Focus passes to the entry that
+  ;;; last held control.
+  ;;;
+  ;;; `(FC 'which)`
+  ;;;
+  ;;; Returns the currently active focus control entry.
+  ;;;
+  ;;; `(FC 'list)`
+  ;;;
+  ;;; List the current entries in the ring, with the active one as the first
+  ;;; element.
+  (define (make-focus-control #!optional (zones '()))
+    (let* ((zones zones)
+	   (suspend (lambda ()
+			      (unless (null? zones) ((caddar zones)))))
+	   (resume (lambda ()
+			    (unless (null? zones) ((cadar zones))))))
+      (lambda args
+	(case (car args)
+	  ((suspend) (suspend))
+	  ((resume) (resume))
+	  ((next) (unless (null? zones)
+		    (suspend)
+		    (set! zones
+		      (append (cdr zones) (list (car zones))))
+		    (resume)))
+	  ((previous) (unless (null? zones)
+			(suspend)
+			(set! zones
+			  (cons (last zones) (drop-right zones 1)))
+			(resume)))
+	  ((set) (when (and (alist-ref (cadr args) zones)
+			    (not (eqv? (caar zones) (cadr args))))
+		   (suspend)
+		   (let ((not-target-zone? (lambda (zone)
+					     (not (eqv? (car zone)
+							(cadr args))))))
+		     (set! zones
+		       (append (drop-while not-target-zone? zones)
+			       (take-while not-target-zone? zones))))
+		   (resume)))
+	  ((add)
+	   (when (alist-ref (cadr args) zones)
+	     (error (string-append "UI-Zone " (cadr args)
+				   " already exists")))
+	   (set! zones
+	     (or (and-let* (((not (null? zones)))
+			    ((= (length args) 6))
+			    ((eqv? 'after (fifth args)))
+			    ((alist-ref (sixth args) zones))
+			    (after-id (alist-ref (sixth args) zones))
+			    (after-id-index (+ 1 (list-index after-id zones))))
+		   (append (take zones after-id-index)
+			   (list (take (cdr args) 3))
+			   (drop zones after-id-index)))
+		 (append zones (list (take (cdr args) 3))))))
+	  ((remove) (alist-delete! (cadr args) zones))
+	  ((which) (car zones))
+	  ((list) zones)
+	  (else (error (string-append "Unsupported ui-zones action"
+				      (->string args))))))))
+
+  ;;; The focus controller for the main application window. See
+  ;;; `make-focus-control` above for details on how to interact with focus
+  ;;; control. Any UI buffer within Bintracker's main application window must
+  ;;; register with this controller. This probably applies to your code, if you
+  ;;; use `<ui-buffer>` and directly modify things within the main UI.
+  (define focus (make-focus-control))
+
+  ;; TODO deprecated, provided for compatibility with keybinding manager
+  (define (focus-next-ui-zone)
+    (focus 'next))
+
+  (define (focus-previous-ui-zone)
+    (focus 'previous))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Instances Record

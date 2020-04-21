@@ -101,7 +101,7 @@
   ;;; ## Global Actions
   ;; ---------------------------------------------------------------------------
 
-  ;;; Load the main configuration file.
+  ;;; Load and evaluate the main configuration file `config/config.scm`.
   (define (load-config)
     (if (file-exists? "config/config.scm")
 	(handle-exceptions
@@ -159,13 +159,11 @@
 
   (define after-load-file-hooks
     (make-hooks
-     ;; `(set-current-module
-     ;;   . ,(lambda ()
-     ;; 	    (set-state! 'module-widget (make-module-widget main-frame))))
      `(enable-play-buttons
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
      `(init-instances-record . ,init-instances-record!)
-     ;; `(show-module . ,show-module)
+     `(hide-welcome-buffer
+       . ,(lambda () (multibuffer-hide (ui) 'welcome)))
      `(show-module
        . ,(lambda ()
 	    (multibuffer-add (ui)
@@ -173,7 +171,13 @@
 			     before: 'repl)))
      `(reset-status . ,reset-status-text!)
      `(update-window-title . ,update-window-title!)
-     ;; `(focus-blocks . ,(lambda () (blockview-focus (current-blocks-view))))
+     `(focus-first-block
+       . ,(lambda ()
+	    (and-let* ((entry (find (lambda (entry)
+				      (symbol-contains (car entry)
+						       "block-view"))
+				    (focus 'list))))
+	      (focus 'set (car entry)))))
      `(enable-edit-settings
        . ,(lambda () (ui-set-state edit-settings 'enabled)))
      `(start-emulator . ,(lambda () (emulator 'start)))))
@@ -285,15 +289,17 @@
 
   (define (play-pattern)
     (let ((origin (config-default-origin (current-config))))
-      (emulator 'run origin
-		(list->string (map integer->char
-				   (mod->bin (derive-single-pattern-mdmod
-					      (current-mod)
-					      (blockview-group-id
-					       (current-blocks-view))
-					      (blockview-get-current-order-pos
-					       (current-blocks-view)))
-					     origin))))))
+      '()
+      ;; (emulator 'run origin
+      ;; 		(list->string (map integer->char
+      ;; 				   (mod->bin (derive-single-pattern-mdmod
+      ;; 					      (current-mod)
+      ;; 					      (blockview-group-id
+      ;; 					       (current-blocks-view))
+      ;; 					      (blockview-get-current-order-pos
+      ;; 					       (current-blocks-view)))
+      ;; 					     origin))))
+      ))
 
   (define (stop-playback)
     (emulator 'pause))
@@ -348,14 +354,18 @@
 			       default-major-row-highlight major-row-highlight
 			       1 64
 			       ,(lambda ()
-				  (blockview-update-row-highlights
-				   (current-blocks-view))))
+				  #t
+				  ;; (blockview-update-row-highlights
+				  ;;  (current-blocks-view))
+				  ))
 	      (minor-highlight "/" "Set number of steps per measure"
 			       default-minor-row-highlight minor-row-highlight
 			       2 32
 			       ,(lambda ()
-				  (blockview-update-row-highlights
-				   (current-blocks-view))))))))
+				  #t
+				  ;; (blockview-update-row-highlights
+				  ;;  (current-blocks-view))
+				  ))))))
 
   (define (init-top-level-layout)
     (begin
@@ -372,13 +382,8 @@
 				     "Bintracker " *bintracker-version*
 				     "\n(c) 2019-2020 utz/irrlicht project\n"
 				     "For help, type \"(info)\" at the prompt."
-				     "\n")
-				   ui-zone console))))
-      (ui-show (ui))
-      ;; (tk/pack main-panes expand: 1 fill: 'both)
-      ;; (main-panes 'add main-frame weight: 5)
-      ;; (main-panes 'add (ui-box console) weight: 2)
-      ))
+				     "\n")))))
+      (ui-show (ui))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -431,7 +436,6 @@
 	      (ui-show main-toolbar))))
      `(set-schemta-include-path
        . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
-     ;; `(show-console . ,(lambda () (ui-show console)))
      `(init-status-bar . ,init-status-bar)
      `(disable-keyboard-traversal . ,disable-keyboard-traversal)))
 

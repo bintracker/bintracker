@@ -194,7 +194,7 @@
       (tk/bind* spinbox '<Return>
 		(lambda ()
 		  (validate-new-value (string->number (spinbox 'get)))
-		  (switch-ui-zone-focus (state 'current-ui-zone))))
+		  (focus 'resume)))
       (tk/bind* spinbox '<FocusOut>
 		(lambda ()
 		  (validate-new-value (string->number (spinbox 'get)))))
@@ -264,7 +264,7 @@
 		     (box 'create-widget 'button image: (tk/icon (third spec))
 			  state: (or (and (= 4 (length spec)) (fourth spec))
 				     'disabled)
-			  style: "Toolbutton")))
+			  style: 'BT.TButton)))
 	     (ui-setup buf)))
       (for-each (lambda (button)
 		  (if (eqv? orient 'horizontal)
@@ -434,21 +434,6 @@
 		(multibuffer-active+sorted-children buf))
       (set! (slot-value buf 'initialized) #t)))
 
-  ;; (define-method (multibuffer-visibility primary: (buf <ui-multibuffer>)
-  ;; 					 child visible)
-  ;;   (let ((child-index (list-index (lambda (elem)
-  ;; 				     (eqv? child (car elem)))
-  ;; 				   (ui-children buf))))
-  ;;     (when (and (slot-value buf 'initialized)
-  ;; 		 ;; do not add to display again if already added
-  ;; 		 (not (and visible (list-ref (slot-value buf 'visibility)
-  ;; 					     child-index))))
-  ;; 	((ui-box buf)
-  ;; 	 (if visible 'add 'forget)
-  ;; 	 (ui-box (alist-ref child (ui-children buf)))))
-  ;;     (list-set! (slot-value buf 'visibility)
-  ;; 		 child-index visible)))
-
   ;;; Add a new child buffer. CHILD-SPEC shall have the same form as the
   ;;; elements in the `'setup` argument to `(make <ui-multibuffer ...)`.
   ;;; The new child buffer will be added before the child named BEFORE, or at
@@ -490,6 +475,53 @@
        (ui-box (ui-ref buf (car child-spec)))
        weight: (cadr (alist-ref (car child-spec)
 				(slot-value buf 'state))))))
+
+  ;;; Map the child element CHILD to the display. Does nothing if CHILD is
+  ;;; already visible.
+  (define-method (multibuffer-show primary: (buf <ui-multibuffer>)
+				   child)
+    (let ((child-buf (alist-ref child (ui-children buf)))
+	  (state (slot-value buf 'state)))
+      (when (and child-buf (not (cadr (alist-ref child state))))
+	(let ((before (find (lambda (s)
+			      (> (cadr s) (car (alist-ref child state))))
+			    state)))
+	  (if before
+	      ((ui-box buf) 'insert
+	       (ui-box (alist-ref (car before) (ui-children buf)))
+	       (ui-box child-buf)
+	       weight: (caddr (alist-ref child state)))
+	      ((ui-box buf) 'add (ui-box child-buf)
+	       weight: (caddr (alist-ref child state))))
+	  (set! (cadr (alist-ref child state))
+	    #t)))))
+
+  ;;; Remove the child element CHILD from the display. Does nothing if CHILD is
+  ;;; currently not hidden. You can add back CHILD at a later point with
+  ;;; `multibuffer-show`. If CHILD is no longer needed at all, use
+  ;;; `multibuffer-destroy` instead.
+  (define-method (multibuffer-hide primary: (buf <ui-multibuffer>)
+				   child)
+    (let ((child-buf (alist-ref child (ui-children buf))))
+      (when (and child-buf (cadr (alist-ref child (slot-value buf 'state))))
+	((ui-box buf) 'forget (ui-box child-buf))
+	(set! (cadr (alist-ref child (slot-value buf 'state)))
+	  #f))))
+
+  ;; TODO renumber?
+  ;;; Remove the child element CHILD from the multibuffer display and delete it.
+  ;;; If you just want to remove the child from the display, use
+  ;;; `multibuffer-hide` instead.
+  (define-method (multibuffer-delete primary: (buf <ui-multibuffer>)
+				     child)
+    (when (alist-ref child (ui-children buf))
+      (when (cadr (alist-ref child (slot-value buf 'state)))
+	(multibuffer-hide buf child))
+      (tk/destroy (ui-box (alist-ref child (ui-children))))
+      (set! (ui-children buf)
+	(alist-delete child (ui-children buf)))
+      (set! (slot-value buf 'state)
+	(alist-delete child (slot-value buf 'state)))))
 
   ;; TODO Buffers should also be scrollable.
   ;;; This class commonly acts as a superclass for UI classes that represent
@@ -569,7 +601,8 @@
 		    style: 'BT.TLabel)
 	       padx: 20 pady: 20)
       (for-each (lambda (text)
-		  (tk/pack (box 'create-widget 'button text: text)
+		  (tk/pack (box 'create-widget 'button text: text
+				style: 'BT.TButton)
 			   pady: 4))
 		'("Create new module (Ctrl-N)"
 		  "Open existing module (Ctrl-O)"
@@ -581,20 +614,28 @@
   ;;; initform to `'ui-zone`. The methods `repl-clear`, `repl-insert`, and
   ;;; `repl-get` are provided for interaction with the prompt.
   (define-class <ui-repl> (<ui-buffer>)
-    ((ui-zone #f)
+    ((ui-zone (gensym 'repl))
+     (focus-controller focus)
      repl
      yscroll
      (prompt "repl> ")
      (history '())))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
-    (set! (slot-value buf 'repl)
-      ((slot-value buf 'content-box) 'create-widget 'text))
-    (set! (slot-value buf 'yscroll)
-      ((slot-value buf 'content-box) 'create-widget 'scrollbar orient: 'vertical))
-    (when (slot-value buf 'ui-zone)
-      (tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
-		(lambda () (switch-ui-zone-focus (slot-value buf 'ui-zone))))))
+    (let ((focus-controller (slot-value buf 'focus-controller)))
+      (set! (slot-value buf 'repl)
+	((slot-value buf 'content-box) 'create-widget 'text))
+      (set! (slot-value buf 'yscroll)
+	((slot-value buf 'content-box)
+	 'create-widget 'scrollbar orient: 'vertical))
+      (focus-controller 'add (slot-value buf 'ui-zone)
+       (lambda () (ui-focus buf))
+       (lambda () #t))
+      (when (slot-value buf 'ui-zone)
+	(tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
+		  (lambda ()
+		    ;; (switch-ui-zone-focus (slot-value buf 'ui-zone))
+		    (focus-controller 'set (slot-value buf 'ui-zone)))))))
 
   ;; TODO this becomes a before: method once things are sorted out
   (define-method (ui-show primary: (buf <ui-repl>))
@@ -738,7 +779,9 @@
   ;;; where ID is an MDAL field node identifier in `(current-config)` and PATH
   ;;; is an MDAL node path string that will be evaluated on `(current-mod)`.
   (define-class <ui-group-fields> (<ui-buffer>)
-    ((group-id
+    ((ui-zone (gensym 'group-fields))
+     (focus-controller focus)
+     (group-id
       (error "Cannot create <ui-group-fields> without group-id"))
      (parent-instance-path
       (error "Cannot create <ui-group-fields> without parent-instance-path"))
@@ -758,7 +801,11 @@
 		       'node-id field-id
 		       'parent-instance-path
 		       (slot-value buf 'parent-instance-path))))
-	     subnode-ids))))
+	     subnode-ids))
+      ((slot-value buf 'focus-controller) 'add
+       (slot-value buf 'ui-zone)
+       (lambda () (ui-focus (cdar (ui-children buf))))
+       (lambda () (ui-unfocus (cdar (ui-children buf)))))))
 
   ;; TODO expand: 1 fill: both?
   ;; bt-blockview -> <ui-basic-block-view>
@@ -771,7 +818,9 @@
   ;;; this class if you want to implement an alternative representation of an
   ;;; MDAL group's blocks.
   (define-class <ui-basic-block-view> (<ui-buffer>)
-    ((group-id
+    (ui-zone
+     (focus-controller focus)
+     (group-id
       (error "Cannot create <ui-group-fields> without group-id"))
      field-ids
      field-configs
@@ -1313,7 +1362,8 @@
   ;;; A class representing the display of an MDAL group node's blocks, minus the
   ;;; order block. Pattern display is implemented using this class.
   (define-class <ui-block-view> (<ui-basic-block-view>)
-    (block-ids))
+    ((ui-zone (gensym 'block-view))
+     block-ids))
 
   (define-method (initialize-instance after: (buf <ui-block-view>))
     (let ((group-id (slot-value buf 'group-id)))
@@ -1327,7 +1377,11 @@
 		      (slot-value buf 'block-ids))))
       (set! (slot-value buf 'field-configs)
 	(blockview-make-field-configs (slot-value buf 'block-ids)
-				      (slot-value buf 'field-ids)))))
+				      (slot-value buf 'field-ids)))
+      ((slot-value buf 'focus-controller) 'add
+       (slot-value buf 'ui-zone)
+       (lambda () (ui-blockview-focus buf))
+       (lambda () (ui-blockview-unfocus buf)))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-block-view>))
@@ -1444,9 +1498,7 @@
   (define-method (ui-blockview-set-cursor-from-mouse primary:
 						     (buf <ui-block-view>))
     (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
-      (unless (eq? 'blocks
-		   (car (list-ref ui-zones (state 'current-ui-zone))))
-	(switch-ui-zone-focus 'blocks))
+      ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
       (ui-blockview-set-cursor buf (car mouse-pos)
 			       (find (cute <= <> (cadr mouse-pos))
 				     (reverse
@@ -1520,7 +1572,8 @@
 
   ;;; A class representing the display of the order block of an MDAL group node
   ;;; instance.
-  (define-class <ui-order-view> (<ui-basic-block-view>))
+  (define-class <ui-order-view> (<ui-basic-block-view>)
+    ((ui-zone (gensym 'order-view))))
 
   (define-method (initialize-instance after: (buf <ui-order-view>))
     (let ((group-id (slot-value buf 'group-id)))
@@ -1529,7 +1582,11 @@
   				(config-itree (current-config))))
       (set! (slot-value buf 'field-configs)
   	(blockview-make-field-configs (list (symbol-append group-id '_ORDER))
-  				      (slot-value buf 'field-ids)))))
+  				      (slot-value buf 'field-ids)))
+      ((slot-value buf 'focus-controller) 'add
+       (slot-value buf 'ui-zone)
+       (lambda () (ui-blockview-focus buf))
+       (lambda () (ui-blockview-unfocus buf)))))
 
   ;; TODO rename -> blockview-init-content-header when old blockview code is
   ;; removed
@@ -1603,9 +1660,7 @@
   (define-method (ui-blockview-set-cursor-from-mouse primary:
 						     (buf <ui-order-view>))
     (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
-      (unless (eq? 'order
-		   (car (list-ref ui-zones (state 'current-ui-zone))))
-	(switch-ui-zone-focus 'order))
+      ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
       (ui-blockview-set-cursor buf (car mouse-pos)
 			       (find (cute <= <> (cadr mouse-pos))
 				     (reverse
@@ -1743,6 +1798,7 @@
 		      group-id (current-config) 'group))
         (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
 					 group-id ,group-id)))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Dialogues
@@ -1903,20 +1959,63 @@
 
   ;;; Configure ttk widget styles.
   (define (update-ttk-style)
-    (ttk/style 'configure 'BT.TFrame background: (colors 'background))
-
-    (ttk/style 'configure 'BT.TLabel background: (colors 'background)
-	       foreground: (colors 'text)
-	       font: (list family: (settings 'font-mono)
-			   size: (settings 'font-size)
-			   weight: 'bold))
-
-    (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
-    (ttk/style 'configure 'BT.TNotebook.Tab
-	       background: (colors 'background)
-	       font: (list family: (settings 'font-mono)
+    (let ((user-font-bold (list family: (settings 'font-mono)
 			   size: (settings 'font-size)
 			   weight: 'bold)))
+      (ttk/style 'configure 'BT.TFrame background: (colors 'background))
+
+      (ttk/style 'configure 'BT.TLabel background: (colors 'background)
+		 foreground: (colors 'text)
+		 font: user-font-bold)
+      ;;  Dynamic states: active, disabled, pressed, readonly.
+
+      ;; TButton styling options configurable with ttk::style are:
+
+      ;; -anchor anchor
+      ;; -background color
+      ;; -bordercolor color
+      ;; -compound compound
+      ;; -darkcolor color
+      ;; -foreground color
+      ;; -font font
+      ;; -highlightcolor color
+      ;; -highlightthickness amount
+      ;; -lightcolor color
+      ;; -padding padding
+      ;; -relief relief
+      ;; -shiftrelief amount
+
+      ;;     -shiftrelief specifies how far the button contents are shifted down and right in the pressed state. This action provides additional skeumorphic feedback.
+
+      ;; -width amount
+
+      (ttk/style 'configure 'BT.TButton
+		 ;; highlightthickness: 5
+		 ;; lightcolor: (colors 'text)
+		 ;; darkcolor: (colors 'text)
+		 ;; bordercolor: (colors 'text)
+		 ;; highlightcolor: (colors 'text)
+		 ;; padding: 5
+		 font: user-font-bold
+		 relief: 'flat)
+      ;; (ttk/style 'configure 'BT.Button.border
+      ;; 		 background: (colors 'text)
+      ;; 		 border: 4)
+      (ttk/style 'map 'BT.TButton background:
+		 (list 'disabled (colors 'background)
+		       'active (colors 'row-highlight-major)
+		       '!active (colors 'row-highlight-minor)))
+      (ttk/style 'map 'BT.TButton foreground:
+		 (list 'disabled (colors 'text-inactive)
+		       'active (colors 'text)
+		       '!active (colors 'text)))
+      ;; (ttk/style 'map 'BT.Button.border borderwidth:
+      ;; 		 (list 'disabled 0 'active 2 '!active 1))
+
+      (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
+      (ttk/style 'configure 'BT.TNotebook.Tab
+		 background: (colors 'background)
+		 font: user-font-bold)))
 
   ;;; Configure the style of the scrollbar widget S to match Bintracker's
   ;;; style.
@@ -2026,61 +2125,7 @@
 
   ;;; The core widgets that make up Bintracker's GUI.
 
-  ;; (define main-panes (tk 'create-widget 'panedwindow))
-
-  ;; (define main-frame (main-panes 'create-widget 'frame))
-
-  ;; (define console-frame (main-panes 'create-widget 'frame))
-
   (define status-frame (tk 'create-widget 'frame))
-
-  ;; TODO take into account which zones are actually active
-  ;;; The list of all ui zones that can be focussed. The list consists of a list
-  ;;; for each zone, which contains the focus procedure in car, and the unfocus
-  ;;; procedure in cadr.
-  (define ui-zones
-    `((fields ,(lambda () (focus-fields-widget (current-fields-view)))
-	      ,(lambda () (unfocus-fields-widget (current-fields-view))))
-      (blocks ,(lambda () (blockview-focus (current-blocks-view)))
-      	      ,(lambda () (blockview-unfocus (current-blocks-view))))
-      (order ,(lambda () (blockview-focus (current-order-view)))
-      	     ,(lambda () (blockview-unfocus (current-order-view))))
-      (console ,(lambda () '(;; TODO ui-focus console
-			     ))
-	       ,(lambda () '()))))
-
-  ;;; Switch keyboard focus to another UI zone. `new-zone` can be either an
-  ;;; index to the `ui-zones` list, or a symbol naming an entry in
-  ;;; that list.
-  (define (switch-ui-zone-focus new-zone)
-    (let ((new-zone-index (or (and (integer? new-zone)
-				   new-zone)
-			      (list-index (lambda (zone)
-					    (eq? new-zone (car zone)))
-					  ui-zones))))
-      ;; TODO find a better way of preventing focussing/unfocussing unpacked
-      ;; widgets
-      (when (current-mod)
-	((third (list-ref ui-zones (state 'current-ui-zone)))))
-      (set-state! 'current-ui-zone new-zone-index)
-      ((second (list-ref ui-zones new-zone-index)))))
-
-  ;;; Unfocus the currently active UI zone, and focus the next one listed in
-  ;;; ui-zones.
-  (define (focus-next-ui-zone)
-    (let* ((current-zone (state 'current-ui-zone))
-	   (next-zone (if (= current-zone (sub1 (length ui-zones)))
-			  0 (+ 1 current-zone))))
-      (switch-ui-zone-focus next-zone)))
-
-  ;;; Unfocus the currently active UI zone, and focus the previous one listed in
-  ;;; ui-zones.
-  (define (focus-previous-ui-zone)
-    (let* ((current-zone (state 'current-ui-zone))
-	   (prev-zone (if (= current-zone 0)
-			  (sub1 (length ui-zones))
-			  (sub1 current-zone))))
-      (switch-ui-zone-focus prev-zone)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -2110,16 +2155,6 @@
        (configure (toggle-prompt "Toggle Console" "prompt.png")
       		  (show-settings "Settings..." "settings.png")))))
 
-
-  ;; ;; ---------------------------------------------------------------------------
-  ;; ;;; ## Console
-  ;; ;; ---------------------------------------------------------------------------
-
-  ;; (define console
-  ;;   (make <ui-repl>
-  ;;     'setup (string-append "Bintracker " *bintracker-version*
-  ;; 			    "\n(c) 2019-2020 utz/irrlicht project\n")
-  ;;     'ui-zone 'console))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Status Bar
@@ -2216,9 +2251,9 @@
     (let ((action (pop-undo)))
       (when action
 	(apply-edit! action)
-	(blockview-update (current-order-view))
-	(blockview-update (current-blocks-view))
-	(switch-ui-zone-focus (state 'current-ui-zone))
+	;; (blockview-update (current-order-view))
+	;; (blockview-update (current-blocks-view))
+	(focus 'resume)
 	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'redo)
 	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
 	  (ui-set-state (ui-ref main-toolbar 'journal) 'disabled 'undo)))))
@@ -2228,9 +2263,9 @@
     (let ((action (pop-redo)))
       (when action
 	(apply-edit! action)
-	(blockview-update (current-order-view))
-	(blockview-update (current-blocks-view))
-	(switch-ui-zone-focus (state 'current-ui-zone))
+	;; (blockview-update (current-order-view))
+	;; (blockview-update (current-blocks-view))
+	(focus 'resume)
 	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
 	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
 	  (ui-set-state (ui-ref main-toolbar 'journal) 'disabled 'redo)))))
@@ -2402,133 +2437,16 @@
 					(list #\. (car (reverse chars))))))))))
 
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ### Field-Related Widgets and Procedures
-  ;; ---------------------------------------------------------------------------
-
-  ;;; A meta widget for displaying an MDAL group field.
-  (defstruct bt-field-widget
-    (toplevel-frame : procedure)
-    (id-label : procedure)
-    (val-entry : procedure)
-    (node-id : symbol))
-
-  ;;; Create a `bt-field-widget`.
-  (define (make-field-widget node-id parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame style: 'BT.TFrame))
-	  (color (get-field-color node-id)))
-      (make-bt-field-widget
-       toplevel-frame: tl-frame
-       node-id: node-id
-       id-label: (tl-frame 'create-widget 'label style: 'BT.TLabel
-			   foreground: color text: (symbol->string node-id))
-       val-entry: (tl-frame 'create-widget 'entry
-			    bg: (colors 'row-highlight-minor) fg: color
-			    bd: 0 highlightthickness: 0 insertborderwidth: 1
-			    justify: 'center
-			    font: (list family: (settings 'font-mono)
-					size: (settings 'font-size)
-					weight: 'bold)))))
-
-  ;;; Display a `bt-field-widget`.
-  (define (show-field-widget w group-instance-path)
-    (tk/pack (bt-field-widget-toplevel-frame w)
-	     side: 'left)
-    (tk/pack (bt-field-widget-id-label w)
-	     (bt-field-widget-val-entry w)
-	     side: 'top padx: 4 pady: 4)
-    ((bt-field-widget-val-entry w) 'insert 'end
-     (normalize-field-value (cddr
-    			     ((node-path
-    			       (string-append
-    				group-instance-path
-    				(symbol->string (bt-field-widget-node-id w))
-    				"/0/"))
-    			      (mdmod-global-node (current-mod))))
-    			    (bt-field-widget-node-id w))))
-
-  (define (focus-field-widget w)
-    (let ((entry (bt-field-widget-val-entry w)))
-      (entry 'configure bg: (colors 'cursor))
-      (tk/focus entry)))
-
-  (define (unfocus-field-widget w)
-    ((bt-field-widget-val-entry w) 'configure
-     bg: (colors 'row-highlight-minor)))
-
-  ;;; A meta widget for displaying an MDAL group's field members.
-  (defstruct bt-fields-widget
-    (toplevel-frame : procedure)
-    (parent-node-id : symbol)
-    ((fields '()) : (list-of (struct bt-field-widget)))
-    ((active-index 0) : fixnum))
-
-  ;;; Create a `bt-fields-widget`.
-  (define (make-fields-widget parent-node-id parent-widget)
-    (let ((subnode-ids (config-get-subnode-type-ids parent-node-id
-						    (current-config)
-						    'field)))
-      (if (null? subnode-ids)
-	  #f
-	  (let ((tl-frame (parent-widget 'create-widget 'frame
-					 style: 'BT.TFrame)))
-	    (make-bt-fields-widget
-	     toplevel-frame: tl-frame
-	     parent-node-id: parent-node-id
-	     fields: (map (cute make-field-widget <> tl-frame)
-			  subnode-ids))))))
-
-  ;;; Show a group fields widget.
-  (define (show-fields-widget w group-instance-path)
-    (begin
-      (tk/pack (bt-fields-widget-toplevel-frame w)
-	       fill: 'x)
-      (for-each (lambda (field-widget index)
-		  (let ((bind-tk-widget-button-press
-			 (lambda (widget)
-			   (tk/bind* widget '<ButtonPress-1>
-				     (lambda ()
-				       (unfocus-field-widget
-					(list-ref (bt-fields-widget-fields w)
-						  (bt-fields-widget-active-index
-						   w)))
-				       (bt-fields-widget-active-index-set!
-					w index)
-				       (switch-ui-zone-focus 'fields)))))
-			(val-entry (bt-field-widget-val-entry field-widget)))
-		    (show-field-widget field-widget group-instance-path)
-		    (tk/bind* val-entry '<Tab> (lambda ()
-						 (select-next-field w)))
-		    (reverse-binding-eval-order val-entry)
-		    (bind-tk-widget-button-press val-entry)
-		    (bind-tk-widget-button-press
-		     (bt-field-widget-id-label field-widget))
-		    (bind-tk-widget-button-press
-		     (bt-field-widget-toplevel-frame field-widget))))
-		(bt-fields-widget-fields w)
-		(iota (length (bt-fields-widget-fields w))))
-      (tk/bind* (bt-fields-widget-toplevel-frame w)
-		'<ButtonPress-1> (lambda ()
-				   (switch-ui-zone-focus 'fields)))))
-
-  (define (focus-fields-widget w)
-    (focus-field-widget (list-ref (bt-fields-widget-fields w)
-				  (bt-fields-widget-active-index w))))
-
-  (define (unfocus-fields-widget w)
-    (unfocus-field-widget (list-ref (bt-fields-widget-fields w)
-				    (bt-fields-widget-active-index w))))
-
-  (define (select-next-field fields-widget)
-    (let ((current-index (bt-fields-widget-active-index fields-widget)))
-      (unfocus-fields-widget fields-widget)
-      (bt-fields-widget-active-index-set!
-       fields-widget
-       (if (< current-index (sub1 (length (bt-fields-widget-fields
-					   fields-widget))))
-	   (add1 current-index)
-	   0))
-      (focus-fields-widget fields-widget)))
+  ;; (define (select-next-field fields-widget)
+  ;;   (let ((current-index (bt-fields-widget-active-index fields-widget)))
+  ;;     (unfocus-fields-widget fields-widget)
+  ;;     (bt-fields-widget-active-index-set!
+  ;;      fields-widget
+  ;;      (if (< current-index (sub1 (length (bt-fields-widget-fields
+  ;; 					   fields-widget))))
+  ;; 	   (add1 current-index)
+  ;; 	   0))
+  ;;     (focus-fields-widget fields-widget)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -2623,24 +2541,6 @@
     (cursor-width : fixnum)
     (cursor-digits : fixnum))
 
-  (defstruct blockview
-    (type : symbol)
-    (group-id : symbol)
-    (block-ids : (list-of symbol))
-    (field-ids : (list-of symbol))
-    (field-configs : list)
-    (header-frame : procedure)
-    (packframe : procedure)
-    (rownum-frame : procedure)
-    (rownum-header : procedure)
-    (rownums : procedure)
-    (content-frame : procedure)
-    (content-header : procedure)
-    (content-grid : procedure)
-    (xscroll : procedure)
-    (yscroll : procedure)
-    ((item-cache '()) : list))
-
   ;;; Returns the number of characters that the blockview cursor should span
   ;;; for the given `field-id`.
   (define (field-id->cursor-size field-id)
@@ -2663,25 +2563,6 @@
       (if (memq (command-type cmd-config)
 		'(key ukey))
 	  1 (value-display-size cmd-config))))
-
-  ;;; Generic procedure for mapping tags to the field columns of a textgrid.
-  ;;; This can be used either on the content header, or on the content grid.
-  (define (blockview-add-column-tags b textgrid row taglist)
-    (for-each (lambda (tag field-config)
-		(let ((start (bv-field-config-start field-config)))
-		  (textgrid-add-tags textgrid tag row start
-				     (+ start
-					(bv-field-config-width field-config)))))
-	      taglist
-	      (map cadr (blockview-field-configs b))))
-
-  ;;; Add type tags to the given row in `textgrid`. If `textgrid` is not
-  ;;; given, it defaults to the blockview's content-grid.
-  (define (blockview-add-type-tags b row #!optional
-				   (textgrid (blockview-content-grid b)))
-    (blockview-add-column-tags b textgrid row
-			       (map (o bv-field-config-type-tag cadr)
-				    (blockview-field-configs b))))
 
   ;;; Generate the alist of bv-field-configs.
   (define (blockview-make-field-configs block-ids field-ids)
@@ -2718,830 +2599,5 @@
 						  cursor-digits: c-digits)))
 	   field-ids type-tags sizes start-positions cursor-widths
 	   cursor-ds)))
-
-  ;;; Returns a blockview metawidget that is suitable for the MDAL group
-  ;;; `group-id`. `type` must be `'block` for a regular blockview showing
-  ;;; the group's block node members, or '`order` for a blockview showing the
-  ;;; group's order list.
-  (define (blockview-create parent type group-id)
-    (let* ((header-frame (parent 'create-widget 'frame))
-	   (packframe (parent 'create-widget 'frame))
-  	   (rownum-frame (packframe 'create-widget 'frame style: 'BT.TFrame))
-	   (content-frame (packframe 'create-widget 'frame))
-  	   (block-ids
-  	    (and (eq? type 'block)
-  		 (remove (cute eq? <> (symbol-append group-id '_ORDER))
-  			 (config-get-subnode-type-ids group-id (current-config)
-  						      'block))))
-  	   (field-ids (if (eq? type 'block)
-  			  (flatten (map (cute config-get-subnode-ids <>
-					      (config-itree (current-config)))
-					block-ids))
-  			  (config-get-subnode-ids
-  			   (symbol-append group-id '_ORDER)
-  			   (config-itree (current-config)))))
-	   (rownums (textgrid-create-basic rownum-frame))
-	   (grid (textgrid-create content-frame)))
-      (make-blockview
-       type: type group-id: group-id block-ids: block-ids field-ids: field-ids
-       field-configs: (blockview-make-field-configs
-		       (or block-ids (list (symbol-append group-id '_ORDER)))
-       		       field-ids)
-       header-frame: header-frame packframe: packframe
-       rownum-frame: rownum-frame content-frame: content-frame
-       rownum-header: (textgrid-create-basic rownum-frame)
-       rownums: rownums
-       content-header: (textgrid-create-basic content-frame)
-       content-grid: grid
-       xscroll: (parent 'create-widget 'scrollbar orient: 'horizontal
-  			command: `(,grid xview))
-       yscroll: (packframe 'create-widget 'scrollbar orient: 'vertical
-			   command: (lambda args
-				      (apply grid (cons 'yview args))
-				      (apply rownums (cons 'yview args)))))))
-
-  ;;; Convert the list of row `values` into a string that can be inserted into
-  ;;; the blockview's content-grid or header-grid. Each entry in `values` must
-  ;;; correspond to a field column in the blockview's content-grid.
-  (define (blockview-values->row-string b values)
-    (letrec ((construct-string
-	      (lambda (str vals configs)
-		(if (null-list? vals)
-		    str
-		    (let ((next-chunk
-			   (string-append
-			    str
-			    (list->string
-			     (make-list (- (bv-field-config-start (car configs))
-					   (string-length str))
-					#\space))
-			    (->string (car vals)))))
-		      (construct-string next-chunk (cdr vals)
-					(cdr configs)))))))
-      (construct-string "" values (map cadr (blockview-field-configs b)))))
-
-  ;;; Set up the column and block header display.
-  (define (blockview-init-content-header b)
-    (let* ((header (blockview-content-header b))
-  	   (block? (eq? 'block (blockview-type b)))
-  	   (field-ids (blockview-field-ids b)))
-      (when block?
-  	(header 'insert 'end
-		(string-append/shared
-		 (string-intersperse
-		  (map (lambda (id)
-			 (node-id-abbreviate
-			  id
-			  (apply + (map (o add1 bv-field-config-width cadr)
-					(filter
-					 (lambda (field-config)
-					   (memq (car field-config)
-						 (config-get-subnode-ids
-						  id (config-itree
-						      (current-config)))))
-					 (blockview-field-configs b))))))
-		       (blockview-block-ids b)))
-  		 "\n"))
-  	(textgrid-add-tags header '(active txt) 0))
-      (header 'insert 'end
-	      (blockview-values->row-string
-	       b (map node-id-abbreviate
-		      (if block?
-			  field-ids
-			  (cons 'ROWS
-				(map (lambda (id)
-				       (string->symbol
-					(string-drop (symbol->string id) 2)))
-				     (cdr field-ids))))
-		      (map (o bv-field-config-width cadr)
-			   (blockview-field-configs b)))))
-      (textgrid-add-tags header 'active (if block? 1 0))
-      (blockview-add-type-tags b (if block? 1 0)
-      			       (blockview-content-header b))))
-
-  ;;; Returns the position of `mark` as a list containing the row in car,
-  ;;; and the character position in cadr. Row position is adjusted to 0-based
-  ;;; indexing.
-  (define (blockview-mark->position b mark)
-    (let ((pos (map string->number
-		    (string-split ((blockview-content-grid b) 'index mark)
-				  "."))))
-      (list (sub1 (car pos))
-	    (cadr pos))))
-
-  ;;; Returns the current cursor position as a list containing the row in car,
-  ;;; and the character position in cadr. Row position is adjusted to 0-based
-  ;;; indexing.
-  (define (blockview-get-cursor-position b)
-    (blockview-mark->position b 'insert))
-
-  ;;; Returns the current row, ie. the row that the cursor is currently on.
-  (define (blockview-get-current-row b)
-    (car (blockview-get-cursor-position b)))
-
-  ;;; Returns the field ID that the cursor is currently on.
-  (define (blockview-get-current-field-id b)
-    (let ((char-pos (cadr (blockview-get-cursor-position b))))
-      (list-ref (blockview-field-ids b)
-		(list-index
-		 (lambda (cfg)
-		   (and (>= char-pos (bv-field-config-start (cadr cfg)))
-			(> (+ (bv-field-config-start (cadr cfg))
-			      (bv-field-config-width (cadr cfg)))
-			   char-pos)))
-		 (blockview-field-configs b)))))
-
-  ;;; Returns the ID of the parent block node if the field that the cursor is
-  ;;; currently on.
-  (define (blockview-get-current-block-id b)
-    (config-get-parent-node-id (blockview-get-current-field-id b)
-			       (config-itree (current-config))))
-
-  ;;; Returns the bv-field-configuration for the field that the cursor is
-  ;;; currently on.
-  (define (blockview-get-current-field-config b)
-    (car (alist-ref (blockview-get-current-field-id b)
-		    (blockview-field-configs b))))
-
-  ;;; Returns the MDAL command config for the field that the cursor is
-  ;;; currently on.
-  (define (blockview-get-current-field-command b)
-    (config-get-inode-source-command (blockview-get-current-field-id b)
-				     (current-config)))
-
-  ;;; Returns the corresponding group order position for the chunk currently
-  ;;; under cursor. For order type blockviews, the result is equal to the
-  ;;; current row.
-  (define (blockview-get-current-order-pos b)
-    (let ((current-row (blockview-get-current-row b)))
-      (if (eq? 'order (blockview-type b))
-	  current-row
-	  (list-index (lambda (start+end)
-			(and (>= current-row (car start+end))
-			     (<= current-row (cadr start+end))))
-		      (blockview-start+end-positions b)))))
-
-  ;;; Returns the chunk from the item cache that the cursor is currently on.
-  (define (blockview-get-current-chunk b)
-    (list-ref (blockview-item-cache b)
-	      (blockview-get-current-order-pos b)))
-
-  ;;; Update the command information in the status bar, based on the field that
-  ;;; the cursor currently points to.
-  (define (blockview-update-current-command-info b)
-    (let ((current-field-id (blockview-get-current-field-id b)))
-      (if (eq? 'order (blockview-type b))
-	  (set-state! 'active-md-command-info
-		      (if (symbol-contains current-field-id "_LENGTH")
-			  "Step Length"
-			  (string-append "Channel "
-					 (string-drop (symbol->string
-						       current-field-id)
-						      2))))
-	  (set-active-md-command-info! current-field-id))
-      (reset-status-text!)))
-
-  ;;; Get the up-to-date list of items to display. The list is nested. The first
-  ;;; nesting level corresponds to an order position. The second nesting level
-  ;;; corresponds to a row of fields. For order nodes, there is only one element
-  ;;; at the first nesting level.
-  (define (blockview-get-item-list b)
-    (let* ((group-id (blockview-group-id b))
-  	   (group-instance (get-current-node-instance group-id))
-  	   (order (mod-get-order-values group-id group-instance)))
-      (if (eq? 'order (blockview-type b))
-  	  (list order)
-	  (map (lambda (order-pos)
-		 (let ((block-values (mod-get-block-values group-instance
-							   (cdr order-pos)))
-		       (chunk-length (car order-pos)))
-		   (if (<= chunk-length (length block-values))
-		       (take block-values chunk-length)
-		       (append block-values
-			       (make-list (- chunk-length (length block-values))
-					  (make-list (length (car block-values))
-						     '()))))))
-	       order))))
-
-  ;;; Determine the start and end positions of each item chunk in the
-  ;;; blockview's item cache.
-  (define (blockview-start+end-positions b)
-    (letrec* ((get-positions
-  	       (lambda (current-pos items)
-  		 (if (null-list? items)
-  		     '()
-  		     (let ((len (length (car items))))
-  		       (cons (list current-pos (+ current-pos (sub1 len)))
-  			     (get-positions (+ current-pos len)
-  					    (cdr items))))))))
-      (get-positions 0 (blockview-item-cache b))))
-
-  ;;; Get the total number of rows of the blockview's contents.
-  (define (blockview-get-total-length b)
-    (apply + (map length (blockview-item-cache b))))
-
-  ;;; Returns the active blockview zone as a list containing the first and last
-  ;;; row in car and cadr, respectively.
-  (define (blockview-get-active-zone b)
-    (let ((start+end-positions (blockview-start+end-positions b))
-	  (current-row (blockview-get-current-row b)))
-      (list-ref start+end-positions
-		(list-index (lambda (start+end)
-			      (and (>= current-row (car start+end))
-				   (<= current-row (cadr start+end))))
-			    start+end-positions))))
-
-  ;;; Return the field instance ID currently under cursor.
-  (define (blockview-get-current-field-instance b)
-    (- (blockview-get-current-row b)
-       (car (blockview-get-active-zone b))))
-
-  ;;; Return the block instance ID currently under cursor.
-  (define (blockview-get-current-block-instance b)
-    (let ((current-block-id (blockview-get-current-block-id b)))
-      (list-ref (list-ref (map cdr
-			       (mod-get-order-values
-				(blockview-group-id b)
-				(get-current-node-instance
-				 (blockview-group-id b))))
-			  (blockview-get-current-order-pos b))
-		(list-index (lambda (block-id)
-			      (eq? block-id current-block-id))
-			    (blockview-block-ids b)))))
-
-  ;;; Return the MDAL node path string of the field currently under cursor.
-  (define (blockview-get-current-block-instance-path b)
-    (string-append (get-current-instance-path (blockview-group-id b))
-		   (symbol->string (blockview-get-current-block-id b))
-		   "/" (->string (blockview-get-current-block-instance b))))
-
-  ;;; Return the index of the the current field node ID in the blockview's list
-  ;;; of field IDs. The result can be used to retrieve a field instance value
-  ;;; from a chunk in the item cache.
-  (define (blockview-get-current-field-index b)
-    (list-index (lambda (id)
-		  (eq? id (blockview-get-current-field-id b)))
-		(blockview-field-ids b)))
-
-  ;;; Returns the (un-normalized) value of the field instance currently under
-  ;;; cursor.
-  (define (blockview-get-current-field-value b)
-    (list-ref (list-ref (blockview-get-current-chunk b)
-			(blockview-get-current-field-instance b))
-	      (blockview-get-current-field-index b)))
-
-  ;;; Apply type tags and the 'active tag to the current active zone of the
-  ;;; blockview `b`.
-  (define (blockview-tag-active-zone b)
-    (let ((zone-limits (blockview-get-active-zone b))
-	  (grid (blockview-content-grid b))
-	  (rownums (blockview-rownums b)))
-      (textgrid-remove-tags-globally
-       grid (cons 'active (map (o bv-field-config-type-tag cadr)
-			       (blockview-field-configs b))))
-      (textgrid-remove-tags-globally rownums '(active txt))
-      (textgrid-add-tags rownums '(active txt)
-			 (car zone-limits)
-			 0 'end (cadr zone-limits))
-      (textgrid-add-tags grid 'active (car zone-limits)
-			 0 'end (cadr zone-limits))
-      (for-each (lambda (row)
-		  (blockview-add-type-tags b row))
-		(iota (- (cadr zone-limits)
-			 (sub1 (car zone-limits)))
-		      (car zone-limits) 1))))
-
-  ;;; Update the row highlights of the blockview.
-  (define (blockview-update-row-highlights b)
-    (let* ((start-positions (map car (blockview-start+end-positions b)))
-	   (minor-hl (state 'minor-row-highlight))
-	   (major-hl (* minor-hl (state 'major-row-highlight)))
-	   (make-rowlist
-	    (lambda (hl-distance)
-	      (flatten
-	       (map (lambda (chunk start)
-		      (map (cute + <> start)
-			   (filter (lambda (i)
-				     (zero? (modulo i hl-distance)))
-				   (iota (length chunk)))))
-		    (blockview-item-cache b)
-		    start-positions))))
-	   (rownums (blockview-rownums b))
-	   (content (blockview-content-grid b)))
-      (for-each (lambda (row)
-      		  (textgrid-add-tags rownums 'rowhl-minor row)
-      		  (textgrid-add-tags content 'rowhl-minor row))
-      		(make-rowlist minor-hl))
-      (for-each (lambda (row)
-		  (textgrid-add-tags rownums 'rowhl-major row)
-		  (textgrid-add-tags content 'rowhl-major row))
-		(make-rowlist major-hl))))
-
-  ;;; Update the blockview row numbers according to the current item cache.
-  (define (blockview-update-row-numbers b)
-    (let ((padding (if (eq? 'block (blockview-type b))
-		       4 3)))
-      ((blockview-rownums b) 'replace "0.0" 'end
-       (string-intersperse
-	(flatten
-	 (map (lambda (chunk)
-		(map (lambda (i)
-		       (string-pad-right
-			(string-pad (number->string i (settings 'number-base))
-				    padding #\0)
-			(+ 2 padding)))
-		     (iota (length chunk))))
-	      (blockview-item-cache b)))
-	"\n"))))
-
-  ;;; Perform a full update of the blockview content grid.
-  (define (blockview-update-content-grid b)
-    ((blockview-content-grid b) 'replace "0.0" 'end
-     (string-intersperse (map (lambda (row)
-				(blockview-values->row-string
-				 b
-				 (map (lambda (val id)
-					(normalize-field-value val id))
-				      row (blockview-field-ids b))))
-			      (concatenate (blockview-item-cache b)))
-			 "\n")))
-
-  ;;; Update the blockview content grid on a row by row basis. This compares
-  ;;; the `new-item-list` against the current item cache, and only updates
-  ;;; rows that have changed. The list length of `new-item-list` and the
-  ;;; lengths of each of the subchunks must match the list of items in the
-  ;;; current item cache.
-  ;;; This operation does not update the blockview's item cache, which should
-  ;;; be done manually after calling this procedure.
-  (define (blockview-update-content-rows b new-item-list)
-    (let ((grid (blockview-content-grid b)))
-      (for-each (lambda (old-row new-row row-pos)
-		  (unless (equal? old-row new-row)
-		    (let* ((start (textgrid-position->tk-index row-pos 0))
-			   (end (textgrid-position->tk-index row-pos 'end))
-			   (tags (map string->symbol
-				      (string-split (grid 'tag 'names start))))
-			   (active-zone? (memq 'active tags))
-			   (major-hl? (memq 'rowhl-major tags))
-			   (minor-hl? (memq 'rowhl-minor tags)))
-		      (grid 'replace start end
-			    (blockview-values->row-string
-			     b (map (lambda (val id)
-				      (normalize-field-value val id))
-				    new-row (blockview-field-ids b))))
-		      (when major-hl?
-			(grid 'tag 'add 'rowhl-major start end))
-		      (when minor-hl?
-			(grid 'tag 'add 'rowhl-minor start end))
-		      (when active-zone?
-			(blockview-add-type-tags b row-pos)))))
-		(concatenate (blockview-item-cache b))
-		(concatenate new-item-list)
-		(iota (length (concatenate new-item-list))))))
-
-  ;;; Returns a list of character positions that the blockview's cursor may
-  ;;; assume.
-  (define (blockview-cursor-x-positions b)
-    (flatten (map (lambda (field-cfg)
-		    (map (cute + <> (bv-field-config-start field-cfg))
-			 (iota (bv-field-config-cursor-digits field-cfg))))
-		  (map cadr (blockview-field-configs b)))))
-
-  ;;; Show or hide the blockview's cursor. `action` shall be `'add` or
-  ;;; `'remove`.
-  (define (blockview-cursor-do b action)
-    ((blockview-content-grid b) 'tag action 'active-cell "insert"
-     (string-append "insert +"
-		    (->string (bv-field-config-cursor-width
-			       (blockview-get-current-field-config b)))
-		    "c")))
-
-  ;;; Hide the blockview's cursor.
-  (define (blockview-remove-cursor b)
-    (blockview-cursor-do b 'remove))
-
-  ;;; Show the blockview's cursor.
-  (define (blockview-show-cursor b)
-    (blockview-cursor-do b 'add))
-
-  ;;; Set the cursor to the given coordinates.
-  (define (blockview-set-cursor b row char)
-    (let ((grid (blockview-content-grid b))
-	  (active-zone (blockview-get-active-zone b)))
-      (blockview-remove-cursor b)
-      (grid 'mark 'set 'insert (textgrid-position->tk-index row char))
-      (when (or (< row (car active-zone))
-		(> row (cadr active-zone)))
-	(blockview-tag-active-zone b))
-      (blockview-show-cursor b)
-      (grid 'see 'insert)
-      ((blockview-rownums b) 'see (textgrid-position->tk-index row 0))))
-
-  ;;; Set the blockview's cursor to the grid position currently closest to the
-  ;;; mouse pointer.
-  (define (blockview-set-cursor-from-mouse b)
-    (let ((mouse-pos (blockview-mark->position b 'current))
-	  (ui-zone-id (if (eq? 'block (blockview-type b))
-			       'blocks 'order)))
-      (unless (eq? ui-zone-id
-		   (car (list-ref ui-zones (state 'current-ui-zone))))
-	(switch-ui-zone-focus ui-zone-id))
-      (blockview-set-cursor b (car mouse-pos)
-			    (find (cute <= <> (cadr mouse-pos))
-				  (reverse (blockview-cursor-x-positions b))))
-      (blockview-update-current-command-info b)))
-
-  ;;; Move the blockview's cursor in `direction`.
-  (define (blockview-move-cursor b direction)
-    (let* ((grid (blockview-content-grid b))
-	   (current-pos (blockview-get-cursor-position b))
-	   (current-row (car current-pos))
-	   (current-char (cadr current-pos))
-	   (total-length (blockview-get-total-length b))
-	   (step (if (eq? 'order (blockview-type b))
-		     1
-		     (if (zero? (state 'edit-step))
-			 1 (state 'edit-step)))))
-      (blockview-set-cursor
-       b
-       (case direction
-	 ((Up) (if (zero? current-row)
-		   (sub1 total-length)
-		   (sub1 current-row)))
-	 ((Down) (if (>= (+ step current-row) total-length)
-		     0 (+ step current-row)))
-	 ((Home) (if (zero? current-row)
-		     current-row
-		     (car (find (lambda (start+end)
-				  (< (car start+end)
-				     current-row))
-				(reverse (blockview-start+end-positions b))))))
-	 ((End) (if (= current-row (sub1 total-length))
-		    current-row
-		    (let ((next-pos (find (lambda (start+end)
-					    (> (car start+end)
-					       current-row))
-					  (blockview-start+end-positions b))))
-		      (if next-pos
-			  (car next-pos)
-			  (sub1 total-length)))))
-	 (else current-row))
-       (case direction
-	 ((Left) (or (find (cute < <> current-char)
-			   (reverse (blockview-cursor-x-positions b)))
-		     (car (reverse (blockview-cursor-x-positions b)))))
-	 ((Right) (or (find (cute > <> current-char)
-			    (blockview-cursor-x-positions b))
-		      0))
-	 (else current-char)))
-      (when (memv direction '(Left Right))
-	(blockview-update-current-command-info b))))
-
-  ;;; Set the input focus to the blockview `b`. In addition to setting the
-  ;;; Tk focus, it also shows the cursor and updates the status bar info text.
-  (define (blockview-focus b)
-    (blockview-show-cursor b)
-    (tk/focus (blockview-content-grid b))
-    (blockview-update-current-command-info b))
-
-  ;;; Unset focus from the blockview `b`.
-  (define (blockview-unfocus b)
-    (blockview-remove-cursor b)
-    (set-state! 'active-md-command-info "")
-    (reset-status-text!))
-
-  ;;; Delete the field node instance that corresponds to the current cursor
-  ;;; position, and insert an empty node at the end of the block instead.
-  (define (blockview-cut-current-cell b)
-    (unless (null? (blockview-get-current-field-value b))
-      (let ((action (list 'remove
-			  (blockview-get-current-block-instance-path b)
-			  (blockview-get-current-field-id b)
-			  `((,(blockview-get-current-field-instance b))))))
-	(push-undo (make-reverse-action action))
-	(apply-edit! action)
-	(blockview-update b)
-	(blockview-move-cursor b 'Up)
-	(run-post-edit-actions))))
-
-  ;;; Insert an empty cell into the field column currently under cursor,
-  ;;; shifting the following node instances down and dropping the last instance.
-  (define (blockview-insert-cell b)
-    (unless (null? (blockview-get-current-field-value b))
-      (let ((action (list 'insert
-			   (blockview-get-current-block-instance-path b)
-			   (blockview-get-current-field-id b)
-			   `((,(blockview-get-current-field-instance b)
-			      ())))))
-	(push-undo (make-reverse-action action))
-	(apply-edit! action)
-	(blockview-update b)
-	(blockview-show-cursor b)
-	(run-post-edit-actions))))
-
-  ;;; Set the field node instance that corresponds to the current cursor
-  ;;; position to `new-value`, and update the display and the undo/redo stacks
-  ;;; accordingly.
-  (define (blockview-edit-current-cell b new-value)
-    (let ((action `(set ,(blockview-get-current-block-instance-path b)
-			,(blockview-get-current-field-id b)
-			((,(blockview-get-current-field-instance b)
-			  ,new-value)))))
-      (push-undo (make-reverse-action action))
-      (apply-edit! action)
-      ;; TODO might want to make this behaviour user-configurable
-      (when (eqv? 'block (blockview-type b))
-	(play-row (blockview-group-id b)
-		  (blockview-get-current-order-pos b)
-		  (blockview-get-current-field-instance b)))
-      (blockview-update b)
-      (unless (zero? (state 'edit-step))
-	(blockview-move-cursor b 'Down))
-      (run-post-edit-actions)))
-
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a note command.
-  (define (blockview-enter-note b keysym)
-    (let ((note-val (keypress->note keysym)))
-      (when note-val
-	(blockview-edit-current-cell b note-val))))
-
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a note command.
-  (define (blockview-enter-trigger b)
-    (blockview-edit-current-cell b #t))
-
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a key/ukey command.
-  (define (blockview-enter-key b keysym)
-    (display "key entry")
-    (newline))
-
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a numeric (int/uint) command.
-  (define (blockview-enter-numeric b keysym)
-    (display "numeric entry")
-    (newline))
-
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a reference command.
-  (define (blockview-enter-reference b keysym)
-    (display "reference entry")
-    (newline))
-
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a string command.
-  (define (blockview-enter-string b keysym)
-    (display "string entry")
-    (newline))
-
-  ;;; Dispatch entry events occuring on the blockview's content grid to the
-  ;;; appropriate edit procedures, depending on field command type.
-  (define (blockview-dispatch-entry-event b keysym)
-    (unless (null? (blockview-get-current-field-value b))
-      (let ((cmd (blockview-get-current-field-command b)))
-	(if (command-has-flag? cmd 'is-note)
-	    (blockview-enter-note b keysym)
-	    (case (command-type cmd)
-	      ((trigger) (blockview-enter-trigger b))
-	      ((int uint) (blockview-enter-numeric b keysym))
-	      ((key ukey) (blockview-enter-key b keysym))
-	      ((reference) (blockview-enter-reference b keysym))
-	      ((string) (blockview-enter-string b keysym)))))))
-
-  ;;; Bind common event handlers for the blockview `b`.
-  (define (blockview-bind-events b)
-    (let ((grid (blockview-content-grid b)))
-      (tk/bind* grid '<<BlockMotion>>
-		`(,(lambda (keysym)
-		     (blockview-move-cursor b keysym))
-		  %K))
-      (tk/bind* grid '<Button-1>
-		(lambda () (blockview-set-cursor-from-mouse b)))
-      (tk/bind* grid '<<ClearStep>>
-		(lambda ()
-		  (unless (null? (blockview-get-current-field-value b))
-		    (blockview-edit-current-cell b '()))))
-      (tk/bind* grid '<<CutStep>>
-		(lambda () (blockview-cut-current-cell b)))
-      (tk/bind* grid '<<InsertStep>>
-		(lambda () (blockview-insert-cell b)))
-      (tk/bind* grid '<<BlockEntry>>
-		`(,(lambda (keysym)
-		     (blockview-dispatch-entry-event b keysym))
-		  %K))))
-
-  ;;; Update the blockview display.
-  ;;; The procedure attempts to be "smart" about updating, ie. it tries to not
-  ;;; perform unnecessary updates. This makes the procedure fast enough to be
-  ;;; used after any change to the blockview's content, rather than manually
-  ;;; updating the part of the content that has changed.
-  ;; TODO storing/restoring insert mark position is a cludge. Generally we want
-  ;; the insert mark to move if stuff is being inserted above it.
-  (define (blockview-update b)
-    (let ((new-item-list (blockview-get-item-list b)))
-      (unless (equal? new-item-list (blockview-item-cache b))
-	(let ((current-mark-pos ((blockview-content-grid b) 'index 'insert)))
-	  (if (or (not (= (length new-item-list)
-			  (length (blockview-item-cache b))))
-		  (not (equal? (map length new-item-list)
-			       (map length (blockview-item-cache b)))))
-	      (begin
-		(blockview-item-cache-set! b new-item-list)
-		(blockview-update-content-grid b)
-		(blockview-update-row-numbers b)
-		((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
-		(blockview-tag-active-zone b)
-		(when (eq? 'block (blockview-type b))
-		  (blockview-update-row-highlights b)))
-	      (begin
-		(blockview-update-content-rows b new-item-list)
-		((blockview-content-grid b) 'mark 'set 'insert current-mark-pos)
-		(blockview-item-cache-set! b new-item-list)))))))
-
-  ;;; Pack the blockview widget `b` to the screen.
-  (define (blockview-show b)
-    (let ((block-type? (eq? 'block (blockview-type b)))
-	  (rownums (blockview-rownums b))
-	  (rownum-header (blockview-rownum-header b))
-	  (content-header (blockview-content-header b))
-	  (content-grid (blockview-content-grid b)))
-      (rownums 'configure width: (if block-type? 6 5)
-	       yscrollcommand: `(,(blockview-yscroll b) set))
-      (rownum-header 'configure height: (if block-type? 2 1)
-		     width: (if block-type? 6 5))
-      (content-header 'configure height: (if block-type? 2 1))
-      (configure-scrollbar-style (blockview-xscroll b))
-      (configure-scrollbar-style (blockview-yscroll b))
-      (tk/pack (blockview-xscroll b) fill: 'x side: 'bottom)
-      (tk/pack (blockview-packframe b) expand: 1 fill: 'both side: 'bottom)
-      (tk/pack (blockview-header-frame b) fill: 'x side: 'bottom)
-      (tk/pack (blockview-yscroll b) fill: 'y side: 'right)
-      (tk/pack (blockview-rownum-frame b) fill: 'y side: 'left)
-      (tk/pack rownum-header padx: '(4 0) side: 'top)
-      (tk/pack rownums expand: 1 fill: 'y padx: '(4 0) side: 'top)
-      (tk/pack (blockview-content-frame b) fill: 'both side: 'right)
-      (tk/pack (blockview-content-header b)
-	       fill: 'x side: 'top)
-      (blockview-init-content-header b)
-      (tk/pack content-grid expand: 1 fill: 'both side: 'top)
-      (content-grid 'configure xscrollcommand: `(,(blockview-xscroll b) set)
-		    yscrollcommand: `(,(blockview-yscroll b) set))
-      (content-grid 'mark 'set 'insert "1.0")
-      (blockview-bind-events b)
-      (blockview-update b)))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Block Related Widgets and Procedures
-  ;; ---------------------------------------------------------------------------
-
-  ;;; A metawidget for displaying a group's block members and the corresponding
-  ;;; order or block list.
-  ;;; TODO MDAL defines order/block lists as optional if blocks are
-  ;;; single instance.
-  (defstruct bt-blocks-widget
-    (tl-panedwindow : procedure)
-    (blocks-view : (struct blockview))
-    (order-view : (struct blockview)))
-
-  ;;; Create a `bt-blocks-widget`.
-  (define (make-blocks-widget parent-node-id parent-widget)
-    (let ((block-ids (config-get-subnode-type-ids parent-node-id
-						  (current-config)
-						  'block)))
-      (and (not (null? block-ids))
-	   (let* ((.tl (parent-widget 'create-widget 'panedwindow
-				      orient: 'horizontal))
-		  (.blocks-pane (.tl 'create-widget 'frame))
-		  (.order-pane (.tl 'create-widget 'frame)))
-	     (.tl 'add .blocks-pane weight: 2)
-	     (.tl 'add .order-pane weight: 1)
-	     (make-bt-blocks-widget
-	      tl-panedwindow: .tl
-	      blocks-view: (blockview-create .blocks-pane 'block parent-node-id)
-	      order-view: (blockview-create .order-pane 'order
-					    parent-node-id))))))
-
-  ;;; Display a `bt-blocks-widget`.
-  (define (show-blocks-widget w)
-    (let ((top (bt-blocks-widget-tl-panedwindow w)))
-      (tk/pack top expand: 1 fill: 'both)
-      (blockview-show (bt-blocks-widget-blocks-view w))
-      (blockview-show (bt-blocks-widget-order-view w))))
-
-  ;;; The "main view" metawidget, displaying all subgroups of the GLOBAL node in
-  ;;; a notebook (tabs) tk widget. It can be indirectly nested through a
-  ;;; bt-group-widget, which is useful for subgroups that have subgroups
-  ;;; themselves.
-  ;;; bt-subgroups-widgets should be created through `make-subgroups-widget`.
-  (defstruct bt-subgroups-widget
-    (toplevel-frame : procedure)
-    (subgroup-ids : (list-of symbol))
-    (tl-notebook : procedure)
-    (notebook-frames : (list-of procedure))
-    (subgroups : (list-of (struct bt-group-widget))))
-
-  ;;; Create a `bt-subgroups-widget` as child of `parent-widget`.
-  (define (make-subgroups-widget parent-node-id parent-widget)
-    (let ((sg-ids (config-get-subnode-type-ids parent-node-id
-					       (current-config)
-					       'group)))
-      (and (not (null? sg-ids))
-	   (let* ((tl-frame (parent-widget 'create-widget 'frame))
-		  (notebook (tl-frame 'create-widget 'notebook
-				      style: 'BT.TNotebook))
-		  (subgroup-frames (map (lambda (id)
-					  (notebook 'create-widget 'frame))
-					sg-ids)))
-	     (make-bt-subgroups-widget
-	      toplevel-frame: tl-frame
-	      subgroup-ids: sg-ids
-	      tl-notebook: notebook
-	      notebook-frames: subgroup-frames
-	      subgroups: (map make-group-widget sg-ids subgroup-frames))))))
-
-  ;;; Pack a bt-subgroups-widget to the display.
-  (define (show-subgroups-widget w)
-    (tk/pack (bt-subgroups-widget-toplevel-frame w)
-	     expand: 1 fill: 'both)
-    (tk/pack (bt-subgroups-widget-tl-notebook w)
-	     expand: 1 fill: 'both)
-    (for-each (lambda (sg-id sg-frame)
-		((bt-subgroups-widget-tl-notebook w)
-		 'add sg-frame text: (symbol->string sg-id)))
-	      (bt-subgroups-widget-subgroup-ids w)
-	      (bt-subgroups-widget-notebook-frames w))
-    (for-each show-group-widget (bt-subgroups-widget-subgroups w)))
-
-  ;; Not exported.
-  (defstruct bt-group-widget
-    (node-id : symbol)
-    (toplevel-frame : procedure)
-    (fields-widget : (struct bt-fields-widget))
-    (blocks-widget : (struct bt-blocks-widget))
-    (subgroups-widget : (struct bt-subgroups-widget)))
-
-  ;; TODO handle groups with multiple instances
-  (define (make-group-widget node-id parent-widget)
-    (let ((tl-frame (parent-widget 'create-widget 'frame)))
-      (make-bt-group-widget
-       node-id: node-id
-       toplevel-frame: tl-frame
-       fields-widget: (make-fields-widget node-id tl-frame)
-       blocks-widget: (make-blocks-widget node-id tl-frame)
-       subgroups-widget: (make-subgroups-widget node-id tl-frame))))
-
-  ;;; Display the group widget (using pack geometry manager).
-  (define (show-group-widget w)
-    (let ((instance-path (get-current-instance-path
-			  (bt-group-widget-node-id w))))
-      (tk/pack (bt-group-widget-toplevel-frame w)
-	       expand: 1 fill: 'both)
-      (when (bt-group-widget-fields-widget w)
-	(show-fields-widget (bt-group-widget-fields-widget w)
-			    instance-path))
-      (when (bt-group-widget-blocks-widget w)
-	(show-blocks-widget (bt-group-widget-blocks-widget w)))
-      (when (bt-group-widget-subgroups-widget w)
-	(show-subgroups-widget (bt-group-widget-subgroups-widget w)))
-      (unless (or (bt-group-widget-blocks-widget w)
-		  (bt-group-widget-subgroups-widget w))
-	(tk/pack ((bt-group-widget-toplevel-frame w)
-		  'create-widget 'frame)
-		 expand: 1 fill: 'both))))
-
-  (define (destroy-group-widget w)
-    (tk/destroy (bt-group-widget-toplevel-frame w)))
-
-  (define (make-module-widget parent)
-    (make-group-widget 'GLOBAL parent))
-
-  (define (show-module)
-    (show-group-widget (state 'module-widget)))
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Accessors
-  ;; ---------------------------------------------------------------------------
-
-  (define (current-fields-view)
-    (bt-group-widget-fields-widget (state 'module-widget)))
-
-  ;;; Returns the currently visible blocks metatree
-  ;; TODO assumes first subgroup is shown, check actual state
-  (define (current-blocks-view)
-    (bt-blocks-widget-blocks-view
-     (bt-group-widget-blocks-widget
-      (car (bt-subgroups-widget-subgroups
-	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
-
-  ;;; Returns the currently visible order metatree
-  ;; TODO assumes first subgroup is shown, check actual state
-  (define (current-order-view)
-    (bt-blocks-widget-order-view
-     (bt-group-widget-blocks-widget
-      (car (bt-subgroups-widget-subgroups
-	    (bt-group-widget-subgroups-widget (state 'module-widget)))))))
-
 
   ) ;; end module bt-gui
