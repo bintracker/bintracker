@@ -2,10 +2,6 @@
 
 ## About
 
-The usual approach to writing assmblers in Lisp/Scheme is to model a set of procedures on the the target CPU's instruction set, so that assembly source code must be rewritten as an s-expression. The expression is then evaluated to produce the resulting machine code.
-
-Schemta takes a different approach. Assembly code for Schemta is regular assembly code, and Scheme provides the *macro system* of the assembler. In other words, any
-
 Schemta is a cross-platform, multi-target assembler for classic 8-bit and 16-bit architectures. It uses embedded Scheme code as a powerful replacement for traditional assembler macros. Schemta currently supports the following architectures:
 
 * MOS Technology 6502/6507/6510
@@ -23,22 +19,26 @@ Schemta is a cross-platform, multi-target assembler for classic 8-bit and 16-bit
 	- alternate mnemonics: `exa` for `ex af,af'`, `sls` for `sll`, `res/set (ix/iy+d)->r8` for `res/set (ix/iy+d),r8`, `in (c)` for `in f,(c)`
 	- alternate register names: `hx, lx, hy, ly` for `ixh, ixl, iyh, iyl`
 
-Schemta is written in [CHICKEN Scheme](https://call-cc.org), and can be used as a module in CHICKEN programs.
+Schemta is written in [CHICKEN Scheme](https://call-cc.org), and can be used as stand-alone command line tool, or as a module in CHICKEN programs.
+
+
+### Rationale
+
+The usual approach to writing assmblers in Lisp/Scheme is to model a set of procedures on the target CPU's instruction set, so that assembly source code must be rewritten as an s-expression. The expression is then evaluated to produce the resulting machine code.
+
+Schemta takes a different approach. Assembly code for Schemta is regular assembly code, and Scheme provides the *macro system* of the assembler. This means that porting code written for other assemblers to Schemta and vice versa is easy, because syntax is largely compatible.
 
 
 
-## Schemta and MDAL
+### Schemta, Bintracker, and MDAL
 
-Bintracker provides Schemta as the assembler backend for libmdal.
+Bintracker provides the [Schemta API](generated/schemta.md) at runtime, so you can use it directly via the [REPL](../repl.md) or another live coding buffer.
 
-When libmdal runs a Schemta assembly, it passes in the current MDAL module as the assembly-level symbol `mdal_current_module`. That means that assembly code used in an MDAL definition can reference any part of the module, including the MDAL definition.
+MDAL uses Schemta as the assembler backend. When libmdal runs a Schemta assembly, it passes in the current MDAL module as the assembly-level symbol `mdal_current_module`. That means that assembly code used in an MDAL definition can reference any part of the module, including the MDAL definition.
 
+### Usage as a command-line tool
 
-## Usage
-
-### Command Line Usage
-
-Schemta can be invoked as follows:
+Schemta can also be compiled as a stand-alone application. The resulting executable can be invoked as follows:
 
 ```
 $ schemta [options] -i infile.asm
@@ -60,16 +60,8 @@ The following options are available:
 All arguments listed for long options are required for short options as well.
 
 
-### Usage as CHICKEN module
 
-You can use Schemta as a module in your CHICKEN Scheme programs. The `schemta` module exports the following procedures:
-
-<pre>(<b>assemble</b> <i>source target-cpu #!optional org emit-symbols emit-listing symbols</i>)</pre>
-
-#### Exceptions
-
-On failure, Schemta will throw an exception of type `'asm-failed`.
-
+## Usage
 
 ### Syntax
 
@@ -124,14 +116,14 @@ The same syntax rules as for [labels](#labels) apply.
 
 ### Directives (Pseudo-Ops)
 
-Schemta assembler directives are prefixed by a dot. A directive can be a Scheme s-expression, or one of the pre-defined directives listed below.
+Schemta assembler directives are prefixed by a dot. A directive can be one of the pre-defined directives listed below, or a [dot expression](#dot-expressions).
 
 
 #### .align
 
 Usage: <pre><b>.align</b> <i>value [, fill]</i></pre>
 
-Align the current origin to the next multiple of `value`, which must be a number, symbol, or s-expression directive. The optional `fill` argument specifies a byte value to be used as fill. If the second argument is omitted, memory will be filled with 0-bytes.
+Align the current origin to the next multiple of `value`, which must be a number, symbol, or dot expression. The optional `fill` argument specifies a byte value to be used as fill. If the second argument is omitted, memory will be filled with 0-bytes.
 
 #### .cpu
 
@@ -143,31 +135,31 @@ Set the target CPU. `target-identifier` must name one of the CPU targets support
 
 Usage: <pre><b>.db</b> <i>byte [, bytes...]</i></pre>
 
-Insert one or more 8-bit values at the current origin. `byte` must be a number, single-quoted character, symbol, double-quoted string, or s-expression directive. Optionally, `bytes...` may be a comma-separated list of byte values. Double-quoted strings will be translated to a sequence of bytes representing ASCII values.
+Insert one or more 8-bit values at the current origin. `byte` must be a number, single-quoted character, symbol, double-quoted string, or dot expression. Optionally, `bytes...` may be a comma-separated list of byte values. Double-quoted strings will be translated to a sequence of bytes representing ASCII values.
 
 #### .dl
 
 Usage: <pre><b>.dl</b> <i>long [, longs...]</i></pre>
 
-Insert one or more 32-bit values. `long` must be a number, symbol, or s-expression directive. Optionally, `longs...` may be a comma-separated list of long values.
+Insert one or more 32-bit values. `long` must be a number, symbol, or dot expression. Optionally, `longs...` may be a comma-separated list of long values.
 
 #### .ds
 
 Usage: <pre><b>.ds</b> <i>amount [, fill]</i></pre>
 
-Insert `amount` 8-bit values at the current origin. `amount` must be a number, symbol, or s-expression directive. The optional `fill` argument specifies a byte value to be used as fill. If the `fill` argument is omitted, memory will be filled with 0-bytes.
+Insert `amount` 8-bit values at the current origin. `amount` must be a number, symbol, or dot expression. The optional `fill` argument specifies a byte value to be used as fill. If the `fill` argument is omitted, memory will be filled with 0-bytes.
 
 #### .dw
 
 Usage: <pre><b>.db</b> <i>word, [, words...]</i></pre>
 
-Insert one or more 16-bit values. `word` must be a number, symbol, or s-expression directive. Optionally, `words...` may be a comma-separated list of word values.
+Insert one or more 16-bit values. `word` must be a number, symbol, or dot expression. Optionally, `words...` may be a comma-separated list of word values.
 
 #### .equ
 
 Usage: <pre><i>symbol</i> <b>.equ</b> <i>value</i></pre>
 
-Define the symbol `symbol`, and set it's value to `value`. `value` may be a number, symbol, or s-expression directive.
+Define the symbol `symbol`, and set it's value to `value`. `value` may be a number, symbol, or dot expression.
 
 #### .incbin
 
@@ -194,11 +186,11 @@ Usage: <pre><b>.pseudo-org</b> <i>address</i></pre>
 Keep assembling at the current origin, but treat the following code as if it were assembled at `address`. This is useful for blocks of code that will be copied to and executed at a different address at runtime. `address` must be a number, symbol, or s-expression directive.
 
 
-### Embedding Scheme with S-Expression Directives
+### Embedding Scheme with Dot-Expressions
 
-Unlike other modern assemblers, Schemta does not support macros. However, it does provide a powerful alternative: S-expression directives.
+Dot-Expressions are Schemta's version of an assembler macro system.
 
-Any s-expression preceded by dot is interpreted as Scheme code, provided the dot-expression combination does not represent one of the regular assembler directives. The Scheme interpreter is R5RS compliant, and additionally supports SRFIs 1, 13, and 14, as well as extensions to the R5RS standard provided by the CHICKEN implementation.
+Any valid [symbolic expression](https://en.wikipedia.org/wiki/S-expression) preceded by a dot is interpreted as Scheme code, provided the dot-expression combination does not represent one of the regular assembler directives. When using Schemta as a stand-alone application, it provides a Scheme interpreter that is mostly R5RS compliant, and additionally supports SRFIs 1, 13, and 14, and libmdal, as well as extensions to the R5RS standard provided by the CHICKEN implementation. When used from within Bintracker, Schemta has access to the entire Bintracker environment.
 
 Most s-expressions valid in Scheme R5RS can be embedded, with the following exceptions:
 

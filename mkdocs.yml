@@ -36,25 +36,26 @@ site_dir: 'documentation'
 nav:
   - Overview: index.md
   - User Manual:
+      - Quickstart: quickstart.md
       - Setup: setup.md
-      - "Getting Started": getting-started.md
+      - "Basic Usage": basics.md
       - Configuration: configuration.md
-      - "Using The Console": console.md
-  - "Hacking Bintracker":
+      - "The REPL": repl.md
+  - "Developer Documentation":
       - "Getting Started": hacking.md
       - "Style Guide": style-guide.md
       - "Bintracker API":
-          - "bintracker-core": 'generated/bintracker-core.md'
-          - "bt-types": 'generated/bt-types.md'
-          - "bt-state": 'generated/bt-state.md'
-          - "bt-gui": 'generated/bt-gui.md'
-          - "bt-emulation": 'generated/bt-emulation.md'
-          - "bt-db": 'generated/bt-db.md'
-  - MDAL:
-      - Introduction: 'libmdal/index.md'
-      - MDMOD: 'libmdal/MDMOD_SPECIFICATION.md'
-      - MDCONF: 'libmdal/MDCONF_SPECIFICATION.md'
-      - "libmdal API":
+         - "bintracker-core": 'generated/bintracker-core.md'
+         - "bt-types": 'generated/bt-types.md'
+         - "bt-state": 'generated/bt-state.md'
+         - "bt-gui": 'generated/bt-gui.md'
+         - "bt-emulation": 'generated/bt-emulation.md'
+         - "bt-db": 'generated/bt-db.md'
+      - MDAL:
+        - Introduction: 'libmdal/index.md'
+        - MDMOD: 'libmdal/MDMOD_SPECIFICATION.md'
+        - MDCONF: 'libmdal/MDCONF_SPECIFICATION.md'
+        - "libmdal API":
           - "mdal": 'libmdal/generated/mdal.md'
           - "md-types": 'libmdal/generated/md-types.md'
           - "md-helpers": 'libmdal/generated/md-helpers.md'
