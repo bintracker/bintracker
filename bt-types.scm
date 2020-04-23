@@ -39,7 +39,6 @@
 
   ;;; Record type that wraps application settings
   (defstruct app-settings
-    ((themes-map '()) : list)
     ((keymap "EN") : (or string (struct app-keys)))
     ((number-base 16) : fixnum)
     ((mdal-config-dir "libmdal/unittests/config/") : string)
