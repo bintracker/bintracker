@@ -332,8 +332,8 @@
   ;;; Adds a focus control entry. ID, FOCUS-THUNK, and UNFOCUS-THUNK are as
   ;;; described in the previous paragraph. If `after ID-AFTER` is specified,
   ;;; then the new zone will be added after the control entry ID-AFTER in the
-  ;;; controller ring. It is an error to add an entry with an ID that already
-  ;;; exists in the ring.
+  ;;; controller ring. Adding an entry with an ID that already exists in the
+  ;;; ring has no effect.
   ;;;
   ;;; `(FC 'remove ID)`
   ;;;
@@ -402,20 +402,19 @@
 			       (take-while not-target-zone? zones))))
 		   (resume)))
 	  ((add)
-	   (when (alist-ref (cadr args) zones)
-	     (error (string-append "UI-Zone " (cadr args)
-				   " already exists")))
-	   (set! zones
-	     (or (and-let* (((not (null? zones)))
-			    ((= (length args) 6))
-			    ((eqv? 'after (fifth args)))
-			    ((alist-ref (sixth args) zones))
-			    (after-id (alist-ref (sixth args) zones))
-			    (after-id-index (+ 1 (list-index after-id zones))))
-		   (append (take zones after-id-index)
-			   (list (take (cdr args) 3))
-			   (drop zones after-id-index)))
-		 (append zones (list (take (cdr args) 3))))))
+	   (print "focus add " (cdr args))
+	   (unless (alist-ref (cadr args) zones)
+	     (set! zones
+	       (or (and-let* (((not (null? zones)))
+			      ((= (length args) 6))
+			      ((eqv? 'after (fifth args)))
+			      ((alist-ref (sixth args) zones))
+			      (after-id (alist-ref (sixth args) zones))
+			      (after-id-index (+ 1 (list-index after-id zones))))
+		     (append (take zones after-id-index)
+			     (list (take (cdr args) 3))
+			     (drop zones after-id-index)))
+		   (append zones (list (take (cdr args) 3)))))))
 	  ((remove)
 	   (suspend)
 	   (set! zones (alist-delete (cadr args) zones))

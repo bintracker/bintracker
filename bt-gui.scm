@@ -716,8 +716,13 @@
 
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (elem <ui-element>))
+    (print "ui-show/element, children " (map car (ui-children elem)))
     (unless (slot-value elem 'initialized)
-      (for-each (o ui-show cdr)
+      (print "ui-show/element: initialzing")
+      (for-each (lambda (elem)
+		  ;; (o ui-show cdr)
+		  (print "...calling ui-show on " (car elem))
+		  (ui-show (cdr elem)))
     		(ui-children elem))
       (set! (slot-value elem 'initialized) #t))
     (apply tk/pack (cons (ui-box elem)
@@ -725,14 +730,15 @@
 
   ;;; Remove the GUI element from the display.
   (define-method (ui-hide primary: (elem <ui-element>))
-    (tk/pack 'forget (ui-box elem)))
+    (tk/pack 'forget (ui-box elem))
+    (for-each (o ui-hide cdr) (ui-children elem)))
 
   ;;; Remove the GUI element ELEM from the display and destroy it. Destroying an
   ;;; element will recursively call `ui-destroy` on ELEM's child elements,
   ;;; before destroying its associated Tk widgets. You cannot resurrect ELEM
   ;;; after calling this method.
   (define-method (ui-destroy primary: (elem <ui-element>))
-    (for-each ui-destroy (map cdr (ui-children elem)))
+    (for-each (o ui-destroy cdr) (ui-children elem))
     (tk/destroy (ui-box elem)))
 
   ;;; Returns ELEMs child UI element with the identifier CHILD-ELEMENT. The
@@ -1024,19 +1030,25 @@
 		    (lambda (x1 x2)
 		      (<= (get-index x1) (get-index x2)))))))
 
-  (define-method (ui-show before: (buf <ui-multibuffer>))
-    (unless (slot-value buf 'initialized)
-      ;; TODO In theory, we could let `ui-show` of `<ui-element>` do the work,
-      ;; but there seem to be some issues with Tk when adding children that
-      ;; are not under control of the display manager yet.
-      (for-each (o ui-show cdr)
-		(ui-children buf))
-      (for-each (lambda (child)
-		  ((ui-box buf) 'add (ui-box (cdr child))
-		   weight: (caddr (alist-ref (car child)
-					     (slot-value buf 'state)))))
-		(multibuffer-active+sorted-children buf))
-      (set! (slot-value buf 'initialized) #t)))
+  (define-method (ui-show primary: (buf <ui-multibuffer>))
+    (print "ui-show/multibuffer, children: " (map car (ui-children buf))
+	   ", child-states: " (slot-value buf 'state))
+    (if (slot-value buf 'initialized)
+	(for-each (o ui-show cdr) (multibuffer-active+sorted-children buf))
+	(begin
+	  (print "ui-show/multibuffer: initializing")
+	  ;; TODO In theory, we could let `ui-show` of `<ui-element>` do the work,
+	  ;; but there seem to be some issues with Tk when adding children that
+	  ;; are not under control of the display manager yet.
+	  (for-each (lambda (child)
+		      (print "calling ui-show on child " (car child))
+		      (ui-show (cdr child))
+		      ((ui-box buf) 'add (ui-box (cdr child))
+		       weight: (caddr (alist-ref (car child)
+						 (slot-value buf 'state)))))
+		    (multibuffer-active+sorted-children buf))
+	  (set! (slot-value buf 'initialized) #t)))
+    (apply tk/pack (cons (ui-box buf) (slot-value buf 'packing-args))))
 
   ;;; Add a new child buffer. CHILD-SPEC shall have the same form as the
   ;;; elements in the `'setup` argument to `(make <ui-multibuffer ...)`.
@@ -1044,6 +1056,7 @@
   ;;; the end if BEFORE is not specified.
   (define-method (multibuffer-add primary: (buf <ui-multibuffer>)
 				  child-spec #!key before)
+    (print "multibuffer-add " child-spec)
     (when (alist-ref (car child-spec)
 		     (ui-children buf))
       (error (string-append "Error: Child \"" (symbol->string (car child-spec))
@@ -1062,34 +1075,42 @@
 		   (cons (car child-state)
 			 (cons idx (cddr child-state))))
 		 (append (take-while before-child? state)
-			 (list (cons (car child-spec)
-				     (cons 0 (take (cdr child-spec) 2))))
+			 (list (list (car child-spec)
+				     0
+				     (and (cadr child-spec)
+				     	  (not (slot-value buf 'initialized)))
+				     (caddr child-spec)))
 			 (drop-while before-child? state))
 		 (iota (+ 1 (length state)))))
 	  (alist-update
 	   (car child-spec)
-	   (cons (length (slot-value buf 'state))
-		 (take (cdr child-spec) 2))
+	   (list (length (slot-value buf 'state))
+		 (and (cadr child-spec) (not (slot-value buf 'initialized)))
+		 (caddr child-spec))
 	   (slot-value buf 'state))))
-    (ui-show (alist-ref (car child-spec)
-			(ui-children buf)))
+    (print "multibuffer-add " (car child-spec) ", done adding shit, state: " (slot-value buf 'state))
     (when (and (slot-value buf 'initialized)
 	       (caddr child-spec))
-      ((ui-box buf) 'insert (if before (ui-box (ui-ref buf before)) 'end)
-       (ui-box (ui-ref buf (car child-spec)))
-       weight: (cadr (alist-ref (car child-spec)
-				(slot-value buf 'state))))))
+      (print "is initialized, calling multibuffer-show from multibuffer-add")
+      (multibuffer-show buf (car child-spec)))
+    (print "multibuffer-add " (car child-spec) ", final state: " (slot-value buf 'state)))
 
   ;;; Map the child element CHILD to the display. Does nothing if CHILD is
   ;;; already visible.
   (define-method (multibuffer-show primary: (buf <ui-multibuffer>)
 				   child)
+    (print "multibuffer-show " child " " (alist-ref child (slot-value buf 'state))
+	   " " (map car (ui-children buf)))
     (let ((child-buf (alist-ref child (ui-children buf)))
 	  (state (slot-value buf 'state)))
       (when (and child-buf (not (cadr (alist-ref child state))))
 	(let ((before (find (lambda (s)
 			      (> (cadr s) (car (alist-ref child state))))
 			    state)))
+	  (set! (cadr (alist-ref child state))
+	    #t)
+	  (print "calling ui-show from multibuffer-show " child)
+	  (ui-show child-buf)
 	  (if before
 	      ((ui-box buf) 'insert
 	       (ui-box (alist-ref (car before) (ui-children buf)))
@@ -1097,8 +1118,7 @@
 	       weight: (caddr (alist-ref child state)))
 	      ((ui-box buf) 'add (ui-box child-buf)
 	       weight: (caddr (alist-ref child state))))
-	  (set! (cadr (alist-ref child state))
-	    #t)))))
+	  ))))
 
   ;;; Remove the child element CHILD from the display. Does nothing if CHILD is
   ;;; currently not hidden. You can add back CHILD at a later point with
@@ -1109,6 +1129,7 @@
     (let ((child-buf (alist-ref child (ui-children buf))))
       (when (and child-buf (cadr (alist-ref child (slot-value buf 'state))))
 	((ui-box buf) 'forget (ui-box child-buf))
+	(ui-hide child-buf)
 	(set! (cadr (alist-ref child (slot-value buf 'state)))
 	  #f))))
 
@@ -1119,8 +1140,6 @@
   (define-method (multibuffer-delete primary: (buf <ui-multibuffer>)
 				     child)
     (when (alist-ref child (ui-children buf))
-      ;; (when (cadr (alist-ref child (slot-value buf 'state)))
-      ;; 	(multibuffer-hide buf child))
       (ui-destroy (alist-ref child (ui-children buf)))
       (set! (ui-children buf)
 	(alist-delete child (ui-children buf)))
@@ -1176,6 +1195,7 @@
 	  (ui-show (slot-value x 'collapse-button))))))
 
   (define-method (ui-show after: (buf <ui-buffer>))
+    (print "ui-show/buffer, children: " (ui-children buf))
     (ui-set-callbacks (slot-value buf 'expand-button)
 		      `((expand ,(lambda () (ui-expand buf)))))
     (ui-set-callbacks (slot-value buf 'collapse-button)
@@ -1226,23 +1246,17 @@
      (history '())))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
-    (let ((focus-controller (slot-value buf 'focus-controller)))
-      (set! (slot-value buf 'repl)
-	((slot-value buf 'content-box) 'create-widget 'text))
-      (set! (slot-value buf 'yscroll)
-	((slot-value buf 'content-box)
-	 'create-widget 'scrollbar orient: 'vertical))
-      (focus-controller 'add (slot-value buf 'ui-zone)
-       (lambda () (ui-focus buf))
-       (lambda () #t))
-      (tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
-		(lambda ()
-		  (focus-controller 'set (slot-value buf 'ui-zone))))))
+    (set! (slot-value buf 'repl)
+      ((slot-value buf 'content-box) 'create-widget 'text))
+    (set! (slot-value buf 'yscroll)
+      ((slot-value buf 'content-box)
+       'create-widget 'scrollbar orient: 'vertical)))
 
   ;; TODO this becomes a before: method once things are sorted out
   (define-method (ui-show primary: (buf <ui-repl>))
     (let ((repl (slot-value buf 'repl))
-	  (yscroll (slot-value buf 'yscroll)))
+	  (yscroll (slot-value buf 'yscroll))
+	  (focus-controller (slot-value buf 'focus-controller)))
       (unless (slot-value buf 'initialized)
 	(repl 'configure  blockcursor: 'yes
 	      bd: 0 highlightthickness: 0 bg: (colors 'background)
@@ -1264,7 +1278,16 @@
 		  (lambda () (repl-eval buf)))
 	(bind-key (slot-value buf 'repl) 'console 'clear-console
 		  (lambda () (repl-clear buf)))
-	(set! (slot-value buf 'initialized) #t))))
+	(set! (slot-value buf 'initialized) #t)
+	(tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
+		(lambda ()
+		  (focus-controller 'set (slot-value buf 'ui-zone)))))
+      (focus-controller 'add (slot-value buf 'ui-zone)
+			(lambda () (ui-focus buf))
+			(lambda () #t))))
+
+  (define-method (ui-hide after: (buf <ui-repl>))
+    ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   (define-method (ui-destroy before: (buf <ui-repl>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
@@ -1406,11 +1429,16 @@
 		       'node-id field-id
 		       'parent-instance-path
 		       (slot-value buf 'parent-instance-path))))
-	     subnode-ids))
-      ((slot-value buf 'focus-controller) 'add
+	     subnode-ids))))
+
+  (define-method (ui-show after: (buf <ui-group-fields>))
+    ((slot-value buf 'focus-controller) 'add
        (slot-value buf 'ui-zone)
        (lambda () (ui-focus (cdar (ui-children buf))))
-       (lambda () (ui-unfocus (cdar (ui-children buf)))))))
+       (lambda () (ui-unfocus (cdar (ui-children buf))))))
+
+  (define-method (ui-hide after: (buf <ui-group-fields>))
+    ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   (define-method (ui-destroy before: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
@@ -1476,6 +1504,7 @@
 		    (apply (slot-value buf 'rownums) (cons 'yview args)))))))
 
   (define-method (ui-show before: (buf <ui-basic-block-view>))
+    (print "ui-show/basic-block-view, group-id: " (slot-value buf 'group-id))
     (unless (slot-value buf 'initialized)
       (let ((xscroll (slot-value buf 'xscroll))
 	    (yscroll (slot-value buf 'yscroll))
@@ -1498,8 +1527,15 @@
 	(block-content 'configure xscrollcommand: `(,xscroll set)
 		       yscrollcommand: `(,yscroll set))
 	(block-content 'mark 'set 'insert "1.0")
-	(ui-blockview-bind-events buf)
-	(ui-blockview-update buf))))
+	(ui-blockview-bind-events buf)))
+    (ui-blockview-update buf)
+    ((slot-value buf 'focus-controller) 'add
+     (slot-value buf 'ui-zone)
+     (lambda () (ui-blockview-focus buf))
+     (lambda () (ui-blockview-unfocus buf))))
+
+  (define-method (ui-hide after: (buf <ui-basic-block-view>))
+    ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   (define-method (ui-destroy before: (buf <ui-basic-block-view>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
@@ -1988,11 +2024,7 @@
 		      (slot-value buf 'block-ids))))
       (set! (slot-value buf 'field-configs)
 	(blockview-make-field-configs (slot-value buf 'block-ids)
-				      (slot-value buf 'field-ids)))
-      ((slot-value buf 'focus-controller) 'add
-       (slot-value buf 'ui-zone)
-       (lambda () (ui-blockview-focus buf))
-       (lambda () (ui-blockview-unfocus buf)))))
+				      (slot-value buf 'field-ids)))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-block-view>))
@@ -2193,11 +2225,7 @@
   				(config-itree (current-config))))
       (set! (slot-value buf 'field-configs)
   	(blockview-make-field-configs (list (symbol-append group-id '_ORDER))
-  				      (slot-value buf 'field-ids)))
-      ((slot-value buf 'focus-controller) 'add
-       (slot-value buf 'ui-zone)
-       (lambda () (ui-blockview-focus buf))
-       (lambda () (ui-blockview-unfocus buf)))))
+  				      (slot-value buf 'field-ids)))))
 
   ;; TODO rename -> blockview-init-content-header when old blockview code is
   ;; removed
@@ -2366,16 +2394,19 @@
        'create-widget 'notebook style: 'BT.TNotebook))
     (set! (slot-value buf 'subgroups)
       (map (lambda (id)
-	     (cons id (make <ui-group> 'group-id id)))
+	     (cons id (make <ui-group>
+			'group-id id 'parent (slot-value buf 'tabs))))
 	   (config-get-subnode-type-ids (slot-value buf 'group-id)
 					(current-config)
-					'group)))
+					'group))))
+
+  (define-method (ui-show before: (buf <ui-subgroups>))
+    (print "calling ui-show on children of <ui-subgroups>")
+    (for-each (o ui-show cdr) (slot-value buf 'subgroups))
     (for-each (lambda (subgroup)
 		((slot-value buf 'tabs) 'add (ui-box (cdr subgroup))
 		 text: (symbol->string (car subgroup))))
-	      (slot-value buf 'subgroups)))
-
-  (define-method (ui-show before: (buf <ui-subgroups>))
+	      (slot-value buf 'subgroups))
     (tk/pack (slot-value buf 'tabs) expand: 1 fill: 'both))
 
   (define-method (ui-destroy before: (buf <ui-subgroups>))
@@ -2399,8 +2430,7 @@
 			"0/"
 			(string-concatenate
 			 (map (lambda (id)
-				(string-append (symbol->string id)
-					       "/0/"))
+				(string-append (symbol->string id) "/0/"))
 			      (reverse
 			       (cdr (config-get-node-ancestors-ids
 				     group-id
