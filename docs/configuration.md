@@ -1,6 +1,6 @@
 # Configuration
 
-Bintracker's behavior and appearance can be configured in a number of different ways. The most common way is to set various configuration options in the [configuration file](#configuration-file-configscm). You can also temporarily change these options by using Bintracker's built-in [console](#temporary-tweaks-using-the-console).
+Bintracker's behavior and appearance can be configured in a number of different ways. The most common way is to set various configuration options in the [configuration file](#configuration-file-configscm). You can also temporarily change these options by using Bintracker's built-in [repl](#temporary-tweaks-using-the-repl).
 
 The configuration system in Bintracker is very powerful. In fact, not just the look and feel, but just about any aspect of how Bintracker works can be modified. To learn how to configure Bintracker in more fundamental ways, check out the [Advanced Configuration](#advanced-configuration) section.
 
@@ -41,37 +41,17 @@ text                | text color of the editor
 console-bg          | background color of the console
 console-fg          | text color of the console
 
-
-### Themes
-
-In addition to the color scheme, which mostly affects the editor and console colors, you can also change the overall appearance of Bintrackers GUI widgets. This is done through setting a theme with the `set-theme!` command. The available themes are platform dependent. You can get the list of available themes by executing the follwing command in the Bintracker console:
-
-```scheme
-(tk-eval "ttk::style theme names")
-```
-
-In addition to the platform specific themes, Bintracker comes with two custom themes, `awdark`, and `awlight`.
-
-You can install your own Tk themes with the `install-theme!` command. It takes the form
-```scheme
-(install-theme! 'theme-name "path/to/my-theme.tcl")
-```
-
-Creating Tk themes is out of scope for this manual. The [TkDocs Tutorial](https://tkdocs.com/tutorial/styles.html) provides some hints. There are various Tk themes floating around on the web. A few of them are listed on the [Tcl Wiki](https://wiki.tcl-lang.org/page/List+of+ttk+Themes).
-
-As themes may override any color options, set the current theme *before* setting any colors.
-
 ### Keybindings
 
-## Temporary Tweaks Using The Console
+## Temporary Tweaks Using The REPL
 
-All the configuration options available through `config.scm` can also be set in the built-in console. However, changes made here are only temporary. That means those changes will not persist through an application restart.
+All the configuration options available through `config.scm` can also be set in the built-in REPL. However, changes made here are only temporary. That means those changes will not persist through an application restart.
 
-Configuration options set throught the console may not take effect immediately. To apply your changes, run the
+Configuration options set throught the console may not take effect immediately. To force a refresh after your changes, you can try to run the
 ```scheme
 (reconfigure)
 ```
-command.
+command. Currently there is no guarantee that this will work.
 
 You can check your current configuration settings using the `settings` and `colors` procedures.
 

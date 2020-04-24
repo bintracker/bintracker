@@ -34,9 +34,10 @@ extra_javascript:
 site_dir: 'documentation'
 
 nav:
-  - Overview: index.md
+  - Main: index.md
+  - Quickstart: quickstart.md
   - User Manual:
-      - Quickstart: quickstart.md
+      - Introduction: about.md
       - Setup: setup.md
       - "Basic Usage": basics.md
       - Configuration: configuration.md
