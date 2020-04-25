@@ -149,6 +149,13 @@
 	 (>= (plugin-version-minor available-version)
 	     (plugin-version-minor requested-version))))
 
+  ;;; Convert the plugin-version struct VERSION to a real number.
+  (define (plugin-version->real version)
+    (string->number
+     (string-append (number->string (plugin-version-major version))
+		    "."
+		    (number->string (plugin-version-minor version)))))
+
   ;;; The datatype that represents MDCONFigurations internally.
   (defstruct config
     id target plugin-version description commands
@@ -583,8 +590,10 @@
   (define (backtrace-block-fields block-instance start-row field-index)
     (find (complement null?)
 	  (reverse (map (cute list-ref <> field-index)
-			(take (cddr block-instance)
-			      start-row)))))
+			(if (>= start-row (length (cddr block-instance)))
+			    (cddr block-instance)
+			    (take (cddr block-instance)
+				  start-row))))))
 
   ;;; Evaluate the field in position FIELD-INDEX in ROW of the given
   ;;; BLOCK-INSTANCE. Evaluation will backtrace if the field node
@@ -843,75 +852,90 @@
   ;;; replaced with the last set value if the field's command has the
   ;;; `use-last-set` flag.
   (define (split-block-instance-contents size block-id mdconfig contents)
-    (letrec*
-	((field-ids (config-get-subnode-ids block-id (config-itree mdconfig)))
-
-	 (backtrace-targets
-	  (map (lambda (field-id)
-		 (command-has-flag? (config-get-inode-source-command
-				     field-id mdconfig)
-				    'use-last-set))
-	       field-ids))
-
-	 ;; Produces a chunk that resets all fields to their defaults on the
-	 ;; first row. Remaining rows are empty.
-	 (make-chunk-padding
-	  (lambda (len)
-	    (let ((field-defaults
-		   (map (lambda (cmd)
-			  (if (eqv? 'trigger (command-type cmd))
-			      '()
-			      (command-default cmd)))
-			(map (cute config-get-inode-source-command <> mdconfig)
-			     field-ids))))
-	      (append (list field-defaults)
-		      (make-list (sub1 len)
-				 (make-list (length field-defaults)
-					    '()))))))
-
-	 (make-chunks
-	  (lambda (remaining-chunk previous-chunk)
-	    (if (null? remaining-chunk)
-		'()
-		(let* ((need-padding? (< (length remaining-chunk) size))
-		       (next-chunk (if need-padding?
-				       '()
-				       (drop remaining-chunk size)))
-		       (current-chunk
-			(if need-padding?
-			    (append remaining-chunk
-				    (make-chunk-padding
-				     (- size (length remaining-chunk))))
-			    (take remaining-chunk size)))
-		       (adjusted-current-chunk
-			(block-repeat-last-set current-chunk previous-chunk
-					       backtrace-targets)))
-		  (cons adjusted-current-chunk
-			(make-chunks next-chunk adjusted-current-chunk))))))
-
-	 (chunks (make-chunks contents '())))
-
+    (let* ((field-ids (config-get-subnode-ids block-id
+					      (config-itree mdconfig)))
+	   (backtrace-targets
+  	    (map (lambda (field-id)
+  		   (command-has-flag? (config-get-inode-source-command
+  				       field-id mdconfig)
+  				      'use-last-set))
+  		 field-ids))
+	   (need-backtrace (any (cute eq? #t <>) backtrace-targets))
+	   (length-adjusted-contents
+	    (cond ((null? (length contents))
+		   (make-list (length field-ids) '()))
+		  ((zero? (modulo (length contents) size))
+		   contents)
+		  (else
+		   (append
+		    contents
+		    (cons
+		     (map (lambda (field-cmd use-last-set?)
+			    (if (and use-last-set?
+				     (not (eqv? 'trigger
+						(command-type field-cmd))))
+				(command-default field-cmd)
+				'()))
+			  (map (cute config-get-inode-source-command <>
+				     mdconfig)
+  			       field-ids)
+			  backtrace-targets)
+		     (make-list (sub1 (- size (modulo (length contents)
+						      size)))
+				(make-list (length (car contents))
+					   '())))))))
+	   (raw-chunks (chop length-adjusted-contents size))
+	   (find-last-set
+	    (lambda (field-idx chunk-id)
+	      (let ((ls-row (find (lambda (row)
+				    (not (null? (list-ref row field-idx))))
+				  (reverse (take length-adjusted-contents
+						 (* size chunk-id))))))
+		(if ls-row
+		    (list-ref ls-row field-idx)
+		    '()))))
+	   (correct-chunk-start
+	    (lambda (chunk id)
+	      (cons (map (lambda (field field-idx use-last-set?)
+			   (if (and use-last-set? (null? field))
+			       (find-last-set field-idx id)
+			       field))
+			 (car chunk)
+			 (iota (length field-ids))
+			 backtrace-targets)
+		    (cdr chunk)))))
       (map (lambda (chunk id)
-	     (append (list id #f) chunk))
-	   chunks (iota (length chunks)))))
+	     (append (list id #f)
+		     (if (and need-backtrace (not (zero? id)))
+			 (correct-chunk-start chunk id)
+			 chunk)))
+	   raw-chunks
+	   (iota (length raw-chunks)))))
 
   ;;; Resize instances of the given IBLOCK to SIZE by merging all
   ;;; instances according to ORDER, then splitting into chunks.
   (define (resize-block-instances iblock size order config)
     (let ((order-index (config-get-block-field-index
 			(car order) (symbol-append 'R_ (car iblock)) config)))
-      (cons (car iblock)
-	    (split-block-instance-contents
-	     size (car iblock) config
-	     (concatenate
-	      (map (lambda (order-row)
-		     ;; TODO need to use dedicated accessor for block rows,
-		     ;; since we may be requesting rows that do not exist
-		     (take (cddr (inode-instance-ref
-				  (list-ref order-row order-index)
-				  iblock))
-			   (car order-row)))
-		   (repeat-block-row-values (cddadr order))))))))
+      (cons
+       (car iblock)
+       (split-block-instance-contents
+	size (car iblock) config
+	(concatenate
+	 (map (lambda (order-row)
+		(let* ((block-contents
+			(cddr (inode-instance-ref
+			       (list-ref order-row order-index)
+			       iblock)))
+		       (actual-length (length block-contents)))
+		  (if (< actual-length (car order-row))
+		      (append block-contents
+			      (make-list
+			       (- (car order-row) actual-length)
+			       (make-list (length (car block-contents))
+					  '())))
+		      (take block-contents (car order-row)))))
+	      (repeat-block-row-values (cddadr order))))))))
 
   ;; TODO must work for unordered groups as well
   ;;; Resize all non-order blocks in the given igroup instance to

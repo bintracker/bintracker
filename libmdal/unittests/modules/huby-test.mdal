@@ -16,8 +16,7 @@
 		  3
 		  ((DRUM #t))
 		  3
-		  ((DRUM #t))
-		  3)
+		  ((DRUM #t)))
 
 	   (CH1 #:id 0
 		((NOTE1 a3))
@@ -34,13 +33,10 @@
 		1
 		((NOTE1 g4))
 		1
-		((NOTE1 rest))
-		1)
+		((NOTE1 rest)))
 
 	   (CH2 #:id 0
-		((NOTE2 a2))
-		15)
+		((NOTE2 a2)))
 
 	   (CH2 #:id 1
-		((NOTE2 e2))
-		15)))
+		((NOTE2 e2)))))

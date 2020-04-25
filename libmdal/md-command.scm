@@ -30,7 +30,7 @@
 
   ;;; check if the given command CMD has the given FLAG
   (define (command-has-flag? cmd flag)
-    (memq flag (command-flags cmd)))
+    (and (memq flag (command-flags cmd)) #t))
 
   ;;; check if the given command CMD has any flags
   (define (command-has-flags? cmd)

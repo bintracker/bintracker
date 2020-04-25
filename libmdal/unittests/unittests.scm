@@ -333,14 +333,13 @@
 	   (PATTERNS (0 #f
 			(DRUMS ,(append (list 0 "beat0")
 					(concatenate
-					 (make-list 4 `((#t) (()) (()) (()))))))
+					 (make-list 3 `((#t) (()) (()) (()))))
+					'((#t))))
 			(CH1 (0 #f
 				(a3) (()) (rest) (()) (c4) (()) (rest) (())
-				(e4) (()) (rest) (()) (g4) (()) (rest) (())))
-			(CH2 ,(append (list 0 #f '(a2))
-				      (make-list 15 '(())))
-			     ,(append (list 1 #f '(e2))
-				      (make-list 15 '(()))))
+				(e4) (()) (rest) (()) (g4) (()) (rest)))
+			(CH2 (0 #f (a2))
+			     (1 #f (e2)))
 			(PATTERNS_ORDER (0 #f
 					   (#x10 #x00 #x00 #x00)
 					   (() () () #x01))))))
@@ -368,8 +367,6 @@
    (subnode-ref
     'CH2
     (inode-instance-ref 0 (subnode-ref 'PATTERNS my-global-inode-instance))))
-
- (test "inode-count-instances" 2 (inode-count-instances my-ch2-inode))
 
  ;; (define my-note1-inode
  ;;   (get-subnode
@@ -416,16 +413,12 @@
  "MD-Module/Accessors"
 
  (test "node-path to inode instance"
-       (append '(1 #f (e2))
- 	       (make-list 15 '(())))
+       '(1 #f (e2))
        ((node-path "0/PATTERNS/0/CH2/1") (mdmod-global-node my-mod)))
 
  (test "node-path to subnode"
-       (list 'CH2
-	     (append '(0 #f (a2))
- 		     (make-list 15 '(())))
-	     (append '(1 #f (e2))
- 		     (make-list 15 '(()))))
+       '(CH2 (0 #f (a2))
+	     (1 #f (e2)))
        ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
 
  ;; TODO move into subgroup "high level accessors"
@@ -551,7 +544,7 @@
   	 (#f #f #f))
         (mod-get-block-values ((node-path "0/PATTERNS/0")
   			       (mdmod-global-node my-mod))
-  			      '(0 0 0)))
+  			      '(16 0 0 0)))
   )
 
 (test-group
@@ -636,10 +629,7 @@
 	'(#f #t #t)))
 
  (test "split-block-instance-contents"
-       '((0 #f (a2) (()) (()) (()))
-	 (1 #f (a2) (()) (()) (()))
-	 (2 #f (a2) (()) (()) (()))
-	 (3 #f (a2) (()) (()) (())))
+       '((0 #f (a2) (rest) (()) (())))
        (split-block-instance-contents
 	4 'CH2 my-cfg
 	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mdmod-global-node my-mod)))))
@@ -722,7 +712,7 @@
  "Export & Compilation"
 
  (test "mdmod->file"
-       "61ebee468dbbe461dd3103cb835eaf41"
+       "013ed7fbb6d1602bc267afe2d16788b2"
        (begin
 	 (mdmod->file my-mod "test.mdal")
 	 (file-md5sum "test.mdal")))

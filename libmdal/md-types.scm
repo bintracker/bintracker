@@ -12,13 +12,16 @@
   ;;; ## MDMOD: Input Nodes
   ;; ---------------------------------------------------------------------------
 
+  ;; TODO should this always succeed as well? Then we can construct whole node
+  ;; trees for eg. groups that don't exist.
   ;;; Returns the subnode with the given SUBNODE-ID.
   (define (subnode-ref subnode-id inode-instance)
     (assv subnode-id (cddr inode-instance)))
 
-  ;;; Returns the inode instance witht the given INSTANCE-ID.
+  ;;; Returns the inode instance with the given INSTANCE-ID, or a newly created,
+  ;;; empty inode if the referenced inode instance does not exist.
   (define (inode-instance-ref instance-id inode)
-    (assq instance-id (cdr inode)))
+    (or (assq instance-id (cdr inode)) '(,instance-id #f '())))
 
   ;;; Returns the value of the field at FIELD-INDEX in ROW of
   ;;; `block-instance`. Returns null if the requested ROW does not exist.
@@ -28,11 +31,6 @@
 	  '()
 	  (list-ref (list-ref rows row)
 		    field-index))))
-
-  ;; TODO obsolete?
-  ;;; Return the number of instances in the given inode
-  (define (inode-count-instances node)
-    (length (cdr node)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -132,22 +130,18 @@
   ;;; instances in the given `group-instance`, as a list of row value sets.
   ;;; Effectively calls md-mod-get-row-values on each row of the relevant
   ;;; blocks.
-  (define (mod-get-block-values group-instance block-instance-ids)
-    (map (cute mod-get-row-values group-instance block-instance-ids <>)
-  	 (iota (length (cdr (alist-ref
-			     (car block-instance-ids)
-			     (cdr (find (lambda (subnode)
-					  (not (symbol-contains (car subnode)
-								"_ORDER")))
-  					(cddr group-instance)))))))))
+  (define (mod-get-block-values group-instance order-pos)
+    (map (lambda (pos)
+	   (mod-get-row-values group-instance (cdr order-pos) pos))
+	 (iota (car order-pos))))
 
   ;;; Returns the group instance's order node (instance 0)
   (define (mod-get-group-instance-order igroup-instance igroup-id)
     (cadr (subnode-ref (symbol-append igroup-id '_ORDER) igroup-instance)))
 
-  ;;; Helper for `mod-get-order-values.
   ;;; Given the contents of a block instance, return the contents such that
   ;;; empty fields are replaced with the last set value.
+  ;;; Helper for `mod-get-order-values` and `derive-single-row-mdmod`.
   (define (repeat-block-row-values rows)
     (letrec ((repeat-values
 	      (lambda (rows previous-row)

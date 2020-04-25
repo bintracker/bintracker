@@ -47,13 +47,20 @@
 	 node-contents))
 
   (define (mod-group-instance-contents->node-expr group-id contents mdconfig)
-    (filter-map (lambda (node-id)
-		  (let ((node-expr (mod-node->node-expr
-				    node-id (alist-ref node-id contents)
-				    mdconfig)))
-		    (and (pair? node-expr)
-			 node-expr)))
-		(config-get-subnode-ids group-id (config-itree mdconfig))))
+    (letrec ((resolve-nesting (lambda (subnode)
+				(if (null? subnode)
+				    '()
+				    (append (car subnode)
+					    (resolve-nesting (cdr subnode)))))))
+      (resolve-nesting
+	   (filter-map (lambda (node-id)
+			 (let ((node-expr (mod-node->node-expr
+					   node-id (alist-ref node-id contents)
+					   mdconfig)))
+			   (and (pair? node-expr)
+				node-expr)))
+		       (config-get-subnode-ids group-id
+					       (config-itree mdconfig))))))
 
   (define (mod-node-instance->instance-expr node-id instance mdconfig)
     (cons (if (symbol-contains node-id "_ORDER")
@@ -76,7 +83,10 @@
     (call-with-output-file filename
       (lambda (port)
 	(pp (append (list 'mdal-module 'version: mdal-version
-			  'config: (mdmod-config-id mod))
+			  'config: (mdmod-config-id mod)
+			  'config-version:
+			  (plugin-version->real
+			   (config-plugin-version (car mod))))
 		    (mod-group-instance-contents->node-expr
 		     'GLOBAL (cddr (cadr (mdmod-global-node mod)))
 		     (mdmod-config mod)))
@@ -124,11 +134,14 @@
   ;; TODO this is very inefficient
   ;;; Get the value of field FIELD-ID in ROW of BLOCK-INSTANCE.
   (define (mod-get-block-field-value block-instance row field-id mdconf)
-    (list-ref (list-ref (cddr block-instance)
-			row)
-	      (config-get-block-field-index (config-get-parent-node-id
-					     field-id (config-itree mdconf))
-					    field-id mdconf)))
+    (if (> (- (length block-instance) 2)
+	   row)
+	(list-ref (list-ref (cddr block-instance)
+			    row)
+		  (config-get-block-field-index (config-get-parent-node-id
+						 field-id (config-itree mdconf))
+						field-id mdconf))
+	'()))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Inode mutators
@@ -147,44 +160,75 @@
       (if (eqv? 'block (inode-config-type (config-inode-ref parent-id mdconf)))
 	  (let ((field-index (config-get-block-field-index parent-id node-id
 							   mdconf)))
-	    (for-each (lambda (instance)
-			;; TODO utterly messy work-around because applying
-			;; list-set! directly trashes the list contents
-			(let ((row (list-copy*
-				    (list-ref (cddr parent-node)
-					      (car instance)))))
-			  (list-set! row field-index (cadr instance))
-			  (list-set! parent-node (+ 2 (car instance))
-			  	     row)))
-		      instances))
+	    (for-each
+	     (lambda (instance)
+	       ;; TODO utterly messy work-around because applying
+	       ;; list-set! directly trashes the list contents
+	       (if (< (length parent-node) (+ 3 (car instance)))
+		   (let ((blank-row (make-list (length (config-get-subnode-ids
+							parent-id
+							(config-itree mdconf)))
+					       '())))
+		     (set! (cddr parent-node)
+		       (append (cddr parent-node)
+			       (make-list (- (car instance)
+					     (- (length parent-node) 2))
+					  blank-row)
+			       (list (append
+				      (take blank-row
+					    field-index)
+				      (cons (cadr instance)
+					    (drop blank-row
+						  (+ 1 field-index))))))))
+		   (let ((row (list-copy* (list-ref (cddr parent-node)
+						    (car instance)))))
+		     (list-set! row field-index (cadr instance))
+		     (list-set! parent-node
+				(+ 2 (car instance))
+			  	row))))
+	     instances))
+	  ;; TODO this probably will not work
 	  (for-each (lambda (instance)
 		      (alist-update! (car instance)
 				     (cdr instance)
 				     (alist-ref node-id (cddr parent-node))))
 		    instances))))
 
-  ;;; Delete the block field instance of FIELD-ID at ROW.
+  ;;; Delete the block field instance of FIELD-ID at ROW. Does nothing if ROW
+  ;;; does not exist in BLOCK-INSTANCE.
   (define (remove-block-field block-instance field-id row mdconf)
-    (let* ((columns (transpose (cddr block-instance)))
-	   (block-id (config-get-parent-node-id field-id (config-itree mdconf)))
-	   (field-index (config-get-block-field-index block-id field-id
-						      mdconf)))
-      (transpose (map (lambda (column index)
-			(if (= index field-index)
-			    (append (take column row)
-				    (if (> (length column) 1)
-				        (append (drop column (+ 1 row)) '(()))
-					'()))
-			    column))
-		      columns (iota (length columns))))))
+    (when (> (- (length block-instance) 2)
+	     row)
+      (let* ((columns (transpose (cddr block-instance)))
+	     (block-id (config-get-parent-node-id
+			field-id (config-itree mdconf)))
+	     (field-index (config-get-block-field-index
+			   block-id field-id mdconf)))
+	(transpose (map (lambda (column index)
+			  (if (= index field-index)
+			      (append (take column row)
+				      (if (> (length column) 1)
+				          (append (drop column (+ 1 row)) '(()))
+					  '()))
+			      column))
+			columns (iota (length columns)))))))
 
   ;;; Insert an instance of the block field FIELD-ID into the block node
   ;;; instance BLOCK-INSTANCE, inserting at ROW and setting VALUE.
   (define (insert-block-field block-instance field-id row value mdconf)
-    (let* ((columns (transpose (cddr block-instance)))
-	   (block-id (config-get-parent-node-id field-id (config-itree mdconf)))
-	   (field-index (config-get-block-field-index block-id field-id
-						      mdconf)))
+    (let* ((block-id (config-get-parent-node-id field-id (config-itree mdconf)))
+	   (columns
+	    (transpose
+	     (if (> (length block-instance) (+ 2 row))
+		 (cddr block-instance)
+		 (append (cddr block-instance)
+			 (make-list (- row (- (length block-instance) 3))
+				    (make-list (length (config-get-subnode-ids
+							block-id
+							(config-itree mdconf)))
+					       '()))))))
+	   (field-index
+	    (config-get-block-field-index block-id field-id mdconf)))
       (transpose (map (lambda (column index)
 			(if (= index field-index)
 			    (append (take column row)
@@ -201,10 +245,12 @@
 			     (mdmod-global-node mod))))
       (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
 	  (for-each (lambda (instance)
-		      (set! (cddr parent-instance)
-			(remove-block-field parent-instance node-id
-					    (car instance) mdconf)))
+		      (when (> (length parent-instance) (+ 2 (car instance)))
+			(set! (cddr parent-instance)
+			  (remove-block-field parent-instance node-id
+					      (car instance) mdconf))))
 		    instances)
+	  ;; TODO this likely doesn't work.
 	  (for-each (cute alist-delete!
 		      <> (alist-ref node-id (cddr parent-instance)))
 		    instances))))
@@ -223,6 +269,7 @@
 					    (car instance) (cadr instance)
 					    mdconf)))
 		    instances)
+	  ;; TODO this likely does not work
 	  (for-each (lambda (instance)
 		      (alist-update! (car instance)
 				     (cdr instance)
@@ -292,15 +339,23 @@
 			    (0 #f ,(cons 1 (make-list (sub1 (length order-pos))
 						      0))))
 			  `(,(car subnode)
-			    (0 #f ,(list-ref
-				    (cddr (inode-instance-ref
-					   (list-ref
-					    order-pos
-					    (+ 1 (list-index
-						  (cute eqv? <> (car subnode))
-						  block-ids)))
-					   subnode))
-				    row)))))
+			    (0 #f
+			       ,(let ((rows (repeat-block-row-values
+					     (cddr (inode-instance-ref
+						    (list-ref
+						     order-pos
+						     (+ 1 (list-index
+							   (cute eqv? <>
+								 (car subnode))
+							   block-ids)))
+						    subnode)))))
+				  (if (> (length rows) row)
+				      (list-ref rows row)
+				      (make-list (length
+						  (config-get-subnode-ids
+						   (car subnode)
+						   (config-itree config)))
+						 '())))))))
 		    (cddr node-instance))))))
 	 (extract-nodes
 	  (lambda (root)

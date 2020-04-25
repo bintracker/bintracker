@@ -2082,16 +2082,7 @@
     (let* ((group-id (slot-value buf 'group-id))
   	   (group-instance (get-current-node-instance group-id))
   	   (order (mod-get-order-values group-id group-instance)))
-      (map (lambda (order-pos)
-	     (let ((block-values (mod-get-block-values group-instance
-						       (cdr order-pos)))
-		   (chunk-length (car order-pos)))
-	       (if (<= chunk-length (length block-values))
-		   (take block-values chunk-length)
-		   (append block-values
-			   (make-list (- chunk-length (length block-values))
-				      (make-list (length (car block-values))
-						 '()))))))
+      (map (cute mod-get-block-values group-instance <>)
 	   order)))
 
   ;;; Return the block instance ID currently under cursor.
