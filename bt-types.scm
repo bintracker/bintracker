@@ -26,7 +26,7 @@
     ((minor-row-highlight 4) : fixnum)
     menu current-mdmod
     (current-file : (or boolean string))
-    ((current-instances '()) : list)
+    ;; ((current-instances '()) : list)
     selection
     ((active-md-command-info "") : string)
     (modified : boolean)

@@ -31,7 +31,7 @@
   (define (state-reset-after-file-close)
     (set-state! 'current-mdmod #f)
     (set-state! 'current-file #f)
-    (set-state! 'current-instances '())
+    ;; (set-state! 'current-instances '())
     (set-state! 'modified #f)
     (set-state! 'emulator #f)
     (set-state! 'journal (make-app-journal))
@@ -239,36 +239,37 @@
 
   ;;; Returns the current module, or `#f` if no module is loaded.
   (define (current-mod)
+    (print-call-chain)
     (app-state-current-mdmod *bintracker-state*))
 
   ;;; Set the current module from the result of parsing the .mdal file FILENAME.
   (define (set-current-mod! filename)
     (set-state! 'current-mdmod
-		(file->mdmod filename
-			     (app-settings-mdal-config-dir
-			      *bintracker-settings*)
-			     "libmdal/")))
+  		(file->mdmod filename
+  			     (app-settings-mdal-config-dir
+  			      *bintracker-settings*)
+  			     "libmdal/")))
 
   ;;; Returns the current module configuration (mdconf). It is an error to call
   ;;; this procedure if no module is currently loaded.
   (define (current-config)
     (mdmod-config (current-mod)))
 
+  ;; TODO reimplement
   ;;; Returns a string containing the current target platform and MDAL config
   ;;; name, separated by a pipe.
   (define (get-module-info-text)
     (string-append (if (current-mod)
-		       (string-append
+  		       (string-append
   			(target-platform-id (config-target (current-config)))
   			" | " (mdmod-config-id (current-mod)))
-		       "No module loaded.")
-		   " | "))
+  		       "No module loaded.")
+  		   " | "))
 
   ;;; Set the active MD command info string from the given mdconf config-inode
   ;;; FIELD-ID.
-  (define (set-active-md-command-info! field-id)
-    (let ((command (config-get-inode-source-command field-id
-						    (current-config))))
+  (define (set-active-md-command-info! field-id mdef)
+    (let ((command (config-get-inode-source-command field-id mdef)))
       (set-state! 'active-md-command-info
 		  (string-append
 		   (symbol->string field-id) ": "
@@ -438,55 +439,55 @@
   (define (focus-previous-ui-zone)
     (focus 'previous))
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Instances Record
-  ;; ---------------------------------------------------------------------------
+  ;; ;; ---------------------------------------------------------------------------
+  ;; ;;; ## Instances Record
+  ;; ;; ---------------------------------------------------------------------------
 
-  ;;; Bintracker keeps a record of the currently displayed group and block node
-  ;;; instances in `(app-state-current-instances *bintracker-state*)`.
-  ;;; The following section contains procedures for retrieving information from
-  ;;; and updating the instance record.
+  ;; ;;; Bintracker keeps a record of the currently displayed group and block node
+  ;; ;;; instances in `(app-state-current-instances *bintracker-state*)`.
+  ;; ;;; The following section contains procedures for retrieving information from
+  ;; ;;; and updating the instance record.
 
-  ;;; Initialize the instance record. This should be called on loading a file,
-  ;;; after setting `current-mod` but before calling `(show-module)`.
-  (define (init-instances-record!)
-    (when (current-mod)
-      (set-state! 'current-instances
-    		  (map (lambda (inode-cfg)
-    			 (list (car inode-cfg) 0))
-    		       (filter (lambda (inode-cfg)
-    				 (memq (inode-config-type (cdr inode-cfg))
-    				       '(group block)))
-    			       (hash-table->alist
-    				(config-inodes (current-config))))))))
+  ;; ;;; Initialize the instance record. This should be called on loading a file,
+  ;; ;;; after setting `current-mod` but before calling `(show-module)`.
+  ;; (define (init-instances-record!)
+  ;;   (when (current-mod)
+  ;;     (set-state! 'current-instances
+  ;;   		  (map (lambda (inode-cfg)
+  ;;   			 (list (car inode-cfg) 0))
+  ;;   		       (filter (lambda (inode-cfg)
+  ;;   				 (memq (inode-config-type (cdr inode-cfg))
+  ;;   				       '(group block)))
+  ;;   			       (hash-table->alist
+  ;;   				(config-inodes (current-config))))))))
 
-  ;;; Query the instance record for the currently visible instance of the
-  ;;; group or block node NODE-ID.
-  (define (get-current-instance node-id)
-    (car (alist-ref node-id (state 'current-instances))))
+  ;; ;;; Query the instance record for the currently visible instance of the
+  ;; ;;; group or block node NODE-ID.
+  ;; (define (get-current-instance node-id)
+  ;;   (car (alist-ref node-id (state 'current-instances))))
 
-  ;;; Update the instance record for NODE-ID.
-  (define (set-current-instance! node-id val)
-    (alist-update! node-id val (state 'current-instances)))
+  ;; ;;; Update the instance record for NODE-ID.
+  ;; (define (set-current-instance! node-id val)
+  ;;   (alist-update! node-id val (state 'current-instances)))
 
-  ;;; Return the node-instance path string for the currently visible instance
-  ;;; of the group or block node NODE-ID. The result can be fed into
-  ;;; `node-instance-path`.
-  (define (get-current-instance-path node-id)
-    (let ((ancestors (config-get-node-ancestors-ids
-		      node-id (config-itree (current-config)))))
-      (string-concatenate
-       (cons "0/" (map (lambda (id)
-			 (string-append (symbol->string id)
-					"/" (->string (get-current-instance id))
-					"/"))
-		       (cdr (reverse (cons node-id ancestors))))))))
+  ;; ;;; Return the node-instance path string for the currently visible instance
+  ;; ;;; of the group or block node NODE-ID. The result can be fed into
+  ;; ;;; `node-instance-path`.
+  ;; (define (get-current-instance-path node-id)
+  ;;   (let ((ancestors (config-get-node-ancestors-ids
+  ;; 		      node-id (config-itree (current-config)))))
+  ;;     (string-concatenate
+  ;;      (cons "0/" (map (lambda (id)
+  ;; 			 (string-append (symbol->string id)
+  ;; 					"/" (->string (get-current-instance id))
+  ;; 					"/"))
+  ;; 		       (cdr (reverse (cons node-id ancestors))))))))
 
-  ;;; Return the currently visible inode-instance of the group or block node
-  ;;; NODE-ID.
-  (define (get-current-node-instance node-id)
-    ((node-path (get-current-instance-path node-id))
-     (mdmod-global-node (current-mod))))
+  ;; ;;; Return the currently visible inode-instance of the group or block node
+  ;; ;;; NODE-ID.
+  ;; (define (get-current-node-instance node-id)
+  ;;   ((node-path (get-current-instance-path node-id))
+  ;;    (mdmod-global-node (current-mod))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -527,31 +528,31 @@
 
   ;;; Generate an action specification that when applied, will revert the edit
   ;;; that results from the given edit ACTION specification.
-  (define (make-reverse-action action)
+  (define (make-reverse-action action mmod)
     (if (eqv? 'compound (car action))
 	(list 'compound (map make-reverse-action (reverse (cdr action))))
 	(if (eqv? 'block (config-get-parent-node-type (third action)
-						      (current-config)))
+						      (car mmod)))
 	    (case (car action)
 	      ((set) (list 'set (cadr action) (third action)
 			   (map (lambda (id+val)
 				  (list (car id+val)
 					(mod-get-block-field-value
 					 ((node-path (cadr action))
-					  (mdmod-global-node (current-mod)))
+					  (mdmod-global-node mmod))
 					 (car id+val)
 					 (third action)
-					 (current-config))))
+					 (car mmod))))
 				(fourth action))))
 	      ((remove) (list 'insert (cadr action) (third action)
 			      (map (lambda (id+val)
 				     (list (car id+val)
 					   (mod-get-block-field-value
 					    ((node-path (cadr action))
-					     (mdmod-global-node (current-mod)))
+					     (mdmod-global-node mmod))
 					    (car id+val)
 					    (third action)
-					    (current-config))))
+					    (car mmod))))
 				   (fourth action))))
 	      ((insert) (list 'remove (cadr action) (third action)
 			      (map (lambda (id+val)
@@ -567,7 +568,7 @@
 					  (cadr action) "/"
 					  (symbol->string (third action))
 			  		  (->string (car id+val))))
-			  		(mdmod-global-node (current-mod))))))
+			  		(mdmod-global-node mmod)))))
 			  (fourth action))))
 	      ((remove) (list 'insert (cadr action) (third action)))
 	      ((insert) (list 'remove (cadr action) (third action)

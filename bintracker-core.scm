@@ -32,12 +32,13 @@
   ;;; below.
 
   ;;; Create a set of hooks. HOOKS must be key-value pairs, where keys are
-  ;;; identifier and values are thunks, ie. procedures that take no arguments.
-  ;;; You can call the resulting hook set HS as follows:
+  ;;; identifier and values are procedures. You can call the resulting hook set
+  ;;; HS as follows:
   ;;;
-  ;;; `(HS 'execute)`
+  ;;; `(HS 'execute [ARGS ...])`
   ;;;
-  ;;; Execute the hooks in order.
+  ;;; Execute the hooks in order. Each hook is called with ARGS ... as the
+  ;;; procedure arguments.
   ;;;
   ;;; `(HS 'add ID HOOK [WHERE [OTHER-HOOK]])`
   ;;;
@@ -65,7 +66,7 @@
       (lambda args
 	(case (car args)
 	  ((execute) (for-each (lambda (hook)
-				 ((cdr hook)))
+				 (apply (cdr hook) (cdr args)))
 			       hooks))
 	  ((add) (set! hooks
 		   (if (> (length args) 3)
@@ -160,27 +161,31 @@
   (define after-load-file-hooks
     (make-hooks
      `(enable-play-buttons
-       . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
-     `(init-instances-record . ,init-instances-record!)
+       . ,(lambda args (print "enable-play-buttons") (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
+     ;; `(init-instances-record . ,init-instances-record!)
      `(hide-welcome-buffer
-       . ,(lambda () (multibuffer-hide (ui) 'welcome)))
+       . ,(lambda args (print "hide-welcome-buffer") (multibuffer-hide (ui) 'welcome)))
      `(show-module
-       . ,(lambda ()
+       . ,(lambda (mmod filename)
+	    (print "show-mdoule")
 	    (multibuffer-add (ui)
-			     `(module-view #t 5 ,<ui-group> group-id GLOBAL)
+			     `(module-view #t 5 ,<ui-module-view>
+					   mmod ,mmod filename ,filename)
 			     before: 'repl)))
-     `(reset-status . ,reset-status-text!)
-     `(update-window-title . ,update-window-title!)
+     ;; `(reset-status . ,reset-status-text!)
+     ;; `(update-window-title . ,update-window-title!)
      `(focus-first-block
-       . ,(lambda ()
+       . ,(lambda args
+	    (print "focus-first-block")
 	    (and-let* ((entry (find (lambda (entry)
 				      (symbol-contains (car entry)
 						       "block-view"))
 				    (focus 'list))))
 	      (focus 'set (car entry)))))
      `(enable-edit-settings
-       . ,(lambda () (ui-set-state edit-settings 'enabled)))
-     `(start-emulator . ,(lambda () (emulator 'start)))))
+       . ,(lambda args (print "enable-edit-setting") (ui-set-state edit-settings 'enabled)))
+     ;; `(start-emulator . ,(lambda () (emulator 'start)))
+     ))
 
   ;; TODO logging
   ;;; Prompt the user to load an MDAL module file.
@@ -193,28 +198,34 @@
 	    exn
 	    (repl-insert (repl) (string-append "\nError: " (->string exn)
 		   			       "\n" (message exn) "\n"))
-	  (set-current-mod! filename)
-	  (set-state! 'current-file filename)
-	  (set-state! 'emulator
-		      (make-emulator
-		       "mame64"
-		       '("-w" "-skip_gameinfo" "-autoboot_script"
-			 "mame-bridge/mame-startup.lua"
-			 "-autoboot_delay" "0" "spectrum")))
-	  (after-load-file-hooks 'execute)))))
+	  ;; (set-current-mod! filename)
+	  ;; (set-state! 'current-file filename)
+	  ;; (set-state! 'emulator
+	  ;; 	      (make-emulator
+	  ;; 	       "mame64"
+	  ;; 	       '("-w" "-skip_gameinfo" "-autoboot_script"
+	  ;; 		 "mame-bridge/mame-startup.lua"
+	  ;; 		 "-autoboot_delay" "0" "spectrum")))
+	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdconf-id)
     (close-file)
-    (set-state! 'current-mdmod (generate-new-mdmod
-				;; TODO
-  				(file->config "libmdal/unittests/config/"
-  					      "Huby" "libmdal/")
-  				16))
-    (set-state! 'modified #t)
-    (set-state! 'emulator
-		(platform->emulator
-		 (target-platform-id (config-target (current-config)))))
-    (after-load-file-hooks 'execute))
+    ;; (set-state! 'current-mdmod (generate-new-mdmod
+    ;; 				;; TODO
+    ;; 				(file->config "libmdal/unittests/config/"
+    ;; 					      "Huby" "libmdal/")
+    ;; 				16))
+    ;; (set-state! 'modified #t)
+    ;; (set-state! 'emulator
+    ;; 		(platform->emulator
+    ;; 		 (target-platform-id (config-target (current-config)))))
+    (after-load-file-hooks 'execute
+			   (generate-new-mdmod
+			    ;; TODO
+  			    (file->config "libmdal/unittests/config/"
+  					  "Huby" "libmdal/")
+  			    16)
+			   #f))
 
   ;; TODO abort when user aborts closing of current workfile
   ;;; Opens a dialog for users to chose an MDAL configuration. Based on the

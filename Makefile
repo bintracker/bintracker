@@ -68,7 +68,8 @@ bt-emulation.so: bt-emulation.scm
 bt-emulation.import.so: bt-emulation.so
 	$(CSC) $(IMPORTFLAGS) bt-emulation.import.scm
 
-bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so bt-db.import.so
+bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so bt-db.import.so\
+ bt-emulation.import.so
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-gui.scm -j bt-gui
 
