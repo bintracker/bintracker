@@ -45,6 +45,7 @@ nav:
   - "Developer Documentation":
       - "Getting Started": hacking.md
       - "Style Guide": style-guide.md
+      - "TODO List": TODO.md
       - "Bintracker API":
          - "bintracker-core": 'generated/bintracker-core.md'
          - "bt-types": 'generated/bt-types.md'
@@ -68,6 +69,8 @@ nav:
       - "Schemta Assembler":
           - Introduction: 'libmdal/schemta.md'
           - Schemta API: 'libmdal/generated/schemta.md'
+  - Contributing: contributing.md
+  - "Code of Conduct": CODE_OF_CONDUCT.md
 
 markdown_extensions:
   - codehilite
