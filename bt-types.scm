@@ -29,6 +29,7 @@
     ((font-height-cached 10) : fixnum)
     ((journal (make-app-journal)) : (struct app-journal)))
 
+  ;; TODO this should be an alist
   (defstruct app-keys
     global console edit note-entry plugins)
 
