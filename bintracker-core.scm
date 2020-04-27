@@ -117,7 +117,8 @@
   ;;; should be saved, then execute the procedure PROC unless the user
   ;;; cancelled the action. With no unsaved changes, simply execute PROC.
   (define (do-proc-with-exit-dialogue dialogue-string proc)
-    (if (ui-metastate (current-module-view) 'modified)
+    (if (and (current-module-view)
+	     (ui-metastate (current-module-view) 'modified))
 	(match (exit-with-unsaved-changes-dialog dialogue-string)
 	  ("yes" (begin (save-file)
 			(proc)))
