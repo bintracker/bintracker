@@ -1344,15 +1344,38 @@
   (define-method (ui-focus primary: (buf <ui-repl>))
     (tk/focus (slot-value buf 'repl)))
 
+  ;;; ### Module View Widgets
+  ;;;
+  ;;; The following classes are the components used to construct a graphical
+  ;;; representation of an MDAL module (MMOD). The `<ui-module-view>` class
+  ;;; defined at the end of this section combines these to create a display
+  ;;; metabuffer of the module, and manage its state.
+  ;;;
+  ;;; Given a class instance of any of these module view components (or an
+  ;;; instance of the module view itself, you can interact with the (parent)
+  ;;; module state through the `ui-metastate` method (see below).
+  ;;;
+  ;;; You normally do not need to create instances of the child components
+  ;;; yourself. If you do construct your own instances, then you must already
+  ;;; have constructed a `<ui-module-view>`, and pass the value of its
+  ;;; `metastate-accessor` slot to the constructor of the child component.
+
   ;;; A widget representing an MDAL group field instance. Create instances of
   ;;; this class with
   ;;;
   ;;; ```Scheme
-  ;;; (make <ui-group-field> 'node-id ID 'parent-instance-path PATH)
+  ;;; (make <ui-group-field>
+  ;;;       'node-id ID
+  ;;;       'parent-instance-path PATH
+  ;;;       'metastate-accessor ACCESSOR)
   ;;; ```
   ;;;
-  ;;; where ID is an MDAL field node identifier in the parent MMOD and PATH
-  ;;; is an MDAL node path string that will be evaluated on `(current-mod)`.
+  ;;; where ID is an MDAL field node identifier in the parent MMOD, and PATH is
+  ;;; an MDAL node path string valid for `(ACCESSOR 'mmod).
+  ;;; where ID is an MDAL field node identifier, PATH is an MDAL node path
+  ;;; string pointing to the parent group node instance, and ACCESSOR is a
+  ;;; metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-group-field> (<ui-element>)
     (label
      entry
@@ -1397,6 +1420,7 @@
 			      (ui-metastate buf 'mdef)))
       (print "done initialize-instance/group-field")))
 
+  ;;; See `<ui-module-view>` below.
   (define-method (ui-metastate primary: (buf <ui-group-field>)
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
@@ -1414,11 +1438,16 @@
   ;;; instances of this class with
   ;;;
   ;;; ```Scheme
-  ;;; (make <ui-group-fields> 'group-id ID 'parent-instance-path PATH)
+  ;;; (make <ui-group-fields>
+  ;;;       'group-id ID
+  ;;;       'parent-instance-path PATH
+  ;;;       'metastate-accessor ACCESSOR)
   ;;; ```
   ;;;
-  ;;; where ID is an MDAL field node identifier in the parent MMOD and PATH
-  ;;; is an MDAL node path string that will be evaluated on `(current-mod)`.
+  ;;; where ID is the MDAL node identifier of the parent group node, PATH is an
+  ;;; MDAL node path string pointing to the parent group node instance, and
+  ;;; ACCESSOR is a metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-group-fields> (<ui-buffer>)
     ((ui-zone (gensym 'group-fields))
      (focus-controller focus)
@@ -1470,9 +1499,10 @@
 
   ;; TODO expand: 1 fill: both?
   ;;; Abstract base class for `<ui-block-view>` and `<ui-order-view>`,
-  ;;; implementing shared code for these two classes. Consider deriving from
-  ;;; this class if you want to implement an alternative representation of an
-  ;;; MDAL group's blocks.
+  ;;; implementing shared code for these two classes. You most likely do not
+  ;;; need to construct an instance of this class directly. However, consider
+  ;;; from this class if you want to implement an alternative representation
+  ;;; of the block node members of an MDAL group node.
   (define-class <ui-basic-block-view> (<ui-buffer>)
     (ui-zone
      (focus-controller focus)
@@ -2045,6 +2075,18 @@
 
   ;;; A class representing the display of an MDAL group node's blocks, minus the
   ;;; order block. Pattern display is implemented using this class.
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-order-view>
+  ;;;      'group-id ID
+  ;;;      'parent-instance-path PATH
+  ;;;      'metastate-accessor ACCESSOR)
+  ;;; ```
+  ;;;
+  ;;; where ID is the MDAL node identifier of the parent group node, PATH is an
+  ;;; MDAL node path string pointing to the parent group node instance, and
+  ;;; ACCESSOR is a metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-block-view> (<ui-basic-block-view>)
     ((ui-zone (gensym 'block-view))
      block-ids))
@@ -2251,6 +2293,18 @@
 
   ;;; A class representing the display of the order block of an MDAL group node
   ;;; instance.
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-order-view>
+  ;;;      'group-id ID
+  ;;;      'parent-instance-path PATH
+  ;;;      'metastate-accessor ACCESSOR)
+  ;;; ```
+  ;;;
+  ;;; where ID is the MDAL node identifier of the parent group node, PATH is an
+  ;;; MDAL node path string pointing to the parent group node instance, and
+  ;;; ACCESSOR is a metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-order-view> (<ui-basic-block-view>)
     ((ui-zone (gensym 'order-view))))
 
@@ -2404,14 +2458,21 @@
   ;;; <ui-order-view>. Create instances with
   ;;;
   ;;; ```Scheme
-  ;;; (make <ui-group-blocks> 'group-id ID)
+  ;;; (make <ui-group-blocks>
+  ;;;      'group-id ID
+  ;;;      'parent-instance-path PATH
+  ;;;      'metastate-accessor ACCESSOR)
   ;;; ```
   ;;;
-  ;;; where ID is the identifier of the group in `(current-module)` to display.
+  ;;; where ID is the MDAL node identifier of the parent group node, PATH is an
+  ;;; MDAL node path string pointing to the parent group node instance, and
+  ;;; ACCESSOR is a metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-blocks> (<ui-multibuffer>)
     ((orient 'horizontal)
      (group-id (error '|make <ui-blocks>| "Missing 'group-id."))
-     parent-instance-path
+     (parent-instance-path (error '|make <ui-blocks>|
+				  "Missing 'parent-instance-path."))
      (metastate-accessor (error '|make <ui-blocks>|
 				"Missing 'metastate-accessor."))))
 
@@ -2435,10 +2496,24 @@
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
 
+  ;;; A widget class suitable for displaying an MDAL group node's subgroups.
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-subgroups>
+  ;;;      'group-id ID
+  ;;;      'parent-instance-path PATH
+  ;;;      'metastate-accessor ACCESSOR)
+  ;;; ```
+  ;;;
+  ;;; where ID is the MDAL node identifier of the parent group node, PATH is an
+  ;;; MDAL node path string pointing to the parent group node instance, and
+  ;;; ACCESSOR is a metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-subgroups> (<ui-buffer>)
     ((packing-args '(expand: 1 fill: both))
      (group-id (error '|make <ui-subgroups>| "Missing 'group-id."))
-     parent-instance-path
+     (parent-instance-path (error '|make <ui-subgroups>|
+				  "Missing 'parent-instance-path."))
      tabs
      subgroups
      (metastate-accessor (error '|make <ui-subgroup>|
@@ -2476,9 +2551,23 @@
     (apply (slot-value buf 'metastate-accessor) args))
 
   ;; TODO instance 0 may not exist.
+  ;;; A widget class suitable for displaying an MDAL group node.
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-subgroups>
+  ;;;      'group-id ID
+  ;;;      'parent-instance-path PATH
+  ;;;      'metastate-accessor ACCESSOR)
+  ;;; ```
+  ;;;
+  ;;; where ID is the MDAL node identifier of the group node, PATH is an
+  ;;; MDAL node path string pointing to the parent group node instance, and
+  ;;; ACCESSOR is a metastate accessor procedure as described in the
+  ;;; `<ui-module-view>` documentation below.
   (define-class <ui-group> (<ui-multibuffer>)
-    (group-id
-     parent-instance-path
+    ((group-id (error '|make <ui-group>| "Missing 'group-id."))
+     (parent-instance-path (error '|make <ui-group>|
+				  "Missing 'parent-instance-path."))
      (current-instance 0)
      (metastate-accessor (error '|make <ui-group>|
 				"Missing 'metastate-accessor."))))
@@ -2555,9 +2644,7 @@
   ;;; elements as well, and doing so will act on the module state of the parent
   ;;; `<ui-module-view>`. See documentation for `ui-metastate` below.
   (define-class <ui-module-view> (<ui-multibuffer>)
-    ((group-id 'GLOBAL)
-     (parent-instance-path "")
-     (mmod initform: #f reader: ui-module-view-mmod)
+    ((mmod initform: #f reader: ui-module-view-mmod)
      (metastate-accessor #f)
      (filename #f)
      (modified #f)
@@ -2600,7 +2687,9 @@
 	  ((filename) (if (null? (cdr args))
 			  (slot-value buf 'filename)
 			  (set! (slot-value buf 'filename)
-			    (cadr args)))))))
+			    (cadr args))))
+	  (else (error 'metastate (string-append "invalid command "
+						 (->string args)))))))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL
 						(car (slot-value buf 'mmod))
 						'field))
