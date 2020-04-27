@@ -190,19 +190,6 @@
 		     (apply make-app-keys (cdr my-keymap)))
 	  (error "Not a valid Bintracker keymap."))))
 
-  ;; TODO reimplement
-  ;;; Returns a string containing the current target platform and MDAL config
-  ;;; name, separated by a pipe.
-  (define (get-module-info-text)
-    " | "
-    ;; (string-append (if (current-mod)
-    ;; 		       (string-append
-    ;; 			(target-platform-id (config-target (current-config)))
-    ;; 			" | " (mdmod-config-id (current-mod)))
-    ;; 		       "No module loaded.")
-    ;; 		   " | ")
-    )
-
   ;;; Set the active MD command info string from the given mdconf config-inode
   ;;; FIELD-ID.
   (define (set-active-md-command-info! field-id mdef)

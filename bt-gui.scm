@@ -2761,6 +2761,19 @@
       (tk/pack status-label fill: 'x side: 'left)
       (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
+  ;;; Returns a string containing the current target platform and MDAL config
+  ;;; name, separated by a pipe.
+  (define (get-module-info-text)
+    (let ((module-view (current-module-view)))
+      (string-append (if module-view
+    			 (string-append
+    			  (target-platform-id
+			   (config-target (ui-metastate module-view 'mdef)))
+    			  " | "
+			  (mdmod-config-id (ui-metastate module-view 'mmod)))
+    			 "No module loaded.")
+    		     " | ")))
+
   ;;; Set the message in the status to either a combination of the current
   ;;; module's target platform and configuration name, or the string
   ;;; "No module loaded."
@@ -2779,6 +2792,7 @@
     (tk/bind* widget '<Enter>
 	      (lambda () (display-action-info-status! text)))
     (tk/bind* widget '<Leave> reset-status-text!))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Editing
