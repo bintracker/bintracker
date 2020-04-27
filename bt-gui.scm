@@ -22,14 +22,17 @@
   ;;; update window title by looking at current file name and 'modified'
   ;;; property
   (define (update-window-title!)
-    (tk/wm 'title tk (if (state 'current-file)
-			 (string-append (pathname-file (state 'current-file))
-					(if (state 'modified)
-					    "*" "")
-					" - Bintracker")
-			 (if (current-mod)
-			     "unknown* - Bintracker"
-			     "Bintracker"))))
+    (print "in update-window-title")
+    (tk/wm 'title tk
+	   (if (current-module-view)
+	       (string-append
+		(or (and-let* ((fp (ui-metastate (current-module-view)
+						 'filename)))
+		      (pathname-file fp))
+		    "unknown")
+		(if (state 'modified) "* - " " - ")
+		"Bintracker")
+	       "Bintracker")))
 
   ;;; Thread-safe version of tk/bind. Wraps the procedure PROC in a thunk
   ;;; that is safe to execute as a callback from Tk.
@@ -1358,14 +1361,14 @@
      (node-id (error '|make <ui-group-field>| "Missing 'node-id."))
      (parent-instance-path
       (error '|make <ui-group-field>| "Missing 'parent-instance-path."))
-     (mmod-accessor (error '|make <ui-group-field>| "Missing 'mmod-accessor"))
+     (metastate-accessor (error '|make <ui-group-field>|
+				"Missing 'metastate-accessor"))
      (packing-args '(expand: 0 fill: x))))
 
   (define-method (initialize-instance after: (buf <ui-group-field>))
     (print "in initialize-instance/group-field")
     (let* ((node-id (slot-value buf 'node-id))
-	   (color (get-field-color node-id
-				   (car ((slot-value buf 'mmod-accessor))))))
+	   (color (get-field-color node-id (ui-metastate buf 'mdef))))
       (print "got node-id " node-id " and color " color)
       (set! (slot-value buf 'label)
 	((ui-box buf) 'create-widget 'label style: 'BT.TLabel
@@ -1391,13 +1394,14 @@
     				  (slot-value buf 'parent-instance-path)
     				  (symbol->string node-id)
     				  "/0/"))
-				(mdmod-global-node
-				 ((slot-value buf 'mmod-accessor)))
-    				;; (mdmod-global-node (current-mod))
-				))
+				(mdmod-global-node (ui-metastate buf 'mmod))))
     			      node-id
-			      (car ((slot-value buf 'mmod-accessor)))))
+			      (ui-metastate buf 'mdef)))
       (print "done initialize-instance/group-field")))
+
+  (define-method (ui-metastate primary: (buf <ui-group-field>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
 
   (define-method (ui-focus primary: (buf <ui-group-field>))
     (let ((entry (slot-value buf 'entry)))
@@ -1424,7 +1428,8 @@
       (error '|make <ui-group-fields>| "Missing 'group-id."))
      (parent-instance-path
       (error '|make <ui-group-fields>| "Missing 'parent-instance-path."))
-     (mmod-accessor (error '|make <ui-group-fields>| "Missing 'mmod-accessor."))
+     (metastate-accessor (error '|make <ui-group-fields>|
+				"Missing 'metastate-accessor."))
      (active-index 0)
      (packing-args '(expand: 0 fill: x))))
 
@@ -1433,8 +1438,7 @@
     (let ((subnode-ids
 	   (config-get-subnode-type-ids
 	    (slot-value buf 'group-id)
-	    (car ((slot-value buf 'mmod-accessor)))
-	    ;; (current-config)
+	    (ui-metastate buf 'mdef)
 	    'field)))
       (print "got subnode-ids")
       (set! (ui-children buf)
@@ -1445,9 +1449,14 @@
 		       'node-id field-id
 		       'parent-instance-path
 		       (slot-value buf 'parent-instance-path)
-		       'mmod-accessor (slot-value buf 'mmod-accessor))))
+		       'metastate-accessor
+		       (slot-value buf 'metastate-accessor))))
 	     subnode-ids))
       (print "done initialize-instance/group-fields")))
+
+  (define-method (ui-metastate primary: (buf <ui-group-fields>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
 
   (define-method (ui-show after: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'add
@@ -1477,8 +1486,8 @@
      (group-id (error '|make <ui-basic-block-view>| "Missing 'group-id."))
      (parent-instance-path
       (error '|make <ui-basic-block-view>| "Missing 'parent-instance-path."))
-     (mmod-accessor (error '|make <ui-basic-block-view>|
-			   "Missing 'mmod-accessor."))
+     (metastate-accessor (error '|make <ui-basic-block-view>|
+			   "Missing 'metastate-accessor."))
      field-ids
      field-configs
      header-frame
@@ -1561,21 +1570,22 @@
   (define-method (ui-destroy before: (buf <ui-basic-block-view>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
+  (define-method (ui-metastate primary: (buf <ui-basic-block-view>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
+
   ;; (define-method (ui-blockview-parent-instance-id
   ;; 		  primary: (buf <ui-basic-block-view>))
   ;;   (string->number (last (string-split (slot-value buf 'parent-instance-path)
   ;; 					"/"))))
 
-  (define-method (associated-mmod primary: (buf <ui-basic-block-view>))
-    ((slot-value buf 'mmod-accessor)))
+  ;; (define-method (associated-mmod primary: (buf <ui-basic-block-view>))
+  ;;   ((slot-value buf 'metastate-accessor)))
 
   (define-method (ui-blockview-parent-instance
 		  primary: (buf <ui-basic-block-view>))
     ((node-path (slot-value buf 'parent-instance-path))
-     (mdmod-global-node ((slot-value buf 'mmod-accessor))))
-    ;; (string->number (last (string-split (slot-value buf 'parent-instance-path)
-    ;; 					"/")))
-    )
+     (mdmod-global-node (ui-metastate buf 'mmod))))
 
   ;;; Generic procedure for mapping tags to the field columns of a textgrid.
   ;;; This can be used either on `block-header`, or on `block-content` slots.
@@ -1660,8 +1670,7 @@
   (define-method (ui-blockview-get-current-block-id primary:
 						    (buf <ui-basic-block-view>))
     (config-get-parent-node-id (ui-blockview-get-current-field-id buf)
-			       (config-itree ;; (current-config)
-				(car ((slot-value buf 'mmod-accessor))))))
+			       (config-itree (ui-metastate buf 'mdef))))
 
   ;;; Returns the bv-field-configuration for the field that the cursor is
   ;;; currently on.
@@ -1675,9 +1684,7 @@
   (define-method (ui-blockview-get-current-field-command
 		  primary: (buf <ui-basic-block-view>))
     (config-get-inode-source-command (ui-blockview-get-current-field-id buf)
-				     (car ((slot-value buf 'mmod-accessor)))
-				     ;; (current-config)
-				     ))
+				     (ui-metastate buf 'mdef)))
 
   ;;; Returns the chunk from the item cache that the cursor is currently on.
   (define-method (ui-blockview-get-current-chunk primary:
@@ -1798,7 +1805,7 @@
 	      buf
 	      (map (lambda (val id)
 		     (normalize-field-value
-		      val id (car ((slot-value buf 'mmod-accessor)))))
+		      val id (ui-metastate buf 'mdef)))
 		   row (slot-value buf 'field-ids))))
 	   (concatenate (slot-value buf 'item-cache)))
       "\n")))
@@ -1826,9 +1833,7 @@
 			    (ui-blockview-values->string
 			     buf (map (lambda (val id)
 					(normalize-field-value
-					 val id
-					 (car ((slot-value buf
-							   'mmod-accessor)))))
+					 val id (ui-metastate buf 'mdef)))
 				      new-row (slot-value buf 'field-ids))))
 		      (when major-hl?
 			(grid 'tag 'add 'rowhl-major start end))
@@ -1950,8 +1955,8 @@
 			  (ui-blockview-get-current-block-instance-path buf)
 			  (ui-blockview-get-current-field-id buf)
 			  `((,(ui-blockview-get-current-field-instance buf))))))
-	(push-undo (make-reverse-action action) (associated-mmod buf))
-	(apply-edit! action (associated-mmod buf))
+	(push-undo (make-reverse-action action) (ui-metastate buf 'mmod))
+	(apply-edit! action (ui-metastate buf 'mmod))
 	(ui-blockview-update buf)
 	(ui-blockview-move-cursor buf 'Up)
 	(run-post-edit-actions))))
@@ -1966,8 +1971,8 @@
 			   (ui-blockview-get-current-field-id buf)
 			   `((,(ui-blockview-get-current-field-instance buf)
 			      ())))))
-	(push-undo (make-reverse-action action (associated-mmod buf)))
-	(apply-edit! action (associated-mmod buf))
+	(push-undo (make-reverse-action action (ui-metastate buf 'mmod)))
+	(apply-edit! action (ui-metastate buf 'mmod))
 	(ui-blockview-update buf)
 	(ui-blockview-show-cursor buf)
 	(run-post-edit-actions))))
@@ -2061,20 +2066,18 @@
     (let ((group-id (slot-value buf 'group-id)))
       (set! (slot-value buf 'block-ids)
 	(remove (cute eq? <> (symbol-append group-id '_ORDER))
-  		(config-get-subnode-type-ids
-		 group-id ;; (current-config)
-		 (car ((slot-value buf 'mmod-accessor)))
-  		 'block)))
+  		(config-get-subnode-type-ids group-id
+					     (ui-metastate buf 'mdef)
+  					     'block)))
       (set! (slot-value buf 'field-ids)
 	(flatten (map (cute config-get-subnode-ids <>
-			    (config-itree ;; (current-config)
-			     (car ((slot-value buf 'mmod-accessor)))))
+			    (config-itree (ui-metastate buf 'mdef)))
 		      (slot-value buf 'block-ids))))
       (set! (slot-value buf 'field-configs)
 	(blockview-make-field-configs
 	 (slot-value buf 'block-ids)
 	 (slot-value buf 'field-ids)
-	 (car ((slot-value buf 'mmod-accessor)))))))
+	 (ui-metastate buf 'mdef)))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-block-view>))
@@ -2094,10 +2097,7 @@
 				(memq (car field-config)
 				      (config-get-subnode-ids
 				       id (config-itree
-					   (car ((slot-value buf
-							     'mmod-accessor)))
-					   ;; (current-config)
-					   ))))
+					   (ui-metastate buf 'mdef)))))
 			      (slot-value buf 'field-configs))))))
 	      (slot-value buf 'block-ids)))
   	"\n"))
@@ -2127,7 +2127,7 @@
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-block-view>))
     (set-active-md-command-info! (ui-blockview-get-current-field-id buf)
-				 (car ((slot-value buf 'mmod-accessor))))
+				 (ui-metastate buf 'mdef))
     (reset-status-text!))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
@@ -2215,13 +2215,13 @@
 			,(ui-blockview-get-current-field-id buf)
 			((,(ui-blockview-get-current-field-instance buf)
 			  ,new-value)))))
-      (push-undo (make-reverse-action action (associated-mmod buf)))
-      (apply-edit! action (associated-mmod buf))
+      (push-undo (make-reverse-action action (ui-metastate buf 'mmod)))
+      (apply-edit! action (ui-metastate buf 'mmod))
       ;; TODO might want to make this behaviour user-configurable
-      (play-row (slot-value buf 'group-id)
-		(ui-blockview-get-current-order-pos buf)
-		(ui-blockview-get-current-field-instance buf)
-		(associated-mmod buf))
+      (ui-metastate buf 'emulator 'play-row
+		    (slot-value buf 'group-id)
+		    (ui-blockview-get-current-order-pos buf)
+		    (ui-blockview-get-current-field-instance buf))
       (ui-blockview-update buf)
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))
@@ -2274,13 +2274,12 @@
     (let ((group-id (slot-value buf 'group-id)))
       (set! (slot-value buf 'field-ids)
   	(config-get-subnode-ids (symbol-append group-id '_ORDER)
-  				(config-itree ;; (current-config)
-				 (car ((slot-value buf 'mmod-accessor))))))
+  				(config-itree (ui-metastate buf 'mdef))))
       (set! (slot-value buf 'field-configs)
   	(blockview-make-field-configs
 	 (list (symbol-append group-id '_ORDER))
   	 (slot-value buf 'field-ids)
-	 (car ((slot-value buf 'mmod-accessor)))))))
+	 (ui-metastate buf 'mdef)))))
 
   ;; TODO rename -> blockview-init-content-header when old blockview code is
   ;; removed
@@ -2433,21 +2432,28 @@
     ((orient 'horizontal)
      (group-id (error '|make <ui-blocks>| "Missing 'group-id."))
      parent-instance-path
-     (mmod-accessor (error '|make <ui-blocks>| "Missing 'mmod-accessor."))))
+     (metastate-accessor (error '|make <ui-blocks>|
+				"Missing 'metastate-accessor."))))
 
   (define-method (initialize-instance after: (buf <ui-blocks>))
+    (print "in initialize-instance/blocks")
     (multibuffer-add buf `(blocks #t 2 ,<ui-block-view>
 				  group-id ,(slot-value buf 'group-id)
 				  parent-instance-path
 				  ,(slot-value buf 'parent-instance-path)
-				  mmod-accessor
-				  ,(slot-value buf 'mmod-accessor)))
+				  metastate-accessor
+				  ,(slot-value buf 'metastate-accessor)))
     (multibuffer-add buf `(order #t 1 ,<ui-order-view>
 				 group-id ,(slot-value buf 'group-id)
 				  parent-instance-path
 				  ,(slot-value buf 'parent-instance-path)
-				 mmod-accessor
-				 ,(slot-value buf 'mmod-accessor))))
+				 metastate-accessor
+				 ,(slot-value buf 'metastate-accessor)))
+    (print "done initialize-instance/blocks"))
+
+  (define-method (ui-metastate primary: (buf <ui-blocks>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
 
   (define-class <ui-subgroups> (<ui-buffer>)
     ((packing-args '(expand: 1 fill: both))
@@ -2455,7 +2461,8 @@
      parent-instance-path
      tabs
      subgroups
-     (mmod-accessor (error '|make <ui-subgroup>| "Missing 'mmod-accessor."))))
+     (metastate-accessor (error '|make <ui-subgroup>|
+				"Missing 'metastate-accessor."))))
 
   (define-method (initialize-instance after: (buf <ui-subgroups>))
     (set! (slot-value buf 'tabs)
@@ -2465,12 +2472,11 @@
       (map (lambda (id)
 	     (cons id (make <ui-group>
 			'group-id id 'parent (slot-value buf 'tabs)
-			'mmod-accessor (slot-value buf 'mmod-accessor)
+			'metastate-accessor (slot-value buf 'metastate-accessor)
 			'parent-instance-path
 			(slot-value buf 'parent-instance-path))))
 	   (config-get-subnode-type-ids (slot-value buf 'group-id)
-					(car ((slot-value buf 'mmod-accessor)))
-					;; (current-config)
+					(ui-metastate buf 'mdef)
 					'group))))
 
   (define-method (ui-show before: (buf <ui-subgroups>))
@@ -2485,15 +2491,20 @@
   (define-method (ui-destroy before: (buf <ui-subgroups>))
     (for-each ui-destroy (map cdr (slot-value buf 'subgroups))))
 
-  (define-method (associated-mmod primary: (buf <ui-subgroups>))
-    ((slot-value buf 'mmod-accessor)))
+  (define-method (ui-metastate primary: (buf <ui-subgroups>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
+
+  ;; (define-method (associated-mmod primary: (buf <ui-subgroups>))
+  ;;   ((slot-value buf 'metastate-accessor)))
 
   ;; TODO instance 0 may not exist.
   (define-class <ui-group> (<ui-multibuffer>)
     (group-id
      parent-instance-path
      (current-instance 0)
-     (mmod-accessor (error '|make <ui-group>| "Missing 'mmod-accessor."))))
+     (metastate-accessor (error '|make <ui-group>|
+				"Missing 'metastate-accessor."))))
 
   (define-method (initialize-instance after: (buf <ui-group>))
     (print "in initialize-instance/group")
@@ -2505,28 +2516,32 @@
 			   (number->string
 			    (slot-value buf 'current-instance))
 			   "/"))
-	   (mmod-accessor (slot-value buf 'mmod-accessor))
-	   (mmod (mmod-accessor))
-	   (mdef (car mmod)))
+	   (metastate-accessor (slot-value buf 'metastate-accessor))
+	   (mmod (ui-metastate buf 'mmod))
+	   (mdef (ui-metastate buf 'mdef)))
       (unless (null? (config-get-subnode-type-ids group-id mdef 'field))
 	(multibuffer-add buf
 			 `(fields #t 1 ,<ui-group-fields> group-id ,group-id
 				  parent-instance-path ,instance-path
-				  mmod-accessor ,mmod-accessor)))
+				  metastate-accessor ,metastate-accessor)))
       (unless (null? (config-get-subnode-type-ids group-id mdef 'block))
 	(multibuffer-add buf `(blocks #t 2 ,<ui-blocks>
 				      group-id ,group-id
-				      mmod-accessor ,mmod-accessor
+				      metastate-accessor ,metastate-accessor
 				      parent-instance-path ,instance-path)))
       (unless (null? (config-get-subnode-type-ids group-id mdef 'group))
         (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
 					 group-id ,group-id
-					 mmod-accessor ,mmod-accessor
+					 metastate-accessor ,metastate-accessor
 					 parent-instance-path
 					 'instance-path)))))
 
-  (define-method (associated-mmod primary: (buf <ui-group>))
-    ((slot-value buf 'mmod-accessor)))
+  (define-method (ui-metastate primary: (buf <ui-group>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
+
+  ;; (define-method (associated-mmod primary: (buf <ui-group>))
+  ;;   ((slot-value buf 'metastate-accessor)))
 
   (define-method (ui-ref-by-zone-id primary: (buf <ui-group>)
 				    zone-id)
@@ -2552,44 +2567,63 @@
   (define-class <ui-module-view> (<ui-multibuffer>)
     ((group-id 'GLOBAL)
      (parent-instance-path "")
-     (mmod initform: #f reader: associated-mmod)
-     (mmod-accessor #f)
+     (mmod initform: #f reader: ui-module-view-mmod)
+     (metastate-accessor #f)
      (filename #f)
      (emulator initform: #f reader: module-view-emulator)))
 
   (define-method (initialize-instance after: (buf <ui-module-view>))
     (print "in initialize-instance/module-view")
     (unless (or (slot-value buf 'mmod)
-		(slot-value buf 'current-file))
+		(slot-value buf 'filename))
       (error '|make <ui-module-view>| "Missing either 'mmod or 'current-file."))
     (unless (slot-value buf 'mmod)
-      (file->mdmod (slot-value buf 'filename)
-		   (app-settings-mdal-config-dir *bintracker-settings*)
-		   "libmdal/"))
-    (set! (slot-value buf 'mmod-accessor)
-      (lambda () (slot-value buf 'mmod)))
+      (set! (slot-value buf 'mmod)
+	(file->mdmod (slot-value buf 'filename)
+		     (app-settings-mdal-config-dir *bintracker-settings*)
+		     "libmdal/")))
+    (set! (slot-value buf 'metastate-accessor)
+      (lambda args
+	(case (car args)
+	  ((mmod) (slot-value buf 'mmod))
+	  ((mdef) (car (slot-value buf 'mmod)))
+	  ((emulator)
+	   (if (null? (cdr args))
+	       (slot-value buf 'emulator)
+	       (case (cadr args)
+		 ((play-row)
+		  (let* ((mmod (slot-value buf 'mmod))
+			 (origin (config-default-origin (car mmod))))
+		    ((slot-value buf 'emulator) 'run
+		     origin
+		     (list->string
+		      (map integer->char
+			   (mod->bin (apply derive-single-row-mdmod
+					    (cons mmod (cddr args)))
+				     origin '((no-loop #t)))))))))))
+	  ((filename) (slot-value buf 'filename)))))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL
 						(car (slot-value buf 'mmod))
 						'field))
       (multibuffer-add buf `(fields #t 1 ,<ui-group-fields>
 				    group-id GLOBAL
 				    parent-instance-path "0/"
-				    mmod-accessor
-				    ,(slot-value buf 'mmod-accessor))))
+				    metastate-accessor
+				    ,(slot-value buf 'metastate-accessor))))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL
 						(car (slot-value buf 'mmod))
 						'block))
       (multibuffer-add buf `(blocks #t 2 ,<ui-blocks> group-id GLOBAL
-				    mmod-accessor
-				    ,(slot-value buf 'mmod-accessor)
+				    metastate-accessor
+				    ,(slot-value buf 'metastate-accessor)
 				    parent-instance-path "")))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL
 						(car (slot-value buf 'mmod))
 						'group))
       (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
 				       group-id GLOBAL
-				       mmod-accessor
-				       ,(slot-value buf 'mmod-accessor)
+				       metastate-accessor
+				       ,(slot-value buf 'metastate-accessor)
 				       parent-instance-path "0/")))
     (print "initialize-instance/module-view done"))
 
@@ -2610,17 +2644,21 @@
 				   (slot-value subgroups 'subgroups))))
 	    (ui-ref-by-zone-id (cdr target) zone-id)))))
 
-  (define-method (module-view-mdef primary: (buf <ui-module-view>))
-    (car (slot-value buf 'mmod)))
+  ;; (define-method (module-view-mdef primary: (buf <ui-module-view>))
+  ;;   (car (slot-value buf 'mmod)))
 
-  (define-method (associated-mmod primary: (buf <ui-module-view>))
-    ((slot-value buf 'mmod-accessor)))
+  ;; (define-method (associated-mmod primary: (buf <ui-module-view>))
+  ;;   ((slot-value buf 'metastate-accessor)))
+
+  (define-method (ui-metastate primary: (buf <ui-module-view>)
+			       #!rest args)
+    (apply (slot-value buf 'metastate-accessor) args))
 
   (define-method (ui-show before: (buf <ui-module-view>))
     (unless (slot-value buf 'initialized)
       (set! (slot-value buf 'emulator)
   	(platform->emulator (target-platform-id
-  			     (config-target (module-view-mdef buf)))))
+  			     (config-target (car (slot-value buf 'mmod))))))
       ((module-view-emulator buf) 'start)))
 
   (define-method (ui-destroy before: (buf <ui-module-view>))
@@ -2783,7 +2821,7 @@
   (define (undo)
     (let ((action (pop-undo)))
       (when action
-	(apply-edit! action (associated-mmod (current-module-view)))
+	(apply-edit! action (ui-metastate (current-module-view) 'mmod))
 	(ui-blockview-update (current-order-view))
 	(ui-blockview-update (current-blocks-view))
 	(focus 'resume)
@@ -2795,7 +2833,7 @@
   (define (redo)
     (let ((action (pop-redo)))
       (when action
-	(apply-edit! action (associated-mmod (current-module-view)))
+	(apply-edit! action (ui-metastate (current-module-view) 'mmod))
 	(ui-blockview-update (current-order-view))
 	(ui-blockview-update (current-blocks-view))
 	(focus 'resume)
@@ -2811,16 +2849,16 @@
       ;; (update-window-title!)
       ))
 
-  ;; TODO uses current-mod
-  ;;; Play `row` of the blocks referenced by `order-pos` in the group
-  ;;; `group-id`.
-  (define (play-row group-id order-pos row mmod)
-    (let ((origin (config-default-origin (car mmod))))
-      (emulator 'run origin
-		(list->string
-		 (map integer->char
-		      (mod->bin (derive-single-row-mdmod
-				 mmod group-id order-pos row)
-				origin '((no-loop #t))))))))
+  ;; ;; TODO uses current-mod
+  ;; ;;; Play `row` of the blocks referenced by `order-pos` in the group
+  ;; ;;; `group-id`.
+  ;; (define (play-row group-id order-pos row mmod)
+  ;;   (let ((origin (config-default-origin (car mmod))))
+  ;;     (emulator 'run origin
+  ;; 		(list->string
+  ;; 		 (map integer->char
+  ;; 		      (mod->bin (derive-single-row-mdmod
+  ;; 				 mmod group-id order-pos row)
+  ;; 				origin '((no-loop #t))))))))
 
   ) ;; end module bt-gui

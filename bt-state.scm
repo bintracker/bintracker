@@ -29,11 +29,11 @@
 
   ;;; Clean up global state after closing a file.
   (define (state-reset-after-file-close)
-    (set-state! 'current-mdmod #f)
-    (set-state! 'current-file #f)
+    ;; (set-state! 'current-mdmod #f)
+    ;; (set-state! 'current-file #f)
     ;; (set-state! 'current-instances '())
     (set-state! 'modified #f)
-    (set-state! 'emulator #f)
+    ;; (set-state! 'emulator #f)
     (set-state! 'journal (make-app-journal))
     (set-state! 'active-md-command-info ""))
 
@@ -48,47 +48,18 @@
     (and (ui)
 	 (alist-ref 'repl (slot-value (ui) 'children))))
 
-  ;;; Send a command to the currently running emulator.
-  ;;; The following options may be available:
-  ;;;
-  ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
-  ;;; * `'info` - Display information about the emulated machine.
-  ;;; * `'run address % code` - Load and run `code` at address.
-  ;;; * `'pause` - Pause emulation.
-  ;;; * `'unpause` - Unpause emulation.
-  ;;; * `'start` - Launch emulator program in new thread.
-  ;;; * `'quit` - Exit the Emulator.
-  (define (emulator . args)
-    (apply (state 'emulator) args))
-
-  ;;; Generate an emulator object suitable for the target system with the MDAL
-  ;;; platform id PLATFORM. This relies on the system.scm and emulators.scm
-  ;;; lists in the Bintracker config directory. An exception is raised if no
-  ;;; entry is found for either the target system, or the emulator program that
-  ;;; the target system requests.
-  (define (platform->emulator platform)
-    (let* ((platform-config
-	    (let ((pf (alist-ref platform
-				 (read (open-input-file
-					"config/systems.scm"))
-				 string=)))
-	      (unless pf (error (string-append "Unknown target system "
-					       platform)))
-	      (apply (lambda (#!key emulator (startup-args '()))
-		       `(,emulator . ,startup-args))
-		     pf)))
-	   (emulator-default-args
-	    (let ((emul (alist-ref (car platform-config)
-				   (read (open-input-file
-					  "config/emulators.scm"))
-				   string=)))
-	      (unless emul (error (string-append "Unknown emulator "
-						 (car platform-config))))
-	      (apply (lambda (#!key (default-args '()))
-		       default-args)
-		     emul))))
-      (make-emulator (car platform-config)
-		     (append emulator-default-args (cdr platform-config)))))
+  ;; ;;; Send a command to the currently running emulator.
+  ;; ;;; The following options may be available:
+  ;; ;;;
+  ;; ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
+  ;; ;;; * `'info` - Display information about the emulated machine.
+  ;; ;;; * `'run address % code` - Load and run `code` at address.
+  ;; ;;; * `'pause` - Pause emulation.
+  ;; ;;; * `'unpause` - Unpause emulation.
+  ;; ;;; * `'start` - Launch emulator program in new thread.
+  ;; ;;; * `'quit` - Exit the Emulator.
+  ;; (define (emulator . args)
+  ;;   (apply (state 'emulator) args))
 
   ;;; Get the global application settings, or a specific PARAMeter of that
   ;;; state.
@@ -237,34 +208,36 @@
 		     (apply make-app-keys (cdr my-keymap)))
 	  (error "Not a valid Bintracker keymap."))))
 
-  ;;; Returns the current module, or `#f` if no module is loaded.
-  (define (current-mod)
-    (print-call-chain)
-    (app-state-current-mdmod *bintracker-state*))
+  ;; ;;; Returns the current module, or `#f` if no module is loaded.
+  ;; (define (current-mod)
+  ;;   (print-call-chain)
+  ;;   (app-state-current-mdmod *bintracker-state*))
 
-  ;;; Set the current module from the result of parsing the .mdal file FILENAME.
-  (define (set-current-mod! filename)
-    (set-state! 'current-mdmod
-  		(file->mdmod filename
-  			     (app-settings-mdal-config-dir
-  			      *bintracker-settings*)
-  			     "libmdal/")))
+  ;; ;;; Set the current module from the result of parsing the .mdal file FILENAME.
+  ;; (define (set-current-mod! filename)
+  ;;   (set-state! 'current-mdmod
+  ;; 		(file->mdmod filename
+  ;; 			     (app-settings-mdal-config-dir
+  ;; 			      *bintracker-settings*)
+  ;; 			     "libmdal/")))
 
-  ;;; Returns the current module configuration (mdconf). It is an error to call
-  ;;; this procedure if no module is currently loaded.
-  (define (current-config)
-    (mdmod-config (current-mod)))
+  ;; ;;; Returns the current module configuration (mdconf). It is an error to call
+  ;; ;;; this procedure if no module is currently loaded.
+  ;; (define (current-config)
+  ;;   (mdmod-config (current-mod)))
 
   ;; TODO reimplement
   ;;; Returns a string containing the current target platform and MDAL config
   ;;; name, separated by a pipe.
   (define (get-module-info-text)
-    (string-append (if (current-mod)
-  		       (string-append
-  			(target-platform-id (config-target (current-config)))
-  			" | " (mdmod-config-id (current-mod)))
-  		       "No module loaded.")
-  		   " | "))
+    " | "
+    ;; (string-append (if (current-mod)
+    ;; 		       (string-append
+    ;; 			(target-platform-id (config-target (current-config)))
+    ;; 			" | " (mdmod-config-id (current-mod)))
+    ;; 		       "No module loaded.")
+    ;; 		   " | ")
+    )
 
   ;;; Set the active MD command info string from the given mdconf config-inode
   ;;; FIELD-ID.
@@ -580,9 +553,12 @@
     (limit-undo-stack)
     (stack-push! (app-journal-undo-stack (state 'journal))
 		 action)
-    (app-journal-undo-stack-depth-set! (state 'journal)
-				       (add1 (app-journal-undo-stack-depth
-					      (state 'journal)))))
+    (app-journal-undo-stack-depth-set!
+     (state 'journal)
+     (add1 (app-journal-undo-stack-depth (state 'journal)))))
+
+  ;; TODO all below are broken because we need mmod now to create reverse
+  ;; action.
 
   ;;; Pop the last action from the undo stack, and push it to the redo stack.
   ;;; Returns the action, or #f if the undo stack is empty.

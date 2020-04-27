@@ -62,7 +62,6 @@
       (lambda args
 	(case (car args)
 	  ((info) (send-command "i"))
-	  ;; TODO don't start if already started
 	  ((start) (unless emul-started (start-emul)))
 	  ((quit) (when emul-started
 		    (send-command "q")
@@ -87,5 +86,34 @@
 	  ((exec) (send-command (string-append "x" (cadr args))))
 	  (else (warning (string-append "Unsupported emulator action"
 					(->string args))))))))
+
+  ;;; Generate an emulator object suitable for the target system with the MDAL
+  ;;; platform id PLATFORM. This relies on the system.scm and emulators.scm
+  ;;; lists in the Bintracker config directory. An exception is raised if no
+  ;;; entry is found for either the target system, or the emulator program that
+  ;;; the target system requests.
+  (define (platform->emulator platform)
+    (let* ((platform-config
+	    (let ((pf (alist-ref platform
+				 (read (open-input-file
+					"config/systems.scm"))
+				 string=)))
+	      (unless pf (error (string-append "Unknown target system "
+					       platform)))
+	      (apply (lambda (#!key emulator (startup-args '()))
+		       `(,emulator . ,startup-args))
+		     pf)))
+	   (emulator-default-args
+	    (let ((emul (alist-ref (car platform-config)
+				   (read (open-input-file
+					  "config/emulators.scm"))
+				   string=)))
+	      (unless emul (error (string-append "Unknown emulator "
+						 (car platform-config))))
+	      (apply (lambda (#!key (default-args '()))
+		       default-args)
+		     emul))))
+      (make-emulator (car platform-config)
+		     (append emulator-default-args (cdr platform-config)))))
 
   ) ;; end module bt-emulation

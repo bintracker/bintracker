@@ -129,8 +129,8 @@
   (define (exit-bintracker)
     (do-proc-with-exit-dialogue "exit"
 				(lambda ()
-				  (when (state 'emulator)
-				    (emulator 'quit))
+				  (when (current-module-view)
+				    (multibuffer-delete (ui) 'module-view))
 				  (btdb-close!)
 				  (tk-end))))
 
@@ -142,8 +142,6 @@
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'disabled)))
      `(disable-journal-buttons
        . ,(lambda () (ui-set-state (ui-ref main-toolbar 'journal) 'disabled)))
-     `(quit-emulator
-       . ,(lambda () (emulator 'quit)))
      `(reset-state . ,state-reset-after-file-close)
      `(update-window-title . ,update-window-title!)
      `(reset-status-text . ,reset-status-text!)
@@ -153,7 +151,7 @@
   ;;; Close the currently opened module file.
   (define (close-file)
     ;; TODO disable menu option
-    (when (current-mod)
+    (when (current-module-view)
       (do-proc-with-exit-dialogue
        "closing"
        (lambda () (on-close-file-hooks 'execute)))))
@@ -161,31 +159,25 @@
   (define after-load-file-hooks
     (make-hooks
      `(enable-play-buttons
-       . ,(lambda args (print "enable-play-buttons") (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
-     ;; `(init-instances-record . ,init-instances-record!)
-     `(hide-welcome-buffer
-       . ,(lambda args (print "hide-welcome-buffer") (multibuffer-hide (ui) 'welcome)))
+       . ,(lambda args (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
+     `(hide-welcome-buffer . ,(lambda args (multibuffer-hide (ui) 'welcome)))
      `(show-module
        . ,(lambda (mmod filename)
-	    (print "show-mdoule")
 	    (multibuffer-add (ui)
 			     `(module-view #t 5 ,<ui-module-view>
 					   mmod ,mmod filename ,filename)
 			     before: 'repl)))
      ;; `(reset-status . ,reset-status-text!)
-     ;; `(update-window-title . ,update-window-title!)
+     `(update-window-title . ,(lambda args (update-window-title!)))
      `(focus-first-block
        . ,(lambda args
-	    (print "focus-first-block")
 	    (and-let* ((entry (find (lambda (entry)
 				      (symbol-contains (car entry)
 						       "block-view"))
 				    (focus 'list))))
 	      (focus 'set (car entry)))))
      `(enable-edit-settings
-       . ,(lambda args (print "enable-edit-setting") (ui-set-state edit-settings 'enabled)))
-     ;; `(start-emulator . ,(lambda () (emulator 'start)))
-     ))
+       . ,(lambda args (ui-set-state edit-settings 'enabled)))))
 
   ;; TODO logging
   ;;; Prompt the user to load an MDAL module file.
@@ -198,27 +190,11 @@
 	    exn
 	    (repl-insert (repl) (string-append "\nError: " (->string exn)
 		   			       "\n" (message exn) "\n"))
-	  ;; (set-current-mod! filename)
-	  ;; (set-state! 'current-file filename)
-	  ;; (set-state! 'emulator
-	  ;; 	      (make-emulator
-	  ;; 	       "mame64"
-	  ;; 	       '("-w" "-skip_gameinfo" "-autoboot_script"
-	  ;; 		 "mame-bridge/mame-startup.lua"
-	  ;; 		 "-autoboot_delay" "0" "spectrum")))
 	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdconf-id)
     (close-file)
-    ;; (set-state! 'current-mdmod (generate-new-mdmod
-    ;; 				;; TODO
-    ;; 				(file->config "libmdal/unittests/config/"
-    ;; 					      "Huby" "libmdal/")
-    ;; 				16))
-    ;; (set-state! 'modified #t)
-    ;; (set-state! 'emulator
-    ;; 		(platform->emulator
-    ;; 		 (target-platform-id (config-target (current-config)))))
+    (set-state! 'modified #t)
     (after-load-file-hooks 'execute
 			   (generate-new-mdmod
 			    ;; TODO
@@ -253,7 +229,9 @@
   (define on-save-file-hooks
     (make-hooks
      `(write-file
-       . ,(lambda () (mdmod->file (current-mod) (state 'current-file))))
+       . ,(lambda ()
+	    (mdmod->file (ui-metastate (current-module-view) 'mmod)
+			 (ui-metastate (current-module-view) 'filename))))
      `(clear-modified-flag . ,(lambda () (set-state! 'modified #f)))
      `(update-window-title . ,update-window-title!)))
 
@@ -293,25 +271,26 @@
   ;; ---------------------------------------------------------------------------
 
   (define (play-from-start)
-    (let ((origin (config-default-origin (current-config))))
-      (emulator 'run origin
-		(list->string (map integer->char
-				   (mod->bin (current-mod) origin))))))
+    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
+	   (origin (config-default-origin (car mmod))))
+      ((ui-metastate (current-module-view) 'emulator) 'run origin
+       (list->string (map integer->char (mod->bin mmod origin))))))
 
   (define (play-pattern)
-    (let ((origin (config-default-origin (current-config))))
-      (emulator 'run origin
-      		(list->string
-		 (map integer->char
-      		      (mod->bin (derive-single-pattern-mdmod
-      				 (current-mod)
-      				 (slot-value (current-blocks-view) 'group-id)
-      				 (ui-blockview-get-current-order-pos
-      				  (current-blocks-view)))
-      				origin))))))
+    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
+	   (origin (config-default-origin (car mmod))))
+      ((ui-metastate (current-module-view) 'emulator) 'run origin
+       (list->string
+	(map integer->char
+      	     (mod->bin (derive-single-pattern-mdmod
+      			mmod
+      			(slot-value (current-blocks-view) 'group-id)
+      			(ui-blockview-get-current-order-pos
+      			 (current-blocks-view)))
+      		       origin))))))
 
   (define (stop-playback)
-    (emulator 'pause))
+    ((ui-metastate (current-module-view) 'emulator) 'pause))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu
