@@ -29,7 +29,6 @@
 
   ;;; Clean up global state after closing a file.
   (define (state-reset-after-file-close)
-    (set-state! 'modified #f)
     (set-state! 'journal (make-app-journal))
     (set-state! 'active-md-command-info ""))
 

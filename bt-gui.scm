@@ -22,17 +22,16 @@
   ;;; update window title by looking at current file name and 'modified'
   ;;; property
   (define (update-window-title!)
-    (print "in update-window-title")
-    (tk/wm 'title tk
-	   (if (current-module-view)
-	       (string-append
-		(or (and-let* ((fp (ui-metastate (current-module-view)
-						 'filename)))
-		      (pathname-file fp))
-		    "unknown")
-		(if (state 'modified) "* - " " - ")
-		"Bintracker")
-	       "Bintracker")))
+    (let ((current-mv (current-module-view)))
+      (tk/wm 'title tk
+	     (if current-mv
+		 (string-append
+		  (or (and-let* ((fp (ui-metastate current-mv 'filename)))
+			(pathname-file fp))
+		      "unknown")
+		  (if (ui-metastate current-mv 'modified) "* - " " - ")
+		  "Bintracker")
+		 "Bintracker"))))
 
   ;;; Thread-safe version of tk/bind. Wraps the procedure PROC in a thunk
   ;;; that is safe to execute as a callback from Tk.
@@ -1945,6 +1944,7 @@
 	(apply-edit! action (ui-metastate buf 'mmod))
 	(ui-blockview-update buf)
 	(ui-blockview-move-cursor buf 'Up)
+	(ui-metastate buf 'modified #t)
 	(run-post-edit-actions))))
 
   ;;; Insert an empty cell into the field column currently under cursor,
@@ -1961,6 +1961,7 @@
 	(apply-edit! action (ui-metastate buf 'mmod))
 	(ui-blockview-update buf)
 	(ui-blockview-show-cursor buf)
+	(ui-metastate buf 'modified #t)
 	(run-post-edit-actions))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
@@ -2207,6 +2208,7 @@
       (ui-blockview-update buf)
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))
+      (ui-metastate buf 'modified #t)
       (run-post-edit-actions)))
 
   ;; TODO unify with specialization on ui-order-view
@@ -2558,6 +2560,7 @@
      (mmod initform: #f reader: ui-module-view-mmod)
      (metastate-accessor #f)
      (filename #f)
+     (modified #f)
      (emulator initform: #f reader: module-view-emulator)))
 
   (define-method (initialize-instance after: (buf <ui-module-view>))
@@ -2570,6 +2573,8 @@
 	(file->mdmod (slot-value buf 'filename)
 		     (app-settings-mdal-config-dir *bintracker-settings*)
 		     "libmdal/")))
+    (unless (slot-value buf 'filename)
+      (set! (slot-value buf 'modified) #t))
     (set! (slot-value buf 'metastate-accessor)
       (lambda args
 	(case (car args)
@@ -2589,7 +2594,13 @@
 			   (mod->bin (apply derive-single-row-mdmod
 					    (cons mmod (cddr args)))
 				     origin '((no-loop #t)))))))))))
-	  ((filename) (slot-value buf 'filename)))))
+	  ((modified) (if (null? (cdr args))
+			  (slot-value buf 'modified)
+			  (set! (slot-value buf 'modified) (cadr args))))
+	  ((filename) (if (null? (cdr args))
+			  (slot-value buf 'filename)
+			  (set! (slot-value buf 'filename)
+			    (cadr args)))))))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL
 						(car (slot-value buf 'mmod))
 						'field))
@@ -2649,9 +2660,16 @@
   ;;; specified, plays the row of the block that the user is currently editing,
   ;;; if applicable. In this case, returns nothing.
   ;;;
-  ;;; `(ui-metastate MV 'filename)`
+  ;;; `(ui-metastate MV 'modified [NEW-VAL])`
   ;;;
-  ;;; Get the associated filename, or `#f` if the filename is not set.
+  ;;; Returns the "modified" flag, ie. whether the associated module has
+  ;;; changed since the last file save. When NEW-VAL is given and a boolean,
+  ;;; sets the "modified" flag.
+  ;;;
+  ;;; `(ui-metastate MV 'filename [NEW-VAL])`
+  ;;;
+  ;;; Get the associated filename, or `#f` if the filename is not set. When
+  ;;; NEW-VAL is given, sets the associated filename to it.
   ;;;
   ;;; This method can be called on the module-view itself, or any of its child
   ;;; elements.
@@ -2664,7 +2682,8 @@
       (set! (slot-value buf 'emulator)
   	(platform->emulator (target-platform-id
   			     (config-target (car (slot-value buf 'mmod))))))
-      ((module-view-emulator buf) 'start)))
+      ((module-view-emulator buf) 'start)
+      (update-window-title!)))
 
   (define-method (ui-destroy before: (buf <ui-module-view>))
     ((module-view-emulator buf) 'quit))
@@ -2847,8 +2866,6 @@
   ;;; Enable the undo toolbar button, and update the window title if necessary.
   (define (run-post-edit-actions)
     (ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
-    (unless (state 'modified)
-      (set-state! 'modified #t)
-      (update-window-title!)))
+    (update-window-title!))
 
   ) ;; end module bt-gui

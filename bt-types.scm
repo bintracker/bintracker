@@ -24,14 +24,9 @@
     ((base-octave 4) : fixnum)
     ((major-row-highlight 2) : fixnum)
     ((minor-row-highlight 4) : fixnum)
-    menu ;; current-mdmod
-    ;; (current-file : (or boolean string))
-    ;; ((current-instances '()) : list)
-    ;; selection
+    menu
     ((active-md-command-info "") : string)
-    (modified : boolean)
     ((font-height-cached 10) : fixnum)
-    ;; emulator
     ((journal (make-app-journal)) : (struct app-journal)))
 
   (defstruct app-keys

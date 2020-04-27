@@ -117,7 +117,7 @@
   ;;; should be saved, then execute the procedure PROC unless the user
   ;;; cancelled the action. With no unsaved changes, simply execute PROC.
   (define (do-proc-with-exit-dialogue dialogue-string proc)
-    (if (state 'modified)
+    (if (ui-metastate (current-module-view) 'modified)
 	(match (exit-with-unsaved-changes-dialog dialogue-string)
 	  ("yes" (begin (save-file)
 			(proc)))
@@ -168,7 +168,6 @@
 					   mmod ,mmod filename ,filename)
 			     before: 'repl)))
      ;; `(reset-status . ,reset-status-text!)
-     `(update-window-title . ,(lambda args (update-window-title!)))
      `(focus-first-block
        . ,(lambda args
 	    (and-let* ((entry (find (lambda (entry)
@@ -194,7 +193,6 @@
 
   (define (create-new-module mdconf-id)
     (close-file)
-    (set-state! 'modified #t)
     (after-load-file-hooks 'execute
 			   (generate-new-mdmod
 			    ;; TODO
@@ -231,15 +229,15 @@
      `(write-file
        . ,(lambda ()
 	    (mdmod->file (ui-metastate (current-module-view) 'mmod)
-			 (ui-metastate (current-module-view) 'filename))))
-     `(clear-modified-flag . ,(lambda () (set-state! 'modified #f)))
+			 (ui-metastate (current-module-view) 'filename))
+	    (ui-metastate (current-module-view) 'modified #f)))
      `(update-window-title . ,update-window-title!)))
 
   ;;; Save the current MDAL module. If no file name has been specified yet,
   ;;; promt the user for one.
   (define (save-file)
-    (when (state 'modified)
-      (if (state 'current-file)
+    (when (ui-metastate (current-module-view) 'modified)
+      (if (ui-metastate (current-module-view) 'filename)
 	  (on-save-file-hooks 'execute)
 	  (save-file-as))))
 
@@ -249,7 +247,7 @@
 		     filetypes: '(((MDAL Modules) (.mdal)))
 		     defaultextension: '.mdal)))
       (unless (string-null? filename)
-	(set-state! 'current-file filename)
+	(ui-metastate (current-module-view) 'filename filename)
 	(on-save-file-hooks 'execute))))
 
   ;;; Launch the online help in the user's default system web browser.
