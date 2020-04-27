@@ -168,7 +168,6 @@
 			     `(module-view #t 5 ,<ui-module-view>
 					   mmod ,mmod filename ,filename)
 			     before: 'repl)))
-     ;; `(reset-status . ,reset-status-text!)
      `(focus-first-block
        . ,(lambda args
 	    (and-let* ((entry (find (lambda (entry)
@@ -263,6 +262,29 @@
 		      (windows "[list {*}[auto_execok start] {}] "))))
       (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
 
+  (define (info . args)
+    (if (null? args)
+	(string-append
+	 "(info 'mdef NAME)\n"
+	 "Describe the MDAL definition NAME\n\n"
+	 "(info 'keybinding [KEY-SPEC])\n"
+	 "(info 'kb [KEY-SPEC])\n"
+	 "List known key bindings, or look up binding for KEY-SPEC.\n\n")
+	(case (car args)
+	  ((kb keybinding)
+	   (let ((keybindings (app-settings-keymap *bintracker-settings*)))
+	     (string-concatenate
+	      (filter-map (lambda (group name)
+			    (and (key-binding group (cadr args))
+				 (string-append
+				  name
+				  (->string (key-binding group (cadr args))))))
+			  (list 'global 'console 'edit 'note-entry)
+			  (list "global       "
+				"repl         "
+				"edit         "
+				"note-entry   ")))))
+	  (else (string-append "Unknown command " (->string args))))))
 
 
   ;; ---------------------------------------------------------------------------
