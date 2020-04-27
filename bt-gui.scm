@@ -1120,8 +1120,7 @@
 	       (ui-box child-buf)
 	       weight: (caddr (alist-ref child state)))
 	      ((ui-box buf) 'add (ui-box child-buf)
-	       weight: (caddr (alist-ref child state))))
-	  ))))
+	       weight: (caddr (alist-ref child state))))))))
 
   ;;; Remove the child element CHILD from the display. Does nothing if CHILD is
   ;;; currently not hidden. You can add back CHILD at a later point with
@@ -1471,11 +1470,6 @@
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   ;; TODO expand: 1 fill: both?
-  ;; bt-blockview -> <ui-basic-block-view>
-  ;; packframe       content-frame
-  ;; content-frame   block-frame
-  ;; content-header  block-header
-  ;; content-grid    block-content
   ;;; Abstract base class for `<ui-block-view>` and `<ui-order-view>`,
   ;;; implementing shared code for these two classes. Consider deriving from
   ;;; this class if you want to implement an alternative representation of an
@@ -1573,14 +1567,6 @@
   (define-method (ui-metastate primary: (buf <ui-basic-block-view>)
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
-
-  ;; (define-method (ui-blockview-parent-instance-id
-  ;; 		  primary: (buf <ui-basic-block-view>))
-  ;;   (string->number (last (string-split (slot-value buf 'parent-instance-path)
-  ;; 					"/"))))
-
-  ;; (define-method (associated-mmod primary: (buf <ui-basic-block-view>))
-  ;;   ((slot-value buf 'metastate-accessor)))
 
   (define-method (ui-blockview-parent-instance
 		  primary: (buf <ui-basic-block-view>))
@@ -2136,11 +2122,9 @@
   ;;; at the first nesting level.
   (define-method (ui-blockview-get-item-list primary: (buf <ui-block-view>))
     (let* ((group-id (slot-value buf 'group-id))
-  	   (group-instance ;; (get-current-node-instance group-id)
-	    (ui-blockview-parent-instance buf))
-  	   (order (mod-get-order-values group-id group-instance)))
+  	   (group-instance (ui-blockview-parent-instance buf)))
       (map (cute mod-get-block-values group-instance <>)
-	   order)))
+	   (mod-get-order-values group-id group-instance))))
 
   ;;; Return the block instance ID currently under cursor.
   (define-method (ui-blockview-get-current-block-instance primary:
@@ -2149,10 +2133,7 @@
       (list-ref (list-ref (map cdr
 			       (mod-get-order-values
 				(slot-value buf 'group-id)
-				(ui-blockview-parent-instance buf)
-				;; (get-current-node-instance
-				;;  (slot-value buf 'group-id))
-				))
+				(ui-blockview-parent-instance buf)))
 			  (ui-blockview-get-current-order-pos buf))
 		(list-index (lambda (block-id)
 			      (eq? block-id current-block-id))
@@ -2162,7 +2143,6 @@
   (define-method (ui-blockview-get-current-block-instance-path
 		  primary: (buf <ui-block-view>))
     (string-append (slot-value buf 'parent-instance-path)
-		   ;; (get-current-instance-path (slot-value buf 'group-id))
 		   (symbol->string (ui-blockview-get-current-block-id buf))
 		   "/" (->string
 			(ui-blockview-get-current-block-instance buf))))
@@ -2185,7 +2165,6 @@
 	      (slot-value buf 'item-cache)))
 	"\n"))))
 
-  ;; TODO this relies on ui-zones, which are due to change
   ;; TODO can be unified with specialization on ui-order-view
   ;;; Set the blockview's cursor to the grid position currently closest to the
   ;;; mouse pointer.
@@ -2193,7 +2172,8 @@
 						     (buf <ui-block-view>))
     (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
       ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
-      (ui-blockview-set-cursor buf (car mouse-pos)
+      (ui-blockview-set-cursor buf
+			       (car mouse-pos)
 			       (find (cute <= <> (cadr mouse-pos))
 				     (reverse
 				      (ui-blockview-cursor-x-positions buf))))
@@ -2201,9 +2181,11 @@
 
   (define-method (ui-blockview-move-cursor primary: (buf <ui-block-view>)
 					   direction)
-    (ui-blockview-move-cursor-common buf direction
+    (ui-blockview-move-cursor-common buf
+				     direction
 				     (if (zero? (state 'edit-step))
-					 1 (state 'edit-step))))
+					 1
+					 (state 'edit-step))))
 
   ;; TODO unify with specialization on ui-order-view?
   ;;; Set the field node instance that corresponds to the current cursor
@@ -2281,8 +2263,6 @@
   	 (slot-value buf 'field-ids)
 	 (ui-metastate buf 'mdef)))))
 
-  ;; TODO rename -> blockview-init-content-header when old blockview code is
-  ;; removed
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-order-view>))
     (let ((header (slot-value buf 'block-header))
@@ -2328,9 +2308,7 @@
   (define-method (ui-blockview-get-item-list primary: (buf <ui-order-view>))
     (let ((group-id (slot-value buf 'group-id)))
       (list (mod-get-order-values group-id
-				  (ui-blockview-parent-instance buf)
-				  ;; (get-current-node-instance group-id)
-				  ))))
+				  (ui-blockview-parent-instance buf)))))
 
   ;;; Update the blockview row numbers according to the current item cache.
   (define-method (ui-blockview-update-row-numbers primary:
@@ -2495,9 +2473,6 @@
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
 
-  ;; (define-method (associated-mmod primary: (buf <ui-subgroups>))
-  ;;   ((slot-value buf 'metastate-accessor)))
-
   ;; TODO instance 0 may not exist.
   (define-class <ui-group> (<ui-multibuffer>)
     (group-id
@@ -2540,9 +2515,6 @@
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
 
-  ;; (define-method (associated-mmod primary: (buf <ui-group>))
-  ;;   ((slot-value buf 'metastate-accessor)))
-
   (define-method (ui-ref-by-zone-id primary: (buf <ui-group>)
 				    zone-id)
     (let* ((group-blocks (alist-ref 'blocks (ui-children buf)))
@@ -2560,10 +2532,26 @@
 				   (slot-value subgroups 'subgroups))))
 	    (ui-ref-by-zone-id (cdr target) zone-id)))))
 
-  ;;; The top-level abstraction for MMOD displays. An <ui-module-view> is a
-  ;;; display of the GLOBAL node, which also holds 3 state slots: the
-  ;;; mmod structure itself, the name of the associated .mmod file (if any), and
-  ;;; the appropriate emulator instance.
+  ;;; The top-level abstraction for MMOD displays. An <ui-module-view> manages
+  ;;; the module state (including emulation), and contains the the display of
+  ;;; the GLOBAL node.
+  ;;;
+  ;;; You can instantiate a <ui-module-view> with either of the forms
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-module-view> 'mmod MMOD ['filename FILE])
+  ;;; (make <ui-module-view> 'filename FILE)
+  ;;; ```
+  ;;;
+  ;;; where MMOD is a MMOD structure as defined in `md-types`, and FILE is the
+  ;;; fully qualified path to an .mmod FILE. When using the second form, the
+  ;;; constructor will automatically construct the appropriate MMOD from the
+  ;;; given .mmod FILE.
+  ;;;
+  ;;; To interact with the module state, use the `ui-metastate` method. Note
+  ;;; that `ui-metastate` can be called on any of the module-view's child
+  ;;; elements as well, and doing so will act on the module state of the parent
+  ;;; `<ui-module-view>`. See documentation for `ui-metastate` below.
   (define-class <ui-module-view> (<ui-multibuffer>)
     ((group-id 'GLOBAL)
      (parent-instance-path "")
@@ -2644,12 +2632,29 @@
 				   (slot-value subgroups 'subgroups))))
 	    (ui-ref-by-zone-id (cdr target) zone-id)))))
 
-  ;; (define-method (module-view-mdef primary: (buf <ui-module-view>))
-  ;;   (car (slot-value buf 'mmod)))
-
-  ;; (define-method (associated-mmod primary: (buf <ui-module-view>))
-  ;;   ((slot-value buf 'metastate-accessor)))
-
+  ;;; Interact with the module-view module state. Given an `<ui-module-view>`
+  ;;; MV, use as follows:
+  ;;;
+  ;;; `(ui-metastate MV 'mmod)`
+  ;;;
+  ;;; Returns the associated MDAL module structure.
+  ;;;
+  ;;; `(ui-metastate MV 'mdef)`
+  ;;;
+  ;;; Returns the associated MDAL engine definition.
+  ;;;
+  ;;; `(ui-metastate MV 'emulator ['play-row])`
+  ;;;
+  ;;; Returns the associated emulator. If the additional `'play-row` tag is
+  ;;; specified, plays the row of the block that the user is currently editing,
+  ;;; if applicable. In this case, returns nothing.
+  ;;;
+  ;;; `(ui-metastate MV 'filename)`
+  ;;;
+  ;;; Get the associated filename, or `#f` if the filename is not set.
+  ;;;
+  ;;; This method can be called on the module-view itself, or any of its child
+  ;;; elements.
   (define-method (ui-metastate primary: (buf <ui-module-view>)
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
@@ -2676,14 +2681,12 @@
   (define (current-module-view)
     (and (ui) (ui-ref (ui) 'module-view)))
 
-  ;; TODO this is very brittle.
   (define (current-blocks-view)
     (and-let* ((mv (current-module-view))
 	       (zone-id (find (cute symbol-contains <> "block-view")
 			      (map car (focus 'list)))))
       (ui-ref-by-zone-id mv zone-id)))
 
-  ;; TODO this is very brittle.
   (define (current-order-view)
     (and-let* ((mv (current-module-view))
 	       (zone-id (find (cute symbol-contains <> "order-view")
@@ -2846,19 +2849,6 @@
     (ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
     (unless (state 'modified)
       (set-state! 'modified #t)
-      ;; (update-window-title!)
-      ))
-
-  ;; ;; TODO uses current-mod
-  ;; ;;; Play `row` of the blocks referenced by `order-pos` in the group
-  ;; ;;; `group-id`.
-  ;; (define (play-row group-id order-pos row mmod)
-  ;;   (let ((origin (config-default-origin (car mmod))))
-  ;;     (emulator 'run origin
-  ;; 		(list->string
-  ;; 		 (map integer->char
-  ;; 		      (mod->bin (derive-single-row-mdmod
-  ;; 				 mmod group-id order-pos row)
-  ;; 				origin '((no-loop #t))))))))
+      (update-window-title!)))
 
   ) ;; end module bt-gui

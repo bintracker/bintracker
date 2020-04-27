@@ -14,6 +14,17 @@
   ;;;
   ;;; The returned emulator is not yet running. To run it, call
   ;;; `(EMULATOR 'start)`.
+  ;;;
+  ;;; The following other commands may be available, depending on the features
+  ;;; of the emulator application:
+  ;;;
+  ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
+  ;;; * `'info` - Display information about the emulated machine.
+  ;;; * `'run address % code` - Load and run `code` at address.
+  ;;; * `'pause` - Pause emulation.
+  ;;; * `'unpause` - Unpause emulation.
+  ;;; * `'start` - Launch emulator program in new thread.
+  ;;; * `'quit` - Exit the Emulator.
   (define (make-emulator program program-args)
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)

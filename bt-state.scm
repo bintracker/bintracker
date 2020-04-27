@@ -29,11 +29,7 @@
 
   ;;; Clean up global state after closing a file.
   (define (state-reset-after-file-close)
-    ;; (set-state! 'current-mdmod #f)
-    ;; (set-state! 'current-file #f)
-    ;; (set-state! 'current-instances '())
     (set-state! 'modified #f)
-    ;; (set-state! 'emulator #f)
     (set-state! 'journal (make-app-journal))
     (set-state! 'active-md-command-info ""))
 
@@ -47,19 +43,6 @@
   (define (repl)
     (and (ui)
 	 (alist-ref 'repl (slot-value (ui) 'children))))
-
-  ;; ;;; Send a command to the currently running emulator.
-  ;; ;;; The following options may be available:
-  ;; ;;;
-  ;; ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
-  ;; ;;; * `'info` - Display information about the emulated machine.
-  ;; ;;; * `'run address % code` - Load and run `code` at address.
-  ;; ;;; * `'pause` - Pause emulation.
-  ;; ;;; * `'unpause` - Unpause emulation.
-  ;; ;;; * `'start` - Launch emulator program in new thread.
-  ;; ;;; * `'quit` - Exit the Emulator.
-  ;; (define (emulator . args)
-  ;;   (apply (state 'emulator) args))
 
   ;;; Get the global application settings, or a specific PARAMeter of that
   ;;; state.
@@ -207,24 +190,6 @@
 	  (set-conf! 'keymap
 		     (apply make-app-keys (cdr my-keymap)))
 	  (error "Not a valid Bintracker keymap."))))
-
-  ;; ;;; Returns the current module, or `#f` if no module is loaded.
-  ;; (define (current-mod)
-  ;;   (print-call-chain)
-  ;;   (app-state-current-mdmod *bintracker-state*))
-
-  ;; ;;; Set the current module from the result of parsing the .mdal file FILENAME.
-  ;; (define (set-current-mod! filename)
-  ;;   (set-state! 'current-mdmod
-  ;; 		(file->mdmod filename
-  ;; 			     (app-settings-mdal-config-dir
-  ;; 			      *bintracker-settings*)
-  ;; 			     "libmdal/")))
-
-  ;; ;;; Returns the current module configuration (mdconf). It is an error to call
-  ;; ;;; this procedure if no module is currently loaded.
-  ;; (define (current-config)
-  ;;   (mdmod-config (current-mod)))
 
   ;; TODO reimplement
   ;;; Returns a string containing the current target platform and MDAL config
@@ -411,56 +376,6 @@
 
   (define (focus-previous-ui-zone)
     (focus 'previous))
-
-  ;; ;; ---------------------------------------------------------------------------
-  ;; ;;; ## Instances Record
-  ;; ;; ---------------------------------------------------------------------------
-
-  ;; ;;; Bintracker keeps a record of the currently displayed group and block node
-  ;; ;;; instances in `(app-state-current-instances *bintracker-state*)`.
-  ;; ;;; The following section contains procedures for retrieving information from
-  ;; ;;; and updating the instance record.
-
-  ;; ;;; Initialize the instance record. This should be called on loading a file,
-  ;; ;;; after setting `current-mod` but before calling `(show-module)`.
-  ;; (define (init-instances-record!)
-  ;;   (when (current-mod)
-  ;;     (set-state! 'current-instances
-  ;;   		  (map (lambda (inode-cfg)
-  ;;   			 (list (car inode-cfg) 0))
-  ;;   		       (filter (lambda (inode-cfg)
-  ;;   				 (memq (inode-config-type (cdr inode-cfg))
-  ;;   				       '(group block)))
-  ;;   			       (hash-table->alist
-  ;;   				(config-inodes (current-config))))))))
-
-  ;; ;;; Query the instance record for the currently visible instance of the
-  ;; ;;; group or block node NODE-ID.
-  ;; (define (get-current-instance node-id)
-  ;;   (car (alist-ref node-id (state 'current-instances))))
-
-  ;; ;;; Update the instance record for NODE-ID.
-  ;; (define (set-current-instance! node-id val)
-  ;;   (alist-update! node-id val (state 'current-instances)))
-
-  ;; ;;; Return the node-instance path string for the currently visible instance
-  ;; ;;; of the group or block node NODE-ID. The result can be fed into
-  ;; ;;; `node-instance-path`.
-  ;; (define (get-current-instance-path node-id)
-  ;;   (let ((ancestors (config-get-node-ancestors-ids
-  ;; 		      node-id (config-itree (current-config)))))
-  ;;     (string-concatenate
-  ;;      (cons "0/" (map (lambda (id)
-  ;; 			 (string-append (symbol->string id)
-  ;; 					"/" (->string (get-current-instance id))
-  ;; 					"/"))
-  ;; 		       (cdr (reverse (cons node-id ancestors))))))))
-
-  ;; ;;; Return the currently visible inode-instance of the group or block node
-  ;; ;;; NODE-ID.
-  ;; (define (get-current-node-instance node-id)
-  ;;   ((node-path (get-current-instance-path node-id))
-  ;;    (mdmod-global-node (current-mod))))
 
 
   ;; ---------------------------------------------------------------------------
