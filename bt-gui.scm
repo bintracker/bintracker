@@ -2786,20 +2786,35 @@
   ;;; interface the user is currently interacting with. This is inevitably a
   ;;; brittle solution, so be careful when using these.
 
+  ;;; Returns the currently active `<ui-module-view>`.
   (define (current-module-view)
     (and (ui) (ui-ref (ui) 'module-view)))
 
+  ;;; Returns the currently active `<ui-block-view>`.
   (define (current-blocks-view)
     (and-let* ((mv (current-module-view))
 	       (zone-id (find (cute symbol-contains <> "block-view")
 			      (map car (focus 'list)))))
       (ui-ref-by-zone-id mv zone-id)))
 
+  ;;; Returns the currently active `<ui-order-view>`.
   (define (current-order-view)
     (and-let* ((mv (current-module-view))
 	       (zone-id (find (cute symbol-contains <> "order-view")
 			      (map car (focus 'list)))))
       (ui-ref-by-zone-id mv zone-id)))
+
+  ;;; Returns the MDAL module associated with the currently active
+  ;;; `<ui-module-view>`.
+  (define (current-mmod)
+    (and-let* ((mv (current-module-view)))
+      (slot-value mv 'mmod)))
+
+  ;;; Returns the MDAL engine definition associated with the currently active
+  ;;; `<ui-module-view>`.
+  (define (current-mdef)
+    (and-let* ((mv (current-module-view)))
+      (car (slot-value mv 'mmod))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Top Level Layout
