@@ -11,15 +11,18 @@
 [Introduction](about.md) • [Setup](setup.md) • [Basic Usage](basics.md)
 
 
+### [Frequently Asked Questions](FAQ.md)
+
+
+### [Wiki](https://github.com/utz82/bintracker/wiki)
+
+
 ### Developer Documentation
 
 [Getting Started](hacking.md) • [Bintracker API](generated/bintracker-core.md) • [MDAL](libmdal/index.md) • [Schemta Assembler](libmdal/schemta.md) • [TODO](TODO.md)
 
 
-### Wiki
-
-
-### Bugtracker
+### [Bugtracker](https://github.com/utz82/bintracker/issues)
 
 
 ### Community

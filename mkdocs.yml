@@ -36,6 +36,7 @@ site_dir: 'documentation'
 nav:
   - Main: index.md
   - Quickstart: quickstart.md
+  - "Frequently Asked Questions": FAQ.md
   - User Manual:
       - Introduction: about.md
       - Setup: setup.md
