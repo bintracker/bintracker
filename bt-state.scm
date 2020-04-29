@@ -27,11 +27,6 @@
 	 *bintracker-state*)
 	*bintracker-state*))
 
-  ;;; Clean up global state after closing a file.
-  (define (state-reset-after-file-close)
-    (set-state! 'journal (make-app-journal))
-    (set-state! 'active-md-command-info ""))
-
   ;;; Accessor for the main application's GUI widget structure, which is a
   ;;; `<ui-metabuffer>` instance.
   (define (ui)
@@ -189,24 +184,6 @@
 	  (set-conf! 'keymap
 		     (apply make-app-keys (cdr my-keymap)))
 	  (error "Not a valid Bintracker keymap."))))
-
-  ;;; Set the active MD command info string from the given mdconf config-inode
-  ;;; FIELD-ID.
-  (define (set-active-md-command-info! field-id mdef)
-    (let ((command (config-get-inode-source-command field-id mdef)))
-      (set-state! 'active-md-command-info
-		  (string-append
-		   (symbol->string field-id) ": "
-		   (if (command-has-flag? command 'is-note)
-		       (string-append
-			(normalize-note-name
-			 (lowest-note (command-keys command)))
-			" - "
-			(normalize-note-name
-			 (highest-note (command-keys command)))
-			" ")
-		       "")
-		   (command-description command)))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -382,24 +359,6 @@
   ;;;
   ;;; The undo stack size is limited by the `journal-limit` global setting.
 
-  (define (clear-journal)
-    (set-state! 'journal (make-app-journal)))
-
-  (define (clear-redo-stack)
-    (stack-empty! (app-journal-redo-stack (state 'journal))))
-
-  ;;; Check if the undo stack has reached the depth limit set by the global
-  ;;; `journal-limit` setting, and drop the first half of the stack if it has.
-  (define (limit-undo-stack)
-    (let ((stack-depth (app-journal-undo-stack-depth (state 'journal)))
-	  (journal-limit (settings 'journal-limit)))
-      (when (>= stack-depth journal-limit)
-	(stack-cut! (app-journal-undo-stack (state 'journal))
-		    0 (quotient journal-limit 2))
-	(app-journal-undo-stack-depth-set! (state 'journal)
-					   (stack-count (app-journal-undo-stack
-							 (state 'journal)))))))
-
   ;;; Generate an action specification that when applied, will revert the edit
   ;;; that results from the given edit ACTION specification.
   (define (make-reverse-action action mmod)
@@ -447,44 +406,5 @@
 	      ((remove) (list 'insert (cadr action) (third action)))
 	      ((insert) (list 'remove (cadr action) (third action)
 			      (map car (fourth action))))))))
-
-  ;;; Push ACTION to the journal's undo stack. If the stack is full, half of
-  ;;; the old entries are dropped.
-  (define (push-undo action)
-    (limit-undo-stack)
-    (stack-push! (app-journal-undo-stack (state 'journal))
-		 action)
-    (app-journal-undo-stack-depth-set!
-     (state 'journal)
-     (add1 (app-journal-undo-stack-depth (state 'journal)))))
-
-  ;; TODO all below are broken because we need mmod now to create reverse
-  ;; action.
-
-  ;;; Pop the last action from the undo stack, and push it to the redo stack.
-  ;;; Returns the action, or #f if the undo stack is empty.
-  (define (pop-undo)
-    (let ((stack-depth (app-journal-undo-stack-depth (state 'journal))))
-      (and (not (zero? stack-depth))
-	   (let ((action (stack-pop! (app-journal-undo-stack
-				      (state 'journal)))))
-	     (app-journal-undo-stack-depth-set! (state 'journal)
-						(sub1 stack-depth))
-	     (push-redo (make-reverse-action action))
-	     action))))
-
-  ;;; Push ACTION to the redo stack.
-  (define (push-redo action)
-    (stack-push! (app-journal-redo-stack (state 'journal))
-		 action))
-
-  ;;; Pop the latest *action* from the redo stack, and push it to the undo
-  ;;; stack.
-  (define (pop-redo)
-    (let ((redo-stack (app-journal-redo-stack (state 'journal))))
-      (and (not (stack-empty? redo-stack))
-	   (let ((action (stack-pop! redo-stack)))
-	     (push-undo (make-reverse-action action))
-	     action))))
 
   ) ;; end module bt-state

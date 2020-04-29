@@ -61,15 +61,7 @@
     (make-hooks
      `(delete-module-view . ,(lambda () (multibuffer-delete (ui) 'module-view)))
      `(show-welcome-buffer . ,(lambda () (multibuffer-show (ui) 'welcome)))
-     `(disable-play-buttons
-       . ,(lambda () (ui-set-state (ui-ref main-toolbar 'play) 'disabled)))
-     `(disable-journal-buttons
-       . ,(lambda () (ui-set-state (ui-ref main-toolbar 'journal) 'disabled)))
-     `(reset-state . ,state-reset-after-file-close)
-     `(update-window-title . ,update-window-title!)
-     `(reset-status-text . ,reset-status-text!)
-     `(disable-edit-settings
-       . ,(lambda () (ui-set-state edit-settings 'disabled)))))
+     `(update-window-title . ,update-window-title!)))
 
   ;;; Close the currently opened module file.
   (define (close-file)
@@ -81,8 +73,6 @@
 
   (define after-load-file-hooks
     (make-hooks
-     `(enable-play-buttons
-       . ,(lambda args (ui-set-state (ui-ref main-toolbar 'play) 'enabled)))
      `(hide-welcome-buffer . ,(lambda args (multibuffer-hide (ui) 'welcome)))
      `(show-module
        . ,(lambda (mmod filename)
@@ -96,9 +86,7 @@
 				      (symbol-contains (car entry)
 						       "block-view"))
 				    (focus 'list))))
-	      (focus 'set (car entry)))))
-     `(enable-edit-settings
-       . ,(lambda args (ui-set-state edit-settings 'enabled)))))
+	      (focus 'set (car entry)))))))
 
   ;; TODO logging
   ;;; Prompt the user to load an MDAL module file.
@@ -171,6 +159,16 @@
       (unless (string-null? filename)
 	(ui-metastate (current-module-view) 'filename filename)
 	(on-save-file-hooks 'execute))))
+
+  ;;; Calls undo on (current-module-view).
+  (define (undo)
+    (and-let* ((mv (current-module-view)))
+      (ui-metastate mv 'undo)))
+
+  ;;; Calls redo on (current-module-view).
+  (define (redo)
+    (and-let* ((mv (current-module-view)))
+      (ui-metastate mv 'redo)))
 
   ;;; Launch the online help in the user's default system web browser.
   (define (launch-help)
@@ -272,44 +270,19 @@
   ;;; ## Core GUI Layout
   ;; ---------------------------------------------------------------------------
 
-  (define edit-settings #f)
-
-  (define (init-edit-settings)
-    (set! edit-settings
-      (make <ui-settings-group> 'setup
-	    `((edit-step "Step" "Set the edit step" default-edit-step
-			 edit-step 0 64)
-	      (base-octave "Octave" "Set the base octave" default-base-octave
-			   base-octave 0 9)
-	      (major-highlight "Signature" "Set number of measures per beat"
-			       default-major-row-highlight major-row-highlight
-			       1 64
-			       ,(lambda ()
-				  (ui-blockview-update-row-highlights
-				   (current-blocks-view))))
-	      (minor-highlight "/" "Set number of steps per measure"
-			       default-minor-row-highlight minor-row-highlight
-			       2 32
-			       ,(lambda ()
-				  (ui-blockview-update-row-highlights
-				   (current-blocks-view))))))))
-
   (define (init-top-level-layout)
     (begin
-      (tk/pack status-frame fill: 'x side: 'bottom)
-      (ui-show main-toolbar)
-      (tk/pack (tk 'create-widget 'separator orient: 'horizontal)
-      	       expand: 0 fill: 'x)
-      (ui-show edit-settings)
       (set-state! 'ui
 		  (make <ui-multibuffer>
 		    'setup `((welcome #t 5 ,<ui-welcome-buffer>)
 			     (repl #t 2 ,<ui-repl> setup
 				   ,(string-append
-				     "Bintracker " *bintracker-version*
-				     "\n(c) 2019-2020 utz/irrlicht project\n"
+				     "Bintracker "
+				     *bintracker-version*
+				     " REPL\n"
 				     "For help, type \"(info)\" at the prompt."
-				     "\n")))))
+				     "\n")))
+		    'modeline '((keystrokes ""))))
       (ui-show (ui))))
 
 
@@ -325,16 +298,16 @@
 	      (get-keybinding-group 'global))
     (create-virtual-events))
 
-  ;;; Update the bindings for the toolbar buttons.
-  (define (update-toolbar-bindings!)
-    (ui-set-callbacks main-toolbar
-		      `((file (load-file ,load-file)
-			      (save-file ,save-file))
-			(play (play-from-start ,play-from-start)
-			      (play-pattern ,play-pattern)
-			      (stop-playback ,stop-playback))
-			(journal (undo ,undo)
-				 (redo ,redo)))))
+  ;; ;;; Update the bindings for the toolbar buttons.
+  ;; (define (update-toolbar-bindings!)
+  ;;   (ui-set-callbacks main-toolbar
+  ;; 		      `((file (load-file ,load-file)
+  ;; 			      (save-file ,save-file))
+  ;; 			(play (play-from-start ,play-from-start)
+  ;; 			      (play-pattern ,play-pattern)
+  ;; 			      (stop-playback ,stop-playback))
+  ;; 			(journal (undo ,undo)
+  ;; 				 (redo ,redo)))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -350,20 +323,14 @@
      `(update-global-key-bindings . ,update-global-key-bindings!)
      `(update-window-title . ,update-window-title!)
      `(init-main-menu . ,init-main-menu)
-     `(init-edit-settings . ,init-edit-settings)
      `(maybe-show-menu
        . ,(lambda ()
 	    (when (settings 'show-menu)
 	      (tk 'configure 'menu: (menu-widget (state 'menu))))))
      `(init-top-level-layout . ,init-top-level-layout)
-     `(update-toolbar-bindings . ,update-toolbar-bindings!)
-     `(maybe-show-toolbar
-       . ,(lambda ()
-	    (when (app-settings-show-toolbar *bintracker-settings*)
-	      (ui-show main-toolbar))))
+     `(add-size-grip . ,add-size-grip)
      `(set-schemta-include-path
        . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
-     `(init-status-bar . ,init-status-bar)
      `(disable-keyboard-traversal . ,disable-keyboard-traversal)))
 
   ) ;; end module bintracker-core

@@ -53,3 +53,6 @@
 					    (tk-event-loop))))))
   (thread-start! gui-thread)
   (thread-join! gui-thread))
+
+;; Safeguard to ensure termination of the tk process if initialization fails.
+(tk-end)

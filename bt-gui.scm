@@ -63,6 +63,10 @@
     (tk/image 'create 'photo format: "PNG"
 	      file: (string-append "resources/icons/" filename)))
 
+  (define (add-size-grip)
+    (tk/place (tk 'create-widget 'sizegrip style: 'BT.TSizegrip)
+	      anchor: 'se relx: 1.0 rely: 1.0))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Dialogues
@@ -226,11 +230,68 @@
     (let ((user-font-bold (list family: (settings 'font-mono)
 			   size: (settings 'font-size)
 			   weight: 'bold)))
-      (ttk/style 'configure 'BT.TFrame background: (colors 'background))
+      (ttk/style 'configure 'BT.TFrame
+		 background: (colors 'background))
 
-      (ttk/style 'configure 'BT.TLabel background: (colors 'background)
+      (ttk/style 'configure 'Separator.BT.TFrame
+		 background: (colors 'text-inactive))
+
+      (ttk/style 'configure 'BT.TPanedwindow
+		 background: (colors 'text-inactive))
+
+      ;; ;; FIXME doesn't do anything?
+      ;; (ttk/style 'configure 'BT.TPanedwindow.Sash
+      ;; 		 background: (colors 'text-1)
+      ;; 		 gripcount: 7
+      ;; 		 handlesize: 10
+      ;; 		 sashrelief: 'flat
+      ;; 		 sashthickness: 4)
+
+      (ttk/style 'configure 'BT.TSizegrip
+		 'background: (colors 'background))
+
+      (ttk/style 'configure 'BT.TLabel
+		 background: (colors 'background)
 		 foreground: (colors 'text)
 		 font: user-font-bold)
+
+      (ttk/style 'configure 'Modeline.BT.TLabel
+		 background: (colors 'background)
+		 foreground: (colors 'text)
+		 font: (list family: (settings 'font-mono)
+			     size: (settings 'font-size)))
+
+      (ttk/style 'configure 'Text1.Modeline.BT.TLabel
+		 foreground: (colors 'text-1))
+
+      (ttk/style 'configure 'Text2.Modeline.BT.TLabel
+		 foreground: (colors 'text-2))
+
+      (ttk/style 'configure 'Text3.Modeline.BT.TLabel
+		 foreground: (colors 'text-3))
+
+      (ttk/style 'configure 'Text4.Modeline.BT.TLabel
+		 foreground: (colors 'text-4))
+
+      (ttk/style 'configure 'Text5.Modeline.BT.TLabel
+		 foreground: (colors 'text-5))
+
+      (ttk/style 'configure 'Text6.Modeline.BT.TLabel
+		 foreground: (colors 'text-6))
+
+      (ttk/style 'configure 'Text7.Modeline.BT.TLabel
+		 foreground: (colors 'text-7))
+
+      (ttk/style 'configure 'BT.TSpinbox
+		 arrowcolor: (colors 'text)
+		 bordercolor: (colors 'background)
+		 background: (colors 'row-highlight-major)
+		 lightcolor: (colors 'background)
+		 darkcolor: (colors 'background)
+		 foreground: (colors 'text)
+		 fieldbackground: (colors 'row-highlight-minor)
+		 padding: 0)
+
       ;;  Dynamic states: active, disabled, pressed, readonly.
 
       ;; TButton styling options configurable with ttk::style are:
@@ -278,7 +339,8 @@
 
       (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
       (ttk/style 'configure 'BT.TNotebook.Tab
-		 background: (colors 'background)
+		 ;; background: (colors 'text)
+		 ;; foreground: (colors 'background)
 		 font: user-font-bold)))
 
   ;;; Configure the style of the scrollbar widget S to match Bintracker's
@@ -394,6 +456,14 @@
   ;; ---------------------------------------------------------------------------
   ;;; ### Auxilliary procedures used by various BT meta-widgets
   ;; ---------------------------------------------------------------------------
+
+  (define (make-separator parent orient)
+    (let ((horizontal? (eqv? orient 'horizontal)))
+      (apply parent
+	     `(create-widget frame style: Separator.BT.TFrame
+			     ,@(if horizontal?
+				   '(height: 2)
+				   '(width: 2))))))
 
   ;;; Determine how many characters are needed to print values of a given
   ;;; command.
@@ -753,6 +823,48 @@
 		       (ui-ref (cdr child) child-element))
 		     children)))))
 
+  (define-class <ui-modeline> (<ui-element>)
+    ((packing-args '(expand: 0 fill: x side: bottom))
+     segments))
+
+  ;;; A modeline (aka status bar) widget. Create instances with
+  ;;;
+  ;;; `(make <ui-modeline> 'setup ((ID TEXT [COLOR]) ...))`
+  ;;;
+  ;;; where ID is a unique identifier of a modeline segment, and TEXT is the
+  ;;; string that will be displayed in the modeline segment. An empty string
+  ;;; means the segment is not displayed. If COLOR is given, it must be an
+  ;;; integer referencing one of the application colors `text-1` ... `text-7`.
+  ;;; If COLOR is omitted, the color `text` will be used.
+  (define-method (initialize-instance after: (buf <ui-modeline>))
+    (set! (slot-value buf 'segments)
+      (map (lambda (segment)
+	     (cons (car segment)
+		   ((ui-box buf) 'create-widget 'label
+		    text: (string-append " " (cadr segment) " ")
+		    style: (if (> (length segment) 2)
+			       (list-ref '(Text1.Modeline.BT.TLabel
+					   Text2.Modeline.BT.TLabel
+					   Text3.Modeline.BT.TLabel
+					   Text4.Modeline.BT.TLabel
+					   Text5.Modeline.BT.TLabel
+					   Text6.Modeline.BT.TLabel
+					   Text7.Modeline.BT.TLabel)
+					 (caddr segment))
+			       'Modeline.BT.TLabel))))
+	   (slot-value buf 'setup))))
+
+  (define-method (ui-show before: (buf <ui-modeline>))
+    (unless (slot-value buf 'initialized)
+      (for-each (lambda (segment)
+		  (tk/pack (cdr segment) side: 'left expand: 0))
+		(slot-value buf 'segments))))
+
+  ;;; Set the TEXT string of the modeline segment identifier SEGMENT.
+  (define-method (ui-modeline-set primary: (buf <ui-modeline>) segment text)
+    (and-let* ((label (alist-ref segment (slot-value buf 'segments))))
+      (label 'configure text: (string-append " " text " "))))
+
   ;;; A class representing a labelled Tk spinbox. Create instances with
   ;;;
   ;;; ```Scheme
@@ -782,7 +894,8 @@
 			  (seventh setup)))
 	   (box (ui-box buf))
 	   (spinbox (box 'create-widget 'spinbox from: from to: to
-			 width: 4 state: 'disabled validate: 'none))
+			 width: 4 state: 'enabled validate: 'none
+			 style: 'BT.TSpinbox))
 	   (validate-new-value
 	    (lambda (new-val)
 	      (if (and (integer? new-val)
@@ -883,7 +996,9 @@
 		      (tk/pack button side: 'top padx: 0 fill: 'x)))
 		(map cdr (slot-value buf 'buttons)))
       (when (eqv? orient 'horizontal)
-	(tk/pack (box 'create-widget 'separator orient: 'vertical)
+	(tk/pack ;; (box 'create-widget 'separator orient: 'vertical
+	 ;;      style: 'BT.TSeparator)
+	 (make-separator box 'vertical)
 		 side: 'left padx: 0 fill: 'y))))
 
   ;;; Enable or disable BUF or one of it's child elements. STATE must be either
@@ -915,11 +1030,12 @@
 		  (let ((button (alist-ref (car cb) buttons)))
 		    (when button
 		      (button 'configure command: (cadr cb))
-		      (bind-info-status
-		       button
-		       (string-append (car (alist-ref (car cb)
-						      (ui-setup buf)))
-			" " (key-binding->info 'global (car cb)))))))
+		      ;; (bind-info-status
+		      ;;  button
+		      ;;  (string-append (car (alist-ref (car cb)
+		      ;; 				      (ui-setup buf)))
+		      ;; 	" " (key-binding->info 'global (car cb))))
+		      )))
 		callbacks)))
 
 
@@ -994,7 +1110,11 @@
     ((packing-args '(expand: 1 fill: both))
      (orient 'vertical)
      (setup '())
-     state))  ;; id, index, visible, weigth
+     panes
+     (toolbar #f)
+     (settings-bar #f)
+     (modeline #f)
+      state))  ;; id, index, visible, weigth
 
   ;; TODO: to properly hide a child, we must receive the "forget" event from
   ;; the child and act on it. Likewise, the "pack" event must propagate up.
@@ -1002,21 +1122,26 @@
   ;; for collapse/expand/hide-child/show-child?
 
   (define-method (initialize-instance after: (buf <ui-multibuffer>))
-    (set! (ui-box buf)
-      ((ui-parent buf) 'create-widget 'panedwindow
+    (set! (slot-value buf 'panes)
+      ((ui-box buf) 'create-widget 'panedwindow
+       style: 'BT.TPanedwindow
        orient: (slot-value buf 'orient)))
     (set! (ui-children buf)
       (map (lambda (child)
 	     (cons (car child)
 		   (apply make (append (cdddr child)
-				       `(parent ,(ui-box buf))))))
+				       `(parent ,(slot-value buf 'panes))))))
 	   (ui-setup buf)))
     (set! (slot-value buf 'state)
       (map (lambda (child-spec idx)
 	     (cons (car child-spec)
 		   (cons idx (take (cdr child-spec) 2))))
 	   (ui-setup buf)
-	   (iota (length (ui-setup buf))))))
+	   (iota (length (ui-setup buf)))))
+    (when (slot-value buf 'modeline)
+      (set! (slot-value buf 'modeline)
+	(make <ui-modeline>
+	  'parent (ui-box buf) 'setup (slot-value buf 'modeline)))))
 
   ;;; Returns the actively managed children of BUF sorted by position.
   (define-method (multibuffer-active+sorted-children
@@ -1036,7 +1161,10 @@
 	   ", child-states: " (slot-value buf 'state))
     (if (slot-value buf 'initialized)
 	(for-each (o ui-show cdr) (multibuffer-active+sorted-children buf))
-	(begin
+	(let ((pack-separator (lambda ()
+				(tk/pack (make-separator (ui-box buf)
+							 'horizontal)
+					 expand: 0 fill: 'x))))
 	  (print "ui-show/multibuffer: initializing")
 	  ;; TODO In theory, we could let `ui-show` of `<ui-element>` do the work,
 	  ;; but there seem to be some issues with Tk when adding children that
@@ -1044,10 +1172,23 @@
 	  (for-each (lambda (child)
 		      (print "calling ui-show on child " (car child))
 		      (ui-show (cdr child))
-		      ((ui-box buf) 'add (ui-box (cdr child))
+		      ((slot-value buf 'panes) 'add (ui-box (cdr child))
 		       weight: (caddr (alist-ref (car child)
 						 (slot-value buf 'state)))))
 		    (multibuffer-active+sorted-children buf))
+	  (when (and (slot-value buf 'toolbar)
+		     (settings 'show-toolbar))
+	    (ui-show (slot-value buf 'toolbar))
+	    (pack-separator))
+	  (when (slot-value buf 'settings-bar)
+	    (print "showing settings bar")
+	    (ui-show (slot-value buf 'settings-bar))
+	    (pack-separator))
+	  (when (slot-value buf 'modeline)
+	    (ui-show (slot-value buf 'modeline))
+	    (tk/pack (make-separator (ui-box buf) 'horizontal)
+		     expand: 0 fill: 'x side: 'bottom))
+	  (tk/pack (slot-value buf 'panes) expand: 1 fill: 'both)
 	  (set! (slot-value buf 'initialized) #t)))
     (apply tk/pack (cons (ui-box buf) (slot-value buf 'packing-args))))
 
@@ -1065,7 +1206,7 @@
     (set! (ui-children buf)
       (alist-update (car child-spec)
 		    (apply make (append (cdddr child-spec)
-					`(parent ,(ui-box buf))))
+					`(parent ,(slot-value buf 'panes))))
 		    (ui-children buf)))
     (print "children created: " (ui-children buf))
     (set! (slot-value buf 'state)
@@ -1114,11 +1255,11 @@
 	  (print "calling ui-show from multibuffer-show " child)
 	  (ui-show child-buf)
 	  (if before
-	      ((ui-box buf) 'insert
+	      ((slot-value buf 'panes) 'insert
 	       (ui-box (alist-ref (car before) (ui-children buf)))
 	       (ui-box child-buf)
 	       weight: (caddr (alist-ref child state)))
-	      ((ui-box buf) 'add (ui-box child-buf)
+	      ((slot-value buf 'panes) 'add (ui-box child-buf)
 	       weight: (caddr (alist-ref child state))))))))
 
   ;;; Remove the child element CHILD from the display. Does nothing if CHILD is
@@ -1129,7 +1270,7 @@
 				   child)
     (let ((child-buf (alist-ref child (ui-children buf))))
       (when (and child-buf (cadr (alist-ref child (slot-value buf 'state))))
-	((ui-box buf) 'forget (ui-box child-buf))
+	((slot-value buf 'panes) 'forget (ui-box child-buf))
 	(ui-hide child-buf)
 	(set! (cadr (alist-ref child (slot-value buf 'state)))
 	  #f))))
@@ -1958,8 +2099,10 @@
   ;;; Unset focus from the blockview BUF.
   (define-method (ui-blockview-unfocus primary: (buf <ui-basic-block-view>))
     (ui-blockview-remove-cursor buf)
-    (set-state! 'active-md-command-info "")
-    (reset-status-text!))
+    ;; (set-state! 'active-md-command-info "")
+    (ui-metastate buf 'set-info "")
+    ;; (reset-status-text!)
+    )
 
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
@@ -1970,12 +2113,13 @@
 			  (ui-blockview-get-current-block-instance-path buf)
 			  (ui-blockview-get-current-field-id buf)
 			  `((,(ui-blockview-get-current-field-instance buf))))))
-	(push-undo (make-reverse-action action) (ui-metastate buf 'mmod))
-	(apply-edit! action (ui-metastate buf 'mmod))
+	(ui-metastate buf 'push-undo
+		      (make-reverse-action action (ui-metastate buf 'mmod)))
+	(ui-metastate buf 'apply-edit action)
 	(ui-blockview-update buf)
 	(ui-blockview-move-cursor buf 'Up)
 	(ui-metastate buf 'modified #t)
-	(run-post-edit-actions))))
+	(update-window-title!))))
 
   ;;; Insert an empty cell into the field column currently under cursor,
   ;;; shifting the following node instances down and dropping the last instance.
@@ -1987,12 +2131,13 @@
 			   (ui-blockview-get-current-field-id buf)
 			   `((,(ui-blockview-get-current-field-instance buf)
 			      ())))))
-	(push-undo (make-reverse-action action (ui-metastate buf 'mmod)))
-	(apply-edit! action (ui-metastate buf 'mmod))
+	(ui-metastate buf 'push-undo
+		      (make-reverse-action action (ui-metastate buf 'mmod)))
+	(ui-metastate buf 'apply-edit action)
 	(ui-blockview-update buf)
 	(ui-blockview-show-cursor buf)
 	(ui-metastate buf 'modified #t)
-	(run-post-edit-actions))))
+	(update-window-title!))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -2155,9 +2300,9 @@
   ;;; the cursor currently points to.
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-block-view>))
-    (set-active-md-command-info! (ui-blockview-get-current-field-id buf)
-				 (ui-metastate buf 'mdef))
-    (reset-status-text!))
+    (ui-metastate buf 'set-info
+		  (md-command-info (ui-blockview-get-current-field-id buf)
+				   (ui-metastate buf 'mdef))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -2240,8 +2385,9 @@
 			,(ui-blockview-get-current-field-id buf)
 			((,(ui-blockview-get-current-field-instance buf)
 			  ,new-value)))))
-      (push-undo (make-reverse-action action (ui-metastate buf 'mmod)))
-      (apply-edit! action (ui-metastate buf 'mmod))
+      (ui-metastate buf 'push-undo
+		    (make-reverse-action action (ui-metastate buf 'mmod)))
+      (ui-metastate buf 'apply-edit action)
       ;; TODO might want to make this behaviour user-configurable
       (ui-metastate buf 'emulator 'play-row
 		    (slot-value buf 'group-id)
@@ -2251,7 +2397,7 @@
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))
       (ui-metastate buf 'modified #t)
-      (run-post-edit-actions)))
+      (update-window-title!)))
 
   ;; TODO unify with specialization on ui-order-view
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
@@ -2348,14 +2494,13 @@
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-order-view>))
     (let ((current-field-id (ui-blockview-get-current-field-id buf)))
-      (set-state! 'active-md-command-info
-		  (if (symbol-contains current-field-id "_LENGTH")
-		      "Step Length"
-		      (string-append "Channel "
-				     (string-drop (symbol->string
-						   current-field-id)
-						  2))))
-      (reset-status-text!)))
+      (ui-metastate buf 'set-info
+		    (if (symbol-contains current-field-id "_LENGTH")
+			"Step Length"
+			(string-append "Channel "
+				       (string-drop (symbol->string
+						     current-field-id)
+						    2))))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -2409,12 +2554,12 @@
 			,(ui-blockview-get-current-field-id buf)
 			((,(ui-blockview-get-current-field-instance buf)
 			  ,new-value)))))
-      (push-undo (make-reverse-action action))
-      (apply-edit! action)
+      (ui-metastate buf 'push-undo (make-reverse-action action))
+      (ui-metastate buf 'apply-edit action)
       (ui-blockview-update buf)
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))
-      (run-post-edit-actions)))
+      (update-window-title!)))
 
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
@@ -2648,7 +2793,177 @@
      (metastate-accessor #f)
      (filename #f)
      (modified #f)
+     (journal (make-app-journal))
      (emulator initform: #f reader: module-view-emulator)))
+
+  ;;; Helper for `<ui-module-view>` constructor.
+  (define-method (make-module-view-toolbar primary: (buf <ui-module-view>))
+    (make <ui-toolbar> 'parent (ui-box buf)
+	  'setup
+	  '((file (new-file "New File" "new.png" enabled)
+		  (load-file "Load File..." "load.png" enabled)
+		  (save-file "Save File" "save.png"))
+	    (journal (undo "Undo last edit" "undo.png")
+		     (redo "Redo last edit" "redo.png"))
+	    (edit (copy "Copy Selection" "copy.png")
+      		  (cut "Cut Selection (delete with shift)" "cut.png")
+      		  (clear "Clear Selection (delete, no shift)" "clear.png")
+      		  (paste "Paste from Clipboard (no shift)" "paste.png")
+      		  (insert "Insert from Clipbard (with shift)" "insert.png")
+      		  (swap "Swap Selection with Clipboard" "swap.png"))
+	    (play (stop-playback "Stop Playback" "stop.png" enabled)
+      		  (play "Play Track from Current Position" "play.png" enabled)
+      		  (play-from-start "Play Track from Start"
+				   "play-from-start.png"
+				   enabled)
+      		  (play-pattern "Play Pattern" "play-ptn.png" enabled))
+	    (configure (toggle-prompt "Toggle Console" "prompt.png")
+      		       (show-settings "Settings..." "settings.png")))))
+
+  ;;; Helper for `<ui-module-view>` constructor.
+  (define-method (make-module-view-settings-bar primary: (buf <ui-module-view>))
+    (make <ui-settings-group> 'parent (ui-box buf)
+	  'setup
+	  `((edit-step "Step" "Set the edit step" default-edit-step
+		       edit-step 0 64)
+	    (base-octave "Octave" "Set the base octave" default-base-octave
+			 base-octave 0 9)
+	    (major-highlight "Signature" "Set number of measures per beat"
+			     default-major-row-highlight major-row-highlight
+			     1 64
+			     ,(lambda ()
+				(ui-blockview-update-row-highlights
+				 (current-blocks-view))))
+	    (minor-highlight "/" "Set number of steps per measure"
+			     default-minor-row-highlight minor-row-highlight
+			     2 32
+			     ,(lambda ()
+				(ui-blockview-update-row-highlights
+				 (current-blocks-view)))))))
+
+  (define-method (module-view-push-undo primary: (buf <ui-module-view>)
+					action)
+    (let* ((journal (slot-value buf 'journal))
+	   (stack-depth (app-journal-undo-stack-depth journal))
+	  (journal-limit (settings 'journal-limit)))
+      (when (>= stack-depth journal-limit)
+	(stack-cut! (app-journal-undo-stack journal)
+		    0 (quotient journal-limit 2))
+	(app-journal-undo-stack-depth-set!
+	 journal
+	 (stack-count (app-journal-undo-stack journal))))
+      (stack-push! (app-journal-undo-stack (slot-value buf 'journal))
+		   action)
+      (app-journal-undo-stack-depth-set!
+       (slot-value buf 'journal)
+       (add1 (app-journal-undo-stack-depth (slot-value buf 'journal))))))
+
+  (define-method (module-view-pop-undo primary: (buf <ui-module-view>))
+    (let* ((journal (slot-value buf 'journal))
+	   (stack-depth (app-journal-undo-stack-depth journal)))
+      (and (not (zero? stack-depth))
+	   (let ((action (stack-pop! (app-journal-undo-stack journal))))
+	     (app-journal-undo-stack-depth-set! journal (sub1 stack-depth))
+	     (module-view-push-redo buf
+	      (make-reverse-action action (slot-value buf 'mmod)))
+	     action))))
+
+  (define-method (module-view-push-redo primary: (buf <ui-module-view>)
+					action)
+    (stack-push! (app-journal-redo-stack (slot-value buf 'journal))
+		 action))
+
+  (define-method (module-view-pop-redo primary: (buf <ui-module-view>))
+    (let ((redo-stack (app-journal-redo-stack (slot-value buf 'journal))))
+      (and (not (stack-empty? redo-stack))
+	   (let ((action (stack-pop! redo-stack)))
+	     (module-view-push-undo buf
+	      (make-reverse-action action (slot-value buf 'mmod)))
+	     action))))
+
+  (define-method (module-view-undo primary: (buf <ui-module-view>))
+    (let ((action (module-view-pop-undo buf)))
+	   (when action
+	     (ui-metastate buf 'apply-edit action)
+	     (ui-blockview-update (current-order-view))
+	     (ui-blockview-update (current-blocks-view))
+	     (focus 'resume)
+	     (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+			   'enabled 'redo)
+	     (when (zero? (app-journal-undo-stack-depth
+			   (slot-value buf 'journal)))
+	       (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+			     'disabled 'undo)
+	       (ui-metastate buf 'modified #f)
+	       (update-window-title!)))))
+
+  (define-method (module-view-redo primary: (buf <ui-module-view>))
+    (let ((action (module-view-pop-redo buf)))
+      (when action
+	(ui-metastate buf 'apply-edit action)
+	(ui-blockview-update (current-order-view))
+	(ui-blockview-update (current-blocks-view))
+	(focus 'resume)
+	(ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+		      'enabled 'undo)
+	(when (stack-empty? (app-journal-redo-stack
+			     (slot-value buf 'journal)))
+	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+			'disabled 'redo)))))
+
+  ;;; Construct a module view metastate accessor procedure. Helper for
+  ;;; `<ui-module-view>` constructor.
+  (define-method (make-metastate-accessor primary: (buf <ui-module-view>))
+    (lambda args
+      (case (car args)
+	((mmod) (slot-value buf 'mmod))
+	((mdef) (car (slot-value buf 'mmod)))
+	((emulator)
+	 (if (null? (cdr args))
+	     (slot-value buf 'emulator)
+	     (case (cadr args)
+	       ((play-row)
+		(let* ((mmod (slot-value buf 'mmod))
+		       (origin (config-default-origin (car mmod))))
+		  ((slot-value buf 'emulator) 'run
+		   origin
+		   (list->string
+		    (map integer->char
+			 (mod->bin (apply derive-single-row-mdmod
+					  (cons mmod (cddr args)))
+				   origin '((no-loop #t)))))))))))
+	((modified)
+	 (if (null? (cdr args))
+	     (slot-value buf 'modified)
+	     (when (slot-value buf 'filename)
+	       (set! (slot-value buf 'modified) (cadr args)))))
+	((apply-edit)
+	 (let ((action (cadr args)))
+	   (if (eqv? 'compound (car action))
+	       (for-each (cute ui-metastate buf 'apply-edit <>)
+			 (cdr action))
+	       ((case (car action)
+		  ((set) node-set!)
+		  ((remove) node-remove!)
+		  ((insert) node-insert!)
+		  (else (warning (string-append "Unsupported edit action \""
+						(->string (car action))
+						"\""))))
+		(cadr action)
+		(third action)
+		(fourth action)
+		(slot-value buf 'mmod)))))
+	((push-undo) (module-view-push-undo buf (cadr args)))
+	((undo) (module-view-undo buf))
+	((redo) (module-view-redo buf))
+	((filename) (if (null? (cdr args))
+			(slot-value buf 'filename)
+			(set! (slot-value buf 'filename)
+			  (cadr args))))
+	((set-info) (ui-modeline-set (slot-value buf 'modeline)
+				     'active-field (cadr args)))
+	(else (error 'metastate (string-append "invalid command "
+					       (->string args)))))))
 
   (define-method (initialize-instance after: (buf <ui-module-view>))
     (print "in initialize-instance/module-view")
@@ -2662,34 +2977,22 @@
 		     "libmdal/")))
     (unless (slot-value buf 'filename)
       (set! (slot-value buf 'modified) #t))
+    (set! (slot-value buf 'toolbar)
+      (make-module-view-toolbar buf))
+    (set! (slot-value buf 'settings-bar)
+      (make-module-view-settings-bar buf))
+    (set! (slot-value buf 'modeline)
+      (make <ui-modeline> 'parent (ui-box buf)
+	    'setup `((platform ,(->string (target-platform-id
+					   (config-target
+					    (car (slot-value buf 'mmod)))))
+			       1)
+		     (engine ,(->string (config-id
+					 (car (slot-value buf 'mmod))))
+			     2)
+		     (active-field ""))))
     (set! (slot-value buf 'metastate-accessor)
-      (lambda args
-	(case (car args)
-	  ((mmod) (slot-value buf 'mmod))
-	  ((mdef) (car (slot-value buf 'mmod)))
-	  ((emulator)
-	   (if (null? (cdr args))
-	       (slot-value buf 'emulator)
-	       (case (cadr args)
-		 ((play-row)
-		  (let* ((mmod (slot-value buf 'mmod))
-			 (origin (config-default-origin (car mmod))))
-		    ((slot-value buf 'emulator) 'run
-		     origin
-		     (list->string
-		      (map integer->char
-			   (mod->bin (apply derive-single-row-mdmod
-					    (cons mmod (cddr args)))
-				     origin '((no-loop #t)))))))))))
-	  ((modified) (if (null? (cdr args))
-			  (slot-value buf 'modified)
-			  (set! (slot-value buf 'modified) (cadr args))))
-	  ((filename) (if (null? (cdr args))
-			  (slot-value buf 'filename)
-			  (set! (slot-value buf 'filename)
-			    (cadr args))))
-	  (else (error 'metastate (string-append "invalid command "
-						 (->string args)))))))
+      (make-metastate-accessor buf))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL
 						(car (slot-value buf 'mmod))
 						'field))
@@ -2732,8 +3035,10 @@
 				   (slot-value subgroups 'subgroups))))
 	    (ui-ref-by-zone-id (cdr target) zone-id)))))
 
-  ;;; Interact with the module-view module state. Given an `<ui-module-view>`
-  ;;; MV, use as follows:
+  ;;; Interact with the module-view module state. This method can be called on
+  ;;; the module-view itself, or any of its child elements.
+  ;;;
+  ;;; Given an `<ui-module-view>` MV, use as follows:
   ;;;
   ;;; `(ui-metastate MV 'mmod)`
   ;;;
@@ -2760,8 +3065,57 @@
   ;;; Get the associated filename, or `#f` if the filename is not set. When
   ;;; NEW-VAL is given, sets the associated filename to it.
   ;;;
-  ;;; This method can be called on the module-view itself, or any of its child
-  ;;; elements.
+  ;;; `(ui-metastate MV 'apply-edit ACTION)`
+  ;;;
+  ;;; This command is used internally to apply the edit ACTION to the associated
+  ;;; associated MDAL module. An edit action is a list that takes the form
+  ;;;
+  ;;; `(ACTION PARENT-INSTANCE-PATH NODE-ID INSTANCES)`
+  ;;;
+  ;;; where ACTION is one of the symbols `set`, `insert`, or `remove`,
+  ;;; PARENT-INSTANCE-PATH is a fully qualified MDAL node path string denoting
+  ;;; the parent node instance of the node that you want to edit (ie. a path
+  ;;; starting at the global inode, see md-types/MDMOD for details),
+  ;;; NODE-ID is the ID of the node you want to edit, and INSTANCES is an
+  ;;; alist where the keys are node instance ID numbers and the values are the
+  ;;; values that you want to set. Values for a `remove` action are ignored, but
+  ;;; you must still provide the argument as a list of lists.
+  ;;;
+  ;;; As the respective names suggest, a `set` action sets one or more instances
+  ;;; of the node NODE-ID at PARENT-INSTANCE-PATH to (a) new value(s), an
+  ;;; `insert` action inserts one or more new instances into the node, and a
+  ;;; `remove` action removes one or more instances from the node.
+  ;;;
+  ;;; Alternatively, an edit action may take the form
+  ;;;
+  ;;; `(compound ACTIONS))`
+  ;;;
+  ;;; where ACTIONS is a list of edit actions. In this case, the edit actions
+  ;;; are applied in the order provided. A `compound` action thus bundles
+  ;;; one or more edit actions together.
+  ;;;
+  ;;; When you use the `'apply-edit` command in user code, it is your
+  ;;; responsibility to ensure that the metastate's undo stack is updated
+  ;;; accordingly by pushing the inverse of ACTION to it. Use the
+  ;;; `make-reverse-action` procedure to derive the inverse from a given edit
+  ;;; action.
+  ;;;
+  ;;; `(ui-metastate MV 'push-undo ACTION)`
+  ;;;
+  ;;; Push an edit action to the undo stack. ACTION shall be the inverse of an
+  ;;; edit your applying (see above).
+  ;;;
+  ;;; `(ui-metastate MD 'undo)`
+  ;;;
+  ;;; Undo the most recent edit, if any.
+  ;;;
+  ;;; `(ui-metastate MD 'redo)`
+  ;;;
+  ;;; Redo the most recently undone edit.
+  ;;;
+  ;;; `(ui-metastate MD 'set-info STR)`
+  ;;;
+  ;;; Set the active command info in the modeline to STR.
   (define-method (ui-metastate primary: (buf <ui-module-view>)
 			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
@@ -2804,186 +3158,66 @@
 			      (map car (focus 'list)))))
       (ui-ref-by-zone-id mv zone-id)))
 
-  ;;; Returns the MDAL module associated with the currently active
-  ;;; `<ui-module-view>`.
+  ;;; Returns the MDAL module associated with `(current-module-view)`
   (define (current-mmod)
     (and-let* ((mv (current-module-view)))
-      (slot-value mv 'mmod)))
+      (ui-metastate mv 'mmod)))
 
-  ;;; Returns the MDAL engine definition associated with the currently active
-  ;;; `<ui-module-view>`.
+  ;;; Returns the MDAL engine definition associated with
+  ;;; `(current-module-view)`.
   (define (current-mdef)
     (and-let* ((mv (current-module-view)))
-      (car (slot-value mv 'mmod))))
+      (ui-metastate mv 'mdef)))
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Top Level Layout
-  ;; ---------------------------------------------------------------------------
-
-  ;;; The core widgets that make up Bintracker's GUI.
-
-  (define status-frame (tk 'create-widget 'frame))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Toolbar
-  ;; ---------------------------------------------------------------------------
-
-  ;; TODO this should move to bintracker-core.
-  ;; ed: No, to bintracker-state.
-
-  (define main-toolbar
-    (make <ui-toolbar> 'setup
-     '((file (new-file "New File" "new.png" enabled)
-	     (load-file "Load File..." "load.png" enabled)
-	     (save-file "Save File" "save.png"))
-       (journal (undo "Undo last edit" "undo.png")
-		(redo "Redo last edit" "redo.png"))
-       (edit (copy "Copy Selection" "copy.png")
-      	     (cut "Cut Selection (delete with shift)" "cut.png")
-      	     (clear "Clear Selection (delete, no shift)" "clear.png")
-      	     (paste "Paste from Clipboard (no shift)" "paste.png")
-      	     (insert "Insert from Clipbard (with shift)" "insert.png")
-      	     (swap "Swap Selection with Clipboard" "swap.png"))
-       (play (stop-playback "Stop Playback" "stop.png")
-      	     (play "Play Track from Current Position" "play.png")
-      	     (play-from-start "Play Track from Start" "play-from-start.png")
-      	     (play-pattern "Play Pattern" "play-ptn.png"))
-       (configure (toggle-prompt "Toggle Console" "prompt.png")
-      		  (show-settings "Settings..." "settings.png")))))
-
+  ;;; Returns the emulator associated with `(current-module-view)`.
+  (define (current-emulator)
+    (and-let* ((mv (current-module-view)))
+      (ui-metastate mv 'emulator)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Status Bar
   ;; ---------------------------------------------------------------------------
 
-  ;;; Initialize the status bar at the bottom of the main window.
-  (define (init-status-bar)
-    (let ((status-label (status-frame 'create-widget 'label
-				      textvariable: (tk-var "status-text"))))
-      (reset-status-text!)
-      (tk/pack status-label fill: 'x side: 'left)
-      (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
+  ;; ;;; Initialize the status bar at the bottom of the main window.
+  ;; (define (init-status-bar)
+  ;;   (let ((status-label (status-frame 'create-widget 'label
+  ;; 				      textvariable: (tk-var "status-text"))))
+  ;;     (reset-status-text!)
+  ;;     (tk/pack status-label fill: 'x side: 'left)
+  ;;     (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
 
-  ;;; Returns a string containing the current target platform and MDAL config
-  ;;; name, separated by a pipe.
-  (define (get-module-info-text)
-    (let ((module-view (current-module-view)))
-      (string-append (if module-view
-    			 (string-append
-    			  (target-platform-id
-			   (config-target (ui-metastate module-view 'mdef)))
-    			  " | "
-			  (mdmod-config-id (ui-metastate module-view 'mmod)))
-    			 "No module loaded.")
-    		     " | ")))
+  ;; ;;; Returns a string containing the current target platform and MDAL config
+  ;; ;;; name, separated by a pipe.
+  ;; (define (get-module-info-text)
+  ;;   (let ((module-view (current-module-view)))
+  ;;     (string-append (if module-view
+  ;;   			 (string-append
+  ;;   			  (target-platform-id
+  ;; 			   (config-target (ui-metastate module-view 'mdef)))
+  ;;   			  " | "
+  ;; 			  (mdmod-config-id (ui-metastate module-view 'mmod)))
+  ;;   			 "No module loaded.")
+  ;;   		     " | ")))
 
-  ;;; Set the message in the status to either a combination of the current
-  ;;; module's target platform and configuration name, or the string
-  ;;; "No module loaded."
-  (define (reset-status-text!)
-    (tk-set-var! "status-text" (string-append (get-module-info-text)
-					      (state 'active-md-command-info))))
+  ;; ;;; Set the message in the status to either a combination of the current
+  ;; ;;; module's target platform and configuration name, or the string
+  ;; ;;; "No module loaded."
+  ;; (define (reset-status-text!)
+  ;;   (tk-set-var! "status-text" (string-append (get-module-info-text)
+  ;; 					      (state 'active-md-command-info))))
 
-  ;;; Display `msg` in the status bar, extending the current info string.
-  (define (display-action-info-status! msg)
-    (tk-set-var! "status-text" (string-append (get-module-info-text)
-					      msg)))
+  ;; ;;; Display `msg` in the status bar, extending the current info string.
+  ;; (define (display-action-info-status! msg)
+  ;;   (tk-set-var! "status-text" (string-append (get-module-info-text)
+  ;; 					      msg)))
 
-  ;;; Bind the `<Enter>`/`<Leave>` events for the given `widget` to display/
-  ;;; remove the given info `text` in the status bar.
-  (define (bind-info-status widget text)
-    (tk/bind* widget '<Enter>
-	      (lambda () (display-action-info-status! text)))
-    (tk/bind* widget '<Leave> reset-status-text!))
-
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Editing
-  ;; ---------------------------------------------------------------------------
-
-  ;;; #### Overview
-  ;;;
-  ;;; All editing of the current MDAL module is communicated through so-called
-  ;;; "edit actions".
-  ;;;
-  ;;; An edit action is a list that takes the form
-  ;;;
-  ;;; `(ACTION PARENT-INSTANCE-PATH NODE-ID INSTANCES)`
-  ;;;
-  ;;; where ACTION is one of the symbols `set`, `insert`, or `remove`,
-  ;;; PARENT-INSTANCE-PATH is a fully qualified MDAL node path string denoting
-  ;;; the parent node instance of the node that you want to edit (ie. a path
-  ;;; starting at the global inode, see md-types/MDMOD for details),
-  ;;; NODE-ID is the ID of the node you want to edit, and INSTANCES is an
-  ;;; alist where the keys are node instance ID numbers and the values are the
-  ;;; values that you want to set. Values for a `remove` action are ignored, but
-  ;;; you must still provide the argument as a list of lists.
-  ;;;
-  ;;; As the respective names suggest, a `set` action sets one or more instances
-  ;;; of the node NODE-ID at PARENT-INSTANCE-PATH to (a) new value(s), an
-  ;;; `insert` action inserts one or more new instances into the node, and a
-  ;;; `remove` action removes one or more instances from the node.
-  ;;;
-  ;;; Alternatively, an edit action may take the form
-  ;;;
-  ;;; `(compound ACTIONS))`
-  ;;;
-  ;;; where ACTIONS is a list of edit actions. In this case, the edit actions
-  ;;; are applied in the order provided. A `compound` action thus bundles
-  ;;; one or more edit actions together.
-  ;;;
-  ;;; #### Applying edit actions
-  ;;;
-  ;;; Use the `apply-edit!` procedure to apply an edit action to the current
-  ;;; module. For each edit action applied, you should push the inverse of that
-  ;;; action to the undo stack. Use the `make-reverse-action` procedure to
-  ;;; generate an edit action that undoes the edit action you are applying, and
-  ;;; push it to the undo stack with `push-undo`. See bt-state/The Journal for
-  ;;; details on Bintracker's undo/redo mechanism.
-
-  ;;; Apply an edit action to the current module.
-  (define (apply-edit! action mmod)
-    (if (eqv? 'compound (car action))
-	(for-each apply-edit! (cdr action))
-	((case (car action)
-	   ((set) node-set!)
-	   ((remove) node-remove!)
-	   ((insert) node-insert!)
-	   (else (warning (string-append "Unsupported edit action \""
-					 (->string (car action))
-					 "\""))))
-	 (cadr action)
-	 (third action) (fourth action) mmod)))
-
-  ;;; Undo the latest edit action, by retrieving the latest action from the undo
-  ;;; stack, applying it, updating the redo stack, and refreshing the display.
-  (define (undo)
-    (let ((action (pop-undo)))
-      (when action
-	(apply-edit! action (ui-metastate (current-module-view) 'mmod))
-	(ui-blockview-update (current-order-view))
-	(ui-blockview-update (current-blocks-view))
-	(focus 'resume)
-	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'redo)
-	(when (zero? (app-journal-undo-stack-depth (state 'journal)))
-	  (ui-set-state (ui-ref main-toolbar 'journal) 'disabled 'undo)))))
-
-  ;;; Redo the latest undo action.
-  (define (redo)
-    (let ((action (pop-redo)))
-      (when action
-	(apply-edit! action (ui-metastate (current-module-view) 'mmod))
-	(ui-blockview-update (current-order-view))
-	(ui-blockview-update (current-blocks-view))
-	(focus 'resume)
-	(ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
-	(when (stack-empty? (app-journal-redo-stack (state 'journal)))
-	  (ui-set-state (ui-ref main-toolbar 'journal) 'disabled 'redo)))))
-
-  ;;; Enable the undo toolbar button, and update the window title if necessary.
-  (define (run-post-edit-actions)
-    (ui-set-state (ui-ref main-toolbar 'journal) 'enabled 'undo)
-    (update-window-title!))
+  ;; ;;; Bind the `<Enter>`/`<Leave>` events for the given `widget` to display/
+  ;; ;;; remove the given info `text` in the status bar.
+  ;; (define (bind-info-status widget text)
+  ;;   #t
+  ;;   ;; (tk/bind* widget '<Enter>
+  ;;   ;; 	      (lambda () (display-action-info-status! text)))
+  ;;   ;; (tk/bind* widget '<Leave> reset-status-text!)
+  ;;   )
 
   ) ;; end module bt-gui

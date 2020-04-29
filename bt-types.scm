@@ -108,9 +108,7 @@
     ((major-row-highlight 2) : fixnum)
     ((minor-row-highlight 4) : fixnum)
     menu
-    ((active-md-command-info "") : string)
-    ((font-height-cached 10) : fixnum)
-    ((journal (make-app-journal)) : (struct app-journal)))
+    ((font-height-cached 10) : fixnum))
 
   ;; TODO this should be an alist
   (defstruct app-keys

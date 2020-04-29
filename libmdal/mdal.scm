@@ -143,6 +143,22 @@
 						field-id mdconf))
 	'()))
 
+  ;;; Set the active MD command info string from the given mdconf config-inode
+  ;;; FIELD-ID.
+  (define (md-command-info field-id mdef)
+    (let ((command (config-get-inode-source-command field-id mdef)))
+      (string-append
+       (symbol->string field-id) ": "
+       (if (command-has-flag? command 'is-note)
+	   (string-append
+	    (normalize-note-name (lowest-note (command-keys command)))
+	    " - "
+	    (normalize-note-name (highest-note (command-keys command)))
+	    " ")
+	   "")
+       (command-description command))))
+
+
   ;; ---------------------------------------------------------------------------
   ;;; ### Inode mutators
   ;; ---------------------------------------------------------------------------
