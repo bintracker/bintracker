@@ -160,8 +160,6 @@
   ;;; Values are normalized, ie. empty positions are replaced with repeated
   ;;; values from an earlier row.
   (define (mod-get-order-values group-id group-instance)
-    (print "in mod-get-order-values, group id: " group-id "\ninstances: "
-	   group-instance)
     (repeat-block-row-values (cddr (mod-get-group-instance-order group-instance
 								 group-id))))
 
