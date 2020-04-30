@@ -737,10 +737,15 @@
   ;;; ### UI Element Classes
   ;; ---------------------------------------------------------------------------
 
-  ;;; `<ui-element>` is a wrapper around Tk widgets. The widgets are wrapped in
-  ;;; a Tk Frame widget. A `<ui-element>` instance may contain child elements,
-  ;;; which are in turn instances of `<ui-element>. Any instance of
-  ;;; `<ui-element>` or a derived class contains the following fields:
+  ;;; A `<ui-element>` represents a GUI metawidget consisting of one or more
+  ;;; Tk widgets. The metawidget is self-contained, meaning all it's child
+  ;;; widgets are wrapped in a
+  ;;; [ttk::frame](https://www.tcl-lang.org/man/tcl8.6/TkCmd/ttk_frame.htm).
+  ;;; A `<ui-element>` instance may contain other `<ui-elements>` as child
+  ;;; elements.
+  ;;;
+  ;;; Any instance of `<ui-element>` or a derived class contains the following
+  ;;; fields:
   ;;;
   ;;; - `setup` - an expression specifying how to construct the UI element.
   ;;; Details depend on the specific class type of the element. For standard
@@ -1075,6 +1080,39 @@
 		  (when group (ui-set-callbacks group (cdr cb)))))
 	      callbacks))
 
+  ;;; An auxiliary class used to add toolbars, settings-bars, and modelines
+  ;;; (status bars) to classes derived from `<ui-element>`.
+  ;;;
+  ;;; Classes inheriting from this must initialize the slots to an instance of
+  ;;; `<ui-toolbar>`, `<ui-settings-bar>`, and/or `<ui-modeline>`, for the
+  ;;; toolbar, settings-bar, and modeline slots, respectively.
+  ;;;
+  ;;; You can then call `ui-show-decorations` on instances of your derived class
+  ;;; to map the decorations to a chosen parent Tk frame).
+  (define-class <ui-buffer-decorations> ()
+    ((toolbar #f)
+     (settings-bar #f)
+     (modeline #f)))
+
+  ;;; Pack the decorations to the PARENT Tk frame window (usually `(ui-buf)` of
+  ;;; the class that inherits from this and `<ui-element>`).
+  (define-method (ui-show-decorations (d <ui-buffer-decorations>)
+				      parent #!optional after)
+    (let ((pack-separator (lambda ()
+			    (tk/pack (make-separator parent 'horizontal)
+				     expand: 0 fill: 'x))))
+      (when (and (slot-value d 'toolbar)
+		 (settings 'show-toolbar))
+	(ui-show (slot-value d 'toolbar))
+	(pack-separator))
+      (when (slot-value d 'settings-bar)
+	(ui-show (slot-value d 'settings-bar))
+	(pack-separator))
+      (when (slot-value d 'modeline)
+	(ui-show (slot-value d 'modeline))
+	(tk/pack (make-separator parent 'horizontal)
+		 expand: 0 fill: 'x side: 'bottom))))
+
   ;;; A class representing a container widget that wraps multiple resizable
   ;;; ui-buffers in a ttk
   ;;; [panedwindow](https://www.tcl.tk/man/tcl8.6/TkCmd/ttk_panedwindow.htm).
@@ -1106,15 +1144,12 @@
   ;;; by the display manager and `#f` otherwise, and WEIGHT is an integer
   ;;; specifying the initial size of the child element in relation to the other
   ;;; children (not taking into account resizes by the user),
-  (define-class <ui-multibuffer> (<ui-element>)
+  (define-class <ui-multibuffer> (<ui-element> <ui-buffer-decorations>)
     ((packing-args '(expand: 1 fill: both))
      (orient 'vertical)
      (setup '())
      panes
-     (toolbar #f)
-     (settings-bar #f)
-     (modeline #f)
-      state))  ;; id, index, visible, weigth
+     state))  ;; id, index, visible, weigth
 
   ;; TODO: to properly hide a child, we must receive the "forget" event from
   ;; the child and act on it. Likewise, the "pack" event must propagate up.
@@ -1161,33 +1196,16 @@
 	   ", child-states: " (slot-value buf 'state))
     (if (slot-value buf 'initialized)
 	(for-each (o ui-show cdr) (multibuffer-active+sorted-children buf))
-	(let ((pack-separator (lambda ()
-				(tk/pack (make-separator (ui-box buf)
-							 'horizontal)
-					 expand: 0 fill: 'x))))
-	  (print "ui-show/multibuffer: initializing")
-	  ;; TODO In theory, we could let `ui-show` of `<ui-element>` do the work,
-	  ;; but there seem to be some issues with Tk when adding children that
-	  ;; are not under control of the display manager yet.
+	(begin
+	  ;; (print "ui-show/multibuffer: initializing")
 	  (for-each (lambda (child)
-		      (print "calling ui-show on child " (car child))
+		      ;; (print "calling ui-show on child " (car child))
 		      (ui-show (cdr child))
 		      ((slot-value buf 'panes) 'add (ui-box (cdr child))
 		       weight: (caddr (alist-ref (car child)
 						 (slot-value buf 'state)))))
 		    (multibuffer-active+sorted-children buf))
-	  (when (and (slot-value buf 'toolbar)
-		     (settings 'show-toolbar))
-	    (ui-show (slot-value buf 'toolbar))
-	    (pack-separator))
-	  (when (slot-value buf 'settings-bar)
-	    (print "showing settings bar")
-	    (ui-show (slot-value buf 'settings-bar))
-	    (pack-separator))
-	  (when (slot-value buf 'modeline)
-	    (ui-show (slot-value buf 'modeline))
-	    (tk/pack (make-separator (ui-box buf) 'horizontal)
-		     expand: 0 fill: 'x side: 'bottom))
+	  (ui-show-decorations buf (ui-box buf))
 	  (tk/pack (slot-value buf 'panes) expand: 1 fill: 'both)
 	  (set! (slot-value buf 'initialized) #t)))
     (apply tk/pack (cons (ui-box buf) (slot-value buf 'packing-args))))
@@ -1208,7 +1226,7 @@
 		    (apply make (append (cdddr child-spec)
 					`(parent ,(slot-value buf 'panes))))
 		    (ui-children buf)))
-    (print "children created: " (ui-children buf))
+    ;; (print "children created: " (ui-children buf))
     (set! (slot-value buf 'state)
       (if before
 	  (let ((before-child? (lambda (child-state)
@@ -1231,10 +1249,10 @@
 		 (and (cadr child-spec) (not (slot-value buf 'initialized)))
 		 (caddr child-spec))
 	   (slot-value buf 'state))))
-    (print "multibuffer-add " (car child-spec) ", done adding shit, state: " (slot-value buf 'state))
+    ;; (print "multibuffer-add " (car child-spec) ", done adding shit, state: " (slot-value buf 'state))
     (when (and (slot-value buf 'initialized)
 	       (caddr child-spec))
-      (print "is initialized, calling multibuffer-show from multibuffer-add")
+      ;; (print "is initialized, calling multibuffer-show from multibuffer-add")
       (multibuffer-show buf (car child-spec)))
     (print "multibuffer-add " (car child-spec) ", final state: " (slot-value buf 'state)))
 
@@ -1252,7 +1270,7 @@
 			    state)))
 	  (set! (cadr (alist-ref child state))
 	    #t)
-	  (print "calling ui-show from multibuffer-show " child)
+	  ;; (print "calling ui-show from multibuffer-show " child)
 	  (ui-show child-buf)
 	  (if before
 	      ((slot-value buf 'panes) 'insert
@@ -1305,7 +1323,7 @@
   ;;;
   ;;; where ID is a unique child element identifier, and ELEMENT1 is an
   ;;; instance of a `<ui-element>`.
-  (define-class <ui-buffer> (<ui-element>)
+  (define-class <ui-buffer> (<ui-element> <ui-buffer-decorations>)
     ((title "")
      (default-state 'expanded)
      expand-button
@@ -1325,6 +1343,11 @@
 	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
     (set! (slot-value buf 'content-box)
       ((ui-box buf) 'create-widget 'frame style: 'BT.TFrame))
+    (when (slot-value buf 'modeline)
+      (set! (slot-value buf 'modeline)
+	(make <ui-modeline>
+	  'parent (slot-value buf 'content-box)
+	  'setup (slot-value buf 'modeline))))
     (unless (slot-value buf 'collapse-proc)
       (set! (slot-value buf 'collapse-proc)
 	(lambda (x)
@@ -1342,6 +1365,7 @@
 		      `((expand ,(lambda () (ui-expand buf)))))
     (ui-set-callbacks (slot-value buf 'collapse-button)
 		      `((collapse ,(lambda () (ui-collapse buf)))))
+    (ui-show-decorations buf (ui-box buf))
     (tk/pack (slot-value buf 'content-box) side: 'right expand: 1 fill: 'both)
     (ui-show (slot-value buf
 			 (if (eqv? 'expanded (slot-value buf 'default-state))
@@ -1695,7 +1719,11 @@
 	 'create-widget 'scrollbar orient: 'vertical
 	 command: (lambda args
 		    (apply (slot-value buf 'block-content) (cons 'yview args))
-		    (apply (slot-value buf 'rownums) (cons 'yview args)))))))
+		    (apply (slot-value buf 'rownums) (cons 'yview args)))))
+      (set! (slot-value buf 'modeline)
+	(make <ui-modeline>
+	  'parent (ui-box buf)
+	  'setup `((active-field ""))))))
 
   (define-method (ui-show before: (buf <ui-basic-block-view>))
     (print "ui-show/basic-block-view, group-id: " (slot-value buf 'group-id))
@@ -2099,10 +2127,7 @@
   ;;; Unset focus from the blockview BUF.
   (define-method (ui-blockview-unfocus primary: (buf <ui-basic-block-view>))
     (ui-blockview-remove-cursor buf)
-    ;; (set-state! 'active-md-command-info "")
-    (ui-metastate buf 'set-info "")
-    ;; (reset-status-text!)
-    )
+    (ui-modeline-set (slot-value buf 'modeline) 'active-field ""))
 
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
@@ -2300,9 +2325,9 @@
   ;;; the cursor currently points to.
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-block-view>))
-    (ui-metastate buf 'set-info
-		  (md-command-info (ui-blockview-get-current-field-id buf)
-				   (ui-metastate buf 'mdef))))
+    (ui-modeline-set (slot-value buf 'modeline) 'active-field
+		     (md-command-info (ui-blockview-get-current-field-id buf)
+				      (ui-metastate buf 'mdef))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -2494,13 +2519,13 @@
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-order-view>))
     (let ((current-field-id (ui-blockview-get-current-field-id buf)))
-      (ui-metastate buf 'set-info
-		    (if (symbol-contains current-field-id "_LENGTH")
-			"Step Length"
-			(string-append "Channel "
-				       (string-drop (symbol->string
-						     current-field-id)
-						    2))))))
+      (ui-modeline-set (slot-value buf 'modeline) 'active-field
+		       (if (symbol-contains current-field-id "_LENGTH")
+			   "Step Length"
+			   (string-append "Channel "
+					  (string-drop (symbol->string
+							current-field-id)
+						       2))))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
