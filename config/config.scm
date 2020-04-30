@@ -122,3 +122,12 @@
 ;; 		        (lambda ()
 ;; 		          (display "Hello World!")
 ;; 		          (newline)))
+
+
+;; User Code
+;; ---------
+
+;; You can add your own Scheme code to this configuration script. Note that
+;; this code will run BEFORE the startup code. This means the global application
+;; state is not fully initialized at this point. Refer to the Developer's
+;; Documentation for information on the API that Bintracker exposes.
