@@ -127,6 +127,10 @@
   ;;; ## Startup Hooks
   ;; ---------------------------------------------------------------------------
 
+  ;;; The set of hooks that will be executed immediately after startup.
+  (define after-startup-hooks
+    (make-hooks))
+
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
     (make-hooks
@@ -144,6 +148,7 @@
      `(add-size-grip . ,add-size-grip)
      `(set-schemta-include-path
        . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
-     `(disable-keyboard-traversal . ,disable-keyboard-traversal)))
+     `(disable-keyboard-traversal . ,disable-keyboard-traversal)
+     `(run-post-startup . ,(lambda () (after-startup-hooks 'execute)))))
 
   ) ;; end module bintracker-core
