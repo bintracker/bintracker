@@ -21,8 +21,8 @@
 (load-keymap "de")
 
 
-;; Appearance
-;; ----------
+;; General Appearance
+;; ------------------
 
 ;; Set the color scheme. The argument must name a color scheme file in
 ;; config/color-schemes (without the extension). You can tweak the application
@@ -101,11 +101,22 @@
 ;; -----
 
 ;; You hook your own procedures into Bintracker's internal processing at
-;; various points. This is an experimental feature, refer the Bintracker API
-;; documentation for more information on how to add hooks.
+;; various points. The following hook sets are available:
+;;
+;; - after-startup-hooks: Run directly after application startup.
+;; - after-load-file-hooks: Run after loading a module file or creating a new
+;;   module.
+;; - on-save-file-hooks: Run when saving a module file.
+;; - on-close-file-hooks: Run when closing a module file.
+;;
+;; All of the above hook sets take hook procedures with no arguments, except the
+;; after-load-file-hooks, which take 2 (or a variable number of) arguments.
 
-;; This example will add a hook that display's "Hello World!" in the user's
-;; terminal (if Bintracker was started from a terminal, that is).
+;; This is an experimental feature, refer the Bintracker API documentation for
+;; more information on how to add hooks.
+
+;; The following example will add a hook that display's "Hello World!" in your
+;; terminal (provided you started Bintracker from a terminal, of course).
 ;; (after-startup-hooks 'add
 ;; 		        'hello-world
 ;; 		        (lambda ()
