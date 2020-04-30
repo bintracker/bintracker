@@ -15,7 +15,7 @@
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
-  	    (chicken bitwise)
+  	    (chicken bitwise) (chicken file)
   	    srfi-1 srfi-13 srfi-18 srfi-69 coops list-utils simple-exceptions
   	    (only sql-de-lite exec sql))
 
@@ -34,153 +34,6 @@
 	      (newline))
 	  (load "config/config.scm"))
 	(warning "Configuration file \"config/config.scm\" not found.")))
-
-  ;;; If there are unsaved changes to the current module, ask user if they
-  ;;; should be saved, then execute the procedure PROC unless the user
-  ;;; cancelled the action. With no unsaved changes, simply execute PROC.
-  (define (do-proc-with-exit-dialogue dialogue-string proc)
-    (if (and (current-module-view)
-	     (ui-metastate (current-module-view) 'modified))
-	(match (exit-with-unsaved-changes-dialog dialogue-string)
-	  ("yes" (begin (save-file)
-			(proc)))
-	  ("no" (proc))
-	  (else #f))
-	(proc)))
-
-  ;;; Shut down the running application.
-  (define (exit-bintracker)
-    (do-proc-with-exit-dialogue "exit"
-				(lambda ()
-				  (when (current-module-view)
-				    (multibuffer-delete (ui) 'module-view))
-				  (btdb-close!)
-				  (tk-end))))
-
-  (define on-close-file-hooks
-    (make-hooks
-     `(delete-module-view . ,(lambda () (multibuffer-delete (ui) 'module-view)))
-     `(show-welcome-buffer . ,(lambda () (multibuffer-show (ui) 'welcome)))
-     `(update-window-title . ,update-window-title!)))
-
-  ;;; Close the currently opened module file.
-  (define (close-file)
-    ;; TODO disable menu option
-    (when (current-module-view)
-      (do-proc-with-exit-dialogue
-       "closing"
-       (lambda () (on-close-file-hooks 'execute)))))
-
-  (define after-load-file-hooks
-    (make-hooks
-     `(hide-welcome-buffer . ,(lambda args (multibuffer-hide (ui) 'welcome)))
-     `(show-module
-       . ,(lambda (mmod filename)
-	    (multibuffer-add (ui)
-			     `(module-view #t 5 ,<ui-module-view>
-					   mmod ,mmod filename ,filename)
-			     before: 'repl)))
-     `(focus-first-block
-       . ,(lambda args
-	    (and-let* ((entry (find (lambda (entry)
-				      (symbol-contains (car entry)
-						       "block-view"))
-				    (focus 'list))))
-	      (focus 'set (car entry)))))))
-
-  ;; TODO logging
-  ;;; Prompt the user to load an MDAL module file.
-  (define (load-file)
-    (close-file)
-    (let ((filename (tk/get-open-file*
-		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
-      (unless (string-null? filename)
-	(handle-exceptions
-	    exn
-	    (repl-insert (repl) (string-append "\nError: " (->string exn)
-		   			       "\n" (message exn) "\n"))
-	  (after-load-file-hooks 'execute #f filename)))))
-
-  (define (create-new-module mdconf-id)
-    (close-file)
-    (after-load-file-hooks 'execute
-			   (generate-new-mdmod
-			    ;; TODO
-  			    (file->config "libmdal/unittests/config/"
-  					  "Huby" "libmdal/")
-  			    16)
-			   #f))
-
-  ;; TODO abort when user aborts closing of current workfile
-  ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
-  ;;; user's choice, a new MDAL module is created and displayed.
-  (define (new-file)
-    (let ((d (make-dialogue)))
-      (d 'show)
-      (d 'add 'widget 'platform-selector '(listbox selectmode: single))
-      (d 'add 'widget 'config-selector
-	 '(treeview columns: (Name Version Platform)))
-      (for-each (lambda (p)
-		  ((d 'ref 'platform-selector) 'insert 'end p))
-		(cons "any" (btdb-list-platforms)))
-      (for-each (lambda (config)
-  		  ((d 'ref 'config-selector) 'insert '{} 'end
-  		   text: (car config)
-  		   values: (list (cadr config) (third config))))
-  		;; TODO btdb-list-configs should always return a list!
-  		(list (btdb-list-configs)))
-      (d 'add 'finalizer (lambda a
-			   (create-new-module
-			    ((d 'ref 'config-selector)
-			     'item ((d 'ref 'config-selector) 'focus)))))))
-
-  (define on-save-file-hooks
-    (make-hooks
-     `(write-file
-       . ,(lambda ()
-	    (mdmod->file (ui-metastate (current-module-view) 'mmod)
-			 (ui-metastate (current-module-view) 'filename))
-	    (ui-metastate (current-module-view) 'modified #f)))
-     `(update-window-title . ,update-window-title!)))
-
-  ;;; Save the current MDAL module. If no file name has been specified yet,
-  ;;; promt the user for one.
-  (define (save-file)
-    (when (ui-metastate (current-module-view) 'modified)
-      (if (ui-metastate (current-module-view) 'filename)
-	  (on-save-file-hooks 'execute)
-	  (save-file-as))))
-
-  ;;; Save the current MDAL module under a new, different name.
-  (define (save-file-as)
-    (let ((filename (tk/get-save-file*
-		     filetypes: '(((MDAL Modules) (.mdal)))
-		     defaultextension: '.mdal)))
-      (unless (string-null? filename)
-	(ui-metastate (current-module-view) 'filename filename)
-	(on-save-file-hooks 'execute))))
-
-  ;;; Calls undo on (current-module-view).
-  (define (undo)
-    (and-let* ((mv (current-module-view)))
-      (ui-metastate mv 'undo)))
-
-  ;;; Calls redo on (current-module-view).
-  (define (redo)
-    (and-let* ((mv (current-module-view)))
-      (ui-metastate mv 'redo)))
-
-  ;;; Launch the online help in the user's default system web browser.
-  (define (launch-help)
-    ;; TODO windows untested
-    (let ((uri (cond-expand
-		 (unix "\"documentation/index.html\"")
-		 (windows "\"documentation\\index.html\"")))
-	  (open-cmd (cond-expand
-		      ((or linux freebsd netbsd openbsd) "xdg-open ")
-		      (macosx "open ")
-		      (windows "[list {*}[auto_execok start] {}] "))))
-      (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
 
   (define (info . args)
     (if (null? args)
@@ -208,33 +61,11 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Playback
-  ;; ---------------------------------------------------------------------------
-
-  (define (play-from-start)
-    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
-	   (origin (config-default-origin (car mmod))))
-      ((ui-metastate (current-module-view) 'emulator) 'run origin
-       (list->string (map integer->char (mod->bin mmod origin))))))
-
-  (define (play-pattern)
-    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
-	   (origin (config-default-origin (car mmod))))
-      ((ui-metastate (current-module-view) 'emulator) 'run origin
-       (list->string
-	(map integer->char
-      	     (mod->bin (derive-single-pattern-mdmod
-      			mmod
-      			(slot-value (current-blocks-view) 'group-id)
-      			(ui-blockview-get-current-order-pos
-      			 (current-blocks-view)))
-      		       origin))))))
-
-  (define (stop-playback)
-    ((ui-metastate (current-module-view) 'emulator) 'pause))
-
-  ;; ---------------------------------------------------------------------------
   ;;; ## Main Menu
+  ;; ---------------------------------------------------------------------------
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Core GUI Layout
   ;; ---------------------------------------------------------------------------
 
   ;;; Initialize the main menu.
@@ -266,23 +97,16 @@
 					    ,about-message))))))))
 
 
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Core GUI Layout
-  ;; ---------------------------------------------------------------------------
-
   (define (init-top-level-layout)
     (begin
       (set-state! 'ui
-		  (make <ui-multibuffer>
-		    'setup `((welcome #t 5 ,<ui-welcome-buffer>)
-			     (repl #t 2 ,<ui-repl> setup
-				   ,(string-append
-				     "Bintracker "
-				     *bintracker-version*
-				     " REPL\n"
-				     "For help, type \"(info)\" at the prompt."
-				     "\n")))
-		    'modeline '((keystrokes ""))))
+		  (apply make
+			 `(,<ui-multibuffer> setup
+					     ,(ui-eval-layout-expression
+					       (settings 'startup-layout))
+			    ,@(if (settings 'show-modelines)
+				  '(modeline ((keystrokes "")))
+				  '()))))
       (ui-show (ui))))
 
 
@@ -297,17 +121,6 @@
 			  (eval (cadr key-mapping))))
 	      (get-keybinding-group 'global))
     (create-virtual-events))
-
-  ;; ;;; Update the bindings for the toolbar buttons.
-  ;; (define (update-toolbar-bindings!)
-  ;;   (ui-set-callbacks main-toolbar
-  ;; 		      `((file (load-file ,load-file)
-  ;; 			      (save-file ,save-file))
-  ;; 			(play (play-from-start ,play-from-start)
-  ;; 			      (play-pattern ,play-pattern)
-  ;; 			      (stop-playback ,stop-playback))
-  ;; 			(journal (undo ,undo)
-  ;; 				 (redo ,redo)))))
 
 
   ;; ---------------------------------------------------------------------------

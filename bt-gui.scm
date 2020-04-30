@@ -13,25 +13,12 @@
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  (chicken sort) list-utils srfi-1 srfi-13 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
+	  matchable
 	  bt-state bt-types bt-emulation bt-db mdal)
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Utilities
   ;; ---------------------------------------------------------------------------
-
-  ;;; update window title by looking at current file name and 'modified'
-  ;;; property
-  (define (update-window-title!)
-    (let ((current-mv (current-module-view)))
-      (tk/wm 'title tk
-	     (if current-mv
-		 (string-append
-		  (or (and-let* ((fp (ui-metastate current-mv 'filename)))
-			(pathname-file fp))
-		      "unknown")
-		  (if (ui-metastate current-mv 'modified) "* - " " - ")
-		  "Bintracker")
-		 "Bintracker"))))
 
   ;;; Thread-safe version of tk/bind. Wraps the procedure PROC in a thunk
   ;;; that is safe to execute as a callback from Tk.
@@ -67,9 +54,21 @@
     (tk/place (tk 'create-widget 'sizegrip style: 'BT.TSizegrip)
 	      anchor: 'se relx: 1.0 rely: 1.0))
 
+  (define (ui-eval-layout-expression expr)
+    (map (lambda (subexpr)
+	   (or (>= (length subexpr) 4)
+	       (error 'ui-eval-layout-expression
+		      (string-append "invalid layout sub-expression "
+				     (->string subexpr))))
+	   (append (take subexpr 3)
+		   (cons (case (cadddr subexpr)
+			   ((<ui-welcome-buffer>) <ui-welcome-buffer>)
+			   ((<ui-repl>) <ui-repl>))
+			 (drop subexpr 4))))
+	 expr))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Dialogues
+  ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
 
   ;;; This section provides abstractions over Tk dialogues and pop-ups. This
@@ -219,6 +218,198 @@
 	     (set! tl #f)))
 	  (else (warning (string-append "Error: Unsupported dialog action"
 					(->string args))))))))
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Global Actions
+  ;; ---------------------------------------------------------------------------
+
+  ;;; update window title by looking at current file name and 'modified'
+  ;;; property
+  (define (update-window-title!)
+    (let ((current-mv (current-module-view)))
+      (tk/wm 'title tk
+	     (if current-mv
+		 (string-append
+		  (or (and-let* ((fp (ui-metastate current-mv 'filename)))
+			(pathname-file fp))
+		      "unknown")
+		  (if (ui-metastate current-mv 'modified) "* - " " - ")
+		  "Bintracker")
+		 "Bintracker"))))
+
+  ;;; If there are unsaved changes to the current module, ask user if they
+  ;;; should be saved, then execute the procedure PROC unless the user
+  ;;; cancelled the action. With no unsaved changes, simply execute PROC.
+  (define (do-proc-with-exit-dialogue dialogue-string proc)
+    (if (and (current-module-view)
+	     (ui-metastate (current-module-view) 'modified))
+	(match (exit-with-unsaved-changes-dialog dialogue-string)
+	  ("yes" (begin (save-file)
+			(proc)))
+	  ("no" (proc))
+	  (else #f))
+	(proc)))
+
+  ;;; Shut down the running application.
+  (define (exit-bintracker)
+    (do-proc-with-exit-dialogue "exit"
+				(lambda ()
+				  (when (current-module-view)
+				    (multibuffer-delete (ui) 'module-view))
+				  (btdb-close!)
+				  (tk-end))))
+
+  (define on-close-file-hooks
+    (make-hooks
+     `(delete-module-view . ,(lambda () (multibuffer-delete (ui) 'module-view)))
+     `(show-welcome-buffer . ,(lambda () (multibuffer-show (ui) 'welcome)))
+     `(update-window-title . ,update-window-title!)))
+
+  ;;; Close the currently opened module file.
+  (define (close-file)
+    ;; TODO disable menu option
+    (when (current-module-view)
+      (do-proc-with-exit-dialogue
+       "closing"
+       (lambda () (on-close-file-hooks 'execute)))))
+
+  (define after-load-file-hooks
+    (make-hooks
+     `(hide-welcome-buffer . ,(lambda args (multibuffer-hide (ui) 'welcome)))
+     `(show-module
+       . ,(lambda (mmod filename)
+	    (multibuffer-add (ui)
+			     `(module-view #t 5 ,<ui-module-view>
+					   mmod ,mmod filename ,filename)
+			     before: 'repl)))
+     `(focus-first-block
+       . ,(lambda args
+	    (and-let* ((entry (find (lambda (entry)
+				      (symbol-contains (car entry)
+						       "block-view"))
+				    (focus 'list))))
+	      (focus 'set (car entry)))))))
+
+  ;; TODO logging
+  ;;; Prompt the user to load an MDAL module file.
+  (define (load-file)
+    (close-file)
+    (let ((filename (tk/get-open-file*
+		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
+      (unless (string-null? filename)
+	(handle-exceptions
+	    exn
+	    (repl-insert (repl) (string-append "\nError: " (->string exn)
+		   			       "\n" (message exn) "\n"))
+	  (after-load-file-hooks 'execute #f filename)))))
+
+  (define (create-new-module mdconf-id)
+    (close-file)
+    (after-load-file-hooks 'execute
+			   (generate-new-mdmod
+			    ;; TODO
+  			    (file->config "libmdal/unittests/config/"
+  					  "Huby" "libmdal/")
+  			    16)
+			   #f))
+
+  ;; TODO abort when user aborts closing of current workfile
+  ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
+  ;;; user's choice, a new MDAL module is created and displayed.
+  (define (new-file)
+    (let ((d (make-dialogue)))
+      (d 'show)
+      (d 'add 'widget 'platform-selector '(listbox selectmode: single))
+      (d 'add 'widget 'config-selector
+	 '(treeview columns: (Name Version Platform)))
+      (for-each (lambda (p)
+		  ((d 'ref 'platform-selector) 'insert 'end p))
+		(cons "any" (btdb-list-platforms)))
+      (for-each (lambda (config)
+  		  ((d 'ref 'config-selector) 'insert '{} 'end
+  		   text: (car config)
+  		   values: (list (cadr config) (third config))))
+  		;; TODO btdb-list-configs should always return a list!
+  		(list (btdb-list-configs)))
+      (d 'add 'finalizer (lambda a
+			   (create-new-module
+			    ((d 'ref 'config-selector)
+			     'item ((d 'ref 'config-selector) 'focus)))))))
+
+  (define on-save-file-hooks
+    (make-hooks
+     `(write-file
+       . ,(lambda ()
+	    (mdmod->file (ui-metastate (current-module-view) 'mmod)
+			 (ui-metastate (current-module-view) 'filename))
+	    (ui-metastate (current-module-view) 'modified #f)))
+     `(update-window-title . ,update-window-title!)))
+
+  ;;; Save the current MDAL module. If no file name has been specified yet,
+  ;;; promt the user for one.
+  (define (save-file)
+    (when (ui-metastate (current-module-view) 'modified)
+      (if (ui-metastate (current-module-view) 'filename)
+	  (on-save-file-hooks 'execute)
+	  (save-file-as))))
+
+  ;;; Save the current MDAL module under a new, different name.
+  (define (save-file-as)
+    (let ((filename (tk/get-save-file*
+		     filetypes: '(((MDAL Modules) (.mdal)))
+		     defaultextension: '.mdal)))
+      (unless (string-null? filename)
+	(ui-metastate (current-module-view) 'filename filename)
+	(on-save-file-hooks 'execute))))
+
+  ;;; Calls undo on (current-module-view).
+  (define (undo)
+    (and-let* ((mv (current-module-view)))
+      (ui-metastate mv 'undo)))
+
+  ;;; Calls redo on (current-module-view).
+  (define (redo)
+    (and-let* ((mv (current-module-view)))
+      (ui-metastate mv 'redo)))
+
+  ;;; Launch the online help in the user's default system web browser.
+  (define (launch-help)
+    ;; TODO windows untested
+    (let ((uri (cond-expand
+		 (unix "\"documentation/index.html\"")
+		 (windows "\"documentation\\index.html\"")))
+	  (open-cmd (cond-expand
+		      ((or linux freebsd netbsd openbsd) "xdg-open ")
+		      (macosx "open ")
+		      (windows "[list {*}[auto_execok start] {}] "))))
+      (tk-eval (string-append "exec {*}" open-cmd uri " &"))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; #### Playback
+  ;; ---------------------------------------------------------------------------
+
+  (define (play-from-start)
+    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
+	   (origin (config-default-origin (car mmod))))
+      ((ui-metastate (current-module-view) 'emulator) 'run origin
+       (list->string (map integer->char (mod->bin mmod origin))))))
+
+  (define (play-pattern)
+    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
+	   (origin (config-default-origin (car mmod))))
+      ((ui-metastate (current-module-view) 'emulator) 'run origin
+       (list->string
+	(map integer->char
+      	     (mod->bin (derive-single-pattern-mdmod
+      			mmod
+      			(slot-value (current-blocks-view) 'group-id)
+      			(ui-blockview-get-current-order-pos
+      			 (current-blocks-view)))
+      		       origin))))))
+
+  (define (stop-playback)
+    ((ui-metastate (current-module-view) 'emulator) 'pause))
 
 
   ;; ---------------------------------------------------------------------------
@@ -1001,9 +1192,7 @@
 		      (tk/pack button side: 'top padx: 0 fill: 'x)))
 		(map cdr (slot-value buf 'buttons)))
       (when (eqv? orient 'horizontal)
-	(tk/pack ;; (box 'create-widget 'separator orient: 'vertical
-	 ;;      style: 'BT.TSeparator)
-	 (make-separator box 'vertical)
+	(tk/pack (make-separator box 'vertical)
 		 side: 'left padx: 0 fill: 'y))))
 
   ;;; Enable or disable BUF or one of it's child elements. STATE must be either
@@ -1025,16 +1214,38 @@
   ;;; `((ID THUNK) ...)`
   ;;;
   ;;; where ID is a button identifier, and THUNK is a callback procedure that
-  ;;; takes no arguments. If ID is found in Bintracker's `global` key bindings
-  ;;; table, the matching key binding information is added to the button's info
-  ;;; text.
-  (define-method (ui-set-callbacks primary: (buf <ui-button-group>)
-				   callbacks)
+  ;;; takes no arguments. Optionally, ENTER-BINDING may be a callback procedure
+  ;;; with no arguments that will be invoked when the user starts hovering over
+  ;;; the button with the mouse, and LEAVE-BINDING may be a callback procedure
+  ;;; with no arguments that is invoked when the mouse leaves the button area.
+  ;;; You would typically use this to display some information about the button
+  ;;; in a modeline.
+  (define-method (ui-set-callbacks primary: (buf <ui-button-group>) callbacks
+				   #!optional modeline segment-id)
     (let ((buttons (slot-value buf 'buttons)))
-      (for-each (lambda (cb)
-		  (let ((button (alist-ref (car cb) buttons)))
-		    (when button
-		      (button 'configure command: (cadr cb))
+      (for-each
+       (lambda (cb)
+	 (let ((button (alist-ref (car cb) buttons)))
+	   (when button
+	     (button 'configure command: (lambda ()
+					   (focus 'suspend)
+					   ((cadr cb))
+					   (focus 'resume)))
+	     (when (and modeline segment-id)
+	       (tk/bind* button '<Enter>
+			 (lambda ()
+			   (ui-modeline-set
+			    modeline
+			    segment-id
+			    (string-append
+			     (or (car (alist-ref (car cb)
+						 (ui-setup buf)))
+				 "")
+			     " " (key-binding->info 'global (car cb))))))
+	       (tk/bind* button '<Leave>
+			 (lambda ()
+			   (ui-modeline-set modeline segment-id ""))))
+
 		      ;; (bind-info-status
 		      ;;  button
 		      ;;  (string-append (car (alist-ref (car cb)
@@ -1074,10 +1285,11 @@
   ;;; a callback specification as required by the `ui-set-callbacks` method of
   ;;; `<ui-button-group>`.
   (define-method (ui-set-callbacks primary: (buf <ui-toolbar>)
-				   callbacks)
+				   callbacks #!optional modeline segment-id)
     (for-each (lambda (cb)
 		(let ((group (alist-ref (car cb) (ui-children buf))))
-		  (when group (ui-set-callbacks group (cdr cb)))))
+		  (when group (ui-set-callbacks group (cdr cb)
+						modeline segment-id))))
 	      callbacks))
 
   ;;; An auxiliary class used to add toolbars, settings-bars, and modelines
@@ -2978,7 +3190,10 @@
 		(third action)
 		(fourth action)
 		(slot-value buf 'mmod)))))
-	((push-undo) (module-view-push-undo buf (cadr args)))
+	((push-undo)
+	 (module-view-push-undo buf (cadr args))
+	 (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+		       'enabled 'undo))
 	((undo) (module-view-undo buf))
 	((redo) (module-view-redo buf))
 	((filename) (if (null? (cdr args))
@@ -3002,20 +3217,33 @@
 		     "libmdal/")))
     (unless (slot-value buf 'filename)
       (set! (slot-value buf 'modified) #t))
-    (set! (slot-value buf 'toolbar)
-      (make-module-view-toolbar buf))
+    (when (settings 'show-modelines)
+      (set! (slot-value buf 'modeline)
+	(make <ui-modeline> 'parent (ui-box buf)
+	      'setup `((platform ,(->string (target-platform-id
+					     (config-target
+					      (car (slot-value buf 'mmod)))))
+				 1)
+		       (engine ,(->string (config-id
+					   (car (slot-value buf 'mmod))))
+			       2)
+		       (active-field "")))))
+    (when (settings 'show-toolbar)
+      (set! (slot-value buf 'toolbar)
+	(make-module-view-toolbar buf))
+      (ui-set-callbacks (slot-value buf 'toolbar)
+			`((file (new-file ,new-file)
+				(load-file ,load-file)
+  				(save-file ,save-file))
+  			  (play (play-from-start ,play-from-start)
+  				(play-pattern ,play-pattern)
+  				(stop-playback ,stop-playback))
+  			  (journal (undo ,(cute module-view-undo buf))
+  				   (redo ,(cute module-view-redo buf))))
+			(slot-value buf 'modeline)
+			'active-field))
     (set! (slot-value buf 'settings-bar)
       (make-module-view-settings-bar buf))
-    (set! (slot-value buf 'modeline)
-      (make <ui-modeline> 'parent (ui-box buf)
-	    'setup `((platform ,(->string (target-platform-id
-					   (config-target
-					    (car (slot-value buf 'mmod)))))
-			       1)
-		     (engine ,(->string (config-id
-					 (car (slot-value buf 'mmod))))
-			     2)
-		     (active-field ""))))
     (set! (slot-value buf 'metastate-accessor)
       (make-metastate-accessor buf))
     (unless (null? (config-get-subnode-type-ids 'GLOBAL

@@ -119,8 +119,13 @@
     ((keymap "EN") : (or string (struct app-keys)))
     ((number-base 16) : fixnum)
     ((mdal-config-dir "libmdal/unittests/config/") : string)
+    ((startup-layout '((welcome #t 5 <ui-welcome-buffer>)
+		       (repl #t 2 <ui-repl> setup
+			     "For help, type \"(info)\" at the prompt.\n")))
+     : list)
     ((show-menu #t) : boolean)
     ((show-toolbar #t) : boolean)
+    ((show-modelines #t) : boolean)
     ((font-mono "Courier") : string)
     ((font-size 10) : fixnum)
     ((line-spacing 1) : fixnum)
