@@ -6,6 +6,10 @@
 
 The answer is probably yes, though it might not be convenient do to so (yet).
 
+#### Any plans for Android/iOS support?
+
+Not yet. We may support mobile devices some day but not in the near future.
+
 #### I'm using a French/German/other non-standard keyboard. How can I change the key bindings?
 
 Go to your Bintracker folder, and open the file `config.scm` from the `config` subfolder in a text editor. Find the line that says `(load-keymap "en")` and change the `"en"` part to `"fr"`, `"de"`, or whatever layout you use. See the `keymap` subfolder of the `config` folder for a list of available keymaps. If no suitable keymap exists, you can derive your own by copying one of the existing keymaps and editing it.
