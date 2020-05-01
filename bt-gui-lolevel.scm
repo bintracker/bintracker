@@ -7,8 +7,10 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  list-utils typed-records srfi-1 srfi-13 pstk
+	  (chicken file)
+	  list-utils typed-records srfi-1 srfi-13 pstk imlib2 web-colors
 	  bt-state bt-types)
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Utilities
@@ -39,10 +41,34 @@
 				" " (symbol->string mapping)
 				" +break")))))
 
+  (define (recolor-png filename color)
+    (let ((img (image-load filename))
+	  (rgb (cdr (parse-web-color color))))
+      (for-each (lambda (x)
+		  (for-each (lambda (y)
+			      (let-values
+				  (((_ _ _ transparency)
+				    (image-pixel/rgba img x y)))
+				(image-draw-pixel img
+						  (color/rgba (car rgb)
+							      (cadr rgb)
+							      (caddr rgb)
+							      transparency)
+						  x y)))
+			    (iota (image-height img))))
+		(iota (image-width img)))
+      (image-save img (string-append filename
+				     "." (string-drop color 1) ".png"))))
+
   ;;; Create a tk image resource from a given PNG file.
-  (define (tk/icon filename)
-    (tk/image 'create 'photo format: "PNG"
-	      file: (string-append "resources/icons/" filename)))
+  (define (tk/icon filename #!optional (icon-color (colors 'text)))
+    (let ((actual-filename
+	   (string-append "resources/icons/" filename
+			  "." (string-drop icon-color 1) ".png")))
+      (unless (file-exists? actual-filename)
+	(recolor-png (string-append "resources/icons/" filename)
+		     icon-color))
+      (tk/image 'create 'photo format: "PNG" file: actual-filename)))
 
   (define (add-size-grip)
     (tk/place (tk 'create-widget 'sizegrip style: 'BT.TSizegrip)

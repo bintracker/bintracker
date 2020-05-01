@@ -7,6 +7,7 @@ libmdal/docs/generated
 tclkit/
 cfg/
 roms/
+resources/icons/*.png.*.png
 *.swp
 *.org~
 .#*
