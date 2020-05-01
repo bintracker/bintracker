@@ -1932,10 +1932,11 @@
 	 command: (lambda args
 		    (apply (slot-value buf 'block-content) (cons 'yview args))
 		    (apply (slot-value buf 'rownums) (cons 'yview args)))))
-      (set! (slot-value buf 'modeline)
-	(make <ui-modeline>
-	  'parent (ui-box buf)
-	  'setup `((active-field ""))))))
+      (when (settings 'show-modelines)
+	(set! (slot-value buf 'modeline)
+	  (make <ui-modeline>
+	    'parent (ui-box buf)
+	    'setup `((active-field "")))))))
 
   (define-method (ui-show before: (buf <ui-basic-block-view>))
     (print "ui-show/basic-block-view, group-id: " (slot-value buf 'group-id))
@@ -2339,7 +2340,8 @@
   ;;; Unset focus from the blockview BUF.
   (define-method (ui-blockview-unfocus primary: (buf <ui-basic-block-view>))
     (ui-blockview-remove-cursor buf)
-    (ui-modeline-set (slot-value buf 'modeline) 'active-field ""))
+    (when (slot-value buf 'modeline)
+      (ui-modeline-set (slot-value buf 'modeline) 'active-field "")))
 
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
@@ -2537,9 +2539,11 @@
   ;;; the cursor currently points to.
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-block-view>))
-    (ui-modeline-set (slot-value buf 'modeline) 'active-field
-		     (md-command-info (ui-blockview-get-current-field-id buf)
-				      (ui-metastate buf 'mdef))))
+    (and (slot-value buf 'modeline)
+	 (ui-modeline-set (slot-value buf 'modeline) 'active-field
+			  (md-command-info
+			   (ui-blockview-get-current-field-id buf)
+			   (ui-metastate buf 'mdef)))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -2740,14 +2744,15 @@
   ;;; the cursor currently points to.
   (define-method (ui-blockview-update-current-command-info
 		  primary: (buf <ui-order-view>))
-    (let ((current-field-id (ui-blockview-get-current-field-id buf)))
-      (ui-modeline-set (slot-value buf 'modeline) 'active-field
-		       (if (symbol-contains current-field-id "_LENGTH")
-			   "Step Length"
-			   (string-append "Channel "
-					  (string-drop (symbol->string
-							current-field-id)
-						       2))))))
+    (when (slot-value buf 'modeline)
+      (let ((current-field-id (ui-blockview-get-current-field-id buf)))
+	(ui-modeline-set (slot-value buf 'modeline) 'active-field
+			 (if (symbol-contains current-field-id "_LENGTH")
+			     "Step Length"
+			     (string-append "Channel "
+					    (string-drop (symbol->string
+							  current-field-id)
+							 2)))))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -3208,8 +3213,9 @@
 			(slot-value buf 'filename)
 			(set! (slot-value buf 'filename)
 			  (cadr args))))
-	((set-info) (ui-modeline-set (slot-value buf 'modeline)
-				     'active-field (cadr args)))
+	((set-info) (and (slot-value buf 'modeline)
+			 (ui-modeline-set (slot-value buf 'modeline)
+					  'active-field (cadr args))))
 	(else (error 'metastate (string-append "invalid command "
 					       (->string args)))))))
 
