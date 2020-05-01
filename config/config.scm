@@ -46,7 +46,7 @@
 ;; (set-conf! 'show-menu #t)
 
 ;; Enable or disable toolbars.
-;; (set-conf! 'show-toolbar #t)
+;; (set-conf! 'show-toolbars #t)
 
 ;; Set the number base. Use 10 for decimal, and 16 for hexadecimal.
 ;; (set-conf! 'number-base 16)

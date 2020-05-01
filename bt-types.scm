@@ -124,7 +124,7 @@
 			     "For help, type \"(info)\" at the prompt.\n")))
      : list)
     ((show-menu #t) : boolean)
-    ((show-toolbar #t) : boolean)
+    ((show-toolbars #t) : boolean)
     ((show-modelines #t) : boolean)
     ((font-mono "Courier") : string)
     ((font-size 10) : fixnum)
