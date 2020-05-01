@@ -2700,7 +2700,17 @@
   	(blockview-make-field-configs
 	 (list (symbol-append group-id '_ORDER))
   	 (slot-value buf 'field-ids)
-	 (ui-metastate buf 'mdef)))))
+	 (ui-metastate buf 'mdef)))
+      (when (settings 'show-toolbar)
+	(set! (slot-value buf 'toolbar)
+	  (make <ui-toolbar> 'parent (ui-box buf)
+		'setup
+		'((edit (add-step "Increase sequence length" "add1.png" enabled)
+			(remove-step "Decrease sequence length" "sub1.png"
+				     enabled))
+		  (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
+				 (simple "Simplified sequence"
+					 "seq-simple.png"))))))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-order-view>))
@@ -3053,9 +3063,7 @@
       		  (play-from-start "Play Track from Start"
 				   "play-from-start.png"
 				   enabled)
-      		  (play-pattern "Play Pattern" "play-ptn.png" enabled))
-	    (configure (toggle-prompt "Toggle Console" "prompt.png")
-      		       (show-settings "Settings..." "settings.png")))))
+      		  (play-pattern "Play Pattern" "play-ptn.png" enabled)))))
 
   ;;; Helper for `<ui-module-view>` constructor.
   (define-method (make-module-view-settings-bar primary: (buf <ui-module-view>))
@@ -3426,51 +3434,5 @@
   (define (current-emulator)
     (and-let* ((mv (current-module-view)))
       (ui-metastate mv 'emulator)))
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Status Bar
-  ;; ---------------------------------------------------------------------------
-
-  ;; ;;; Initialize the status bar at the bottom of the main window.
-  ;; (define (init-status-bar)
-  ;;   (let ((status-label (status-frame 'create-widget 'label
-  ;; 				      textvariable: (tk-var "status-text"))))
-  ;;     (reset-status-text!)
-  ;;     (tk/pack status-label fill: 'x side: 'left)
-  ;;     (tk/pack (status-frame 'create-widget 'sizegrip) side: 'right)))
-
-  ;; ;;; Returns a string containing the current target platform and MDAL config
-  ;; ;;; name, separated by a pipe.
-  ;; (define (get-module-info-text)
-  ;;   (let ((module-view (current-module-view)))
-  ;;     (string-append (if module-view
-  ;;   			 (string-append
-  ;;   			  (target-platform-id
-  ;; 			   (config-target (ui-metastate module-view 'mdef)))
-  ;;   			  " | "
-  ;; 			  (mdmod-config-id (ui-metastate module-view 'mmod)))
-  ;;   			 "No module loaded.")
-  ;;   		     " | ")))
-
-  ;; ;;; Set the message in the status to either a combination of the current
-  ;; ;;; module's target platform and configuration name, or the string
-  ;; ;;; "No module loaded."
-  ;; (define (reset-status-text!)
-  ;;   (tk-set-var! "status-text" (string-append (get-module-info-text)
-  ;; 					      (state 'active-md-command-info))))
-
-  ;; ;;; Display `msg` in the status bar, extending the current info string.
-  ;; (define (display-action-info-status! msg)
-  ;;   (tk-set-var! "status-text" (string-append (get-module-info-text)
-  ;; 					      msg)))
-
-  ;; ;;; Bind the `<Enter>`/`<Leave>` events for the given `widget` to display/
-  ;; ;;; remove the given info `text` in the status bar.
-  ;; (define (bind-info-status widget text)
-  ;;   #t
-  ;;   ;; (tk/bind* widget '<Enter>
-  ;;   ;; 	      (lambda () (display-action-info-status! text)))
-  ;;   ;; (tk/bind* widget '<Leave> reset-status-text!)
-  ;;   )
 
   ) ;; end module bt-gui
