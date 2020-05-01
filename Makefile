@@ -1,6 +1,6 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = bintracker-core.md bt-gui.md bt-state.md bt-types.md bt-db.md bt-emulation.md
+DOCS = bintracker-core.md bt-gui.md bt-gui-lolevel.md bt-state.md bt-types.md bt-db.md bt-emulation.md
 LIBFLAGS = -s -d3 #-profile-name $@.PROFILE
 ifdef RELEASE
  LIBFLAGS += -O3
@@ -13,8 +13,8 @@ else
  find /usr /home/ -type d 2>/dev/null | grep -P "lib.*?\/chicken\/9" >chicken-repository-path; fi;\
  head -n 1 chicken-repository-path)
 endif
-ALL_SOURCE_FILES = bt-types.scm bt-state.scm bt-gui.scm bintracker-core.scm\
- bt-db.scm bt-emulation.scm\
+ALL_SOURCE_FILES = bt-types.scm bt-state.scm bt-gui-lolevel.scm bt-gui.scm\
+ bt-db.scm bt-emulation.scm bintracker-core.scm\
  libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-config.scm\
  libmdal/md-command.scm libmdal/utils/md-note-table.scm libmdal/md-types.scm\
  libmdal/md-helpers.scm libmdal/mdal.scm
@@ -69,12 +69,19 @@ bt-emulation.import.so: bt-emulation.so
 	$(CSC) $(IMPORTFLAGS) bt-emulation.import.scm
 
 bt-gui.so: bt-gui.scm bt-state.import.so bt-types.import.so bt-db.import.so\
- bt-emulation.import.so
+ bt-emulation.import.so bt-gui-lolevel.import.so
 	export CHICKEN_REPOSITORY_PATH=$(CHICKEN_REPO_PATH):${PWD}/libmdal;\
 	$(CSC) $(LIBFLAGS) bt-gui.scm -j bt-gui
 
 bt-gui.import.so: bt-gui.so
 	$(CSC) $(IMPORTFLAGS) bt-gui.import.scm
+
+bt-gui-lolevel.so: bt-gui-lolevel.scm bt-state.import.so bt-types.import.so\
+ bt-emulation.import.so
+	$(CSC) $(LIBFLAGS) bt-gui-lolevel.scm -j bt-gui-lolevel
+
+bt-gui-lolevel.import.so: bt-gui-lolevel.so
+	$(CSC) $(IMPORTFLAGS) bt-gui-lolevel.import.scm
 
 TAGS: $(ALL_SOURCE_FILES)
 	etags -r '"  (def.*? "' $(ALL_SOURCE_FILES)
@@ -84,6 +91,7 @@ TAGS: $(ALL_SOURCE_FILES)
 
 bintracker-core.md: bintracker-core.scm
 bt-gui.md: bt-gui.scm
+bt-gui-lolevel.md: bt-gui-lolevel.scm
 bt-state.md: bt-state.scm
 bt-types.md: bt-types.scm
 bt-emulation.md: bt-emulation.scm

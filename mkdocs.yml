@@ -52,6 +52,7 @@ nav:
          - "bt-types": 'generated/bt-types.md'
          - "bt-state": 'generated/bt-state.md'
          - "bt-gui": 'generated/bt-gui.md'
+         - "bt-gui-lolevel": 'generated/bt-gui-lolevel.md'
          - "bt-emulation": 'generated/bt-emulation.md'
          - "bt-db": 'generated/bt-db.md'
       - MDAL:
