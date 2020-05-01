@@ -236,14 +236,6 @@
   ;;; ### Auxilliary procedures used by various BT meta-widgets
   ;; ---------------------------------------------------------------------------
 
-  (define (make-separator parent orient)
-    (let ((horizontal? (eqv? orient 'horizontal)))
-      (apply parent
-	     `(create-widget frame style: Separator.BT.TFrame
-			     ,@(if horizontal?
-				   '(height: 2)
-				   '(width: 2))))))
-
   ;;; Determine how many characters are needed to print values of a given
   ;;; command.
   ;; TODO results should be cached
@@ -2647,12 +2639,15 @@
      (emulator initform: #f reader: module-view-emulator)))
 
   ;;; Helper for `<ui-module-view>` constructor.
-  (define-method (make-module-view-toolbar primary: (buf <ui-module-view>))
+  (define-method (make-module-view-toolbar primary: (buf <ui-module-view>)
+					   #!optional save-enabled)
     (make <ui-toolbar> 'parent (ui-box buf)
 	  'setup
-	  '((file (new-file "New File" "new.png" enabled)
+	  `((file (new-file "New File" "new.png" enabled)
 		  (load-file "Load File..." "load.png" enabled)
-		  (save-file "Save File" "save.png"))
+		  (save-file "Save File" "save.png" ,(if save-enabled
+							 'enabled
+							 'disabled)))
 	    (journal (undo "Undo last edit" "undo.png")
 		     (redo "Redo last edit" "redo.png"))
 	    (edit (copy "Copy Selection" "copy.png")
@@ -2730,20 +2725,22 @@
 	     action))))
 
   (define-method (module-view-undo primary: (buf <ui-module-view>))
-    (let ((action (module-view-pop-undo buf)))
-	   (when action
-	     (ui-metastate buf 'apply-edit action)
-	     (ui-blockview-update (current-order-view))
-	     (ui-blockview-update (current-blocks-view))
-	     (focus 'resume)
-	     (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
-			   'enabled 'redo)
-	     (when (zero? (app-journal-undo-stack-depth
-			   (slot-value buf 'journal)))
-	       (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
-			     'disabled 'undo)
-	       (ui-metastate buf 'modified #f)
-	       (update-window-title!)))))
+    (let ((action (module-view-pop-undo buf))
+	  (have-toolbar (slot-value buf 'toolbar)))
+      (when action
+	(ui-metastate buf 'apply-edit action)
+	(ui-blockview-update (current-order-view))
+	(ui-blockview-update (current-blocks-view))
+	(focus 'resume)
+	(when have-toolbar
+	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+			'enabled 'redo))
+	(when (zero? (app-journal-undo-stack-depth
+		      (slot-value buf 'journal)))
+	  (when have-toolbar
+	    (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+			  'disabled 'undo))
+	  (ui-metastate buf 'modified #f)))))
 
   (define-method (module-view-redo primary: (buf <ui-module-view>))
     (let ((action (module-view-pop-redo buf)))
@@ -2752,12 +2749,15 @@
 	(ui-blockview-update (current-order-view))
 	(ui-blockview-update (current-blocks-view))
 	(focus 'resume)
-	(ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
-		      'enabled 'undo)
-	(when (stack-empty? (app-journal-redo-stack
-			     (slot-value buf 'journal)))
+	(when (slot-value buf 'toolbar)
 	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
-			'disabled 'redo)))))
+			'enabled 'undo)
+	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'file)
+			'enabled 'save-file)
+	  (when (stack-empty? (app-journal-redo-stack
+			       (slot-value buf 'journal)))
+	    (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+			'disabled 'redo))))))
 
   ;;; Construct a module view metastate accessor procedure. Helper for
   ;;; `<ui-module-view>` constructor.
@@ -2784,7 +2784,15 @@
 	 (if (null? (cdr args))
 	     (slot-value buf 'modified)
 	     (when (slot-value buf 'filename)
-	       (set! (slot-value buf 'modified) (cadr args)))))
+	       (set! (slot-value buf 'modified) (cadr args))
+	       (update-window-title!)
+	       (when (slot-value buf 'toolbar)
+		 (ui-set-state (ui-ref (slot-value buf 'toolbar)
+				       'file)
+			       (if (cadr args)
+				   'enabled
+				   'disabled)
+			       'save-file)))))
 	((apply-edit)
 	 (let ((action (cadr args)))
 	   (if (eqv? 'compound (car action))
@@ -2842,7 +2850,7 @@
 		       (active-field "")))))
     (when (settings 'show-toolbars)
       (set! (slot-value buf 'toolbar)
-	(make-module-view-toolbar buf))
+	(make-module-view-toolbar buf (slot-value buf 'modified)))
       (ui-set-callbacks (slot-value buf 'toolbar)
 			`((file (new-file ,new-file)
 				(load-file ,load-file)

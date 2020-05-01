@@ -70,6 +70,14 @@
 		     icon-color))
       (tk/image 'create 'photo format: "PNG" file: actual-filename)))
 
+  (define (make-separator parent orient)
+    (let ((horizontal? (eqv? orient 'horizontal)))
+      (apply parent
+	     `(create-widget frame style: Separator.BT.TFrame
+			     ,@(if horizontal?
+				   '(height: 1)
+				   '(width: 1))))))
+
   (define (add-size-grip)
     (tk/place (tk 'create-widget 'sizegrip style: 'BT.TSizegrip)
 	      anchor: 'se relx: 1.0 rely: 1.0))
