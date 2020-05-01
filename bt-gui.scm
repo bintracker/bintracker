@@ -2552,7 +2552,8 @@
   (define-method (ui-blockview-get-item-list primary: (buf <ui-block-view>))
     (let* ((group-id (slot-value buf 'group-id))
   	   (group-instance (ui-blockview-parent-instance buf)))
-      (map (cute mod-get-block-values group-instance <>)
+      (map (cut mod-get-block-values group-instance <>
+		(ui-metastate buf 'mdef))
 	   (mod-get-order-values group-id group-instance))))
 
   ;;; Return the block instance ID currently under cursor.
@@ -2849,6 +2850,14 @@
        ((slot-value buf 'rownum-header) 'configure height: 1 width: 5)
        ((slot-value buf 'block-header) 'configure height: 1)))
 
+  (define-method (order-view-increase-length primary: (buf <ui-order-view>))
+    '())
+
+  (define-method (order-view-decrease-length primary: (buf <ui-order-view>))
+    (ui-blockview-update buf)
+    ;; TODO should tie directly to the appropriate block view, instead of
+    ;; relying on (current-blocks-view)
+    (ui-blockview-update (current-blocks-view)))
 
   ;;; A widget class suitable for displaying an MDAL group node's block members.
   ;;; It is a wrapper around a <ui-block-view> and the associated

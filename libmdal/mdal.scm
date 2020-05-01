@@ -158,6 +158,63 @@
 	   "")
        (command-description command))))
 
+  ;;; Returns the values of all field node instances of the given ROW of the
+  ;;; given non-order block-instances in the given GROUP-INSTANCE as a
+  ;;; flat list.
+  ;;; BLOCK-INSTANCE-IDS must be a list containing the requested numerical
+  ;;; block instance IDs for each non-order block in the group.
+  ;;; Values are returned as strings, except for trigger fields.
+  ;;; Empty (unset) instance values will be returned as `#f`.
+  (define (mod-get-row-values group-instance block-instance-ids row mdef)
+    (flatten
+     (map (lambda (block-inst-id block-node)
+	    (let ((block-contents (cddr (inode-instance-ref block-inst-id
+							    block-node))))
+	      (map (lambda (value)
+		     (and (not (null? value))
+			  (if (boolean? value)
+			      value
+			      (->string value))))
+		   (if (>= row (length block-contents))
+		       (make-list (length (config-get-subnode-ids
+					   (car block-node)
+					   (config-itree mdef)))
+				  '())
+		       (list-ref block-contents row)))))
+	  block-instance-ids
+	  (remove (lambda (node)
+		    (symbol-contains (car node) "_ORDER"))
+		  (cddr group-instance)))))
+
+  ;;; Returns the values of all field node instances of the non-order block
+  ;;; instances in the given `group-instance`, as a list of row value sets.
+  ;;; Effectively calls md-mod-get-row-values on each row of the relevant
+  ;;; blocks.
+  (define (mod-get-block-values group-instance order-pos mdef)
+    (map (lambda (pos)
+	   (mod-get-row-values group-instance (cdr order-pos) pos mdef))
+	 (iota (car order-pos))))
+
+  ;;; Returns the group instance's order node (instance 0)
+  (define (mod-get-group-instance-order igroup-instance igroup-id)
+    (cadr (subnode-ref (symbol-append igroup-id '_ORDER) igroup-instance)))
+
+  ;; TODO swap argument order
+  ;;; Returns the values of all order fields as a list of row value sets.
+  ;;; Values are normalized, ie. empty positions are replaced with repeated
+  ;;; values from an earlier row.
+  (define (mod-get-order-values group-id group-instance)
+    (repeat-block-row-values (cddr (mod-get-group-instance-order group-instance
+								 group-id))))
+
+  ;; TODO swap argument order
+  ;;; Returns the total number of all block rows in the given group node
+  ;;; instance. The containing group node must be ordered. The result is equal
+  ;;; to the length of the block nodes as if they were combined into a single
+  ;;; instance after being mapped onto the order node.
+  (define (get-ordered-group-length group-id group-instance)
+    (apply + (map car (mod-get-order-values group-id group-instance))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Inode mutators

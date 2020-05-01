@@ -523,7 +523,8 @@
         (mod-get-row-values ((node-path "0/PATTERNS/0")
  			     (mdmod-global-node my-mod))
  			    '(0 0 0)
- 			    4))
+ 			    4
+			    my-cfg))
 
   (test "mod-get-block-values"
         '((#t "a3" "a2")
@@ -544,7 +545,8 @@
   	 (#f #f #f))
         (mod-get-block-values ((node-path "0/PATTERNS/0")
   			       (mdmod-global-node my-mod))
-  			      '(16 0 0 0)))
+  			      '(16 0 0 0)
+			      my-cfg))
   )
 
 (test-group
