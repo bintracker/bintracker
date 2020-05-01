@@ -113,6 +113,6 @@
   			       (car rows) previous-row)
   			  (repeat-values (cdr rows) (car rows)))))))
       (repeat-values rows (make-list (length (car rows))
-				     0))))
+				     '()))))
 
   ) ;; end module md-types
