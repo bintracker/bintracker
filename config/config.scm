@@ -55,6 +55,9 @@
 ;; MMOD buffer settings
 ;; --------------------
 
+;; Enable or disable playing rows when editing.
+;; (set-conf! 'enable-row-play #t)
+
 ;; Set the default edit step in mmod buffers.
 ;; (set-conf! 'default-edit-step 1)
 

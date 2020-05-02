@@ -2210,10 +2210,14 @@
 		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
       ;; TODO might want to make this behaviour user-configurable
-      (ui-metastate buf 'emulator 'play-row
-		    (slot-value buf 'group-id)
-		    (ui-blockview-get-current-order-pos buf)
-		    (ui-blockview-get-current-field-instance buf))
+      ;; TODO this will trigger on undo/redo and in various other situations
+      ;; we don't want
+      (when (and (settings 'enable-row-play)
+      		 (not (null? new-value)))
+      	(ui-metastate buf 'emulator 'play-row
+      		      (slot-value buf 'group-id)
+      		      (ui-blockview-get-current-order-pos buf)
+      		      (ui-blockview-get-current-field-instance buf)))
       (ui-blockview-update buf)
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))

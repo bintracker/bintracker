@@ -129,6 +129,7 @@
     ((font-mono "Courier") : string)
     ((font-size 10) : fixnum)
     ((line-spacing 1) : fixnum)
+    ((enable-row-play #t) : boolean)
     ((default-edit-step 1) : fixnum)
     ((default-base-octave 4) : fixnum)
     ((default-major-row-highlight 2) : fixnum)
