@@ -1938,8 +1938,7 @@
 	(ui-metastate buf 'apply-edit action)
 	(ui-blockview-update buf)
 	(ui-blockview-move-cursor buf 'Up)
-	(ui-metastate buf 'modified #t)
-	(update-window-title!))))
+	(ui-metastate buf 'modified #t))))
 
   ;;; Insert an empty cell into the field column currently under cursor,
   ;;; shifting the following node instances down and dropping the last instance.
@@ -1956,8 +1955,7 @@
 	(ui-metastate buf 'apply-edit action)
 	(ui-blockview-update buf)
 	(ui-blockview-show-cursor buf)
-	(ui-metastate buf 'modified #t)
-	(update-window-title!))))
+	(ui-metastate buf 'modified #t))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -2219,8 +2217,7 @@
       (ui-blockview-update buf)
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))
-      (ui-metastate buf 'modified #t)
-      (update-window-title!)))
+      (ui-metastate buf 'modified #t)))
 
   ;; TODO unify with specialization on ui-order-view
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
@@ -2392,8 +2389,7 @@
       (ui-metastate buf 'apply-edit action)
       (ui-blockview-update buf)
       (unless (zero? (state 'edit-step))
-	(ui-blockview-move-cursor buf 'Down))
-      (update-window-title!)))
+	(ui-blockview-move-cursor buf 'Down))))
 
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
