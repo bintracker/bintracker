@@ -256,6 +256,37 @@
       ((trigger) 1)
       ((string) 32)))
 
+  ;; ;;; Convert the nth digit of a string representing a number to the value
+  ;; ;;; the digit represents.
+  ;; (define (nth-digit->number digit idx)
+  ;;   (let* ((radix (settings 'number-base))
+  ;; 	   (digit-number (string->number (->string digit) radix)))
+  ;;     (and digit-number
+  ;; 	   (* digit-number (expt radix idx)))))
+
+  (define (replace-digit val digit-idx keysym)
+    (print "replace-digit, val: " val ", digit-idx: " digit-idx ", keysym: " keysym)
+    (let* ((radix (settings 'number-base))
+	   (valstr (number->string val radix)))
+      (and (string->number (->string keysym) radix)
+	   (let ((orig-digits
+		  (reverse (string->list
+			    (if (< (string-length valstr) (+ 1 digit-idx))
+				(string-pad valstr (+ 1 digit-idx) #\0)
+				valstr))))
+		 (new-digit-char (string-ref (->string keysym) 0)))
+	     (print "orig-digits: " orig-digits ", new-digit-char: " new-digit-char)
+	     (print "new-digits: " (reverse (append (take orig-digits digit-idx)
+						    (cons new-digit-char
+							  (drop orig-digits
+								(+ 1 digit-idx))))))
+	     (string->number (list->string
+			      (reverse (append (take orig-digits digit-idx)
+					       (cons new-digit-char
+						     (drop orig-digits
+							   (+ 1 digit-idx))))))
+			     radix)))))
+
   ;;; Transform an ifield value from MDAL format to tracker display format.
   ;;; Replaces empty values with dots, changes numbers depending on number
   ;;; format setting, and turns everything into a string.
@@ -1657,6 +1688,16 @@
     (car (alist-ref (ui-blockview-get-current-field-id buf)
 		    (slot-value buf 'field-configs))))
 
+  ;;; Returns the index of the digit of the numeric block field that the cursor
+  ;;; is currently on. Indices are 0-based, with the least significant digit
+  ;;; assuming index 0.
+  (define-method (ui-blockview-get-current-digit-index
+		  primary: (buf <ui-basic-block-view>))
+    (let* ((cursor-char-pos (cadr (ui-blockview-get-cursor-position buf)))
+	   (field-config (ui-blockview-get-current-field-config buf))
+	   (offset (- cursor-char-pos (bv-field-config-start field-config))))
+      (sub1 (- (bv-field-config-cursor-digits field-config) offset))))
+
   ;;; Returns the MDAL command config for the field that the cursor is
   ;;; currently on.
   (define-method (ui-blockview-get-current-field-command
@@ -1957,19 +1998,32 @@
 	(ui-blockview-show-cursor buf)
 	(ui-metastate buf 'modified #t))))
 
+  ;; TODO using this on ui-blockview-enter-note/trigger would be much better
+  ;; but this causes latency because display is then updated first.
+  ;; (define-method (ui-blockview-maybe-play-row buf)
+  ;;   (when (settings 'enable-row-play)
+  ;;     (ui-metastate buf 'emulator 'play-row
+  ;; 		    (slot-value buf 'group-id)
+  ;; 		    (ui-blockview-get-current-order-pos buf)
+  ;; 		    (ui-blockview-get-current-field-instance buf))))
+
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
   (define-method (ui-blockview-enter-note primary: (buf <ui-basic-block-view>)
 					  keysym)
     (let ((note-val (keypress->note keysym)))
       (when note-val
-	(ui-blockview-edit-current-cell buf note-val))))
+	(ui-blockview-edit-current-cell buf note-val)
+	;; (ui-blockview-maybe-play-row buf)
+	)))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
   (define-method (ui-blockview-enter-trigger primary:
 					     (buf <ui-basic-block-view>))
-    (ui-blockview-edit-current-cell buf #t))
+    (ui-blockview-edit-current-cell buf #t)
+    ;; (ui-blockview-maybe-play-row buf)
+    )
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a key/ukey command.
@@ -1978,19 +2032,36 @@
     (display "key entry")
     (newline))
 
-  ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a numeric (int/uint) command.
-  (define-method (ui-blockview-enter-numeric
+  ;;; Helper method for `ui-blockview-enter-numeric`. Constructs a new block
+  ;;; field value from the Tk key symbol KEYSYM, assuming that the cursor is
+  ;;; currently positioned on the field digit being edited.
+  (define-method (ui-blockview-keysym->field-value
 		  primary: (buf <ui-basic-block-view>) keysym)
-    (display "numeric entry")
-    (newline))
+    (let* ((field-id (ui-blockview-get-current-field-id buf))
+	   (field-size (field-id->cursor-digits field-id
+						(ui-metastate buf 'mdef)))
+	   (current-digit-idx (ui-blockview-get-current-digit-index buf))
+	   (current-val (ui-blockview-get-current-field-value buf))
+	   (new-val (replace-digit current-val current-digit-idx keysym)))
+      (or (and new-val (validate-field-value
+			(ui-metastate buf 'mdef) field-id new-val #t))
+	  (begin (warning "invalid field value")
+		 #f))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a reference command.
-  (define-method (ui-blockview-enter-reference
+  ;;; field that represents a numeric (int/uint/reference) command.
+  (define-method (ui-blockview-enter-numeric
 		  primary: (buf <ui-basic-block-view>) keysym)
-    (display "reference entry")
-    (newline))
+    (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
+      (when new-val (ui-blockview-edit-current-cell buf new-val))))
+
+  ;; ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;; ;;; field that represents a reference command.
+  ;; (define-method (ui-blockview-enter-reference
+  ;; 		  primary: (buf <ui-basic-block-view>) keysym)
+  ;;   (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
+  ;;     (when new-val
+  ;;     	(ui-blockview-edit-current-cell buf new-val))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a string command.
@@ -2009,9 +2080,8 @@
 	    (ui-blockview-enter-note buf keysym)
 	    (case (command-type cmd)
 	      ((trigger) (ui-blockview-enter-trigger buf))
-	      ((int uint) (ui-blockview-enter-numeric buf keysym))
+	      ((int uint reference) (ui-blockview-enter-numeric buf keysym))
 	      ((key ukey) (ui-blockview-enter-key buf keysym))
-	      ((reference) (ui-blockview-enter-reference buf keysym))
 	      ((string) (ui-blockview-enter-string buf keysym)))))))
 
   ;;; Bind common event handlers for the blockview BUF.
@@ -2380,6 +2450,13 @@
 					   direction)
     (ui-blockview-move-cursor-common buf direction 1))
 
+  ;;; Return the MDAL node path string of the field currently under cursor.
+  (define-method (ui-blockview-get-current-block-instance-path
+		  primary: (buf <ui-order-view>))
+    (string-append (slot-value buf 'parent-instance-path)
+		   (symbol->string (ui-blockview-get-current-block-id buf))
+		   "/0"))
+
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
   ;;; accordingly.
@@ -2389,9 +2466,12 @@
 			,(ui-blockview-get-current-field-id buf)
 			((,(ui-blockview-get-current-field-instance buf)
 			  ,new-value)))))
-      (ui-metastate buf 'push-undo (make-reverse-action action))
+      (ui-metastate buf 'push-undo
+		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
       (ui-blockview-update buf)
+      ;; TODO should use a safer method for determining associated block-view
+      (ui-blockview-update (current-blocks-view))
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))))
 

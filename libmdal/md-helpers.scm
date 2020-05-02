@@ -36,7 +36,8 @@
 
   ;;; Check if VAL is within the limits defined by the RANGE object.
   (define (in-range? val range)
-    (and (>= val (range-min range))
+    (and range
+	 (>= val (range-min range))
 	 (<= val (range-max range))))
 
   ;;; Create a `range` object for an integer with the given number of BITS.

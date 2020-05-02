@@ -101,8 +101,10 @@
   ;;; Verify that a parsed FIELD-VALUE is a legal input. Raises an exception
   ;;; of type `illegal-value` on failure, otherwise returns the field value.
   ;;; Note that for modifier, reference, and label commands, only a type check
-  ;;; is performed.
-  (define (validate-field-value mdconfig field-id field-value)
+  ;;; is performed. If NO-EXN is provided and `#t`, then `#f` is returned on
+  ;;; validation failure, rather than raising an exception.
+  (define (validate-field-value mdconfig field-id field-value
+				#!optional no-exn)
     (let ((command-config (config-command-ref
 			   (inode-config-cmd-id (config-inode-ref field-id
 								  mdconfig))
@@ -126,7 +128,8 @@
 		    ((reference) ((conjoin integer? positive?) field-value))
 		    ((string) (string? field-value))
 		    ((label) (symbol? field-value))))
-	(raise-local 'illegal-value field-value field-id))
+	(and (not no-exn)
+	     (raise-local 'illegal-value field-value field-id)))
       field-value))
 
 
