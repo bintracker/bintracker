@@ -439,7 +439,14 @@
   (define (create-virtual-events)
     (apply tk/event (append '(add <<BlockEntry>>)
 			    (map car
-				 (app-keys-note-entry (settings 'keymap)))))
+			    	 (app-keys-note-entry (settings 'keymap)))
+			    ;; FIXME quick hack, must properly add keys
+			    ;; required for numeric/string entry or split
+			    ;; BlockEntry event types (probably the latter)
+			    '(<Key-1> <Key-2> <Key-3> <Key-4> <Key-5>
+				      <Key-6> <Key-7> <Key-8> <Key-9>
+				      <Key-0> <Key-a> <Key-b> <Key-c>
+				      <Key-d> <Key-e> <Key-f>)))
     (tk/event 'add '<<BlockMotion>>
 	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
