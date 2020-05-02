@@ -1859,7 +1859,10 @@
 		      (when minor-hl?
 			(grid 'tag 'add 'rowhl-minor start end))
 		      (when active-zone?
-			(ui-blockview-add-type-tags buf row-pos)))))
+			(let ((zone-limits (ui-blockview-get-active-zone buf)))
+			  (textgrid-add-tags grid 'active (car zone-limits)
+					     0 'end (cadr zone-limits))
+			  (ui-blockview-add-type-tags buf row-pos))))))
 		(concatenate (slot-value buf 'item-cache))
 		(concatenate new-item-list)
 		(iota (length (concatenate new-item-list))))))
