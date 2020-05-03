@@ -1338,7 +1338,7 @@
   ;;; containing the .mdconf file.
   (define (file->config parent-dir config-name #!optional (path-prefix ""))
     (let* ((config-dir (string-append parent-dir config-name "/"))
-	   (filepath (string-append config-dir config-name ".mdconf")))
+	   (filepath (string-append config-dir config-name ".mdef")))
       (handle-exceptions
 	  exn
 	  (cond ((exn-any-of? exn '(not-mdconf unsupported-mdconf-version

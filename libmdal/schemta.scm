@@ -121,7 +121,8 @@
 	   (target-ref (alist-ref target-sym *target-cache*)))
       (if target-ref
 	  (asm-state-target-set! *asm-state* (car target-ref))
-	  (let ((config-filename (string-append *schemta-include-path* target-name
+	  (let ((config-filename (string-append *schemta-include-path*
+						target-name
 						".scm")))
 	    (if (file-exists? config-filename)
 		(begin

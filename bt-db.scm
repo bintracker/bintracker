@@ -87,7 +87,7 @@
 		  "." (number->string (plugin-version-minor
 				       (config-plugin-version mdconf))))
 		 (file-md5sum (string-append mdal-config-dir mdconf-id
-  					     "/" mdconf-id ".mdconf"))
+  					     "/" mdconf-id ".mdef"))
 		 (target-platform-id (config-target mdconf))
 		 (config-description mdconf)))))
 
@@ -149,7 +149,7 @@
 		   (lambda (dir)
 		     (string=
 		      (file-md5sum (string-append mdal-config-dir dir "/"
-						  dir ".mdconf"))
+						  dir ".mdef"))
 		      (car (exec (sql btdb
 				      (string-append
 				       "SELECT hash FROM configs WHERE id='"
