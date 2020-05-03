@@ -1695,12 +1695,6 @@
     (config-get-inode-source-command (ui-blockview-get-current-field-id buf)
 				     (ui-metastate buf 'mdef)))
 
-  ;;; Returns the chunk from the item cache that the cursor is currently on.
-  (define-method (ui-blockview-get-current-chunk primary:
-						 (buf <ui-basic-block-view>))
-    (list-ref (slot-value buf 'item-cache)
-	      (ui-blockview-get-current-order-pos buf)))
-
   ;;; Determine the start and end positions of each item chunk in the
   ;;; blockview's item cache.
   (define-method (ui-blockview-start+end-positions primary:
@@ -2198,6 +2192,12 @@
 		(ui-metastate buf 'mdef))
 	   (mod-get-order-values group-id group-instance))))
 
+  ;;; Returns the chunk from the item cache that the cursor is currently on.
+  (define-method (ui-blockview-get-current-chunk primary:
+						 (buf <ui-block-view>))
+    (list-ref (slot-value buf 'item-cache)
+	      (ui-blockview-get-current-order-pos buf)))
+
   ;;; Return the block instance ID currently under cursor.
   (define-method (ui-blockview-get-current-block-instance primary:
 							  (buf <ui-block-view>))
@@ -2408,6 +2408,11 @@
     (let ((group-id (slot-value buf 'group-id)))
       (list (mod-get-order-values group-id
 				  (ui-blockview-parent-instance buf)))))
+
+  ;;; Returns the chunk from the item cache that the cursor is currently on.
+  (define-method (ui-blockview-get-current-chunk primary:
+						 (buf <ui-order-view>))
+    (car (slot-value buf 'item-cache)))
 
   ;;; Update the blockview row numbers according to the current item cache.
   (define-method (ui-blockview-update-row-numbers primary:
