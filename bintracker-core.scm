@@ -135,6 +135,8 @@
   (define on-startup-hooks
     (make-hooks
      `(load-config . ,load-config)
+     `(set-schemta-include-path
+       . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
      `(init-db . ,btdb-init!)
      `(update-style . ,update-ttk-style)
      `(update-global-key-bindings . ,update-global-key-bindings!)
@@ -146,8 +148,6 @@
 	      (tk 'configure 'menu: (menu-widget (state 'menu))))))
      `(init-top-level-layout . ,init-top-level-layout)
      `(add-size-grip . ,add-size-grip)
-     `(set-schemta-include-path
-       . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
      `(disable-keyboard-traversal . ,disable-keyboard-traversal)
      `(run-post-startup . ,(lambda () (after-startup-hooks 'execute)))))
 
