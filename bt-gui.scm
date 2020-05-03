@@ -236,9 +236,9 @@
   ;;; ### Auxilliary procedures used by various BT meta-widgets
   ;; ---------------------------------------------------------------------------
 
+  ;; TODO results should be cached
   ;;; Determine how many characters are needed to print values of a given
   ;;; command.
-  ;; TODO results should be cached
   (define (value-display-size command-config)
     (case (command-type command-config)
       ;; FIXME this is incorrect for negative numbers
@@ -256,16 +256,11 @@
       ((trigger) 1)
       ((string) 32)))
 
-  ;; ;;; Convert the nth digit of a string representing a number to the value
-  ;; ;;; the digit represents.
-  ;; (define (nth-digit->number digit idx)
-  ;;   (let* ((radix (settings 'number-base))
-  ;; 	   (digit-number (string->number (->string digit) radix)))
-  ;;     (and digit-number
-  ;; 	   (* digit-number (expt radix idx)))))
-
+  ;;; Takes the Tk keypress symbol KEYSYM and interprets it as a digit taking
+  ;;; the *nth* postion in the integer VAL, using a radix corresponding to the
+  ;;; result of `(settings 'number-base)`. DIGIT-IDX is the digit position
+  ;;; index.
   (define (replace-digit val digit-idx keysym)
-    (print "replace-digit, val: " val ", digit-idx: " digit-idx ", keysym: " keysym)
     (let* ((radix (settings 'number-base))
 	   (valstr (number->string val radix)))
       (and (string->number (->string keysym) radix)
@@ -275,11 +270,6 @@
 				(string-pad valstr (+ 1 digit-idx) #\0)
 				valstr))))
 		 (new-digit-char (string-ref (->string keysym) 0)))
-	     (print "orig-digits: " orig-digits ", new-digit-char: " new-digit-char)
-	     (print "new-digits: " (reverse (append (take orig-digits digit-idx)
-						    (cons new-digit-char
-							  (drop orig-digits
-								(+ 1 digit-idx))))))
 	     (string->number (list->string
 			      (reverse (append (take orig-digits digit-idx)
 					       (cons new-digit-char
