@@ -57,8 +57,8 @@ nav:
          - "bt-db": 'generated/bt-db.md'
       - MDAL:
         - Introduction: 'libmdal/index.md'
-        - MDMOD: 'libmdal/MDMOD_SPECIFICATION.md'
-        - MDCONF: 'libmdal/MDCONF_SPECIFICATION.md'
+        - "Modules (MMOD)": 'libmdal/MMOD_SPECIFICATION.md'
+        - "Engine Definitions (MDEF)": 'libmdal/MDEF_SPECIFICATION.md'
         - "libmdal API":
           - "mdal": 'libmdal/generated/mdal.md'
           - "md-types": 'libmdal/generated/md-types.md'

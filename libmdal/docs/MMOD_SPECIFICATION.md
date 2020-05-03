@@ -1,6 +1,6 @@
 # MDMOD Version 2 Specification Draft
 
-This specification draft outlines the **upcoming** MDAL Module (MDMOD) standard Version 2. The standard is not yet finalized, and may change at any point.
+This specification draft outlines the **upcoming** MDAL Module (MMOD) standard Version 2. The standard is not yet finalized, and may change at any point.
 
 Notable changes from Version 1 include:
 
@@ -30,7 +30,7 @@ Notable changes from Version 1 include:
 
 ### General Rules
 
-The MDMOD syntax is based on [Symbolic Expressions](https://en.wikipedia.org/wiki/S-expression), as used by the Scheme programming language. A full explanation of Symbolic Expressions is out of scope for this document. Refer to the [R5RS Standard](https://schemers.org/Documents/Standards/R5RS/HTML/) for details.
+The MMOD syntax is based on [Symbolic Expressions](https://en.wikipedia.org/wiki/S-expression), as used by the Scheme programming language. A full explanation of Symbolic Expressions is out of scope for this document. Refer to the [R5RS Standard](https://schemers.org/Documents/Standards/R5RS/HTML/) for details.
 
 #### Brief overview of Symbolic Expressions
 
@@ -59,7 +59,7 @@ foo  ; a symbol, which is an atom
 
 ### Nodes
 
-MDAL modules are nested lists consisting of **Nodes**. MDAL defines three node types: **Group**, **Block**, and **Field**. The underlying MDCONF configuration defines which nodes are available. Each node may have zero or more **Node Instances**. A MDCONF configuration may set limits on the number of instances that a node can have.
+MDAL modules are nested lists consisting of **Nodes**. MDAL defines three node types: **Group**, **Block**, and **Field**. The underlying MDEF configuration defines which nodes are available. Each node may have zero or more **Node Instances**. A MDEF configuration may set limits on the number of instances that a node can have.
 
 Node instances are represented as lists, using the following syntax:
 
@@ -77,12 +77,12 @@ The contents of an MDAL module are wrapped in an implicit root node, called the 
 (mdal-module #:version VERSION #:config CONFIG SUBNODE ...)
 ```
 
-where `VERSION` is the MDMOD standard version (eg. 2), `CONFIG` is a string naming the module's MDCONF configuration, followed by one or more `SUBNODE`s.
+where `VERSION` is the MMOD standard version (eg. 2), `CONFIG` is a string naming the module's MDEF configuration, followed by one or more `SUBNODE`s.
 
 
 #### Field Nodes
 
-The simplest node type is the **Field**. An instance of a Field node contains a single value. The type of value is specified by the underlying MDCONFiguration.
+The simplest node type is the **Field**. An instance of a Field node contains a single value. The type of value is specified by the underlying MDAL engine definition.
 
 MDAL supports the following types:
 
@@ -131,12 +131,12 @@ One or more consecutive rows with no field change may be replaced by an integer 
 
 #### Group Nodes
 
-**Group** nodes are the highest level meta-structure in MDMOD. Groups can contain other Groups, Blocks, and Fields, the details of which are specified by the underlying MDCONFiguration. The `GLOBAL` node is also a group node. See below for a full example.
+**Group** nodes are the highest level meta-structure in MMOD. Groups can contain other Groups, Blocks, and Fields, the details of which are specified by the underlying MDAL Engine Definition. The `GLOBAL` node is also a group node. See below for a full example.
 
 
 #### Default Nodes
 
-The global Fields `AUTHOR`, `TITLE`, and `LICENSE`, are available in every MDCONFiguration, and may be used to specify the author, title, and license information for a module.
+The global Fields `AUTHOR`, `TITLE`, and `LICENSE`, are available in every MDAL engine definition, and may be used to specify the author, title, and license information for a module.
 
 
 ### Including External Resources
@@ -146,7 +146,7 @@ Instead of assigning a value directly to a node instance, you can include an ext
 
 ## Example
 
-The following example assumes an underlying MDCONFiguration that specifies
+The following example assumes an underlying MDAL engine definition that specifies
 
 - a global Field called `BPM` which is of type *uint*
 - a Group called `PATTERNS`, which contains 3 Blocks:
@@ -159,8 +159,8 @@ The following example assumes an underlying MDCONFiguration that specifies
 ; This is a line comment, which will be ignored by the parser.
 
 (mdal-module
-  #:version 2                           ;; required: MDMOD standard version
-  #:config "MyConfig"                   ;; specify the MDCONFiguration to use.
+  #:version 2                           ;; required: MMOD standard version
+  #:config "MyConfig"                   ;; specify the MDAL engine definition to use.
 
   (AUTHOR "Great Artist")               ;; This is "My Great Song" by "Great Artist"
   (TITLE "My Great Song")               ;; AUTHOR and TITLE are available for all configurations.
