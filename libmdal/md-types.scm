@@ -21,7 +21,7 @@
   ;;; Returns the inode instance with the given INSTANCE-ID, or a newly created,
   ;;; empty inode if the referenced inode instance does not exist.
   (define (inode-instance-ref instance-id inode)
-    (or (assq instance-id (cdr inode)) '(,instance-id #f '())))
+    (or (assq instance-id (cdr inode)) '(,instance-id #f)))
 
   ;;; Returns the value of the field at FIELD-INDEX in ROW of
   ;;; `block-instance`. Returns null if the requested ROW does not exist.
