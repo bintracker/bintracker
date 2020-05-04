@@ -2355,8 +2355,9 @@
 	(set! (slot-value buf 'toolbar)
 	  (make <ui-toolbar> 'parent (ui-box buf)
 		'setup
-		'((edit (add-step "Increase sequence length" "add1.png" enabled)
-			(remove-step "Decrease sequence length" "sub1.png"
+		'((edit (insert-step "Increase sequence length" "insert-row.png"
+				     enabled)
+			(delete-step "Decrease sequence length" "delete-row.png"
 				     enabled))
 		  (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
 				 (simple "Simplified sequence"
@@ -2735,10 +2736,12 @@
       		  (insert "Insert from Clipbard (with shift)" "insert.png")
       		  (swap "Swap Selection with Clipboard" "swap.png"))
 	    (play (stop-playback "Stop Playback" "stop.png" enabled)
-      		  (play "Play Track from Current Position" "play.png" enabled)
       		  (play-from-start "Play Track from Start"
 				   "play-from-start.png"
 				   enabled)
+      		  (play-from-here "Play Track from Current Position"
+				  "play-from-here.png"
+				  enabled)
       		  (play-pattern "Play Pattern" "play-ptn.png" enabled)))))
 
   ;;; Helper for `<ui-module-view>` constructor.
