@@ -7,7 +7,7 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  (chicken file)
+	  (chicken file) (chicken io)
 	  list-utils typed-records srfi-1 srfi-13 pstk imlib2 web-colors
 	  bt-state bt-types)
 
@@ -239,123 +239,131 @@
   ;;; ## Widget Style
   ;; ---------------------------------------------------------------------------
 
+  ;; TODO commented code in this section won't work.
+  ;;; Generates the default Bintracker Tk theme and saves it as
+  ;;; `resources/bt-theme.tcl`.
+  (define (default-theme-generator)
+    (call-with-output-file
+	"resources/bt-theme.tcl"
+      (lambda (port)
+	(write-string
+	 (string-intersperse
+	  `("package require Tk"
+	    ""
+	    "namespace eval ttk::theme::bintracker {"
+	    "  variable version 0.0.1"
+	    ""
+	    "  package provide ttk::theme::bintracker $version"
+	    ""
+	    "  variable colors"
+	    "  array set colors {"
+	    ,@(map (lambda (option)
+		     (string-append
+		      (car option) " \"" (colors (cadr option)) "\""))
+		   '(("      -background" background)
+		     ("      -background-inactive" background-inactive)
+		     ("      -highlight-major" row-highlight-major)
+		     ("      -highlight-minor" row-highlight-minor)
+		     ("      -cursor" cursor)
+		     ("      -text" text)
+		     ("      -text-inactive" text-inactive)
+		     ("      -text-1" text-1)
+		     ("      -text-2" text-2)
+		     ("      -text-3" text-3)
+		     ("      -text-4" text-4)
+		     ("      -text-5" text-5)
+		     ("      -text-6" text-6)
+		     ("      -text-7" text-7)))
+	    "  }"
+	    "" ,(string-intersperse
+		 `("  font create BTFont"
+		   ,(string-append "-family \"" (settings 'font-mono) "\"")
+		   "-size" ,(number->string (settings 'font-size))))
+	    "" ,(string-intersperse
+		 `("  font create BTFont.bold"
+		   ,(string-append "-family \"" (settings 'font-mono) "\"")
+		   "-size" ,(number->string (settings 'font-size))
+		   "-weight bold"))
+	    ""
+	    "  ttk::style theme create bintracker -parent clam -settings {"
+	    "" ,(string-intersperse
+		 '("    ttk::style configure ."
+		   "-background $colors(-background)"
+		   "-foreground $colors(-text)"
+		   "-bordercolor $colors(-background)"
+		   "-darkcolor $colors(-text-inactive)"
+		   "-lightcolor $colors(-text)"
+		   "-selectborderwidth 0"
+		   "-font BTFont.bold"))
+	    "" ,(string-intersperse
+		 '("    ttk::style configure TSizegrip"
+		   "-background $colors(-background)"))
+	    "" ,(string-intersperse
+	      	 '("    ttk::style configure BT.TFrame"
+	      	   "-background $colors(-background)"))
+	    "" ,(string-intersperse
+	      	 '("    ttk::style configure Separator.BT.TFrame"
+	      	   "-background $colors(-text-inactive)"))
+	    "" ,(string-intersperse
+		 '("    ttk::style configure TPanedwindow"
+		   "-background $colors(-text-inactive)"))
+	    ;; "" ,(string-intersperse
+	    ;; 	   '("    ttk::style configure TPanedwindow.Sash"
+	    ;; 	     "-background $colors(-text)"
+	    ;; 	     "-gripcount 7 -handelsize 10 -sashrelief flat"
+	    ;; 	     "-sashthickness 4"))
+	    "" ,(string-intersperse
+		 '("    ttk::style configure TButton"
+		   "-padding 4 -relief flat -shiftrelief 2"))
+	    "" ,(string-intersperse
+		 '("    ttk::style map TButton"
+		   "-background [list disabled $colors(-background)"
+		   "active $colors(-highlight-major)"
+		   "!active $colors(-highlight-minor)]"
+		   "-relief [list disabled flat pressed sunken]"))
+	    "" ,(string-intersperse
+		 '("    ttk::style configure TSpinbox"
+		   "-arrowcolor $colors(-text)"
+		   "-bordercolor $colors(-background)"
+		   "-background $colors(-highlight-major)"
+		   "-lightcolor $colors(-background)"
+		   "-darkcolor $colors(-background)"
+		   "-foreground $colors(-text)"
+		   "-fieldbackground $colors(-highlight-minor)"
+		   "-padding 0"))
+	    "" ,(string-intersperse
+		 '("    ttk::style configure TNotebook.Tab"
+		   "-background $colors(-highlight-minor)"
+		   "-bordercolor $colors(-text)"
+		   "-padding 4"))
+	    ;; "" ,(string-intersperse
+	    ;; 	   '("    ttk::style map TNotebook"
+	    ;; 	     "-background [list selected $colors(-highlight-minor)"
+	    ;; 	     "active $colors(-highlight-minor)]"))
+	    "" "    ttk::style configure Modeline.TLabel -font BTFont"
+	    ,@(map (lambda (color-idx)
+		     (string-append
+		      "\n    ttk::style configure Text" color-idx
+		      ".Modeline.TLabel -foreground $colors(-text-"
+		      color-idx ")"))
+		   (map number->string (iota 7 1)))
+	    "  }"
+	    "}"
+	    "")
+	  "\n")
+	 #f port))))
+
   ;;; Configure ttk widget styles.
   (define (update-ttk-style)
     (let ((user-font-bold (list family: (settings 'font-mono)
-			   size: (settings 'font-size)
-			   weight: 'bold)))
-      (ttk/style 'configure 'BT.TFrame
-		 background: (colors 'background))
+				size: (settings 'font-size)
+				weight: 'bold)))
+      ((eval (settings 'theme-generator)))
+      (tk-with-lock
+       (lambda ()
+	 (tk-eval "source resources/bt-theme.tcl")
+	 (ttk/style 'theme 'use "bintracker")))))
 
-      (ttk/style 'configure 'Separator.BT.TFrame
-		 background: (colors 'text-inactive))
-
-      (ttk/style 'configure 'BT.TPanedwindow
-		 background: (colors 'text-inactive))
-
-      ;; ;; FIXME doesn't do anything?
-      ;; (ttk/style 'configure 'BT.TPanedwindow.Sash
-      ;; 		 background: (colors 'text-1)
-      ;; 		 gripcount: 7
-      ;; 		 handlesize: 10
-      ;; 		 sashrelief: 'flat
-      ;; 		 sashthickness: 4)
-
-      (ttk/style 'configure 'BT.TSizegrip
-		 'background: (colors 'background))
-
-      (ttk/style 'configure 'BT.TLabel
-		 background: (colors 'background)
-		 foreground: (colors 'text)
-		 font: user-font-bold)
-
-      (ttk/style 'configure 'Modeline.BT.TLabel
-		 background: (colors 'background)
-		 foreground: (colors 'text)
-		 font: (list family: (settings 'font-mono)
-			     size: (settings 'font-size)))
-
-      (ttk/style 'configure 'Text1.Modeline.BT.TLabel
-		 foreground: (colors 'text-1))
-
-      (ttk/style 'configure 'Text2.Modeline.BT.TLabel
-		 foreground: (colors 'text-2))
-
-      (ttk/style 'configure 'Text3.Modeline.BT.TLabel
-		 foreground: (colors 'text-3))
-
-      (ttk/style 'configure 'Text4.Modeline.BT.TLabel
-		 foreground: (colors 'text-4))
-
-      (ttk/style 'configure 'Text5.Modeline.BT.TLabel
-		 foreground: (colors 'text-5))
-
-      (ttk/style 'configure 'Text6.Modeline.BT.TLabel
-		 foreground: (colors 'text-6))
-
-      (ttk/style 'configure 'Text7.Modeline.BT.TLabel
-		 foreground: (colors 'text-7))
-
-      (ttk/style 'configure 'BT.TSpinbox
-		 arrowcolor: (colors 'text)
-		 bordercolor: (colors 'background)
-		 background: (colors 'row-highlight-major)
-		 lightcolor: (colors 'background)
-		 darkcolor: (colors 'background)
-		 foreground: (colors 'text)
-		 fieldbackground: (colors 'row-highlight-minor)
-		 padding: 0)
-
-      ;;  Dynamic states: active, disabled, pressed, readonly.
-
-      ;; TButton styling options configurable with ttk::style are:
-
-      ;; -anchor anchor
-      ;; -background color
-      ;; -bordercolor color
-      ;; -compound compound
-      ;; -darkcolor color
-      ;; -foreground color
-      ;; -font font
-      ;; -highlightcolor color
-      ;; -highlightthickness amount
-      ;; -lightcolor color
-      ;; -padding padding
-      ;; -relief relief
-      ;; -shiftrelief amount
-
-      ;;     -shiftrelief specifies how far the button contents are shifted down and right in the pressed state. This action provides additional skeumorphic feedback.
-
-      ;; -width amount
-
-      (ttk/style 'configure 'BT.TButton
-		 ;; highlightthickness: 5
-		 ;; lightcolor: (colors 'text)
-		 ;; darkcolor: (colors 'text)
-		 ;; bordercolor: (colors 'text)
-		 ;; highlightcolor: (colors 'text)
-		 ;; padding: 5
-		 font: user-font-bold
-		 relief: 'flat)
-      ;; (ttk/style 'configure 'BT.Button.border
-      ;; 		 background: (colors 'text)
-      ;; 		 border: 4)
-      (ttk/style 'map 'BT.TButton background:
-		 (list 'disabled (colors 'background)
-		       'active (colors 'row-highlight-major)
-		       '!active (colors 'row-highlight-minor)))
-      (ttk/style 'map 'BT.TButton foreground:
-		 (list 'disabled (colors 'text-inactive)
-		       'active (colors 'text)
-		       '!active (colors 'text)))
-      ;; (ttk/style 'map 'BT.Button.border borderwidth:
-      ;; 		 (list 'disabled 0 'active 2 '!active 1))
-
-      (ttk/style 'configure 'BT.TNotebook background: (colors 'background))
-      (ttk/style 'configure 'BT.TNotebook.Tab
-		 ;; background: (colors 'text)
-		 ;; foreground: (colors 'background)
-		 font: user-font-bold)))
 
   ;;; Configure the style of the scrollbar widget S to match Bintracker's
   ;;; style.

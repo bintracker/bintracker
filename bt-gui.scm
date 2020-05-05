@@ -641,15 +641,15 @@
 		   ((ui-box buf) 'create-widget 'label
 		    text: (string-append " " (cadr segment) " ")
 		    style: (if (> (length segment) 2)
-			       (list-ref '(Text1.Modeline.BT.TLabel
-					   Text2.Modeline.BT.TLabel
-					   Text3.Modeline.BT.TLabel
-					   Text4.Modeline.BT.TLabel
-					   Text5.Modeline.BT.TLabel
-					   Text6.Modeline.BT.TLabel
-					   Text7.Modeline.BT.TLabel)
+			       (list-ref '(Text1.Modeline.TLabel
+					   Text2.Modeline.TLabel
+					   Text3.Modeline.TLabel
+					   Text4.Modeline.TLabel
+					   Text5.Modeline.TLabel
+					   Text6.Modeline.TLabel
+					   Text7.Modeline.TLabel)
 					 (caddr segment))
-			       'Modeline.BT.TLabel))))
+			       'Modeline.TLabel))))
 	   (slot-value buf 'setup))))
 
   (define-method (ui-show before: (buf <ui-modeline>))
@@ -2355,10 +2355,9 @@
 	(set! (slot-value buf 'toolbar)
 	  (make <ui-toolbar> 'parent (ui-box buf)
 		'setup
-		'((edit (insert-step "Increase sequence length" "insert-row.png"
-				     enabled)
-			(delete-step "Decrease sequence length" "delete-row.png"
-				     enabled))
+		'((edit (insert-row "Insert a new step" "insert-row.png"
+				    enabled)
+			(cut-row "Delete step" "delete-row.png" enabled))
 		  (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
 				 (simple "Simplified sequence"
 					 "seq-simple.png"))))))))
@@ -2732,8 +2731,12 @@
 	    (edit (copy "Copy Selection" "copy.png")
       		  (cut "Cut Selection (delete with shift)" "cut.png")
       		  (clear "Clear Selection (delete, no shift)" "clear.png")
-      		  (paste "Paste from Clipboard (no shift)" "paste.png")
       		  (insert "Insert from Clipbard (with shift)" "insert.png")
+      		  (paste "Paste from Clipboard (no shift)" "paste.png")
+		  (porous-paste-over "Porous paste over current data"
+				     "porous-paste-over.png")
+		  (porous-paste-under "Porous paste under current data"
+				      "porous-paste-under.png")
       		  (swap "Swap Selection with Clipboard" "swap.png"))
 	    (play (stop-playback "Stop Playback" "stop.png" enabled)
       		  (play-from-start "Play Track from Start"

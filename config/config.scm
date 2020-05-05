@@ -51,6 +51,12 @@
 ;; Set the number base. Use 10 for decimal, and 16 for hexadecimal.
 ;; (set-conf! 'number-base 16)
 
+;; Set the Bintracker widget theme generator. The argument must be the name of
+;; a procedure that takes no arguments and generates the file
+;; `resources/bt-theme.tcl`. See `bt-gui-lolevel#default-theme-generator` for
+;; an example of a theme generator procedure.
+;; (set-conf! 'theme-generator 'default-theme-generator)
+
 
 ;; MMOD buffer settings
 ;; --------------------
