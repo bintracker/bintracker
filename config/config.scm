@@ -48,6 +48,10 @@
 ;; Enable or disable toolbars.
 ;; (set-conf! 'show-toolbars #t)
 
+;; Integrate a text-to-speech/screen reader tool. Takes the name of the reader
+;; application and optionally additional arguments in a list of strings.
+;; (set-conf! 'text-to-speech '("espeak" "-v" "en"))
+
 ;; Set the number base. Use 10 for decimal, and 16 for hexadecimal.
 ;; (set-conf! 'number-base 16)
 
