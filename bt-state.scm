@@ -220,16 +220,17 @@
   ;;; The optional ZONES argument may be a list of initial focus control
   ;;; entries. A control entry has the following structure:
   ;;;
-  ;;; `(ID FOCUS-THUNK UNFOCUS-THUNK)`
+  ;;; `(ID FOCUS-THUNK UNFOCUS-THUNK BUFFER)`
   ;;;
   ;;; where ID is a unique identifier, FOCUS-THUNK is a procedure with no
   ;;; arguments that will be called when the associated UI buffer takes focus,
-  ;;; and UNFOCUS-THUNK is a procedure with no arguments that will be called
-  ;;; when the UI buffer loses focus.
+  ;;; UNFOCUS-THUNK is a procedure with no arguments that will be called when
+  ;;; the UI buffer loses focus, and BUFFER is the UI buffer element that owns
+  ;;; the focus zone.
   ;;;
   ;;; You can interact with the resulting focus controller FC as follows:
   ;;;
-  ;;; `(FC 'add ID FOCUS-THUNK UNFOCUS-THUNK ['after ID-AFTER])`
+  ;;; `(FC 'add ID FOCUS-THUNK UNFOCUS-THUNK BUFFER ['after ID-AFTER])`
   ;;;
   ;;; Adds a focus control entry. ID, FOCUS-THUNK, and UNFOCUS-THUNK are as
   ;;; described in the previous paragraph. If `after ID-AFTER` is specified,
@@ -266,6 +267,10 @@
   ;;; `(FC 'which)`
   ;;;
   ;;; Returns the currently active focus control entry.
+  ;;;
+  ;;; `(FC 'assoc ID)`
+  ;;;
+  ;;; Returns the ui buffer associated with the focus entry ID.
   ;;;
   ;;; `(FC 'list)`
   ;;;
@@ -308,20 +313,22 @@
 	   (unless (alist-ref (cadr args) zones)
 	     (set! zones
 	       (or (and-let* (((not (null? zones)))
-			      ((= (length args) 6))
-			      ((eqv? 'after (fifth args)))
-			      ((alist-ref (sixth args) zones))
-			      (after-id (alist-ref (sixth args) zones))
+			      ((= (length args) 7))
+			      ((eqv? 'after (sixth args)))
+			      ((alist-ref (seventh args) zones))
+			      (after-id (alist-ref (seventh args) zones))
 			      (after-id-index (+ 1 (list-index after-id zones))))
 		     (append (take zones after-id-index)
-			     (list (take (cdr args) 3))
+			     (list (take (cdr args) 4))
 			     (drop zones after-id-index)))
-		   (append zones (list (take (cdr args) 3)))))))
+		   (append zones (list (take (cdr args) 4)))))))
 	  ((remove)
 	   (suspend)
 	   (set! zones (alist-delete (cadr args) zones))
 	   (resume))
 	  ((which) (car zones))
+	  ((assoc) (and (alist-ref (cadr args) zones)
+			(caddr (alist-ref (cadr args) zones))))
 	  ((list) zones)
 	  (else (error (string-append "Unsupported ui-zones action"
 				      (->string args))))))))

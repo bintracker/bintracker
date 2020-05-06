@@ -9,7 +9,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  (chicken sort) (chicken module) (chicken process)
-	  list-utils srfi-1 srfi-13 srfi-69
+	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
 	  matchable
 	  bt-gui-lolevel bt-state bt-types bt-emulation bt-db mdal)
@@ -602,6 +602,12 @@
   (define-method (ui-hide primary: (elem <ui-element>))
     (tk/pack 'forget (ui-box elem))
     (for-each (o ui-hide cdr) (ui-children elem)))
+
+  (define-method (ui-where primary: (elem <ui-element>))
+    "unknown ui element")
+
+  (define-method (ui-what primary: (elem <ui-element>))
+    "unknown value")
 
   ;;; Remove the GUI element ELEM from the display and destroy it. Destroying an
   ;;; element will recursively call `ui-destroy` on ELEM's child elements,
@@ -1265,13 +1271,20 @@
 		  (focus-controller 'set (slot-value buf 'ui-zone)))))
       (focus-controller 'add (slot-value buf 'ui-zone)
 			(lambda () (ui-focus buf))
-			(lambda () #t))))
+			(lambda () #t)
+			buf)))
 
   (define-method (ui-hide after: (buf <ui-repl>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   (define-method (ui-destroy before: (buf <ui-repl>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
+
+  (define-method (ui-where primary: (buf <ui-repl>))
+    "read eval print loop")
+
+  (define-method (ui-what primary: (buf <ui-repl>))
+    "unknown")
 
   ;;; Insert STR at the end of the prompt of the `<ui-repl>` instance BUF.
   (define-method (repl-insert primary: (buf <ui-repl>) str)
@@ -1477,7 +1490,8 @@
     ((slot-value buf 'focus-controller) 'add
        (slot-value buf 'ui-zone)
        (lambda () (ui-focus (cdar (ui-children buf))))
-       (lambda () (ui-unfocus (cdar (ui-children buf))))))
+       (lambda () (ui-unfocus (cdar (ui-children buf))))
+       buf))
 
   (define-method (ui-hide after: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
@@ -1578,13 +1592,26 @@
     ((slot-value buf 'focus-controller) 'add
      (slot-value buf 'ui-zone)
      (lambda () (ui-blockview-focus buf))
-     (lambda () (ui-blockview-unfocus buf))))
+     (lambda () (ui-blockview-unfocus buf))
+     buf))
 
   (define-method (ui-hide after: (buf <ui-basic-block-view>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
   (define-method (ui-destroy before: (buf <ui-basic-block-view>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
+
+  (define-method (ui-what primary: (buf <ui-basic-block-view>))
+    (let ((field-val (ui-blockview-get-current-field-value buf)))
+      (if (or (not field-val)
+	      (null? field-val))
+	  "empty"
+	  (if (number? field-val)
+	      (normalize-field-value
+	       field-val
+	       (ui-blockview-get-current-field-id buf)
+	       (ui-metastate buf 'mdef))
+	      (->string field-val)))))
 
   (define-method (ui-metastate primary: (buf <ui-basic-block-view>)
 			       #!rest args)
@@ -2333,6 +2360,22 @@
       ((slot-value buf 'rownum-header) 'configure height: 2 width: 6)
       ((slot-value buf 'block-header) 'configure height: 2)))
 
+  (define-method (ui-where primary: (buf <ui-block-view>))
+    (let ((field-id
+	   (symbol->string (ui-blockview-get-current-field-id buf))))
+      (string-append "block view of group "
+		     (symbol->string (slot-value buf 'group-id))
+		     ", block "
+		     (symbol->string (ui-blockview-get-current-block-id buf))
+		     ", instance "
+		     (number->string (ui-blockview-get-current-block-instance
+				      buf))
+		     ", row "
+		     (number->string
+		      (ui-blockview-get-current-field-instance buf))
+		     ", column "
+		     field-id)))
+
   ;;; A class representing the display of the order block of an MDAL group node
   ;;; instance.
   ;;;
@@ -2517,6 +2560,21 @@
        'configure width: 5 yscrollcommand: `(,(slot-value buf 'yscroll) set))
        ((slot-value buf 'rownum-header) 'configure height: 1 width: 5)
        ((slot-value buf 'block-header) 'configure height: 1)))
+
+  (define-method (ui-where primary: (buf <ui-order-view>))
+    (let ((field-id
+	   (symbol->string (ui-blockview-get-current-field-id buf))))
+      (string-append "order view of group "
+		     (symbol->string (slot-value buf 'group-id))
+		     ", row "
+		     (number->string (ui-blockview-get-current-row buf))
+		     ", column "
+		     (cond
+		      ((string-contains-ci field-id "_LENGTH")
+		       "step length")
+		      ((string-prefix-ci? "R_" field-id)
+		       (string-drop field-id 2))
+		      (else field-id)))))
 
   (define-method (order-view-increase-length primary: (buf <ui-order-view>))
     '())
@@ -3140,12 +3198,39 @@
     (and-let* ((mv (current-module-view)))
       (ui-metastate mv 'emulator)))
 
+  ;;; Returns the ui buffer that currently has input focus.
+  ;; focus 'which
+  (define (current-buffer)
+    (and (focus 'which)
+	 (focus 'assoc (car (focus 'which)))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; Screen Reader/Text-to-Speech API
   ;; ---------------------------------------------------------------------------
 
-  ;;; An interface to the screen reader/text-to-speech tool.
+  ;;; An interface to the screen reader/text-to-speech tool. Use as follows:
+  ;;;
+  ;;; `(say STRING)`
+  ;;;
+  ;;; Say the string STRING (without sanitization).
+  ;;;
+  ;;; `(say 'sanitize STRING)`
+  ;;;
+  ;;; Say a sanitized version of STRING.
+  ;;;
+  ;;; `(say S-EXP)`
+  ;;;
+  ;;; Say a stringified, sanitized version of the symbolic expression S-EXP.
+  ;;;
+  ;;; `(say 'what)`
+  ;;;
+  ;;; Report the value currently under cursor.
+  ;;;
+  ;;; `(say 'where)`
+  ;;;
+  ;;; Report the location of the cursor. The results depend on the widget class
+  ;;; type.
   (define (say . args)
     (and (settings 'text-to-speech)
 	 (let ((sanitize-string
@@ -3173,17 +3258,26 @@
 				    (append (cdr (settings 'text-to-speech))
 					    (list text)))))))
 	   (unless (null? args)
-	     (case (car args)
-	       ((where) (text-to-speech "here") #t)
-	       ((what) (text-to-speech "value") #t)
-	       ((sanitize) (text-to-speech (sanitize-string (cadr args))))
-	       (else (text-to-speech (sanitize-string (->string (car args))))
-		     (car args)))))))
+	     (if (string? (car args))
+		 (text-to-speech (car args))
+		 (case (car args)
+		   ((where)
+		    (and (current-buffer)
+			 (text-to-speech (ui-where (current-buffer))))
+		    #t)
+		   ((what)
+		    (and (current-buffer)
+			 (text-to-speech (ui-what (current-buffer))))
+		    #t)
+		   ((sanitize) (text-to-speech (sanitize-string (cadr args))))
+		   (else (text-to-speech (sanitize-string
+					  (->string (car args))))
+			 (car args))))))))
 
   ;;; Report the value currently under cursor through the screen reader, if any.
   (define (what) (say 'what))
 
-  ;;; Report the current cursor location on scrren through the screen reader,
+  ;;; Report the current cursor location on screen through the screen reader,
   ;;; if any.
   (define (where) (say 'where))
 

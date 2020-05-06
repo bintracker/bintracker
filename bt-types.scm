@@ -124,6 +124,7 @@
 		       (repl #t 2 <ui-repl> setup
 			     "For help, type \"(info)\" at the prompt.\n")))
      : list)
+    ((text-to-speech #f) : (or boolean (list string string)))
     ((show-menu #t) : boolean)
     ((show-toolbars #t) : boolean)
     ((show-modelines #t) : boolean)
