@@ -8,7 +8,8 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  (chicken sort) (chicken module) list-utils srfi-1 srfi-13 srfi-69
+	  (chicken sort) (chicken module) (chicken process)
+	  list-utils srfi-1 srfi-13 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
 	  matchable
 	  bt-gui-lolevel bt-state bt-types bt-emulation bt-db mdal)
@@ -1299,7 +1300,11 @@
 	exn
 	(begin (repl-insert buf (string-append "\nError: " (->string exn)
 					       (->string (arguments exn))))
-	       (repl-insert-prompt buf))
+	       (when (settings 'text-to-speech)
+		 (say 'sanitize (string-append "Error " (->string exn) " "
+					       (->string (arguments exn)))))
+	       (repl-insert-prompt buf)
+	       ((slot-value buf 'repl) 'see 'end))
       (let ((input-str (repl-get buf "prompt" "end-1c"))
 	    (prompt (slot-value buf 'prompt)))
 	(unless (string-null? input-str)
@@ -1311,8 +1316,12 @@
 	      (begin
 		(repl-insert
 		 buf
-		 (string-append
-		  "\n" (->string (eval (read (open-input-string input-str))))))
+		 (let ((res (->string (eval (read (open-input-string
+						   input-str))))))
+		   (when (and (settings 'text-to-speech)
+			      (not (string-prefix-ci? "(say" input-str)))
+		     (say 'sanitize res))
+		   (string-append "\n" res)))
 		(repl-insert-prompt buf))
 	      (repl-insert
 	       buf
@@ -3130,5 +3139,52 @@
   (define (current-emulator)
     (and-let* ((mv (current-module-view)))
       (ui-metastate mv 'emulator)))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; Screen Reader/Text-to-Speech API
+  ;; ---------------------------------------------------------------------------
+
+  ;;; An interface to the screen reader/text-to-speech tool.
+  (define (say . args)
+    (and (settings 'text-to-speech)
+	 (let ((sanitize-string
+		(lambda (str)
+		  (string-translate* str '(("\n" . "newline ")
+					   (">'>" . "")
+					   ("`<" . "")
+					   ("()" . " empty list ")
+					   ("(" . " open parens ")
+					   (")" . " close parens ")
+					   ("'" . " quote ")
+					   ("`" . " backtick ")
+					   (",@" . " quote-unsplice ")
+					   ("_" . " ")
+					   ("#\\" . " char ")
+					   ("#(" . " vector open-parens ")
+					   ("#<condition:" . "")
+					   ("#<procedure" . "procedure ")
+					   ("instance of" . "instance of class")
+					   ("#<coops " . "")))))
+	       (text-to-speech
+		(lambda (text)
+		  (and (settings 'text-to-speech)
+		       (process-run (car (settings 'text-to-speech))
+				    (append (cdr (settings 'text-to-speech))
+					    (list text)))))))
+	   (unless (null? args)
+	     (case (car args)
+	       ((where) (text-to-speech "here") #t)
+	       ((what) (text-to-speech "value") #t)
+	       ((sanitize) (text-to-speech (sanitize-string (cadr args))))
+	       (else (text-to-speech (sanitize-string (->string (car args))))
+		     (car args)))))))
+
+  ;;; Report the value currently under cursor through the screen reader, if any.
+  (define (what) (say 'what))
+
+  ;;; Report the current cursor location on scrren through the screen reader,
+  ;;; if any.
+  (define (where) (say 'where))
 
   ) ;; end module bt-gui
