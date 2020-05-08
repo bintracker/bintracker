@@ -1463,12 +1463,10 @@
 
   (define-method (initialize-instance after: (buf <ui-group-fields>))
     (print "in initialize-instance/group-fields")
-    (let ((subnode-ids
-	   (config-get-subnode-type-ids
-	    (slot-value buf 'group-id)
-	    (ui-metastate buf 'mdef)
-	    'field)))
-      (print "got subnode-ids")
+    (let ((subnode-ids (config-get-subnode-type-ids
+			(slot-value buf 'group-id)
+			(ui-metastate buf 'mdef)
+			'field)))
       (set! (ui-children buf)
 	(map (lambda (field-id)
 	       (cons field-id
@@ -1605,7 +1603,7 @@
     (let ((field-val (ui-blockview-get-current-field-value buf)))
       (if (or (not field-val)
 	      (null? field-val))
-	  "empty"
+	  "void"
 	  (if (number? field-val)
 	      (normalize-field-value
 	       field-val
@@ -1988,38 +1986,40 @@
     (when (slot-value buf 'modeline)
       (ui-modeline-set (slot-value buf 'modeline) 'active-field "")))
 
+  ;; TODO this should be a hook-set.
+  (define-method (ui-blockview-perform-edit
+		  primary: (buf <ui-basic-block-view>) action)
+    (ui-metastate buf 'push-undo
+		  (make-reverse-action action (ui-metastate buf 'mmod)))
+    (ui-metastate buf 'apply-edit action)
+    (ui-blockview-update buf)
+    (ui-metastate buf 'modified #t))
+
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
   (define-method (ui-blockview-cut-current-cell primary:
 						(buf <ui-basic-block-view>))
     (unless (null? (ui-blockview-get-current-field-value buf))
-      (let ((action (list 'remove
-			  (ui-blockview-get-current-block-instance-path buf)
-			  (ui-blockview-get-current-field-id buf)
-			  `((,(ui-blockview-get-current-field-instance buf))))))
-	(ui-metastate buf 'push-undo
-		      (make-reverse-action action (ui-metastate buf 'mmod)))
-	(ui-metastate buf 'apply-edit action)
-	(ui-blockview-update buf)
-	(ui-blockview-move-cursor buf 'Up)
-	(ui-metastate buf 'modified #t))))
+      (ui-blockview-perform-edit
+       buf
+       (list 'remove
+	     (ui-blockview-get-current-block-instance-path buf)
+	     (ui-blockview-get-current-field-id buf)
+	     `((,(ui-blockview-get-current-field-instance buf)))))
+      (ui-blockview-move-cursor buf 'Up)))
 
   ;;; Insert an empty cell into the field column currently under cursor,
   ;;; shifting the following node instances down and dropping the last instance.
   (define-method (ui-blockview-insert-cell primary:
 					   (buf <ui-basic-block-view>))
     (unless (null? (ui-blockview-get-current-field-value buf))
-      (let ((action (list 'insert
-			   (ui-blockview-get-current-block-instance-path buf)
-			   (ui-blockview-get-current-field-id buf)
-			   `((,(ui-blockview-get-current-field-instance buf)
-			      ())))))
-	(ui-metastate buf 'push-undo
-		      (make-reverse-action action (ui-metastate buf 'mmod)))
-	(ui-metastate buf 'apply-edit action)
-	(ui-blockview-update buf)
-	(ui-blockview-show-cursor buf)
-	(ui-metastate buf 'modified #t))))
+      (ui-blockview-perform-edit
+       buf
+       (list 'insert
+	     (ui-blockview-get-current-block-instance-path buf)
+	     (ui-blockview-get-current-field-id buf)
+	     `((,(ui-blockview-get-current-field-instance buf)
+		()))))))
 
   ;; TODO using this on ui-blockview-enter-note/trigger would be much better
   ;; but this causes latency because display is then updated first.
@@ -2035,10 +2035,7 @@
   (define-method (ui-blockview-enter-note primary: (buf <ui-basic-block-view>)
 					  keysym)
     (let ((note-val (keypress->note keysym)))
-      (when note-val
-	(ui-blockview-edit-current-cell buf note-val)
-	;; (ui-blockview-maybe-play-row buf)
-	)))
+      (when note-val (ui-blockview-edit-current-cell buf note-val))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -2122,8 +2119,14 @@
 		    (ui-blockview-edit-current-cell buf '()))))
       (tk/bind* grid '<<CutStep>>
 		(lambda () (ui-blockview-cut-current-cell buf)))
+      (tk/bind* grid '<<CutRow>>
+		(lambda () (ui-blockview-cut-row buf)))
       (tk/bind* grid '<<InsertStep>>
 		(lambda () (ui-blockview-insert-cell buf)))
+      (tk/bind* grid '<<InsertRow>>
+		(lambda () (ui-blockview-cut-row buf)))
+      (tk/bind* grid '<<InsertRow>>
+		(lambda () (ui-blockview-insert-row buf)))
       (tk/bind* grid '<<BlockEntry>>
 		`(,(lambda (keysym)
 		     (ui-blockview-dispatch-entry-event buf keysym))
@@ -2235,17 +2238,18 @@
 	      (ui-blockview-get-current-order-pos buf)))
 
   ;;; Return the block instance ID currently under cursor.
-  (define-method (ui-blockview-get-current-block-instance primary:
-							  (buf <ui-block-view>))
-    (let ((current-block-id (ui-blockview-get-current-block-id buf)))
-      (list-ref (list-ref (map cdr
-			       (mod-get-order-values
-				(slot-value buf 'group-id)
-				(ui-blockview-parent-instance buf)))
-			  (ui-blockview-get-current-order-pos buf))
-		(list-index (lambda (block-id)
-			      (eq? block-id current-block-id))
-			    (slot-value buf 'block-ids)))))
+  (define-method (ui-blockview-get-current-block-instance
+		  primary: (buf <ui-block-view>)
+		  #!optional (current-block-id
+			      (ui-blockview-get-current-block-id buf)))
+    (list-ref (list-ref (map cdr
+			     (mod-get-order-values
+			      (slot-value buf 'group-id)
+			      (ui-blockview-parent-instance buf)))
+			(ui-blockview-get-current-order-pos buf))
+	      (list-index (lambda (block-id)
+			    (eq? block-id current-block-id))
+			  (slot-value buf 'block-ids))))
 
   ;;; Return the MDAL node path string of the field currently under cursor.
   (define-method (ui-blockview-get-current-block-instance-path
@@ -2254,6 +2258,52 @@
 		   (symbol->string (ui-blockview-get-current-block-id buf))
 		   "/" (->string
 			(ui-blockview-get-current-block-instance buf))))
+
+  (define-method (ui-blockview-insert-row primary: (buf <ui-block-view>))
+    (print "ui-blockview-cut-row/block")
+    (let ((current-row (ui-blockview-get-current-field-instance buf)))
+      (ui-blockview-perform-edit
+       buf
+       (cons 'compound
+	     (map (lambda (field-id)
+		    (let ((block-id (config-get-parent-node-id
+				     field-id
+				     (config-itree (ui-metastate buf 'mdef)))))
+		      (list 'insert
+			    (string-append
+			     (slot-value buf 'parent-instance-path)
+			     (symbol->string block-id)
+			     "/"
+			     (number->string
+			      (ui-blockview-get-current-block-instance
+			       buf block-id)))
+			    field-id
+			    `((,current-row ())))))
+		  (slot-value buf 'field-ids))))
+      (ui-blockview-move-cursor buf 'Up)))
+
+  (define-method (ui-blockview-cut-row primary: (buf <ui-block-view>))
+    (print "ui-blockview-cut-row/block")
+    (let ((current-row (ui-blockview-get-current-field-instance buf)))
+      (ui-blockview-perform-edit
+       buf
+       (cons 'compound
+	     (map (lambda (field-id)
+		    (let ((block-id (config-get-parent-node-id
+				     field-id
+				     (config-itree (ui-metastate buf 'mdef)))))
+		      (list 'remove
+			    (string-append
+			     (slot-value buf 'parent-instance-path)
+			     (symbol->string block-id)
+			     "/"
+			     (number->string
+			      (ui-blockview-get-current-block-instance
+			       buf block-id)))
+			    field-id
+			    `((,current-row)))))
+		  (slot-value buf 'field-ids))))
+      (ui-blockview-move-cursor buf 'Up)))
 
   ;; TODO unify with specialization on ui-order-view
   ;;; Update the blockview row numbers according to the current item cache.
@@ -2465,6 +2515,48 @@
   (define-method (ui-blockview-get-current-chunk primary:
 						 (buf <ui-order-view>))
     (car (slot-value buf 'item-cache)))
+
+  (define-method (ui-blockview-insert-row primary: (buf <ui-order-view>))
+    (print "ui-blockview-cut-row/order")
+    (let ((current-row (ui-blockview-get-current-row buf)))
+      (ui-blockview-perform-edit
+       buf
+       (cons 'compound
+	     (map (lambda (field-id)
+		    (let ((block-id (string-append
+				     (symbol->string (slot-value buf
+								 'group-id))
+				     "_ORDER")))
+		      (list 'insert
+			    (string-append
+			     (slot-value buf 'parent-instance-path)
+			     block-id
+			     "/0")
+			    field-id
+			    `((,current-row ())))))
+		  (slot-value buf 'field-ids))))
+      (ui-blockview-move-cursor buf 'Up)))
+
+  (define-method (ui-blockview-cut-row primary: (buf <ui-order-view>))
+    (print "ui-blockview-cut-row/order")
+    (let ((current-row (ui-blockview-get-current-row buf)))
+      (ui-blockview-perform-edit
+       buf
+       (cons 'compound
+	     (map (lambda (field-id)
+		    (let ((block-id (string-append
+				     (symbol->string (slot-value buf
+								 'group-id))
+				     "_ORDER")))
+		      (list 'remove
+			    (string-append
+			     (slot-value buf 'parent-instance-path)
+			     block-id
+			     "/0")
+			    field-id
+			    `((,current-row)))))
+		  (slot-value buf 'field-ids))))
+      (ui-blockview-move-cursor buf 'Up)))
 
   ;;; Update the blockview row numbers according to the current item cache.
   (define-method (ui-blockview-update-row-numbers primary:

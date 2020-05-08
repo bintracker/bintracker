@@ -458,10 +458,10 @@
     (tk/event 'add '<<BlockMotion>>
 	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
-    (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
-    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
-    (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step)))
+    (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
+    (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step))
+    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
   ;;; evaluated before the local bindings of WIDGET. This is necessary to

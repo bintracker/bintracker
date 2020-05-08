@@ -369,8 +369,10 @@
   ;;; Generate an action specification that when applied, will revert the edit
   ;;; that results from the given edit ACTION specification.
   (define (make-reverse-action action mmod)
+    (print "make-reverse-action action mmod, action: " action)
     (if (eqv? 'compound (car action))
-	(list 'compound (map make-reverse-action (reverse (cdr action))))
+	(list 'compound (map (cute make-reverse-action <> mmod)
+			     (reverse (cdr action))))
 	(if (eqv? 'block (config-get-parent-node-type (third action)
 						      (car mmod)))
 	    (case (car action)
