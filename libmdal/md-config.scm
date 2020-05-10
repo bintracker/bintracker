@@ -212,7 +212,7 @@
 
   ;;; Return the ID of the parent of the given inode in the given inode tree
   (define (config-get-parent-node-id inode-id itree)
-    (cond ((not (member inode-id (flatten (cdar itree)))) #f)
+    (cond ((not (memv inode-id (flatten (cdar itree)))) #f)
 	  ((member inode-id (map car (cadar itree))) (caar itree))
 	  (else (config-get-parent-node-id
 		 inode-id

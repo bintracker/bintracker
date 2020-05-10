@@ -5,7 +5,7 @@
 (module mdal *
 
   (import scheme (chicken base) (chicken module) (chicken pretty-print)
-	  (chicken format) (chicken string) (chicken bitwise)
+	  (chicken format) (chicken string) (chicken bitwise) (chicken sort)
 	  srfi-1 srfi-4 srfi-13 srfi-69 typed-records
 	  (only list-utils list-copy* list-set!)
 	  md-config md-helpers md-types md-parser)
@@ -287,7 +287,8 @@
 			columns (iota (length columns)))))))
 
   ;;; Insert an instance of the block field FIELD-ID into the block node
-  ;;; instance BLOCK-INSTANCE, inserting at ROW and setting VALUE.
+  ;;; instance BLOCK-INSTANCE, inserting at ROW and setting VALUE. Returns a
+  ;;; fresh block node instance.
   (define (insert-block-field block-instance field-id row value mdconf)
     (let* ((block-id (config-get-parent-node-id field-id (config-itree mdconf)))
 	   (columns
@@ -349,6 +350,97 @@
 				     (alist-ref node-id
 						(cddr parent-instance))))
 		    instances))))
+
+  ;;; Insert one or more rows into the block instance at BLOCK-INSTANCE-PATH.
+  ;;; Rows shall be a list of lists, where each sublist contains a row number
+  ;;; in car, and a list of field values in cdr.
+  (define (block-row-insert! parent-instance-path block-id instances mod)
+    (letrec* ((mdef (mdmod-config mod))
+	      (parent-instance ((node-path parent-instance-path)
+				(mdmod-global-node mod)))
+	      (block-instances-to-update (map car instances))
+	      (empty-row (make-list (length (config-get-subnode-ids
+					     block-id
+					     (config-itree mdef)))
+				    '()))
+	      (insert-rows
+	       (lambda (orig-rows new-rows row-idx)
+		 (print "insert-rows, orig-rows: " orig-rows ", new-rows: " new-rows
+			", row-idx: " row-idx)
+		 (if (null? new-rows)
+		     orig-rows
+		     (if (= row-idx (caar new-rows))
+			 (cons (cadar new-rows)
+			       (insert-rows orig-rows
+					    (cdr new-rows)
+					    (+ 1 row-idx)))
+			 (if (null? orig-rows)
+			     (cons empty-row
+				   (insert-rows '() new-rows (+ 1 row-idx)))
+			     (cons (car orig-rows)
+				   (insert-rows (cdr orig-rows)
+						new-rows
+						(+ 1 row-idx)))))))))
+      (for-each
+       (lambda (block-instance-spec)
+	 (let ((sorted-rows (sort (cdr block-instance-spec)
+				  (lambda (x y) (<= (car x) (car y))))))
+	   (set! (cddr parent-instance)
+	     (alist-update
+	      block-id
+	      (map (lambda (block-instance)
+		     (if (memq (car block-instance) block-instances-to-update)
+			 (append (take block-instance 2)
+				 (insert-rows (cddr block-instance)
+					      sorted-rows
+					      0))
+			 block-instance))
+		   (cdr (subnode-ref block-id parent-instance)))
+	      (cddr parent-instance)))))
+       instances)
+      ;; (for-each
+      ;;  (lambda (row)
+      ;; 	 (set! (cddr block-instance)
+      ;; 	   (let ((contents
+      ;; 		  (if (> (length (cddr block-instance))
+      ;; 			 (car row))
+      ;; 		      (append (cddr block-instance)
+      ;; 			      (make-list (- (+ 1 (car row))
+      ;; 					    (length (cddr block-instance)))
+      ;; 					 empty-row)))))
+      ;; 	     (append (take contents (car row))
+      ;; 		     (cdr row)
+      ;; 		     (drop contents (car row))))))
+      ;;  rows)
+      ))
+
+  ;;; Remove one or more rows from a block node instance. PARENT-INSTANCE-PATH
+  ;;; must be a node path to the parent group node instance. BLOCK-ID must be
+  ;;; the ID of the block node, and INSTANCES must be an alist, where the keys
+  ;;; are the IDs of the block instances to change, and the values are lists
+  ;;; containing a row number in car.
+  (define (block-row-remove! parent-instance-path block-id instances mod)
+    (let ((parent-instance ((node-path parent-instance-path)
+			    (mdmod-global-node mod)))
+	  (block-instances-to-update (map car instances)))
+      (set! (cddr parent-instance)
+	(alist-update
+	 block-id
+	 (map (lambda (block-instance)
+		(if (memq (car block-instance) block-instances-to-update)
+		    (append
+		     (take block-instance 2)
+		     (filter-map
+		      (lambda (row idx)
+			(and (not (memq idx (map car
+						 (alist-ref (car block-instance)
+							    instances))))
+			     row))
+		      (cddr block-instance)
+		      (iota (length (cddr block-instance)))))
+		    block-instance))
+	      (cdr (subnode-ref block-id parent-instance)))
+	 (cddr parent-instance)))))
 
 
   ;; ---------------------------------------------------------------------------

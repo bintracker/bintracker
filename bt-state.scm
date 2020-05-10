@@ -414,6 +414,15 @@
 			  (fourth action))))
 	      ((remove) (list 'insert (cadr action) (third action)))
 	      ((insert) (list 'remove (cadr action) (third action)
-			      (map car (fourth action))))))))
+			      (map car (fourth action))))
+	      ((block-row-remove) (begin (print "reversing block-row-remove")
+				    (list 'block-row-insert
+					  (cadr action)
+					  (third action)
+					  (fourth action))))
+	      ((block-row-insert) (list 'block-row-remove
+					(cadr action)
+					(third action)
+					(fourth action)))))))
 
   ) ;; end module bt-state

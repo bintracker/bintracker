@@ -107,7 +107,7 @@
 			    ;; TODO
   			    (file->config "libmdal/unittests/config/"
   					  "Huby" "libmdal/")
-  			    16)
+  			    (settings 'default-block-length))
 			   #f))
 
   ;; TODO abort when user aborts closing of current workfile
@@ -1989,6 +1989,7 @@
   ;; TODO this should be a hook-set.
   (define-method (ui-blockview-perform-edit
 		  primary: (buf <ui-basic-block-view>) action)
+    (print "(ui-blockview-perform-edit " action ")")
     (ui-metastate buf 'push-undo
 		  (make-reverse-action action (ui-metastate buf 'mmod)))
     (ui-metastate buf 'apply-edit action)
@@ -2260,50 +2261,62 @@
 			(ui-blockview-get-current-block-instance buf))))
 
   (define-method (ui-blockview-insert-row primary: (buf <ui-block-view>))
-    (print "ui-blockview-cut-row/block")
-    (let ((current-row (ui-blockview-get-current-field-instance buf)))
+    (let* ((current-row (ui-blockview-get-current-field-instance buf))
+	   (parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path)
+	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+	   (block-instance-ids
+	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
+						 parent-instance)
+			   (ui-blockview-get-current-order-pos buf)))))
       (ui-blockview-perform-edit
        buf
        (cons 'compound
-	     (map (lambda (field-id)
-		    (let ((block-id (config-get-parent-node-id
-				     field-id
-				     (config-itree (ui-metastate buf 'mdef)))))
-		      (list 'insert
-			    (string-append
-			     (slot-value buf 'parent-instance-path)
-			     (symbol->string block-id)
-			     "/"
-			     (number->string
-			      (ui-blockview-get-current-block-instance
-			       buf block-id)))
-			    field-id
-			    `((,current-row ())))))
-		  (slot-value buf 'field-ids))))
-      (ui-blockview-move-cursor buf 'Up)))
+	     (map (lambda (block-id instance-id)
+		    (list 'block-row-insert
+			  parent-instance-path
+			  block-id
+			  `((,instance-id
+			     (,current-row
+			      ,(make-list
+				(length (config-get-subnode-ids
+					 block-id
+					 (config-itree (ui-metastate buf
+								     'mdef))))
+				'()))))))
+		  (slot-value buf 'block-ids)
+		  block-instance-ids)))
+      (ui-blockview-show-cursor buf)))
 
   (define-method (ui-blockview-cut-row primary: (buf <ui-block-view>))
-    (print "ui-blockview-cut-row/block")
-    (let ((current-row (ui-blockview-get-current-field-instance buf)))
+    (let* ((current-row (ui-blockview-get-current-field-instance buf))
+	   (parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path)
+	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+	   (block-instance-ids
+	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
+						 parent-instance)
+			   (ui-blockview-get-current-order-pos buf)))))
       (ui-blockview-perform-edit
        buf
        (cons 'compound
-	     (map (lambda (field-id)
-		    (let ((block-id (config-get-parent-node-id
-				     field-id
-				     (config-itree (ui-metastate buf 'mdef)))))
-		      (list 'remove
-			    (string-append
-			     (slot-value buf 'parent-instance-path)
-			     (symbol->string block-id)
-			     "/"
-			     (number->string
-			      (ui-blockview-get-current-block-instance
-			       buf block-id)))
-			    field-id
-			    `((,current-row)))))
-		  (slot-value buf 'field-ids))))
-      (ui-blockview-move-cursor buf 'Up)))
+	     (map (lambda (block-id instance-id)
+		    (list 'block-row-remove
+			  parent-instance-path
+			  block-id
+			  `((,instance-id
+			     (,current-row
+			      ,(make-list
+				(length (config-get-subnode-ids
+					 block-id
+					 (config-itree (ui-metastate buf
+								     'mdef))))
+				;; TODO: in this case we need the actual
+				;; block values.
+				'()))))))
+		  (slot-value buf 'block-ids)
+		  block-instance-ids)))
+      (ui-blockview-show-cursor buf)))
 
   ;; TODO unify with specialization on ui-order-view
   ;;; Update the blockview row numbers according to the current item cache.
@@ -2516,48 +2529,6 @@
 						 (buf <ui-order-view>))
     (car (slot-value buf 'item-cache)))
 
-  (define-method (ui-blockview-insert-row primary: (buf <ui-order-view>))
-    (print "ui-blockview-cut-row/order")
-    (let ((current-row (ui-blockview-get-current-row buf)))
-      (ui-blockview-perform-edit
-       buf
-       (cons 'compound
-	     (map (lambda (field-id)
-		    (let ((block-id (string-append
-				     (symbol->string (slot-value buf
-								 'group-id))
-				     "_ORDER")))
-		      (list 'insert
-			    (string-append
-			     (slot-value buf 'parent-instance-path)
-			     block-id
-			     "/0")
-			    field-id
-			    `((,current-row ())))))
-		  (slot-value buf 'field-ids))))
-      (ui-blockview-move-cursor buf 'Up)))
-
-  (define-method (ui-blockview-cut-row primary: (buf <ui-order-view>))
-    (print "ui-blockview-cut-row/order")
-    (let ((current-row (ui-blockview-get-current-row buf)))
-      (ui-blockview-perform-edit
-       buf
-       (cons 'compound
-	     (map (lambda (field-id)
-		    (let ((block-id (string-append
-				     (symbol->string (slot-value buf
-								 'group-id))
-				     "_ORDER")))
-		      (list 'remove
-			    (string-append
-			     (slot-value buf 'parent-instance-path)
-			     block-id
-			     "/0")
-			    field-id
-			    `((,current-row)))))
-		  (slot-value buf 'field-ids))))
-      (ui-blockview-move-cursor buf 'Up)))
-
   ;;; Update the blockview row numbers according to the current item cache.
   (define-method (ui-blockview-update-row-numbers primary:
 						  (buf <ui-order-view>))
@@ -2617,6 +2588,61 @@
       (unless (zero? (state 'edit-step))
 	(ui-blockview-move-cursor buf 'Down))))
 
+  ;;; Insert a new row at the current cursor position. If ROW is omitted, the
+  ;;; current row is cloned, or an empty row is created if the cursor is on row
+  ;;; 0. If ROW is given, it must be a list of row values, which may not contain
+  ;;; empty nodes.
+  (define-method (ui-blockview-insert-row primary: (buf <ui-order-view>)
+					  #!optional row)
+    (let* ((current-row (ui-blockview-get-current-row buf))
+	   (parent-instance-path (slot-value buf 'parent-instance-path))
+	   (new-row-values
+	    (or row
+		(if (zero? current-row)
+		    ;; TODO honor node restrictions
+		    (cons (settings 'default-block-length)
+			  (make-list
+			   (sub1 (length (slot-value buf 'field-ids)))
+			   0))
+		    (list-ref (mod-get-order-values
+			       (slot-value buf 'group-id)
+			       ((node-path parent-instance-path)
+				(mdmod-global-node (ui-metastate buf 'mmod))))
+			      (sub1 current-row)))))
+	   (block-id (symbol-append (slot-value buf 'group-id)
+				    '_ORDER)))
+      (ui-blockview-perform-edit
+       buf
+       (list 'block-row-insert parent-instance-path block-id
+	     `((0 (,current-row ,new-row-values)))))
+      (ui-blockview-update (current-blocks-view))
+      (ui-blockview-show-cursor buf)))
+
+  ;; TODO allow deleting multiple rows and rows currently not under cursor.
+  ;;; Cut (remove) the row currently under cursor.
+  (define-method (ui-blockview-cut-row primary: (buf <ui-order-view>))
+    (when (> (length (car (ui-blockview-get-item-list buf))) 1)
+      (let* ((current-row (ui-blockview-get-current-row buf))
+	     (parent-instance-path (slot-value buf 'parent-instance-path))
+	     (current-row-values
+	      (list-ref (mod-get-order-values
+			 (slot-value buf 'group-id)
+			 ((node-path parent-instance-path)
+			  (mdmod-global-node (ui-metastate buf 'mmod))))
+			current-row))
+	     (block-id (symbol-append (slot-value buf 'group-id) '_ORDER)))
+	(unless (zero? current-row)
+	  (ui-blockview-move-cursor buf 'Up))
+	(ui-blockview-perform-edit
+	 buf
+	 (list 'block-row-remove
+	       parent-instance-path
+	       block-id
+	       `((0 (,current-row ,current-row-values)))))
+	;; TODO properly determine block view
+	(ui-blockview-update (current-blocks-view))
+	(ui-blockview-show-cursor buf))))
+
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
   ;;; Update the blockview display.
@@ -2667,15 +2693,6 @@
 		      ((string-prefix-ci? "R_" field-id)
 		       (string-drop field-id 2))
 		      (else field-id)))))
-
-  (define-method (order-view-increase-length primary: (buf <ui-order-view>))
-    '())
-
-  (define-method (order-view-decrease-length primary: (buf <ui-order-view>))
-    (ui-blockview-update buf)
-    ;; TODO should tie directly to the appropriate block view, instead of
-    ;; relying on (current-blocks-view)
-    (ui-blockview-update (current-blocks-view)))
 
   ;;; A widget class suitable for displaying an MDAL group node's block members.
   ;;; It is a wrapper around a <ui-block-view> and the associated
@@ -3045,6 +3062,8 @@
 		  ((set) node-set!)
 		  ((remove) node-remove!)
 		  ((insert) node-insert!)
+		  ((block-row-remove) block-row-remove!)
+		  ((block-row-insert) block-row-insert!)
 		  (else (warning (string-append "Unsupported edit action \""
 						(->string (car action))
 						"\""))))
@@ -3188,19 +3207,29 @@
   ;;;
   ;;; `(ACTION PARENT-INSTANCE-PATH NODE-ID INSTANCES)`
   ;;;
-  ;;; where ACTION is one of the symbols `set`, `insert`, or `remove`,
+  ;;; where ACTION is one of the symbols `set`, `insert`, `remove`,
+  ;;; `block-row-insert`, or `block-row-remove`.
   ;;; PARENT-INSTANCE-PATH is a fully qualified MDAL node path string denoting
   ;;; the parent node instance of the node that you want to edit (ie. a path
   ;;; starting at the global inode, see md-types/MDMOD for details),
   ;;; NODE-ID is the ID of the node you want to edit, and INSTANCES is an
   ;;; alist where the keys are node instance ID numbers and the values are the
-  ;;; values that you want to set. Values for a `remove` action are ignored, but
-  ;;; you must still provide the argument as a list of lists.
+  ;;; values that you want to set. For `block-row-insert/remove`, INSTANCES must
+  ;;; be an alist where the keys are block instance ids, and the values are in
+  ;;; turn alists where the key is a row number (field instance), and the value
+  ;;; is a list of field values as required by the block node.
+  ;;;
+  ;;; Values for `remove`/`block-row-remove`
+  ;;; actions are ignored, but you must still provide the argument so Bintracker
+  ;;; can deduce the inverse of the action (which gets pushed to the journal).
   ;;;
   ;;; As the respective names suggest, a `set` action sets one or more instances
   ;;; of the node NODE-ID at PARENT-INSTANCE-PATH to (a) new value(s), an
   ;;; `insert` action inserts one or more new instances into the node, and a
-  ;;; `remove` action removes one or more instances from the node.
+  ;;; `remove` action removes one or more instances from the node. Likewise, a
+  ;;; `block-row-insert` inserts a new row into a given block node instance,
+  ;;; and `block-row-remove` removes a row. It is an error to apply the latter
+  ;;; to actions to any non-block node.
   ;;;
   ;;; Alternatively, an edit action may take the form
   ;;;

@@ -136,6 +136,7 @@
     ((default-base-octave 4) : fixnum)
     ((default-major-row-highlight 2) : fixnum)
     ((default-minor-row-highlight 4) : fixnum)
+    ((default-block-length 16) : fixnum)
     ((journal-limit 100) : integer))
 
   ) ;; end module bt-types
