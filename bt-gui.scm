@@ -581,8 +581,7 @@
      (children initform: '() accessor: ui-children)))
 
   (define-method (initialize-instance after: (elem <ui-element>))
-    (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame
-			 style: 'BT.TFrame)))
+    (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame)))
 
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (elem <ui-element>))
@@ -699,8 +698,7 @@
 			  (seventh setup)))
 	   (box (ui-box buf))
 	   (spinbox (box 'create-widget 'spinbox from: from to: to
-			 width: 4 state: 'enabled validate: 'none
-			 style: 'BT.TSpinbox))
+			 width: 4 state: 'enabled validate: 'none))
 	   (validate-new-value
 	    (lambda (new-val)
 	      (if (and (integer? new-val)
@@ -711,7 +709,7 @@
 		  (spinbox 'set (state state-var))))))
       (set! (slot-value buf 'label)
 	(box 'create-widget 'label text: (car setup)
-	     style: 'BT.TLabel foreground: (colors 'text)))
+	     foreground: (colors 'text)))
       ;; (tk/bind* spinbox '<<Increment>>
       ;; 	  (lambda ()
       ;; 	     (validate-new-value
@@ -792,8 +790,7 @@
 	       (cons (car spec)
 		     (box 'create-widget 'button image: (tk/icon (third spec))
 			  state: (or (and (= 4 (length spec)) (fourth spec))
-				     'disabled)
-			  style: 'BT.TButton)))
+				     'disabled))))
 	     (ui-setup buf)))
       (for-each (lambda (button)
 		  (if (eqv? orient 'horizontal)
@@ -980,7 +977,6 @@
   (define-method (initialize-instance after: (buf <ui-multibuffer>))
     (set! (slot-value buf 'panes)
       ((ui-box buf) 'create-widget 'panedwindow
-       style: 'BT.TPanedwindow
        orient: (slot-value buf 'orient)))
     (set! (ui-children buf)
       (map (lambda (child)
@@ -1163,7 +1159,7 @@
 	    'setup '((collapse "Collapse buffer" "collapse.png" 'enabled))
 	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
     (set! (slot-value buf 'content-box)
-      ((ui-box buf) 'create-widget 'frame style: 'BT.TFrame))
+      ((ui-box buf) 'create-widget 'frame))
     (when (slot-value buf 'modeline)
       (set! (slot-value buf 'modeline)
 	(make <ui-modeline>
@@ -1208,12 +1204,10 @@
 
   (define-method (initialize-instance after: (buf <ui-welcome-buffer>))
     (let ((box (ui-box buf)))
-      (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker."
-		    style: 'BT.TLabel)
+      (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker.")
 	       padx: 20 pady: 20)
       (for-each (lambda (text)
-		  (tk/pack (box 'create-widget 'button text: text
-				style: 'BT.TButton)
+		  (tk/pack (box 'create-widget 'button text: text)
 			   pady: 4))
 		'("Create new module (Ctrl-N)"
 		  "Open existing module (Ctrl-O)"
@@ -1393,7 +1387,7 @@
 	   (color (get-field-color node-id (ui-metastate buf 'mdef))))
       (print "got node-id " node-id " and color " color)
       (set! (slot-value buf 'label)
-	((ui-box buf) 'create-widget 'label style: 'BT.TLabel
+	((ui-box buf) 'create-widget 'label
 	 foreground: color text: (symbol->string node-id)
 	 width: 12))
       (print "made label")
@@ -1529,15 +1523,13 @@
   (define-method (initialize-instance after: (buf <ui-basic-block-view>))
     (let ((content-box (slot-value buf 'content-box)))
       (set! (slot-value buf 'header-frame)
-	(content-box 'create-widget 'frame style: 'BT.TFrame))
+	(content-box 'create-widget 'frame))
       (set! (slot-value buf 'content-frame)
-	(content-box 'create-widget 'frame style: 'BT.TFrame))
+	(content-box 'create-widget 'frame))
       (set! (slot-value buf 'rownum-frame)
-	((slot-value buf 'content-frame)
-	 'create-widget 'frame style: 'BT.TFrame))
+	((slot-value buf 'content-frame) 'create-widget 'frame))
       (set! (slot-value buf 'block-frame)
-	((slot-value buf 'content-frame)
-	 'create-widget 'frame style: 'BT.TFrame))
+	((slot-value buf 'content-frame) 'create-widget 'frame))
       (set! (slot-value buf 'rownum-header)
 	(textgrid-create-basic (slot-value buf 'rownum-frame)))
       (set! (slot-value buf 'rownums)
@@ -2762,8 +2754,7 @@
 
   (define-method (initialize-instance after: (buf <ui-subgroups>))
     (set! (slot-value buf 'tabs)
-      ((slot-value buf 'content-box)
-       'create-widget 'notebook style: 'BT.TNotebook))
+      ((slot-value buf 'content-box) 'create-widget 'notebook))
     (set! (slot-value buf 'subgroups)
       (map (lambda (id)
 	     (cons id (make <ui-group>
