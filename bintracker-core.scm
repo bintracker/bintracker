@@ -30,8 +30,8 @@
 	(handle-exceptions
 	    exn
 	    (begin
-	      (display exn)
-	      (newline))
+	      (tk-end)
+	      (raise exn))
 	  (load "config/config.scm"))
 	(warning "Configuration file \"config/config.scm\" not found.")))
 
@@ -59,10 +59,6 @@
 				"note-entry   ")))))
 	  (else (string-append "Unknown command " (->string args))))))
 
-
-  ;; ---------------------------------------------------------------------------
-  ;;; ## Main Menu
-  ;; ---------------------------------------------------------------------------
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Core GUI Layout
@@ -122,6 +118,89 @@
 	      (get-keybinding-group 'global))
     (create-virtual-events))
 
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Plugins
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Check if the plugin version HAVE meets the version requirement NEED.
+  (define (check-required-plugin-version need have)
+    (let ((have-version (take (map string->number
+				   (string-split have ".")) 2))
+	  (need-modifier
+	   (string-delete (char-set-union char-set:digit (char-set #\.))
+			  need))
+	  (need-version
+	   (take (map string->number
+		      (string-split
+		       (string-filter (char-set-union char-set:digit
+						      (char-set #\.))
+				      need)
+		       "."))
+		 2)))
+      (print "check-req " have-version " " need-modifier " " need-version)
+      (print (if (string-null? need-modifier)
+	  (andmap = (take have-version 2) (take need-version 2))
+	  (case (string->symbol need-modifier)
+	    ((>=) (and (= (car have-version) (car need-version))
+		       (>= (cadr have-version) (cadr need-version))))
+	    (else (error 'check-required-plugin-version
+			 (string-append "Unknown modifier " need-modifier))))))
+      (if (string-null? need-modifier)
+	  (andmap = (take have-version 2) (take need-version 2))
+	  (case (string->symbol need-modifier)
+	    ((>=) (and (= (car have-version) (car need-version))
+		       (>= (cadr have-version) (cadr need-version))))
+	    (else (error 'check-required-plugin-version
+			 (string-append "Unknown modifier " need-modifier)))))))
+
+  (define plugins
+    (letrec*
+	((registry '())
+	 (read-plugin-file
+	  (lambda (name #!optional version-req)
+	    (or (apply register-plugin
+		       (cons version-req
+			     (call-with-input-file
+				 (string-append "plugins/" name "/" name ".scm")
+			       read)))
+		(error "Something went wrong."))))
+	 (register-plugin
+	  (lambda (version-req header
+			       #!key id version author license (description "")
+			       (dependencies '()) body)
+	    (and-let* ((_ (eqv? header 'bintracker-plugin))
+		       (_ (or (not version-req)
+			      (check-required-plugin-version version-req
+							     version)))
+		       (id id)
+		       (version version)
+		       (_ (andmap (lambda (dep)
+				    (or (member (car dep) (map car registry))
+					(apply read-plugin-file dep)))
+				  dependencies)))
+	      (apply eval body)
+	      (set! registry
+		(cons (list id version author license description)
+		      registry))
+	      #t))))
+      (lambda args
+	(if (null? args)
+	    registry
+	    (case (car args)
+	      ((register)
+	       (for-each
+		(lambda (name)
+		  (unless (member name (map car registry))
+		    (handle-exceptions
+			exn
+			(error 'plugins
+			       (string-append
+				"Failed to register plugin " name ", reason: "
+				(->string exn)))
+		      (read-plugin-file name))))
+		(string-split (cadr args))))
+	      (else (error 'plugins (string-append "Unknown command "
+						   (->string args)))))))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Startup Hooks
