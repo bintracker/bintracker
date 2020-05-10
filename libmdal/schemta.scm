@@ -443,7 +443,7 @@
 	       (one-or-more
 		(in (char-set-union char-set:letter+digit
 				    (string->char-set
-				     ".<>#\\+-:/'@`,%=?!\"")))))
+				     "._<>#\\+-:/'@`,%=?!\"")))))
        (zero-or-more (in char-set:whitespace)))))
 
   (define a-toplevel-atom
@@ -453,7 +453,7 @@
 	       (one-or-more
 		(in (char-set-union char-set:letter+digit
 				    (string->char-set
-				     "<>#\\+-:/'@`,%=?!\"")))))
+				     "<>_#\\+-:/'@`,%=?!\"")))))
        (zero-or-more (in horizontal-whitespace)))))
 
   (define a-cons
