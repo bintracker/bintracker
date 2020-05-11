@@ -389,6 +389,7 @@
     (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
     (tg 'tag 'configure 'rowhl-major background: (colors 'row-highlight-major))
     (tg 'tag 'configure 'active-cell background: (colors 'cursor))
+    (tg 'tag 'configure 'selected background: (colors 'cursor))
     (tg 'tag 'configure 'txt foreground: (colors 'text))
     (tg 'tag 'configure 'note foreground: (colors 'text-1))
     (tg 'tag 'configure 'int foreground: (colors 'text-2))
@@ -402,8 +403,8 @@
   					     "bold")))
 
   ;;; Abstraction over Tk's `textwidget tag add` command.
-  ;;; Contrary to Tk's convention, `row` uses 0-based indexing.
-  ;;; `tags` may be a single tag, or a list of tags.
+  ;;; Contrary to Tk's convention, ROW uses 0-based indexing.
+  ;;; TAGS may be a single tag, or a list of tags.
   (define (textgrid-do-tags method tg tags first-row #!optional
 			    (first-col 0) (last-col 'end) (last-row #f))
     (for-each (lambda (tag)
@@ -930,6 +931,9 @@
 	(ui-show (slot-value d 'modeline))
 	(tk/pack (make-separator parent 'horizontal)
 		 expand: 0 fill: 'x side: 'bottom))))
+
+  (define-class <ui-selectable> ()
+    ((selection initform: #f accessor: ui-selection)))
 
   ;;; A class representing a container widget that wraps multiple resizable
   ;;; ui-buffers in a ttk
@@ -1497,7 +1501,7 @@
   ;;; need to construct an instance of this class directly. However, consider
   ;;; from this class if you want to implement an alternative representation
   ;;; of the block node members of an MDAL group node.
-  (define-class <ui-basic-block-view> (<ui-buffer>)
+  (define-class <ui-basic-block-view> (<ui-buffer> <ui-selectable>)
     (ui-zone
      (focus-controller focus)
      (group-id (error '|make <ui-basic-block-view>| "Missing 'group-id."))
@@ -2097,12 +2101,66 @@
 	      ((key ukey) (ui-blockview-enter-key buf keysym))
 	      ((string) (ui-blockview-enter-string buf keysym)))))))
 
+  ;;; Update content tags so current selection is highlighted.
+  (define-method (ui-blockview-tag-selection
+		  primary: (buf <ui-basic-block-view>))
+    (let* ((selection (ui-selection buf))
+	   (field-ids (slot-value buf 'field-ids))
+	   (y1 (car selection))
+	   (x1 (list-index (cute eqv? <> (cadr selection)) field-ids))
+	   (y2 (caddr selection))
+	   (x2 (list-index (cute eqv? <> (cadddr selection)) field-ids)))
+      (textgrid-remove-tags-globally (slot-value buf 'block-content)
+				     '(selected))
+      (for-each (lambda (row)
+		  (textgrid-add-tags
+		   (slot-value buf 'block-content)
+		   'selected
+		   row
+		   (bv-field-config-start
+		    (cadr
+		     (list-ref (slot-value buf 'field-configs)
+			       (min x1 x2))))
+		   (let ((fc2 (cadr (list-ref (slot-value buf 'field-configs)
+					      (max x1 x2)))))
+		     (+ (bv-field-config-start fc2)
+			(bv-field-config-width fc2)))))
+		(iota (+ 1 (abs (- y2 y1)))
+		      (min y1 y2)))))
+
+  ;;; Initialize or continue a selection process (ie, user selecting a section
+  ;;; for copying/modifying/etc).
+  (define-method (ui-select primary: (buf <ui-basic-block-view>)
+			    keysym)
+    (let ((local-start (list (ui-blockview-get-current-row buf)
+			     (ui-blockview-get-current-field-id buf))))
+      (ui-blockview-move-cursor buf keysym)
+      (set! (ui-selection buf)
+	(append (if (ui-selection buf)
+		    (take (ui-selection buf) 2)
+		    local-start)
+		(list (ui-blockview-get-current-row buf)
+		      (ui-blockview-get-current-field-id buf))))
+      (ui-blockview-tag-selection buf)))
+
+  ;;; Abort the current selection process and reset selection state.
+  (define-method (ui-cancel-selection primary: (buf <ui-basic-block-view>))
+    (textgrid-remove-tags-globally (slot-value buf 'block-content)
+				   '(selected))
+    (set! (ui-selection buf) #f))
+
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
     (let ((grid (slot-value buf 'block-content)))
       (tk/bind* grid '<<BlockMotion>>
 		`(,(lambda (keysym)
-		     (ui-blockview-move-cursor buf keysym))
+		     (begin
+		       (ui-cancel-selection buf)
+		       (ui-blockview-move-cursor buf keysym)))
+		  %K))
+      (tk/bind* grid '<<BlockSelect>>
+		`(,(lambda (keysym)
+		     (ui-select buf keysym))
 		  %K))
       (tk/bind* grid '<Button-1>
 		(lambda () (ui-blockview-set-cursor-from-mouse buf)))

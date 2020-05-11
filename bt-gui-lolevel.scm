@@ -457,6 +457,9 @@
 				      <Key-d> <Key-e> <Key-f>)))
     (tk/event 'add '<<BlockMotion>>
 	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
+    (tk/event 'add '<<BlockSelect>>
+	      '<Shift-Up> '<Shift-Down> '<Shift-Left>
+	      '<Shift-Right> '<Shift-Home> '<Shift-End>)
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))

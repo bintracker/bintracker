@@ -425,4 +425,19 @@
 					(third action)
 					(fourth action)))))))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## The Clipboard
+  ;; ---------------------------------------------------------------------------
+
+  (define clipboard
+    (let ((contents #f))
+      (lambda args
+	(unless (null? args)
+	  (case (car args)
+	    ((put) (set! contents (cadr args)))
+	    ((get) contents)
+	    (else (error 'clipboard (string-append "Unsupported command "
+						   (->string args)))))))))
+
   ) ;; end module bt-state
