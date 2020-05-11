@@ -47,6 +47,7 @@ nav:
       - "Getting Started": hacking.md
       - "Style Guide": style-guide.md
       - "TODO List": TODO.md
+      - "Writing Plugins": writing-plugins.md
       - "Bintracker API":
          - "bintracker-core": 'generated/bintracker-core.md'
          - "bt-types": 'generated/bt-types.md'

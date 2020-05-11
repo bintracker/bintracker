@@ -8,14 +8,15 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
-	  (chicken file)
+	  (chicken file) (chicken random)
 	  srfi-1 srfi-13 srfi-18 srfi-69 pstk typed-records matchable list-utils
 	  coops sql-de-lite simple-exceptions mdal
 	  bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
-  	    (chicken bitwise) (chicken file)
+	    (chicken base) (chicken string)
+  	    (chicken bitwise) (chicken file) (chicken platform) (chicken random)
   	    srfi-1 srfi-13 srfi-18 srfi-69 coops list-utils simple-exceptions
   	    (only sql-de-lite exec sql))
 
@@ -123,6 +124,7 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; Check if the plugin version HAVE meets the version requirement NEED.
+  ;;; See `plugins` for details.
   (define (check-required-plugin-version need have)
     (let ((have-version (take (map string->number
 				   (string-split have ".")) 2))
@@ -153,6 +155,15 @@
 	    (else (error 'check-required-plugin-version
 			 (string-append "Unknown modifier " need-modifier)))))))
 
+  ;;; This is Bintracker's plugin registry. When calling this procedure without
+  ;;; any arguments, it returns the list of currently loaded plugins. To load a
+  ;;; new plugin, call it as follows:
+  ;;;
+  ;;; `(plugins 'register NAME)`
+  ;;;
+  ;;; where NAME is the name of a plugin in the `plugins` directory. See the
+  ;;; manual chapter on [writing plugins](../writing-plugins.md) for further
+  ;;; details.
   (define plugins
     (letrec*
 	((registry '())
