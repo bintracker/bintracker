@@ -430,14 +430,27 @@
   ;;; ## The Clipboard
   ;; ---------------------------------------------------------------------------
 
+  ;;; The global application clipboard. Call this procedure with no arguments to
+  ;;; retrieve the current contents of the clipboard. Call it as follows to copy
+  ;;; a new chunk of data to the clipboard:
+  ;;;
+  ;;; `(clipboard 'put CONTENT)`
+  ;;;
+  ;;; Clipboard CONTENT may be any value except `#f`. Any component reading from
+  ;;; the clipboard is responsible for checking if the current clipboard
+  ;;; contents are suitable for the task at hand.
+  ;;;
+  ;;; MDAL field node data is commonly stored as a plain list of values (for a
+  ;;; single field node) or a list of such lists (for multiple field nodes).
   (define clipboard
     (let ((contents #f))
       (lambda args
-	(unless (null? args)
-	  (case (car args)
-	    ((put) (set! contents (cadr args)))
-	    ((get) contents)
-	    (else (error 'clipboard (string-append "Unsupported command "
-						   (->string args)))))))))
+	(if (null? args)
+	    contents
+	    (case (car args)
+	      ((put) (set! contents (cadr args)))
+	      ((get) contents)
+	      (else (error 'clipboard (string-append "Unsupported command "
+						     (->string args)))))))))
 
   ) ;; end module bt-state

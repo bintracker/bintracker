@@ -1768,7 +1768,7 @@
   (define-method (ui-blockview-get-current-field-index
 		  primary: (buf <ui-basic-block-view>))
     (list-index (lambda (id)
-		  (eq? id (ui-blockview-get-current-field-id buf)))
+		  (eqv? id (ui-blockview-get-current-field-id buf)))
 		(slot-value buf 'field-ids)))
 
   ;;; Returns the (un-normalized) value of the field instance currently under
@@ -2128,6 +2128,25 @@
 		(iota (+ 1 (abs (- y2 y1)))
 		      (min y1 y2)))))
 
+  ;;; Returns the field node identifiers of the fields that are currently
+  ;;; selected.
+  (define-method (ui-blockview-selected-fields
+		  primary: (buf <ui-basic-block-view>))
+    (let* ((field-ids (slot-value buf 'field-ids))
+	   (selection (slot-value buf 'selection))
+	   (field-id1 (cadr selection))
+	   (field-id2 (cadddr selection))
+	   (swap-fields? (< (list-index (cute eqv? <> field-id2) field-ids)
+			    (list-index (cute eqv? <> field-id1) field-ids))))
+      (append
+       (take-while
+	(lambda (id)
+	  (not (eqv? id (if swap-fields? field-id1 field-id2))))
+	(drop-while (lambda (id)
+		      (not (eqv? id (if swap-fields? field-id2 field-id1))))
+		    field-ids))
+       (list (if swap-fields? field-id1 field-id2)))))
+
   ;;; Initialize or continue a selection process (ie, user selecting a section
   ;;; for copying/modifying/etc).
   (define-method (ui-select primary: (buf <ui-basic-block-view>)
@@ -2149,39 +2168,69 @@
 				   '(selected))
     (set! (ui-selection buf) #f))
 
+  ;;; Copy data from the current selection to the global clipboard and cancel
+  ;;; the selection. If nothing is selected, copy the field value currently
+  ;;; under cursor.
+  (define-method (ui-copy primary: (buf <ui-basic-block-view>))
+    (let ((selection (slot-value buf 'selection)))
+      (clipboard
+       'put
+       (if selection
+	   (let* ((rows (concatenate (ui-blockview-get-item-list buf)))
+		  (result
+		   (map (lambda (field-id)
+			  (let ((field-index
+				 (list-index (cute eqv? field-id <>)
+					     (slot-value buf 'field-ids))))
+			    (map (lambda (row)
+				   (or (list-ref row field-index)
+				       '()))
+				 (drop
+				  (take rows (+ 1
+						(max (car selection)
+						     (caddr selection))))
+				  (min (car selection)
+				       (caddr selection))))))
+			(ui-blockview-selected-fields buf))))
+	     (ui-cancel-selection buf)
+	     result)
+	   `((,(ui-blockview-get-current-field-command buf)
+	      ,(ui-blockview-get-current-field-value buf)))))))
+
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
     (let ((grid (slot-value buf 'block-content)))
-      (tk/bind* grid '<<BlockMotion>>
-		`(,(lambda (keysym)
-		     (begin
-		       (ui-cancel-selection buf)
-		       (ui-blockview-move-cursor buf keysym)))
-		  %K))
-      (tk/bind* grid '<<BlockSelect>>
-		`(,(lambda (keysym)
-		     (ui-select buf keysym))
-		  %K))
-      (tk/bind* grid '<Button-1>
-		(lambda () (ui-blockview-set-cursor-from-mouse buf)))
-      (tk/bind* grid '<<ClearStep>>
-		(lambda ()
-		  (unless (null? (ui-blockview-get-current-field-value buf))
-		    (ui-blockview-edit-current-cell buf '()))))
-      (tk/bind* grid '<<CutStep>>
-		(lambda () (ui-blockview-cut-current-cell buf)))
-      (tk/bind* grid '<<CutRow>>
-		(lambda () (ui-blockview-cut-row buf)))
-      (tk/bind* grid '<<InsertStep>>
-		(lambda () (ui-blockview-insert-cell buf)))
-      (tk/bind* grid '<<InsertRow>>
-		(lambda () (ui-blockview-cut-row buf)))
-      (tk/bind* grid '<<InsertRow>>
-		(lambda () (ui-blockview-insert-row buf)))
-      (tk/bind* grid '<<BlockEntry>>
-		`(,(lambda (keysym)
-		     (ui-blockview-dispatch-entry-event buf keysym))
-		  %K))))
+      (for-each
+       (lambda (event-spec)
+	 (tk/bind grid (car event-spec)
+		  (if (pair? (cdr event-spec))
+		      `(,(lambda (keysym)
+			   (tk-with-lock (lambda ()
+					   ((cadr event-spec) keysym))))
+			,(caddr event-spec))
+		      (lambda () (tk-with-lock (cdr event-spec))))))
+       `((<<BlockMotion>> ,(lambda (keysym)
+			     (begin
+			       (ui-cancel-selection buf)
+			       (ui-blockview-move-cursor buf keysym)))
+			  %K)
+	 (<<BlockSelect>> ,(lambda (keysym)
+			     (ui-select buf keysym))
+			  %K)
+	 (<<Copy>> . ,(lambda () (ui-copy buf)))
+	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
+	 (<<ClearStep>>
+	  .
+	  ,(lambda ()
+	     (unless (null? (ui-blockview-get-current-field-value buf))
+	       (ui-blockview-edit-current-cell buf '()))))
+	 (<<CutStep>> . ,(lambda () (ui-blockview-cut-current-cell buf)))
+	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
+	 (<<InsertStep>> . ,(lambda () (ui-blockview-insert-cell buf)))
+	 (<<InsertRow>> . ,(lambda () (ui-blockview-cut-row buf)))
+	 (<<BlockEntry>> ,(lambda (keysym)
+			    (ui-blockview-dispatch-entry-event buf keysym))
+			 %K)))))
 
   ;;; A class representing the display of an MDAL group node's blocks, minus the
   ;;; order block. Pattern display is implemented using this class.

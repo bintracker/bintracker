@@ -460,6 +460,8 @@
     (tk/event 'add '<<BlockSelect>>
 	      '<Shift-Up> '<Shift-Down> '<Shift-Left>
 	      '<Shift-Right> '<Shift-Home> '<Shift-End>)
+    (tk/event 'add '<<Copy>> (inverse-key-binding 'edit 'copy))
+    (tk/event 'add '<<Paste>> (inverse-key-binding 'edit 'paste))
     (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
