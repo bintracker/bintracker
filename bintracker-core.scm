@@ -189,7 +189,7 @@
 				    (or (member (car dep) (map car registry))
 					(apply read-plugin-file dep)))
 				  dependencies)))
-	      (apply eval body)
+	      (map eval body)
 	      (set! registry
 		(cons (list id version author license description)
 		      registry))
