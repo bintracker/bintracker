@@ -109,28 +109,31 @@
 			   (inode-config-cmd-id (config-inode-ref field-id
 								  mdconfig))
 			   mdconfig)))
-      (unless (or (null? field-value)
-		  (case (command-type command-config)
-		    ((int uint)
-		     (and (integer? field-value)
+      (if (or (null? field-value)
+	      (case (command-type command-config)
+		((int uint)
+		 (and (integer? field-value)
+		      (or (not (command-range command-config))
 			  (in-range? field-value
-				     (command-range command-config))))
-		    ((key ukey) (and (symbol? field-value)
-				     (hash-table-ref/default
-				      (command-keys command-config)
-				      field-value #f)))
-		    ((trigger (and field-value (boolean? field-value))))
-		    ((modifier)
-		     (and (pair? field-value)
-			  (memv (car field-value) '(+ - * / % ^ & v))
-			  (in-range? field-value
-				     (command-range command-config))))
-		    ((reference) ((conjoin integer? positive?) field-value))
-		    ((string) (string? field-value))
-		    ((label) (symbol? field-value))))
-	(and (not no-exn)
-	     (raise-local 'illegal-value field-value field-id)))
-      field-value))
+				     (command-range command-config)))))
+		((key ukey)
+		 (and (symbol? field-value)
+		      (hash-table-ref/default
+		       (command-keys command-config)
+		       field-value #f)))
+		((trigger (and field-value (boolean? field-value))))
+		((modifier)
+		 (and (pair? field-value)
+		      (memv (car field-value) '(+ - * / % ^ & v))
+		      (in-range? field-value
+				 (command-range command-config))))
+		((reference) ((conjoin integer? positive?) field-value))
+		((string) (string? field-value))
+		((label) (symbol? field-value))))
+	  field-value
+	  (begin
+	    (unless no-exn (raise-local 'illegal-value field-value field-id))
+	    #f))))
 
 
   ;; ---------------------------------------------------------------------------

@@ -1983,6 +1983,8 @@
       (ui-modeline-set (slot-value buf 'modeline) 'active-field "")))
 
   ;; TODO this should be a hook-set.
+  ;;; The low level interface to blockview editing. ACTION shall be an edit
+  ;;; action specifier as described in the `ui-metastate` documentation.
   (define-method (ui-blockview-perform-edit
 		  primary: (buf <ui-basic-block-view>) action)
     (print "(ui-blockview-perform-edit " action ")")
@@ -1996,27 +1998,29 @@
   ;;; position, and insert an empty node at the end of the block instead.
   (define-method (ui-blockview-cut-current-cell primary:
 						(buf <ui-basic-block-view>))
-    (unless (null? (ui-blockview-get-current-field-value buf))
-      (ui-blockview-perform-edit
-       buf
-       (list 'remove
-	     (ui-blockview-get-current-block-instance-path buf)
-	     (ui-blockview-get-current-field-id buf)
-	     `((,(ui-blockview-get-current-field-instance buf)))))
-      (ui-blockview-move-cursor buf 'Up)))
+    (ui-blockview-perform-edit
+     buf
+     (list 'remove
+	   (ui-blockview-get-current-block-instance-path buf)
+	   (ui-blockview-get-current-field-id buf)
+	   `((,(ui-blockview-get-current-field-instance buf))))))
 
   ;;; Insert an empty cell into the field column currently under cursor,
   ;;; shifting the following node instances down and dropping the last instance.
   (define-method (ui-blockview-insert-cell primary:
-					   (buf <ui-basic-block-view>))
-    (unless (null? (ui-blockview-get-current-field-value buf))
-      (ui-blockview-perform-edit
-       buf
-       (list 'insert
-	     (ui-blockview-get-current-block-instance-path buf)
-	     (ui-blockview-get-current-field-id buf)
-	     `((,(ui-blockview-get-current-field-instance buf)
-		()))))))
+					   (buf <ui-basic-block-view>)
+					   #!optional (value '()))
+    (let* ((field-id (ui-blockview-get-current-field-id buf))
+	   (validated-value
+	    (validate-field-value (ui-metastate buf 'mdef) field-id value #t)))
+      (and validated-value
+	   (ui-blockview-perform-edit
+	    buf
+	    (list 'insert
+		  (ui-blockview-get-current-block-instance-path buf)
+		  field-id
+		  `((,(ui-blockview-get-current-field-instance buf)
+		     ,validated-value)))))))
 
   ;; TODO using this on ui-blockview-enter-note/trigger would be much better
   ;; but this causes latency because display is then updated first.
@@ -2027,20 +2031,42 @@
   ;; 		    (ui-blockview-get-current-order-pos buf)
   ;; 		    (ui-blockview-get-current-field-instance buf))))
 
+  ;;; WHERE may be `'cursor`, `'selection`, ..., or a list specifying a
+  ;;; selected area of the blockview. The list must have the form
+  ;;; `(ROW1 FIELD1 ROW2 FIELD2)`, where ROW*n* is a row number and FIELD*n* is
+  ;;; a field node identifier, describing the upper left and lower right corner
+  ;;; of the selection.
+  (define-method (edit primary: (buf <ui-basic-block-view>) where what
+		       #!optional contents)
+    (if (pair? where)
+	#f
+	(case what
+	  ((set) (case where
+		   ((cursor) (if (pair? contents)
+				 #f
+				 (ui-blockview-edit-cell buf contents)))
+		   (else #f)))
+	  ((clear) #f)
+	  ((insert) #f)
+	  ((remove) #f)
+	  ((insert-row) #f)
+	  ((remove-row) #f)
+	  (else (error 'edit
+		       (string-append "Invalid action " (->string what)))))))
+
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
   (define-method (ui-blockview-enter-note primary: (buf <ui-basic-block-view>)
 					  keysym)
     (let ((note-val (keypress->note keysym)))
-      (when note-val (ui-blockview-edit-current-cell buf note-val))))
+      (when note-val (ui-blockview-edit-cell buf note-val
+						     play-row: #t))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
   (define-method (ui-blockview-enter-trigger primary:
 					     (buf <ui-basic-block-view>))
-    (ui-blockview-edit-current-cell buf #t)
-    ;; (ui-blockview-maybe-play-row buf)
-    )
+    (ui-blockview-edit-cell buf #t play-row: #t))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a key/ukey command.
@@ -2070,7 +2096,7 @@
   (define-method (ui-blockview-enter-numeric
 		  primary: (buf <ui-basic-block-view>) keysym)
     (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
-      (when new-val (ui-blockview-edit-current-cell buf new-val))))
+      (when new-val (ui-blockview-edit-cell buf new-val))))
 
   ;; ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;; ;;; field that represents a reference command.
@@ -2078,7 +2104,7 @@
   ;; 		  primary: (buf <ui-basic-block-view>) keysym)
   ;;   (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
   ;;     (when new-val
-  ;;     	(ui-blockview-edit-current-cell buf new-val))))
+  ;;     	(ui-blockview-edit-cell buf new-val))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a string command.
@@ -2168,34 +2194,50 @@
 				   '(selected))
     (set! (ui-selection buf) #f))
 
+  ;;; Retrieve the contents (values) within the bounds of SELECTION, which must
+  ;;; be a list of four elements denoting the top left and bottom right corners
+  ;;; of the selection. Coordinates are given as *row, field-id* pairs, so
+  ;;; SELECTION must have the format `(ROW1 FIELD-ID1 ROW2 FIELD-ID2)`. Order
+  ;;; does not matter when specifing the points.
+  ;;; When SELECTION is not given, it defaults to the current user selection. If
+  ;;; there is no active selection, the value of the field currently under
+  ;;; cursor is returned.
+  (define-method (ui-selected-contents primary: (buf <ui-basic-block-view>)
+				       #!optional (selection
+						   (slot-value buf 'selection)))
+    (if selection
+	(let* ((rows (concatenate (ui-blockview-get-item-list buf)))
+	       (result
+		(map (lambda (field-id)
+		       (let ((field-index
+			      (list-index (cute eqv? field-id <>)
+					  (slot-value buf 'field-ids))))
+			 (map (lambda (row)
+				(or (list-ref row field-index)
+				    '()))
+			      (drop (take rows (+ 1 (max (car selection)
+							 (caddr selection))))
+				    (min (car selection)
+					 (caddr selection))))))
+		     (ui-blockview-selected-fields buf))))
+	  (ui-cancel-selection buf)
+	  result)
+	(ui-blockview-get-current-field-value buf)))
+
   ;;; Copy data from the current selection to the global clipboard and cancel
   ;;; the selection. If nothing is selected, copy the field value currently
   ;;; under cursor.
   (define-method (ui-copy primary: (buf <ui-basic-block-view>))
-    (let ((selection (slot-value buf 'selection)))
-      (clipboard
-       'put
-       (if selection
-	   (let* ((rows (concatenate (ui-blockview-get-item-list buf)))
-		  (result
-		   (map (lambda (field-id)
-			  (let ((field-index
-				 (list-index (cute eqv? field-id <>)
-					     (slot-value buf 'field-ids))))
-			    (map (lambda (row)
-				   (or (list-ref row field-index)
-				       '()))
-				 (drop
-				  (take rows (+ 1
-						(max (car selection)
-						     (caddr selection))))
-				  (min (car selection)
-				       (caddr selection))))))
-			(ui-blockview-selected-fields buf))))
-	     (ui-cancel-selection buf)
-	     result)
-	   `((,(ui-blockview-get-current-field-command buf)
-	      ,(ui-blockview-get-current-field-value buf)))))))
+    (clipboard 'put (ui-selected-contents buf)))
+
+  (define-method (ui-paste primary: (buf <ui-basic-block-view>)
+			   #!optional (contents (clipboard)))
+    (print "in ui-paste, contents: " contents)
+    (and contents
+	 (if (pair? contents)
+	     '()
+	     (edit buf (or (slot-value buf 'selection) 'cursor)
+		   'set contents))))
 
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
@@ -2218,12 +2260,13 @@
 			     (ui-select buf keysym))
 			  %K)
 	 (<<Copy>> . ,(lambda () (ui-copy buf)))
+	 (<<Paste>> . ,(lambda () (ui-paste buf)))
 	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
 	 (<<ClearStep>>
 	  .
 	  ,(lambda ()
 	     (unless (null? (ui-blockview-get-current-field-value buf))
-	       (ui-blockview-edit-current-cell buf '()))))
+	       (ui-blockview-edit-cell buf '()))))
 	 (<<CutStep>> . ,(lambda () (ui-blockview-cut-current-cell buf)))
 	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
 	 (<<InsertStep>> . ,(lambda () (ui-blockview-insert-cell buf)))
@@ -2461,19 +2504,23 @@
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
   ;;; accordingly.
-  (define-method (ui-blockview-edit-current-cell primary: (buf <ui-block-view>)
-						 new-value)
-    (let ((action `(set ,(ui-blockview-get-current-block-instance-path buf)
-			,(ui-blockview-get-current-field-id buf)
-			((,(ui-blockview-get-current-field-instance buf)
-			  ,new-value)))))
+  (define-method (ui-blockview-edit-cell
+		  primary: (buf <ui-block-view>)
+		  new-value
+		  #!key
+		  (field-id (ui-blockview-get-current-field-id buf))
+		  (block-row (ui-blockview-get-current-field-instance buf))
+		  (path (ui-blockview-get-current-block-instance-path buf))
+		  (play-row #f))
+    (and-let* ((validated-value
+		(validate-field-value (ui-metastate buf 'mdef)
+				      field-id new-value #t))
+	       (action `(set ,path ,field-id ((,block-row ,new-value)))))
       (ui-metastate buf 'push-undo
 		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
-      ;; TODO might want to make this behaviour user-configurable
-      ;; TODO this will trigger on undo/redo and in various other situations
-      ;; we don't want
-      (when (and (settings 'enable-row-play)
+      (when (and play-row
+		 (settings 'enable-row-play)
       		 (not (null? new-value)))
       	(ui-metastate buf 'emulator 'play-row
       		      (slot-value buf 'group-id)
@@ -2672,12 +2719,20 @@
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
   ;;; accordingly.
-  (define-method (ui-blockview-edit-current-cell primary: (buf <ui-order-view>)
-						 new-value)
-    (let ((action `(set ,(ui-blockview-get-current-block-instance-path buf)
-			,(ui-blockview-get-current-field-id buf)
-			((,(ui-blockview-get-current-field-instance buf)
-			  ,new-value)))))
+  (define-method (ui-blockview-edit-cell
+		  primary: (buf <ui-order-view>)
+		  new-value
+		  #!key
+		  (path #t)
+		  (field-id (ui-blockview-get-current-field-id buf))
+		  (block-row (ui-blockview-get-current-field-instance buf)))
+    (and-let* ((validated-value (validate-field-value (ui-metastate buf 'mdef)
+						      field-id
+						      new-value
+						      #t))
+	       (action `(set ,(ui-blockview-get-current-block-instance-path buf)
+			     ,field-id
+			     ((,block-row ,validated-value)))))
       (ui-metastate buf 'push-undo
 		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
@@ -3002,23 +3057,23 @@
 							 'disabled)))
 	    (journal (undo "Undo last edit" "undo.png")
 		     (redo "Redo last edit" "redo.png"))
-	    (edit (copy "Copy Selection" "copy.png")
-      		  (cut "Cut Selection (delete with shift)" "cut.png")
-      		  (clear "Clear Selection (delete, no shift)" "clear.png")
-      		  (insert "Insert from Clipbard (with shift)" "insert.png")
-      		  (paste "Paste from Clipboard (no shift)" "paste.png")
+	    (edit (copy "Copy Selection" "copy.png" enabled)
+      		  (cut "Cut Selection (delete with shift)" "cut.png" enabled)
+      		  (clear "Clear Selection (delete, no shift)" "clear.png"
+			 enabled)
+      		  (insert "Insert from Clipbard (with shift)" "insert.png"
+			  enabled)
+      		  (paste "Paste from Clipboard (no shift)" "paste.png" enabled)
 		  (porous-paste-over "Porous paste over current data"
-				     "porous-paste-over.png")
+				     "porous-paste-over.png" enabled)
 		  (porous-paste-under "Porous paste under current data"
-				      "porous-paste-under.png")
-      		  (swap "Swap Selection with Clipboard" "swap.png"))
+				      "porous-paste-under.png" enabled)
+      		  (swap "Swap Selection with Clipboard" "swap.png" enabled))
 	    (play (stop-playback "Stop Playback" "stop.png" enabled)
       		  (play-from-start "Play Track from Start"
-				   "play-from-start.png"
-				   enabled)
+				   "play-from-start.png" enabled)
       		  (play-from-here "Play Track from Current Position"
-				  "play-from-here.png"
-				  enabled)
+				  "play-from-here.png")
       		  (play-pattern "Play Pattern" "play-ptn.png" enabled)))))
 
   ;;; Helper for `<ui-module-view>` constructor.
@@ -3215,6 +3270,7 @@
 			`((file (new-file ,new-file)
 				(load-file ,load-file)
   				(save-file ,save-file))
+			  (edit (copy ,(cute ui-copy (current-blocks-view))))
   			  (play (play-from-start ,play-from-start)
   				(play-pattern ,play-pattern)
   				(stop-playback ,stop-playback))

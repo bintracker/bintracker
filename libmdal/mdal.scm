@@ -171,10 +171,10 @@
 	    (let ((block-contents (cddr (inode-instance-ref block-inst-id
 							    block-node))))
 	      (map (lambda (value)
+		     ;; TODO should drop this conversion and just return
+		     ;; nil
 		     (and (not (null? value))
-			  (if (boolean? value)
-			      value
-			      (->string value))))
+			  value))
 		   (if (>= row (length block-contents))
 		       (make-list (length (config-get-subnode-ids
 					   (car block-node)

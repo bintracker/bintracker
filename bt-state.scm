@@ -453,4 +453,7 @@
 	      (else (error 'clipboard (string-append "Unsupported command "
 						     (->string args)))))))))
 
+  (define (copy arg)
+    (clipboard 'put arg))
+
   ) ;; end module bt-state
