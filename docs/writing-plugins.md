@@ -37,16 +37,51 @@ A plugin file is a file containing a single [plugin definition](#plugin-definiti
 To [contribute](contributing.md) your plugins to the official Bintracker repository, your plugins must follow these rules:
 
 1. All exported bindings must be prefixed with the plugin ID, followed by two colons `::`.
-2. No redefinition of existing bindings.
-3. Author, version, and description must be specified.
-4. The plugin must be licensed under a [permissive license](https://en.wikipedia.org/wiki/Permissive_free_software_licence) or [LGPL](https://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License).
+2. Do not export bindings that are not required outside of the plugin code. See [Tips and Tricks](#tips-and-tricks) for ways to manage the namespace.
+3. No redefinition of existing bindings.
+4. Author, version, and description must be specified.
+5. The plugin must be licensed under a [permissive license](https://en.wikipedia.org/wiki/Permissive_free_software_licence) or [LGPL](https://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License).
 
 Obviously, your plugin also should not break Bintracker or mess with the user's system.
 
 
+## Tips and Tricks
+
+### Avoid namespace pollution
+
+When plugins are loaded, all their bindings are imported into the global namespace. In order to avoid spamming the global namespace with bindings that are only used internally in the plugin code, there are several options. For a simple plugin, you can create the bindings you want to export first and bind them to dummy values, then use a `let` or similar to update the exported bindings to their actual values. Consider the following `body:` expression:
+
+```Scheme
+((define myplug::foo #f)
+ (let ((internal-proc (lambda () #t)))
+   (set! myplug::foo (lambda () (internal-proc)))))
+```
+
+This will only make `myplug::foo` available in the global namespace, without leaking `internal-proc`.
+
+For anything more comlex, a better approach is to put the actual implementation in a separate file, wrapping the plugin code in a [Chicken module](https://wiki.call-cc.org/man/5/Modules). The above example, rewritten using this approach would look something like this:
+
+```Scheme
+;; file plugins/myplug/myplug-impl.scm
+(module myplug
+    (export myplug::foo)
+  (import scheme)
+  (define (internal-foo) #t)
+
+  (define (myplug::foo) (internal-foo))
+ )
+```
+
+```Scheme
+;; main plugin definition file, body expression
+;; ((load "plugins/myplug/myplug-impl.scm")
+;;  (import myplug))
+```
+
+
 ## Examples
 
-#### A simple plugin
+### A simple plugin
 
 The following example defines a simple plugin named `"hello"` with no dependencies. The plugin simply creates the procedure `hello::hello-world` which prints a friendly greeting when called. To try it out, create the file `plugins/hello/hello.scm` and copy the following code to it. Then, register the plugin by appending the string "hello" to the NAMES argument of the `(plugins 'register NAMES)` statement.
 
@@ -64,7 +99,7 @@ The following example defines a simple plugin named `"hello"` with no dependenci
   ))
 ```
 
-#### A Plugin with Dependencies
+### A Plugin with Dependencies
 
 This example defines a plugin that depends on the above plugin `"hello"`. It creates a procedure `hi::hi-there` that calls `hello::hello-world` and adds a few more words itself. Install and register the plugin as above for `"hello"`.
 
