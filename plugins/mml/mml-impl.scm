@@ -5,7 +5,7 @@
   (import scheme (chicken base) (chicken string)
 	  srfi-1 srfi-13 srfi-14 comparse bt-state)
 
-  ;; Define PEG parser combinations to parse MML strings using comparse
+  ;; Define PEG parser rules to parse MML strings using comparse
 
   (define digits+dots
     (sequence* ((digits (as-string (sequence (maybe (in char-set:digit))
