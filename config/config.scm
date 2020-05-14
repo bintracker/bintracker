@@ -145,4 +145,14 @@
 ;; state is not fully initialized at this point. Refer to the Developer's
 ;; Documentation for information on the API that Bintracker exposes.
 
-(plugins 'register "zufall")
+
+;; Plugins
+;; -------
+
+;; In order to use plugins you have available in the plugins directory, you need
+;; to register them. Registering plugins should normally be the last step in the
+;; configuration process, so keep this section at the end of your config.scm.
+
+;; The argument to this command must be a string of plugin names separated by
+;; whitespace.
+(plugins 'register "mml zufall")
