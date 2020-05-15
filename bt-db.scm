@@ -8,7 +8,7 @@
 
 ;;; The Bintracker Database holds information concerning an existing
 ;;; installation of Bintracker. It is an SQLite3 database, managed through the
-;;; [sql-de-lite](https://wiki.call-cc.org/eggref/5/sql-de-lite) extension.
+;;; [sqlite3](https://wiki.call-cc.org/eggref/5/sqlite3) extension.
 ;;; If Bintracker does not find `bt.db` on application startup, it creates and
 ;;; populates a fresh database.
 ;;;
@@ -31,7 +31,7 @@
 
   (import scheme (chicken base) (only (chicken file) directory)
 	  (only (chicken file posix) directory?)
-	  srfi-1 srfi-13 sql-de-lite simple-md5 mdal)
+	  srfi-1 srfi-13 sqlite3 simple-md5 mdal)
 
   (define btdb #f)
 
@@ -43,8 +43,8 @@
 
   ;;; Close the Bintracker database.
   (define (btdb-close!)
-    (unless (database-closed? btdb)
-      (close-database btdb)
+    (when btdb
+      (finalize! btdb)
       (set! btdb #f)))
 
   (define mdal-config-dir "libmdal/unittests/config/")
@@ -63,16 +63,17 @@
   ;;; Returns the list of available MDAL configurations. The returned list has
   ;;; the form `(CONFIG-ID, PLUGIN-VERSION, TARGET-PLATFORM, DESCRIPTION)`.
   (define (btdb-list-configs #!optional (platform 'any))
-    (exec (sql btdb (string-append
-		     "SELECT id, version, platform, description FROM configs"
-		     (if (eqv? platform 'any)
-			 ""
-			 (string-append " WHERE platform='" (->string platform)
-					"'"))
-		     ";"))))
+    (map-row (lambda args args) btdb
+	      (string-append
+	       "SELECT id, version, platform, description FROM configs"
+	       (if (eqv? platform 'any)
+		   ""
+		   (string-append " WHERE platform='" (->string platform)
+				  "'"))
+	       ";")))
 
   (define (btdb-list-platforms)
-    (exec (sql btdb "SELECT DISTINCT platform FROM configs")))
+    (map-row identity btdb "SELECT DISTINCT platform FROM configs"))
 
   ;;; Collect information on the MDAL configuration named MDCONF-ID into a
   ;;; list, which has the form `(VERSION HASH TARGET-PLATFORM DESCRIPTION)`.
@@ -95,30 +96,30 @@
   (define (btdb-add-config! mdconf-id)
     (let ((info (gather-config-info mdconf-id)))
       (when info
-  	(exec (sql btdb (string-append
-  			 "INSERT INTO configs (id, version, "
-  			 "hash, platform, description) VALUES ('" mdconf-id
-			 "', '" (car info)
-  			 "', '" (cadr info)
-			 "', '" (third info)
-  			 "', '" (or (fourth info) "") "');"))))))
+  	(execute btdb (string-append
+  		       "INSERT INTO configs (id, version, "
+  		       "hash, platform, description) VALUES ('" mdconf-id
+		       "', '" (car info)
+  		       "', '" (cadr info)
+		       "', '" (third info)
+  		       "', '" (or (fourth info) "") "');")))))
 
   ;;; Remove the MDAL configuration named MDCONF-ID from the Bintracker
   ;;; database.
   (define (btdb-remove-config! mdconf-id)
-    (exec (sql btdb (string-append "DELETE FROM configs WHERE id='"
-				   mdconf-id "';"))))
+    (execute btdb (string-append "DELETE FROM configs WHERE id='"
+				 mdconf-id "';")))
 
   ;;; Update the MDAL configuration named MDCONF-ID in the Bintracker
   ;;; database.
   (define (btdb-update-config! mdconf-id)
     (let ((info (gather-config-info mdconf-id)))
-      (exec (sql btdb (string-append "UPDATE configs SET "
-				     "version='" (car info)
-				     "', hash='" (cadr info)
-				     "', platform='" (third info)
-				     "', description='" (fourth info)
-				     "' WHERE id='" mdconf-id "';")))))
+      (execute btdb (string-append "UPDATE configs SET "
+				   "version='" (car info)
+				   "', hash='" (cadr info)
+				   "', platform='" (third info)
+				   "', description='" (fourth info)
+				   "' WHERE id='" mdconf-id "';"))))
 
   ;;; Scan the MDAL config directory, and update the Bintracker database
   ;;; accordingly. Configurations no longer found in the config directory are
@@ -127,20 +128,31 @@
   (define (btdb-scan-mdal-configs!)
     (let ((config-dirs (get-config-dir-subdirs)))
       (for-each (lambda (db-entry)
-		  (display (string-append "removing config: " db-entry))
-		  (newline)
-		  (btdb-remove-config! db-entry))
-		(remove (lambda (db-entry)
-			  (member db-entry config-dirs))
-			(exec (sql btdb "SELECT id FROM configs;"))))
-      (let ((current-configs (exec (sql btdb "SELECT id FROM configs;"))))
-	(for-each (lambda (dir)
-		    (display (string-append "found new config: " dir))
-		    (newline)
-		    (btdb-add-config! dir))
-		  (remove (lambda (dir)
-			    (member dir current-configs))
-			  config-dirs))
+      		  (display (string-append "removing config: " db-entry))
+      		  (newline)
+      		  (btdb-remove-config! db-entry))
+      		(remove (lambda (db-entry)
+      			  (member db-entry config-dirs))
+      			(map-row identity btdb "SELECT id FROM configs;")))
+      (let* ((current-configs (map-row identity btdb "SELECT id FROM configs;"))
+	     (new-dirs (remove (lambda (dir)
+				 (member dir current-configs))
+			       config-dirs)))
+	(unless (null? new-dirs)
+	  (execute btdb
+		   (string-append
+		    "INSERT INTO configs (id, version, "
+		    "hash, platform, description) VALUES "
+		    (string-intersperse
+		     (map (lambda (id)
+			    (string-append "('"
+					   (string-intersperse
+					    (cons id (gather-config-info id))
+					    "', '")
+					   "')"))
+			  new-dirs)
+		     ", ")
+		    ";")))
 	(for-each (lambda (dir)
 		    (display (string-append "found updated config: " dir))
 		    (newline)
@@ -149,11 +161,11 @@
 		   (lambda (dir)
 		     (string=
 		      (file-md5sum (string-append mdal-config-dir dir "/"
-						  dir ".mdef"))
-		      (car (exec (sql btdb
-				      (string-append
-				       "SELECT hash FROM configs WHERE id='"
-				       dir "';"))))))
+		  				  dir ".mdef"))
+		      (first-result btdb
+		  		    (string-append
+		  		     "SELECT hash FROM configs WHERE id='"
+		  		     dir "';"))))
 		   config-dirs)))))
 
   ;;; Update the Bintracker Database on first run of the application.
@@ -161,15 +173,16 @@
   ;;; directory for new or modified configurations and adds them to the database
   ;;; as required.
   (define (btdb-update!)
-    (when (null? (exec (sql btdb (string-append
-  				  "SELECT name FROM sqlite_master "
-  				  "WHERE type='table' AND name='configs';"))))
-      (display "regenerating database")
-      (newline)
-      (exec (sql btdb (string-append
-  		       "create table configs "
-  		       "(id TINYTEXT, version DECIMAL(2, 2), hash CHAR(32), "
-  		       "platform TINYTEXT, description MEDIUMTEXT);"))))
+    (when (null? (map-row identity btdb
+			  (string-append
+  	  		   "SELECT name FROM sqlite_master "
+  	  		   "WHERE type='table' AND name='configs';")))
+      (print "regenerating database")
+      (execute btdb (string-append
+  		     "create table configs "
+  		     "(id TINYTEXT PRIMARY KEY,"
+		     " version DECIMAL(2, 2), hash CHAR(32), "
+  		     "platform TINYTEXT, description MEDIUMTEXT);")))
     (btdb-scan-mdal-configs!))
 
   ;; TODO table for last-used files, record for "favourite configs"

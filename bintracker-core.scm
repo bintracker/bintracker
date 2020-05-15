@@ -11,8 +11,8 @@
 	  (chicken file) (chicken random)
 	  srfi-1 srfi-13 srfi-14 srfi-18 srfi-69
 	  pstk typed-records matchable list-utils
-	  comparse coops sql-de-lite simple-exceptions mdal
-	  bt-state bt-types bt-db bt-emulation bt-gui)
+	  comparse coops sqlite3 simple-exceptions
+	  mdal bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
@@ -20,7 +20,7 @@
   	    (chicken bitwise) (chicken file) (chicken platform) (chicken random)
   	    srfi-1 srfi-13 srfi-14 srfi-18 srfi-69 coops list-utils
 	    simple-exceptions comparse
-	    (only sql-de-lite exec sql))
+	    (only sqlite3 execute))
 
 
   ;; ---------------------------------------------------------------------------
