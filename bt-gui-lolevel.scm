@@ -194,7 +194,8 @@
 	(case (car args)
 	  ((show)
 	   (unless tl
-	     (set! tl (tk 'create-widget 'toplevel))
+	     (set! tl (tk 'create-widget 'toplevel
+			  background: (colors 'background)))
 	     ;; TODO appears to have no effect
 	     ;; (tk/wm 'attributes tl type: 'dialog)
 	     (set! widgets `((content ,(tl 'create-widget 'frame))

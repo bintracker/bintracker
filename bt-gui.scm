@@ -100,15 +100,15 @@
 		   			       "\n" (message exn) "\n"))
 	  (after-load-file-hooks 'execute #f filename)))))
 
-  (define (create-new-module mdconf-id)
+  (define (create-new-module mdef-name)
+    (print "create-new-module " mdef-name)
     (close-file)
-    (after-load-file-hooks 'execute
-			   (generate-new-mdmod
-			    ;; TODO
-  			    (file->config "libmdal/unittests/config/"
-  					  "Huby" "libmdal/")
-  			    (settings 'default-block-length))
-			   #f))
+    (after-load-file-hooks
+     'execute
+     (generate-new-mdmod (file->config "libmdal/unittests/config/"
+  				       mdef-name "libmdal/")
+  			 (settings 'default-block-length))
+     #f))
 
   ;; TODO abort when user aborts closing of current workfile
   ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
@@ -127,11 +127,29 @@
   		   text: (car config)
   		   values: (list (cadr config) (third config))))
   		;; TODO btdb-list-configs should always return a list!
-  		(list (btdb-list-configs)))
-      (d 'add 'finalizer (lambda a
-			   (create-new-module
-			    ((d 'ref 'config-selector)
-			     'item ((d 'ref 'config-selector) 'focus)))))))
+  		(btdb-list-configs))
+      (let* ((get-item-list (lambda ()
+			     (string-split
+			      (string-delete
+			       (string->char-set "{}")
+			       (->string ((d 'ref 'config-selector)
+					  'children '{}))))))
+	     (initial-item-list (get-item-list)))
+	(d 'add 'finalizer
+	   (lambda a
+	     (and-let*
+		 ((item-list (get-item-list))
+		  (_ (not (null? item-list)))
+		  (selected-def ((d 'ref 'config-selector)
+				 'item ((d 'ref 'config-selector) 'focus)
+				 text:)))
+	       (create-new-module (if (string-null? selected-def)
+				      ((d 'ref 'config-selector)
+				       'item (car item-list)
+				       text:)
+				      selected-def)))))
+	(unless (null? initial-item-list)
+	  ((d 'ref 'config-selector) 'focus (car initial-item-list))))))
 
   (define on-save-file-hooks
     (make-hooks
