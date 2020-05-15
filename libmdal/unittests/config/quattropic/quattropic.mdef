@@ -1,0 +1,47 @@
+(mdal-config
+ mdconf-version: 2 plugin-version: 1.0 target: spectrum48
+ description: "A four channel pulse interleaving beeper engine with noise mode
+ and slides. By utz 2015."
+ default-origin: #x8000
+
+ commands: (;; (command id: BPM bits: 16 type: uint default: 140)
+	    (command id: TICKS bits: 5 type: uint default: 4
+		     description: "Ticks per row")
+	    (command id: NOTE bits: 16 type: ukey
+		     flags: (enable-modifiers use-last-set is-note)
+		     keys: (make-dividers 224 16 0)
+		     default: rest)
+	    (command id: DUTY bits: 8 type: uint default: #x80
+		     description: "Pulse Wave Duty")
+	    (command id: NOISE bits: 1 type: uint default: 0
+		     flags: (use-last-set)
+		     description: "Enable or disable Noise Mode")
+	    (command id: SLIDE bits: 1 type: uint default: 0
+		     flags: (use-last-set)
+		     description: "Enable or disable fast Slide Down"))
+
+ input: ((group id: PATTERNS flags: (ordered)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(clone 2 (block id: CH
+					nodes: ((field from: NOTE)
+						(field from: DUTY))))
+			(block id: CH3 nodes: ((field id: NOTE3 from: NOTE)
+					       (field id: DUTY3 from: DUTY)
+					       (field from: SLIDE)))
+			(block id: CH4 nodes: ((field id: NOTE4 from: NOTE)
+					       (field id: DUTY4 from: DUTY)
+					       (field from: NOISE))))))
+
+ output: ((asm file: "quattropic.asm")
+	  (comment "sequence")
+	  (symbol id: loop)
+	  ;; (field bytes: 2 compose: (quotient 1779661 ?BPM))
+	  ;; (field bytes: 2 compose: (- $sequence_end 8))
+	  (order from: PATTERNS layout: shared-numeric-matrix
+		 element-size: 1 base-index: 1)
+	  (field bytes: 1 compose: 0)
+	  ;; (symbol id: sequence_end)
+	  ;; (group id: PATTERNS from: PATTERNS nodes:
+	  ;; 	 ((block id: CHANS from: (CH1 CH2 CH3 CH4) resize: 8
+	  ;; 	  	 nodes: ((repeat bytes: 1 compose: ?NOTE1)))))
+	  ))
