@@ -323,6 +323,15 @@
 		   "!active $colors(-highlight-minor)]"
 		   "-relief [list disabled flat pressed sunken]"))
 	    "" ,(string-intersperse
+	    	 '("    ttk::style configure Treeview"
+	    	   "-fieldbackground $colors(-background)"))
+	    "" ,(string-intersperse
+		 '("    ttk::style map Treeview"
+		   "-background [list selected $colors(-text)"
+		   "!selected $colors(-background)]"
+		   "-foreground [list selected $colors(-background)"
+		   "!selected $colors(-text)]"))
+	    "" ,(string-intersperse
 		 '("    ttk::style configure TSpinbox"
 		   "-arrowcolor $colors(-text)"
 		   "-bordercolor $colors(-background)"
@@ -348,6 +357,44 @@
 		      ".Modeline.TLabel -foreground $colors(-text-"
 		      color-idx ")"))
 		   (map number->string (iota 7 1)))
+	    "" ,(string-intersperse
+		 '("   ttk::style configure TScrollbar"
+		   "-arrowcolor $colors(-text)"
+		   "-troughcolor $colors(-background)"))
+	    "" ,(string-intersperse
+		 '("   ttk::style map TScrollbar"
+		   "-background [list active $colors(-highlight-minor)"
+		   "!active $colors(-background)]"
+		   "-foreground [list disabled $colors(-highlight-minor)"
+		   "!disabled $colors(-text)]"))
+	    "" ,(string-intersperse
+		 '("   ttk::style configure TCombobox"
+		   "-arrowcolor $colors(-text)"
+		   "-background $colors(-highlight-minor)"
+		   "-foreground $colors(-text)"
+		   "-selectbackground $colors(-text)"
+		   "-selectforeground $colors(-highlight-minor)"
+		   "-font BTFont.bold"
+		   "-focusfill $colors(-highlight-minor)"))
+	    "" ,(string-intersperse
+		 '("   ttk::style map TCombobox"
+		   "-background [list readonly $colors(-highlight-minor)]"
+		   "-foreground [list readonly $colors(-text)]"
+		   "-fieldbackground [list readonly $colors(-background)]"))
+	    "" ,(string-append "    option add *TCombobox.font"
+			       " BTFont.bold")
+	    "" ,(string-append "    option add *TCombobox*Listbox.font"
+			       " BTFont.bold")
+	    "" ,(string-append "    option add *TCombobox*Listbox.background"
+			       " $colors(-background)")
+	    "" ,(string-append "    option add *TCombobox*Listbox.foreground"
+			       " $colors(-text)")
+	    "" ,(string-append "    option add"
+			       " *TCombobox*Listbox.selectBackground"
+			       " $colors(-text)")
+	    "" ,(string-append "    option add"
+			       " *TCombobox*Listbox.selectForeground"
+			       " $colors(-background)")
 	    "  }"
 	    "}"
 	    "")
@@ -364,17 +411,6 @@
        (lambda ()
 	 (tk-eval "source resources/bt-theme.tcl")
 	 (ttk/style 'theme 'use "bintracker")))))
-
-
-  ;;; Configure the style of the scrollbar widget S to match Bintracker's
-  ;;; style.
-  (define (configure-scrollbar-style s)
-    (s 'configure bd: 0 highlightthickness: 0 relief: 'flat
-       activebackground: (colors 'row-highlight-major)
-       bg: (colors 'row-highlight-minor)
-       troughcolor: (colors 'background)
-       elementborderwidth: 0))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Menus

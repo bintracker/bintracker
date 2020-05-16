@@ -114,14 +114,16 @@
   ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
   ;;; user's choice, a new MDAL module is created and displayed.
   (define (new-file)
-    (let ((d (make-dialogue)))
+    (let ((d (make-dialogue))
+	  (platforms (btdb-list-platforms)))
       (d 'show)
-      (d 'add 'widget 'platform-selector '(listbox selectmode: single))
+      (d 'add 'widget 'platform-selector
+	 `(combobox state: readonly values: ,(cons "any" platforms)))
+      ((d 'ref 'platform-selector) 'set "any")
       (d 'add 'widget 'config-selector
-	 '(treeview columns: (Name Version Platform)))
-      (for-each (lambda (p)
-		  ((d 'ref 'platform-selector) 'insert 'end p))
-		(cons "any" (btdb-list-platforms)))
+	 '(treeview columns: (Name Version Platform)
+		    show: tree
+		    selectmode: browse))
       (for-each (lambda (config)
   		  ((d 'ref 'config-selector) 'insert '{} 'end
   		   text: (car config)
@@ -149,7 +151,9 @@
 				       text:)
 				      selected-def)))))
 	(unless (null? initial-item-list)
-	  ((d 'ref 'config-selector) 'focus (car initial-item-list))))))
+	  ((d 'ref 'config-selector) 'focus (car initial-item-list))
+	  ((d 'ref 'config-selector) 'selection 'set
+	   (list (car initial-item-list)))))))
 
   (define on-save-file-hooks
     (make-hooks
@@ -606,10 +610,7 @@
   (define-method (ui-show primary: (elem <ui-element>))
     (print "ui-show/element, children " (map car (ui-children elem)))
     (unless (slot-value elem 'initialized)
-      (print "ui-show/element: initialzing")
       (for-each (lambda (elem)
-		  ;; (o ui-show cdr)
-		  (print "...calling ui-show on " (car elem))
 		  (ui-show (cdr elem)))
     		(ui-children elem))
       (set! (slot-value elem 'initialized) #t))
@@ -717,7 +718,8 @@
 			  (seventh setup)))
 	   (box (ui-box buf))
 	   (spinbox (box 'create-widget 'spinbox from: from to: to
-			 width: 4 state: 'enabled validate: 'none))
+			 width: 4 state: 'enabled validate: 'none
+			 font: 'BTFont.bold))
 	   (validate-new-value
 	    (lambda (new-val)
 	      (if (and (integer? new-val)
@@ -1253,7 +1255,8 @@
       ((slot-value buf 'content-box) 'create-widget 'text))
     (set! (slot-value buf 'yscroll)
       ((slot-value buf 'content-box)
-       'create-widget 'scrollbar orient: 'vertical)))
+       'create-widget 'scrollbar orient: 'vertical
+       'command: `(,(slot-value buf 'repl) yview))))
 
   ;; TODO this becomes a before: method once things are sorted out
   (define-method (ui-show primary: (buf <ui-repl>))
@@ -1270,8 +1273,6 @@
 	(tk/pack yscroll side: 'right fill: 'y)
 	(tk/pack repl expand: 1 fill: 'both side: 'right)
 	(tk/pack (slot-value buf 'content-box) side: 'right fill: 'both)
-	(configure-scrollbar-style yscroll)
-	(yscroll 'configure command: `(,repl yview))
 	(repl 'configure 'yscrollcommand: `(,yscroll set))
 	(repl-insert buf (ui-setup buf))
 	(repl-insert-prompt buf)
@@ -1581,8 +1582,6 @@
       (let ((xscroll (slot-value buf 'xscroll))
 	    (yscroll (slot-value buf 'yscroll))
 	    (block-content (slot-value buf 'block-content)))
-	(configure-scrollbar-style xscroll)
-	(configure-scrollbar-style yscroll)
 	(tk/pack xscroll fill: 'x side: 'bottom)
 	(tk/pack (slot-value buf 'content-frame)
 		 expand: 1 fill: 'both side: 'bottom)

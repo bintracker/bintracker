@@ -28,8 +28,8 @@
 ;; automatically map the following tk widgets to their ttk equivalent
 (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
 			  labelframe notebook panedwindow
-			  progressbar combobox separator scale sizegrip
-			  spinbox treeview))
+			  progressbar combobox scrollbar separator scale
+			  sizegrip spinbox treeview))
 
 
 ;; ---------------------------------------------------------------------------
