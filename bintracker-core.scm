@@ -80,7 +80,8 @@
 			  (command save-as "Save as..." 5
 				   "Ctrl+Shift+S" ,save-file-as)
 			  (submenu export "Export" 0
-				   ((command bin ".bin" 0 "Alt+E b" #f)))
+				   ((command bin ".bin" 0 "Alt+E b"
+					     ,export-bin)))
 			  (command close "Close" 0 "Ctrl+W"
 				   ,close-file)
 			  (separator)

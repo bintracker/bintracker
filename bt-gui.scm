@@ -181,6 +181,14 @@
 	(ui-metastate (current-module-view) 'filename filename)
 	(on-save-file-hooks 'execute))))
 
+  (define (export-bin)
+    (and-let* ((mmod (current-mmod))
+	       (filename (tk/get-save-file*
+			  filetypes: '(((Binary) (.bin)))
+			  defaultextension: '.bin))
+	       (_ (not (string-null? filename))))
+      (mod-export-bin filename mmod (config-default-origin (current-mdef)))))
+
   ;;; Calls undo on (current-module-view).
   (define (undo)
     (and-let* ((mv (current-module-view)))
