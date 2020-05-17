@@ -74,11 +74,11 @@
 ;; Set the default octave in mmod buffers.
 ;; (set-conf! 'default-base-octave 4)
 
-;; Configure row highlighting. The values form a time signature. The value  for
-;; 'default-major-row-highlight is multiplied by the value for
-;; 'default-minor-row-highlight. So setting 4 for minor highlights and 2 for
-;; major ones will result in a minor highlight every 4 rows, and a major
-;; highlight every 8 rows.
+;; Configure row highlighting. The two values form a time signature, where
+;; 'default-minor-row-highlight specifies the number of rows that form a quarter
+;; note, and 'default-major-row-highlight specifies how many quarter notes form
+;; a measure. So setting 4 for minor highlights and 2 for major ones will
+;; result in a minor highlight every 4 rows, and a major highlight every 8 rows.
 ;; (set-conf! 'default-major-row-highlight 2)
 ;; (set-conf! 'default-minor-row-highlight 4)
 
