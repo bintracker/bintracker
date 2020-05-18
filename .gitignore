@@ -7,6 +7,8 @@ libmdal/docs/generated
 tclkit/
 cfg/
 roms/
+build/*
+!build/Makefile
 resources/icons/*.png.*.png
 resources/bt-theme.tcl
 *.swp
