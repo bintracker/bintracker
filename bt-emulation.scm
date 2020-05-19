@@ -8,6 +8,8 @@
 	  (chicken process) (chicken string)
 	  srfi-1 srfi-13 srfi-18 simple-exceptions base64)
 
+  ;;;
+
   ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
   ;;; shall be a list of command line argument strings that are passed to
   ;;; `program` on startup.
@@ -20,7 +22,7 @@
   ;;;
   ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
   ;;; * `'info` - Display information about the emulated machine.
-  ;;; * `'run address % code` - Load and run `code` at address.
+  ;;; * `'run address%code` - Load and run `code` at address.
   ;;; * `'pause` - Pause emulation.
   ;;; * `'unpause` - Unpause emulation.
   ;;; * `'start` - Launch emulator program in new thread.
