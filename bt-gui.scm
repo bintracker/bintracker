@@ -2108,7 +2108,9 @@
   	   (field-size (field-id->cursor-digits field-id
   						(ui-metastate buf 'mdef)))
   	   (current-digit-idx (ui-blockview-get-current-digit-index buf))
-  	   (current-val (ui-blockview-get-current-field-value buf))
+  	   (current-val (or (ui-blockview-get-current-field-value buf)
+			    (command-default
+			     (ui-blockview-get-current-field-command buf))))
   	   (new-val (replace-digit current-val current-digit-idx keysym)))
       (or (and new-val (validate-field-value
   			(ui-metastate buf 'mdef) field-id new-val #t))
