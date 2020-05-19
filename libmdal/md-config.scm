@@ -199,12 +199,13 @@
 	      (list id
 		    (apply make-cpu
 			   (read (open-input-file
-				  (string-append path-prefix "targets/cpu/"
+				  (string-append path-prefix "mdal-targets/cpu/"
 						 cpu ".scm"))))
 		    clock-speed default-start-address exports)))
 	   (target-decl
 	    (apply mk-target-decl
-		   (read (open-input-file (string-append path-prefix "targets/"
+		   (read (open-input-file (string-append path-prefix
+							 "mdal-targets/"
 							 target-id ".scm"))))))
       (make-target-platform
        id: (car target-decl)

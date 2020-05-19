@@ -118,7 +118,7 @@
   (defstruct app-settings
     ((keymap "EN") : (or string (struct app-keys)))
     ((number-base 16) : fixnum)
-    ((mdal-config-dir "libmdal/unittests/config/") : string)
+    ((mdal-config-dir "mdef/") : string)
     ((theme-generator 'default-theme-generator) : symbol)
     ((startup-layout '((welcome #t 5 <ui-welcome-buffer>)
 		       (repl #t 2 <ui-repl> setup

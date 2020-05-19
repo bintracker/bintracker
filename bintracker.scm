@@ -8,7 +8,7 @@
 (import scheme (chicken platform))
 
 ;; Make modules in libmdal/ available
-(repository-path (cons "libmdal" (repository-path)))
+;; (repository-path (cons "libmdal" (repository-path)))
 
 
 ;; ---------------------------------------------------------------------------

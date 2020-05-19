@@ -4,8 +4,7 @@
  and slides. By utz 2015."
  default-origin: #x8000
 
- commands: (;; (command id: BPM bits: 16 type: uint default: 140)
-	    (command id: TICKS bits: 5 type: uint default: 4
+ commands: ((command id: TICKS bits: 5 type: uint default: 4
 		     description: "Ticks per row")
 	    (command id: NOTE bits: 16 type: ukey
 		     flags: (enable-modifiers use-last-set is-note)
@@ -33,13 +32,38 @@
 					       (field from: NOISE))))))
 
  output: ((asm file: "quattropic.asm")
-	  (comment "sequence")
-	  (symbol id: loop)
+	  (comment "tempo")
+	  (field bytes: 1 compose: #x16)
+	  (field bytes: 2 compose: $pattern0)
+	  (field bytes: 2 compose: 0)
+	  (symbol id: pattern0)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS from: (TEMPO CH1 CH2 CH3 CH4)
+			 resize: 16
+			 nodes: ((repeat bytes: 1 compose: 0
+					 ;; (cond ;; ((and (is-set ?SLIDE)
+					 ;;       ;; 	     (is-set ?NOISE))
+					 ;;       ;; 	#x80)
+					 ;;       ((is-set? ?SLIDE) 4)
+					 ;;       ((is-set? ?NOISE) 1)
+					 ;;       (else 0))
+					 )
+				 (repeat bytes: 1 compose: (- #x16 ?TICKS))
+				 (repeat bytes: 1 compose: ?DUTY2)
+				 (repeat bytes: 1 compose: ?DUTY1)
+				 (repeat bytes: 1 compose: ?DUTY4)
+				 (repeat bytes: 1 compose: ?DUTY3)
+				 (repeat bytes: 2 compose: ?NOTE1)
+				 (repeat bytes: 2 compose: ?NOTE2)
+				 (repeat bytes: 2 compose: ?NOTE3)
+				 (repeat bytes: 2 compose: ?NOTE4)))))
+	  (field bytes: 1 compose: #x40)
+	  ;; (symbol id: loop)
 	  ;; (field bytes: 2 compose: (quotient 1779661 ?BPM))
 	  ;; (field bytes: 2 compose: (- $sequence_end 8))
-	  (order from: PATTERNS layout: shared-numeric-matrix
-		 element-size: 1 base-index: 1)
-	  (field bytes: 1 compose: 0)
+	  ;; (order from: PATTERNS layout: shared-numeric-matrix
+	  ;; 	 element-size: 1 base-index: 1)
+	  ;; (field bytes: 1 compose: 0)
 	  ;; (symbol id: sequence_end)
 	  ;; (group id: PATTERNS from: PATTERNS nodes:
 	  ;; 	 ((block id: CHANS from: (CH1 CH2 CH3 CH4) resize: 8

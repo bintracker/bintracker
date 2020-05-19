@@ -47,7 +47,7 @@
       (finalize! btdb)
       (set! btdb #f)))
 
-  (define mdal-config-dir "libmdal/unittests/config/")
+  (define mdal-config-dir "mdef/")
 
   (define (get-config-dir-subdirs)
     (filter (lambda (file)
@@ -80,7 +80,7 @@
   ;;; Returns `#f` if the config is not found in the MDAL configuration
   ;;; directory.
   (define (gather-config-info mdconf-id)
-    (let ((mdconf (file->config mdal-config-dir mdconf-id "libmdal/")))
+    (let ((mdconf (file->config mdal-config-dir mdconf-id)))
       (and mdconf
 	   (list (string-append
 		  (number->string (plugin-version-major

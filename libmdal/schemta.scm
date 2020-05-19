@@ -54,7 +54,7 @@
   (define *target-cache* '())
 
   (: *schemta-include-path* string)
-  (define *schemta-include-path* "targets/")
+  (define *schemta-include-path* "mdal-targets/")
 
   (define (set-schemta-include-path! p)
     (set! *schemta-include-path* p))

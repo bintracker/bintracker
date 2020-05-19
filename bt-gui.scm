@@ -75,38 +75,37 @@
      `(hide-welcome-buffer . ,(lambda args (multibuffer-hide (ui) 'welcome)))
      `(show-module
        . ,(lambda (mmod filename)
-	    (multibuffer-add (ui)
-			     `(module-view #t 5 ,<ui-module-view>
-					   mmod ,mmod filename ,filename)
-			     before: 'repl)))
+  	    (multibuffer-add (ui)
+  			     `(module-view #t 5 ,<ui-module-view>
+  					   mmod ,mmod filename ,filename)
+  			     before: 'repl)))
      `(focus-first-block
        . ,(lambda args
-	    (and-let* ((entry (find (lambda (entry)
-				      (symbol-contains (car entry)
-						       "block-view"))
-				    (focus 'list))))
-	      (focus 'set (car entry)))))))
+  	    (and-let* ((entry (find (lambda (entry)
+  				      (symbol-contains (car entry)
+  						       "block-view"))
+  				    (focus 'list))))
+  	      (focus 'set (car entry)))))))
 
   ;; TODO logging
   ;;; Prompt the user to load an MDAL module file.
   (define (load-file)
     (close-file)
     (let ((filename (tk/get-open-file*
-		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
+  		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
       (unless (string-null? filename)
-	(handle-exceptions
-	    exn
-	    (repl-insert (repl) (string-append "\nError: " (->string exn)
-		   			       "\n" (message exn) "\n"))
-	  (after-load-file-hooks 'execute #f filename)))))
+  	(handle-exceptions
+  	    exn
+  	    (repl-insert (repl) (string-append "\nError: " (->string exn)
+  		   			       "\n" (message exn) "\n"))
+  	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdef-name)
     (print "create-new-module " mdef-name)
     (close-file)
     (after-load-file-hooks
      'execute
-     (generate-new-mdmod (file->config "libmdal/unittests/config/"
-  				       mdef-name "libmdal/")
+     (generate-new-mdmod (file->config (settings 'mdal-config-dir) mdef-name)
   			 (settings 'default-block-length))
      #f))
 
@@ -3272,9 +3271,7 @@
       (error '|make <ui-module-view>| "Missing either 'mmod or 'current-file."))
     (unless (slot-value buf 'mmod)
       (set! (slot-value buf 'mmod)
-	(file->mdmod (slot-value buf 'filename)
-		     (app-settings-mdal-config-dir *bintracker-settings*)
-		     "libmdal/")))
+  	(file->mdmod (slot-value buf 'filename) (settings 'mdal-config-dir))))
     (unless (slot-value buf 'filename)
       (set! (slot-value buf 'modified) #t))
     (when (settings 'show-modelines)

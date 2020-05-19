@@ -16,7 +16,8 @@ endif
 # https://lists.nongnu.org/archive/html/chicken-users/2017-08/msg00004.html
 
 bintracker: $(BT_SRC)bintracker.scm bintracker-core.import.so\
-mame-bridge/mame-startup.lua config roms plugins resources docs
+ mame-bridge/mame-startup.lua config roms plugins resources docs aux-files\
+ mdal-targets
 	$(CSC) $< -d3 -O2 -compile-syntax -o $@
 
 # build bintracker-core
@@ -61,8 +62,8 @@ bt-gui.so: $(BT_SRC)bt-gui.scm bt-state.import.so bt-types.import.so bt-db.impor
 bt-gui.import.so: bt-gui.so
 	$(CSC) $(IMPORTFLAGS) bt-gui.import.scm
 
-bt-gui-lolevel.so: $(BT_SRC)bt-gui-lolevel.scm bt-state.import.so bt-types.import.so\
- bt-emulation.import.so
+bt-gui-lolevel.so: $(BT_SRC)bt-gui-lolevel.scm bt-state.import.so\
+ bt-types.import.so bt-emulation.import.so
 	$(CSC) $(LIBFLAGS) $< -j bt-gui-lolevel -o $@
 
 bt-gui-lolevel.import.so: bt-gui-lolevel.so
@@ -209,6 +210,15 @@ resources:
 	mkdir -p resources/
 	cp -r $(BT_SRC)resources/icons resources/
 
+.PHONY: aux-files
+aux-files:
+	cp -r ../mdef .
+	cp -r ../tunes .
+
+.PHONY: mdal-targets
+mdal-targets:
+	cp -r $(MDAL_SRC)mdal-targets .
+
 # run unit tests
 .PHONY: run-tests
 run-tests: mdal.so
@@ -218,4 +228,4 @@ run-tests: mdal.so
 .PHONY: clean
 clean:
 	-rm *.so *.import.scm bintracker bt.db
-	-rm -rf docs plugins resources mame-bridge config roms
+	-rm -rf docs plugins resources mame-bridge config roms mdef tunes mdal-targets gendoc documentation

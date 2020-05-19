@@ -228,8 +228,6 @@
   (define on-startup-hooks
     (make-hooks
      `(load-config . ,load-config)
-     `(set-schemta-include-path
-       . ,(lambda () (set-schemta-include-path! "libmdal/targets/")))
      `(init-db . ,btdb-init!)
      `(update-style . ,update-ttk-style)
      `(update-global-key-bindings . ,update-global-key-bindings!)
