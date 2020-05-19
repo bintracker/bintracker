@@ -20,7 +20,7 @@
     type ;;; one of `int uint key ukey reference string trigger label` or a
          ;;; user-defined type
     (bits 0) ;;; number of bits in command
-    (default "0") ;;; default value
+    (default 0) ;;; default value
     reference-to ;;; `#f` or an identifier
     keys ;;; `#f` or a hash-map
     (flags '()) ;;; list of command flags
