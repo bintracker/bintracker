@@ -1,9 +1,5 @@
 CSC = csc
 DOCGEN = scm2wiki
-DOCS = bintracker-core.md bt-gui.md bt-gui-lolevel.md bt-state.md bt-types.md\
- bt-db.md bt-emulation.md
-MDALDOCS = mdal.md md-config.md md-helpers.md md-types.md md-parser.md\
- md-command.md schemta.md utils/md-note-table.md
 BASEDEPS = md-helpers.import.so md-types.import.so
 LIBFLAGS = -s -d3 #-profile-name $@.PROFILE
 ifdef RELEASE
@@ -20,7 +16,7 @@ endif
 # https://lists.nongnu.org/archive/html/chicken-users/2017-08/msg00004.html
 
 bintracker: $(BT_SRC)bintracker.scm bintracker-core.import.so\
-mame-bridge/mame-startup.lua config roms plugins resources
+mame-bridge/mame-startup.lua config roms plugins resources docs
 	$(CSC) $< -d3 -O2 -compile-syntax -o $@
 
 # build bintracker-core
@@ -72,23 +68,6 @@ bt-gui-lolevel.so: $(BT_SRC)bt-gui-lolevel.scm bt-state.import.so bt-types.impor
 bt-gui-lolevel.import.so: bt-gui-lolevel.so
 	$(CSC) $(IMPORTFLAGS) bt-gui-lolevel.import.scm
 
-# %.md: %.scm
-# 	$(DOCGEN) -i $< -o docs/generated/$@
-
-# bintracker-core.md: bintracker-core.scm
-# bt-gui.md: bt-gui.scm
-# bt-gui-lolevel.md: bt-gui-lolevel.scm
-# bt-state.md: bt-state.scm
-# bt-types.md: bt-types.scm
-# bt-emulation.md: bt-emulation.scm
-# bt-db.md: bt-db.scm
-
-# docs: $(DOCS)
-# 	$(MAKE) docs -C libmdal
-# 	mkdir -p docs/libmdal
-# 	cp -r libmdal/docs/* docs/libmdal/
-# 	mkdocs build
-
 mdal.so: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-config.import.so\
  md-parser.import.so schemta.import.so
 	$(CSC) $(LIBFLAGS) $< -j mdal -o $@
@@ -137,20 +116,54 @@ schemta.so: $(MDAL_SRC)schemta.scm
 schemta.import.so: schemta.so
 	$(CSC) $(IMPORTFLAGS) schemta.import.scm
 
-# # generate documentation
-# %.md: %.scm
-# 	$(DOCGEN) -i $< -o docs/generated/$@ -m
+# generate documentation
+gendoc/generated/%.md: $(BT_SRC)%.scm
+	$(DOCGEN) -i $< -o $@ -m
 
-# mdal.md: mdal.scm
-# md-config.md: md-config.scm
-# md-helpers.md: md-helpers.scm
-# md-types.md: md-types.scm
-# md-parser.md: md-parser.scm
-# md-command.md: md-command.scm
-# md-note-table.md: utils/md-note-table.scm
-# schemta.md: schemta.scm
+gendoc/generated/%.md: $(MDAL_SRC)%.scm
+	$(DOCGEN) -i $< -o $@ -m
 
-# docs: $(DOCS)
+gendoc/generated/bintracker-core.md: $(BT_SRC)bintracker-core.scm
+gendoc/generated/bt-gui.md: $(BT_SRC)bt-gui.scm
+gendoc/generated/bt-gui-lolevel.md: $(BT_SRC)bt-gui-lolevel.scm
+gendoc/generated/bt-state.md: $(BT_SRC)bt-state.scm
+gendoc/generated/bt-types.md: $(BT_SRC)bt-types.scm
+gendoc/generated/bt-emulation.md: $(BT_SRC)bt-emulation.scm
+gendoc/generated/bt-db.md: $(BT_SRC)bt-db.scm
+gendoc/generated/mdal.md: $(MDAL_SRC)mdal.scm
+gendoc/generated/md-config.md: $(MDAL_SRC)md-config.scm
+gendoc/generated/md-helpers.md: $(MDAL_SRC)md-helpers.scm
+gendoc/generated/md-types.md: $(MDAL_SRC)md-types.scm
+gendoc/generated/md-parser.md: $(MDAL_SRC)md-parser.scm
+gendoc/generated/md-command.md: $(MDAL_SRC)md-command.scm
+gendoc/generated/utils/md-note-table.md: $(MDAL_SRC)utils/md-note-table.scm
+gendoc/generated/schemta.md: $(MDAL_SRC)schemta.scm
+
+docs: gendoc-dirs\
+ gendoc/generated/bintracker-core.md\
+ gendoc/generated/bt-gui.md\
+ gendoc/generated/bt-gui-lolevel.md\
+ gendoc/generated/bt-state.md\
+ gendoc/generated/bt-types.md\
+ gendoc/generated/bt-db.md\
+ gendoc/generated/bt-emulation.md\
+ gendoc/generated/mdal.md\
+ gendoc/generated/md-config.md\
+ gendoc/generated/md-helpers.md\
+ gendoc/generated/md-types.md\
+ gendoc/generated/md-parser.md\
+ gendoc/generated/md-command.md\
+ gendoc/generated/schemta.md\
+ gendoc/generated/utils/md-note-table.md
+	for file in ../docs/*.md; do cp $$file gendoc/; done
+	for file in ../libmdal/docs/*.md; do cp $$file gendoc/; done
+	cp -r ../docs/assets/ gendoc/assets/
+	cd .. && mkdocs build
+
+gendoc-dirs:
+	mkdir -p gendoc/
+	mkdir -p gendoc/generated/
+	mkdir -p gendoc/generated/utils/
 
 # Generate ETags file for Emacs
 TAGS: $(BT_SRC)bt-types.scm\
@@ -182,10 +195,6 @@ mame-bridge/mame-startup.lua: $(BT_SRC)mame-bridge/mame-startup.lua
 config:
 	cp -r $(BT_SRC)config/ .
 	-rm -r config/*~
-
-.PHONY: docs
-docs:
-	cp -r $(BT_SRC)docs/ .
 
 .PHONY: roms
 roms:

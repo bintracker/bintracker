@@ -3,6 +3,7 @@ site_name: "Bintracker Documentation"
 repo_name: utz82/bintracker
 repo_url: 'https://github.com/utz82/bintracker'
 edit_uri: ""
+docs_dir: 'build/gendoc/'
 
 theme:
   name: 'material'
@@ -31,7 +32,7 @@ plugins:
 extra_javascript:
   - search/search_index.js
 
-site_dir: 'documentation'
+site_dir: 'build/documentation'
 
 nav:
   - Main: index.md
@@ -57,21 +58,21 @@ nav:
          - "bt-emulation": 'generated/bt-emulation.md'
          - "bt-db": 'generated/bt-db.md'
       - MDAL:
-        - Introduction: 'libmdal/index.md'
-        - "Modules (MMOD)": 'libmdal/MMOD_SPECIFICATION.md'
-        - "Engine Definitions (MDEF)": 'libmdal/MDEF_SPECIFICATION.md'
+        - Introduction: 'mdal-introduction.md'
+        - "Modules (MMOD)": 'MMOD_SPECIFICATION.md'
+        - "Engine Definitions (MDEF)": 'MDEF_SPECIFICATION.md'
         - "libmdal API":
-          - "mdal": 'libmdal/generated/mdal.md'
-          - "md-types": 'libmdal/generated/md-types.md'
-          - "md-helpers": 'libmdal/generated/md-helpers.md'
-          - "md-config" : 'libmdal/generated/md-config.md'
-          - "md-command": 'libmdal/generated/md-command.md'
-          - "md-parser": 'libmdal/generated/md-parser.md'
+          - "mdal": 'generated/mdal.md'
+          - "md-types": 'generated/md-types.md'
+          - "md-helpers": 'generated/md-helpers.md'
+          - "md-config" : 'generated/md-config.md'
+          - "md-command": 'generated/md-command.md'
+          - "md-parser": 'generated/md-parser.md'
           - utils:
-              - "md-note-table": 'libmdal/generated/utils/md-note-table.md'
+              - "md-note-table": 'generated/utils/md-note-table.md'
       - "Schemta Assembler":
-          - Introduction: 'libmdal/schemta.md'
-          - Schemta API: 'libmdal/generated/schemta.md'
+          - Introduction: 'schemta.md'
+          - Schemta API: 'generated/schemta.md'
   - Contributing: contributing.md
   - "Code of Conduct": CODE_OF_CONDUCT.md
 

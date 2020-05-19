@@ -19,7 +19,7 @@
 
 ### Developer Documentation
 
-[Getting Started](hacking.md) • [Bintracker API](generated/bintracker-core.md) • [MDAL](libmdal/index.md) • [Schemta Assembler](libmdal/schemta.md) • [TODO](TODO.md)
+[Getting Started](hacking.md) • [Bintracker API](generated/bintracker-core.md) • [MDAL](mdal-introduction.md) • [Schemta Assembler](schemta.md) • [TODO](TODO.md)
 
 
 ### [Bugtracker](https://github.com/utz82/bintracker/issues)

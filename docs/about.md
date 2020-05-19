@@ -9,7 +9,7 @@ Both the editor itself, as well as the range of supported chiptune drivers and t
 
 ### Technology
 
-In essence, Bintracker is an integrated development environment for the [Music Data Abstraction Language (MDAL)](libmdal/index.md).
+In essence, Bintracker is an integrated development environment for the [Music Data Abstraction Language (MDAL)](mdal-introduction.md).
 
 Bintracker is implemented in the [Scheme programming language](https://en.wikipedia.org/wiki/Scheme_(programming_language)), specifically [Chicken Scheme](https://call-cc.org/). As Bintracker incorporates a complete Scheme runtime, it can be reprogrammed from within itself. In other words, Bintracker is fully [hackable](hacking.md).
 

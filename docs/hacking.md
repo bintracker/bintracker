@@ -44,15 +44,15 @@ If this is your first time working iwht Scheme or another language from the Lisp
 
 #### libmdal
 
-Libmdal is an implementation of the [Music Data Abstraction Language](libmdal/index.md). It covers all parts related to the handling of music modules. Libmdal is a compiler generator: Given a MDEF engine definition, it generates a compiler that can transform a suitable MMOD into binary output.
+Libmdal is an implementation of the [Music Data Abstraction Language](mdal-introduction.md). It covers all parts related to the handling of music modules. Libmdal is a compiler generator: Given a MDEF engine definition, it generates a compiler that can transform a suitable MMOD into binary output.
 
-- [libmdal API](libmdal/generated/mdal.md)
+- [libmdal API](generated/mdal.md)
 
 #### Schemta
 
-[Schemta](libmdal/schemta.md) is Bintracker's assembler. It is integrated into libmdal but can also be built as a stand-alone executable.
+[Schemta](schemta.md) is Bintracker's assembler. It is integrated into libmdal but can also be built as a stand-alone executable.
 
-- [Schemta API](libmdal/generated/schemta.md)
+- [Schemta API](generated/schemta.md)
 
 ### Dependencies
 
@@ -63,7 +63,7 @@ multithreading model: srfi-18
 
 
 
-In addition to the core  and the [libmdal API](libmdal/generated/mdal.md), the following procedures and APIs are available:
+In addition to the core  and the [libmdal API](generated/mdal.md), the following procedures and APIs are available:
 
 - All Scheme primitives and procedures defined in the [R5RS](https://schemers.org/Documents/Standards/R5RS/) standard.
 - The [SRFI-1](https://srfi.schemers.org/srfi-1/srfi-1.html) and [SRFI-13](https://srfi.schemers.org/srfi-13/srfi-13.html) extensions (lists resp. strings).

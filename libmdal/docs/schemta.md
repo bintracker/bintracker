@@ -32,7 +32,7 @@ Schemta takes a different approach. Assembly code for Schemta is regular assembl
 
 ### Schemta, Bintracker, and MDAL
 
-Bintracker provides the [Schemta API](generated/schemta.md) at runtime, so you can use it directly via the [REPL](../repl.md) or another live coding buffer.
+Bintracker provides the [Schemta API](generated/schemta.md) at runtime, so you can use it directly via the [REPL](repl.md) or another live coding buffer.
 
 MDAL uses Schemta as the assembler backend. When libmdal runs a Schemta assembly, it passes in the current MDAL module as the assembly-level symbol `mdal_current_module`. That means that assembly code used in an MDAL definition can reference any part of the module, including the MDAL definition.
 
