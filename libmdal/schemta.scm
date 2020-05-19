@@ -243,7 +243,8 @@
 	  (if (= 1 (length operands))
 	      (cadr m)
 	      (match-operands (cdr operands) (cadr m)))
-	  (error "invalid operand"))))
+	  (error 'match-operands (string-append "invalid operand in "
+						(->string operands))))))
 
   (define (parse-operands operands)
     (map (lambda (op)
@@ -618,7 +619,8 @@
 		    (number->string
 		     (+ 1 (- linecount (count-newlines
 					(parse (as-string (one-or-more item))
-					       remainder)))))))))))
+					       remainder)))))
+		    " remainder: " (->string remainder)))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -670,11 +672,21 @@
 
   ;;; Execute .equ directive.
   (define (do-assign node)
-    (add-symbol! (if (eq? 'label (caadr node))
-		     (cadadr node)
-		     (symbol-append (local-namespace) (cadadr node)))
-		 (third node))
-    #f)
+    (let ((result (cond
+		   ((number? (third node)) (third node))
+		   ((and (pair? (third node))
+			 (eqv? 'sexp-directive (car (third node))))
+		    (do-sexp-directive (third node)))
+		   (else (error 'do-assign (->string node))))))
+      (if (and result (not (null? result)))
+	  (begin (add-symbol! (if (eq? 'label (caadr node))
+				  (cadadr node)
+				  (symbol-append (local-namespace)
+						 (cadadr node)))
+			      result)
+		 #f)
+	  (begin (require-another-pass!)
+		 (list node)))))
 
   ;;; Create a global symbol and set to current origin. This will also set the
   ;;; current local-namespace.
@@ -778,9 +790,10 @@
   ;;; Execute a sexp-directive
   (define (do-sexp-directive node)
     (let ((res (eval (cadr node))))
-      (if (string? res)
-	  (do-assembler-pass (parse-source res))
-	  '())))
+      (cond
+       ((string? res) (do-assembler-pass (parse-source res)))
+       ((number? res) res)
+       (else '()))))
 
   (define (do-swap-namespace node)
     (set-local-namespace! (cadr node))
@@ -836,13 +849,22 @@
   ;;; maximum number of assembler passes to run by specifying `#:max-passes`.
   (define (assemble target-cpu source
 		    #!key (org 0) extra-symbols (max-passes 3))
-    (letrec ((do-asm-passes (lambda (current-pass)
-			      (when (= current-pass max-passes)
-				(error "FAILED: number of passes exceeded"))
-			      (do-pass-and-set-ast!)
-			      (if (done?)
-				  (ast->bytes (ast))
-				  (do-asm-passes (+ 1 current-pass))))))
+    (letrec ((do-asm-passes
+	      (lambda (current-pass)
+		(when (= current-pass max-passes)
+		  (error 'assemble
+			 (string-append
+			  "FAILED: number of passes exceeded\n"
+			  "Unresolved nodes: "
+			  (->string
+			   (remove (lambda (node)
+				     (or (not (any (complement number?) node))
+					 (eqv? (car node) 'swap-namespace)))
+				   (ast))))))
+		(do-pass-and-set-ast!)
+		(if (done?)
+		    (ast->bytes (ast))
+		    (do-asm-passes (+ 1 current-pass))))))
       (set-target! target-cpu)
       (set-current-origin! org)
       (set-symbols! (append (or extra-symbols '()) (symbols)))
