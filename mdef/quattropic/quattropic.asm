@@ -14,12 +14,12 @@
 
 	;; di
 init
-	ei			;detect kempston
-	halt
-	in a,($1f)
-	inc a
-	jr nz,_skip
-	ld (maskKempston),a
+	;; ei			;detect kempston
+	;; halt
+	;; in a,($1f)
+	;; inc a
+	;; jr nz,_skip
+	;; ld (maskKempston),a
 _skip
 	di
 	exx
@@ -49,13 +49,13 @@ seqpntr .equ .(+ 1 (current-origin))
 rdptn0
 	ld (patpntr),de
 rdptn
-	in a,($1f)		;read joystick
-maskKempston .equ .(+ 1 (current-origin))
-	and $1f
-	ld c,a
+;; 	in a,($1f)		;read joystick
+;; maskKempston .equ .(+ 1 (current-origin))
+;; 	and $1f
+;; 	ld c,a
 	in a,($fe)		;read kbd
 	cpl
-	or c
+	;; or c
 	and $1f
 	jp nz,exit
 
