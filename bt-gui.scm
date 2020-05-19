@@ -3506,9 +3506,6 @@
   ;;; Screen Reader/Text-to-Speech API
   ;; ---------------------------------------------------------------------------
 
-  ;; TODO ??? Breaks scm2wiki again
-  ;; even though I just fixed it
-  ;; ("#\\" . " char ")
   ;;; An interface to the screen reader/text-to-speech tool. Use as follows:
   ;;;
   ;;; `(say STRING)`
@@ -3545,6 +3542,7 @@
     	       				   ("`" . " backtick ")
     	       				   (",@" . " quote-unsplice ")
     	       				   ("_" . " ")
+					   ("#\\" . " char ")
     	       				   ("#(" . " vector open-parens ")
     	       				   ("#<condition:" . "")
     	       				   ("#<procedure" . "procedure ")
