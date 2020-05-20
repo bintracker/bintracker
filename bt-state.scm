@@ -17,7 +17,6 @@
 
   (define *bintracker-version* "0.2.0")
   (define *bintracker-state* (make-app-state))
-  (define *bintracker-settings* (make-app-settings))
 
   ;;; Get the global application state, or a specific PARAMeter of that
   ;;; state.
@@ -37,15 +36,6 @@
   (define (repl)
     (and (ui)
 	 (alist-ref 'repl (slot-value (ui) 'children))))
-
-  ;;; Get the global application settings, or a specific PARAMeter of that
-  ;;; state.
-  (define (settings #!optional param)
-    (if param
-	((eval (string->symbol (string-append "app-settings-"
-					      (->string param))))
-	 *bintracker-settings*)
-	*bintracker-settings*))
 
   ;;; This is the interface to Bintracker's application colors. It is a
   ;;; procedure that can be called as follows:
@@ -113,10 +103,6 @@
 					  "-set!")))
      obj val))
 
-  ;;; Change Bintracker's global settings. Mainly an interface to config.scm.
-  (define (set-conf! param val)
-    (set-global! "app-settings-" *bintracker-settings* param val))
-
   ;;; Change Bintracker's internal state variables.
   (define (set-state! param val)
     (set-global! "app-state-" *bintracker-state* param val))
@@ -181,8 +167,8 @@
 							  name ".keymap")
 		       read)))
       (if (eq? 'keymap (car my-keymap))
-	  (set-conf! 'keymap
-		     (apply make-app-keys (cdr my-keymap)))
+	  (settings 'keymap
+		    (apply make-app-keys (cdr my-keymap)))
 	  (error "Not a valid Bintracker keymap."))))
 
 

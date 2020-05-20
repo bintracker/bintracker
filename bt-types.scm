@@ -114,29 +114,40 @@
   (defstruct app-keys
     global console edit note-entry plugins)
 
-  ;;; Record type that wraps application settings
-  (defstruct app-settings
-    ((keymap "EN") : (or string (struct app-keys)))
-    ((number-base 16) : fixnum)
-    ((mdal-config-dir "mdef/") : string)
-    ((theme-generator 'default-theme-generator) : symbol)
-    ((startup-layout '((welcome #t 5 <ui-welcome-buffer>)
-		       (repl #t 2 <ui-repl> setup
-			     "For help, type \"(info)\" at the prompt.\n")))
-     : list)
-    ((text-to-speech #f) : (or boolean (list string string)))
-    ((show-menu #t) : boolean)
-    ((show-toolbars #t) : boolean)
-    ((show-modelines #t) : boolean)
-    ((font-mono "Courier") : string)
-    ((font-size 10) : fixnum)
-    ((line-spacing 1) : fixnum)
-    ((enable-row-play #t) : boolean)
-    ((default-edit-step 1) : fixnum)
-    ((default-base-octave 4) : fixnum)
-    ((default-major-row-highlight 2) : fixnum)
-    ((default-minor-row-highlight 4) : fixnum)
-    ((default-block-length 16) : fixnum)
-    ((journal-limit 100) : integer))
+  ;;; The global application settings registry. Use as follows:
+  ;;;
+  ;;; * `(settings)` - Return the complete list of settings.
+  ;;; * `(settings PARAM)` - Return the value of the setting with the ID PARAM.
+  ;;; * `(settings PARAM VALUE)` - Set a new VALUE for the setting PARAM. If
+  ;;; PARAM does not exist, create a new entry for it.
+  (define settings
+    (let ((s '((keymap . "EN")
+	       (number-base . 16)
+	       (mdal-config-dir . "mdef/")
+	       (theme-generator . default-theme-generator)
+	       (startup-layout .
+		((welcome #t 5 <ui-welcome-buffer>)
+		 (repl #t 2 <ui-repl> setup
+		       "For help, type \"(info)\" at the prompt.\n")))
+	       (text-to-speech . #f)
+	       (show-menu . #t)
+	       (show-toolbars . #t)
+	       (show-modelines . #t)
+	       (font-mono . "Courier")
+	       (font-size . 10)
+	       (line-spacing . 1)
+	       (enable-row-play . #t)
+	       (default-edit-step . 1)
+	       (default-base-octave . 4)
+	       (default-major-row-highlight . 2)
+	       (default-minor-row-highlight . 4)
+	       (default-block-length . 16)
+	       (journal-limit . 100))))
+      (lambda args
+	(cond
+	 ((null? args) s)
+	 ((= 1 (length args)) (alist-ref (car args) s))
+	 ((= 2 (length args)) (set! s (alist-update (car args) (cadr args) s)))
+	 (else (error 'settings "Wrong number of arguments"))))))
 
   ) ;; end module bt-types

@@ -48,7 +48,7 @@
 	 "List known key bindings, or look up binding for KEY-SPEC.\n\n")
 	(case (car args)
 	  ((kb keybinding)
-	   (let ((keybindings (app-settings-keymap *bintracker-settings*)))
+	   (let ((keybindings (settings 'keymap)))
 	     (string-concatenate
 	      (filter-map (lambda (group name)
 			    (and (key-binding group (cadr args))

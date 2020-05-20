@@ -31,60 +31,60 @@
 
 ;; Configure the font used in Bintracker. This should be a monospaced font that
 ;; is installed on your computer.
-(set-conf! 'font-mono "Roboto Mono for Powerline")
+(settings 'font-mono "Roboto Mono for Powerline")
 
 ;; Configure the default font size.
-(set-conf! 'font-size 10)
+(settings 'font-size 10)
 
 ;; Configure the default spacing between lines of text.
-;; (set-conf! 'line-spacing 1)
+;; (settings 'line-spacing 1)
 
 ;; Enable or disable modelins (status bars)
-;; (set-conf! 'show-modelines #t)
+;; (settings 'show-modelines #t)
 
 ;; Enable or disable the main menu.
-;; (set-conf! 'show-menu #t)
+;; (settings 'show-menu #t)
 
 ;; Enable or disable toolbars.
-;; (set-conf! 'show-toolbars #t)
+;; (settings 'show-toolbars #t)
 
 ;; Integrate a text-to-speech/screen reader tool. Takes the name of the reader
 ;; application and optionally additional arguments in a list of strings.
-;; (set-conf! 'text-to-speech '("espeak" "-v" "en" "-a" "80"))
+;; (settings 'text-to-speech '("espeak" "-v" "en" "-a" "80"))
 
 ;; Set the number base. Use 10 for decimal, and 16 for hexadecimal.
-;; (set-conf! 'number-base 16)
+;; (settings 'number-base 16)
 
 ;; Set the Bintracker widget theme generator. The argument must be the name of
 ;; a procedure that takes no arguments and generates the file
 ;; `resources/bt-theme.tcl`. See `bt-gui-lolevel#default-theme-generator` for
 ;; an example of a theme generator procedure.
-;; (set-conf! 'theme-generator 'default-theme-generator)
+;; (settings 'theme-generator 'default-theme-generator)
 
 
 ;; MMOD buffer settings
 ;; --------------------
 
 ;; Enable or disable playing rows when editing.
-;; (set-conf! 'enable-row-play #t)
+;; (settings 'enable-row-play #t)
 
 ;; Set the default edit step in mmod buffers.
-;; (set-conf! 'default-edit-step 1)
+;; (settings 'default-edit-step 1)
 
 ;; Set the default octave in mmod buffers.
-;; (set-conf! 'default-base-octave 4)
+;; (settings 'default-base-octave 4)
 
 ;; Configure row highlighting. The two values form a time signature, where
 ;; 'default-minor-row-highlight specifies the number of rows that form a quarter
 ;; note, and 'default-major-row-highlight specifies how many quarter notes form
 ;; a measure. So setting 4 for minor highlights and 2 for major ones will
 ;; result in a minor highlight every 4 rows, and a major highlight every 8 rows.
-;; (set-conf! 'default-major-row-highlight 2)
-;; (set-conf! 'default-minor-row-highlight 4)
+;; (settings 'default-major-row-highlight 2)
+;; (settings 'default-minor-row-highlight 4)
 
 ;; Sets the size of the undo buffer, that is the number of undo steps that
 ;; Bintracker will remember in a buffer that supports undo operations.
-;; (set-conf! 'journal-limit 100)
+;; (settings 'journal-limit 100)
 
 
 ;; Startup Layout
@@ -104,7 +104,7 @@
 ;;
 ;; This is an experimental feature. Refer to the documentation of the bt-gui
 ;; module in the Bintracker API for further details.
-;; (set-conf! 'startup-layout
+;; (settings 'startup-layout
 ;; 	      '((welcome #t 5 <ui-welcome-buffer>)
 ;; 	        (repl #t 2 <ui-repl> setup
 ;; 		      "For help, type \"(info)\" at the prompt.\n")))
