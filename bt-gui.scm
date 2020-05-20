@@ -346,7 +346,7 @@
 
   ;;; Convert a keysym (as returned by a tk-event `%K` placeholder) to an
   ;;; MDAL note name.
-  (define (keypress->note key)
+  (define (keypress->note key base-octave)
     (let ((entry-spec (alist-ref (string->symbol
   				  (string-append "<Key-" (->string key)
   						 ">"))
@@ -357,7 +357,7 @@
   	       (let* ((octave-modifier (if (> (length entry-spec) 1)
   					   (cadr entry-spec)
   					   0))
-  		      (mod-octave (+ octave-modifier (state 'base-octave))))
+  		      (mod-octave (+ octave-modifier base-octave)))
   		 ;; TODO proper range check
   		 (and (and (>= mod-octave 0)
   			   (<= mod-octave 9)
@@ -701,28 +701,28 @@
   ;;; ```Scheme
   ;;; (make <ui-setting>
   ;;;       'parent PARENT
-  ;;;       'setup '(LABEL INFO DEFAULT-VAR STATE-VAR FROM TO [CALLBACK]))
+  ;;;       'setup '(LABEL INFO DEFAULT-VAR FROM TO [CALLBACK]))
   ;;; ```
   ;;;
   ;;; where PARENT is the parent Tk widget, LABEL is the text of the label,
   ;;; INFO is a short description of the element's function, DEFAULT-VAR is a
-  ;;; symbol denoting an entry in `(settings)`, STATE-VAR is a symbol denoting
-  ;;; an entry in `(state)`, FROM and TO are integers describing the range of
-  ;;; permitted values, and CALLBACK may optionally a procedure of no arguments
-  ;;; that will be invoked when the user selects a new value.
+  ;;; symbol denoting an entry in `(settings)`, FROM and TO are integers
+  ;;; describing the range of permitted values, and CALLBACK may optionally a
+  ;;; procedure of no arguments that will be invoked when the user selects a new
+  ;;; value.
   (define-class <ui-setting> (<ui-element>)
     ((packing-args '(side: left))
      label
-     spinbox))
+     spinbox
+     statevar))
 
   (define-method (initialize-instance after: (buf <ui-setting>))
     (let* ((setup (ui-setup buf))
   	   (default-var (third setup))
-  	   (state-var (fourth setup))
-  	   (from (fifth setup))
-  	   (to (sixth setup))
-  	   (callback (and (= 7 (length setup))
-  			  (seventh setup)))
+  	   (from (fourth setup))
+  	   (to (fifth setup))
+  	   (callback (and (= 6 (length setup))
+  			  (sixth setup)))
   	   (box (ui-box buf))
   	   (spinbox (box 'create-widget 'spinbox from: from to: to
   			 width: 4 state: 'enabled validate: 'none
@@ -732,9 +732,9 @@
   	      (if (and (integer? new-val)
   		       (>= new-val from)
   		       (<= new-val to))
-  		  (begin (set-state! state-var new-val)
+  		  (begin (set! (slot-value buf 'statevar) new-val)
   		   	 (when callback (callback)))
-  		  (spinbox 'set (state state-var))))))
+  		  (spinbox 'set (slot-value buf 'state-var))))))
       (set! (slot-value buf 'label)
   	(box 'create-widget 'label text: (car setup)
   	     foreground: (colors 'text)))
@@ -757,6 +757,7 @@
       (tk/pack (slot-value buf 'label) side: 'left padx: 5)
       (tk/pack spinbox side: 'left)
       (spinbox 'set (settings default-var))
+      (set! (slot-value buf 'statevar) (settings default-var))
       ;; TODO FIXME cannot currently re-implement this. Must defer
       ;; binding until `bind-info-status` is initialized. But that's
       ;; ok since we also need to separate callback bindings.
@@ -1829,8 +1830,9 @@
   (define-method (ui-blockview-update-row-highlights
   		  primary: (buf <ui-basic-block-view>))
     (let* ((start-positions (map car (ui-blockview-start+end-positions buf)))
-  	   (minor-hl (state 'minor-row-highlight))
-  	   (major-hl (* minor-hl (state 'major-row-highlight)))
+	   ;; TODO read this from actual internals
+  	   (minor-hl (ui-metastate buf 'minor-highlight))
+  	   (major-hl (* minor-hl (ui-metastate buf 'major-highlight)))
   	   (make-rowlist
   	    (lambda (hl-distance)
   	      (flatten
@@ -2082,7 +2084,7 @@
   ;;; field that represents a note command.
   (define-method (ui-blockview-enter-note primary: (buf <ui-basic-block-view>)
   					  keysym)
-    (let ((note-val (keypress->note keysym)))
+    (let ((note-val (keypress->note keysym (ui-metastate buf 'base-octave))))
       (when note-val (ui-blockview-edit-cell buf note-val
   						     play-row: #t))))
 
@@ -2522,9 +2524,9 @@
   					   direction)
     (ui-blockview-move-cursor-common buf
   				     direction
-  				     (if (zero? (state 'edit-step))
+  				     (if (zero? (ui-metastate buf 'edit-step))
   					 1
-  					 (state 'edit-step))))
+  					 (ui-metastate buf 'edit-step))))
 
   ;; TODO unify with specialization on ui-order-view?
   ;;; Set the field node instance that corresponds to the current cursor
@@ -2553,7 +2555,7 @@
       		      (ui-blockview-get-current-order-pos buf)
       		      (ui-blockview-get-current-field-instance buf)))
       (ui-blockview-update buf)
-      (unless (zero? (state 'edit-step))
+      (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))
       (ui-metastate buf 'modified #t)))
 
@@ -2765,7 +2767,7 @@
       (ui-blockview-update buf)
       ;; TODO should use a safer method for determining associated block-view
       (ui-blockview-update (current-blocks-view))
-      (unless (zero? (state 'edit-step))
+      (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))))
 
   ;;; Insert a new row at the current cursor position. If ROW is omitted, the
@@ -3106,19 +3108,15 @@
   (define-method (make-module-view-settings-bar primary: (buf <ui-module-view>))
     (make <ui-settings-group> 'parent (ui-box buf)
   	  'setup
-  	  `((edit-step "Step" "Set the edit step" default-edit-step
-  		       edit-step 0 64)
-  	    (base-octave "Octave" "Set the base octave" default-base-octave
-  			 base-octave 0 9)
+  	  `((edit-step "Step" "Set the edit step" default-edit-step 0 64)
+  	    (base-octave "Octave" "Set the base octave" default-base-octave 0 9)
   	    (major-highlight "Signature" "Set number of measures per beat"
-  			     default-major-row-highlight major-row-highlight
-  			     1 64
+  			     default-major-row-highlight 1 64
   			     ,(lambda ()
   				(ui-blockview-update-row-highlights
   				 (current-blocks-view))))
   	    (minor-highlight "/" "Set number of steps per measure"
-  			     default-minor-row-highlight minor-row-highlight
-  			     2 32
+  			     default-minor-row-highlight 2 32
   			     ,(lambda ()
   				(ui-blockview-update-row-highlights
   				 (current-blocks-view)))))))
@@ -3260,6 +3258,9 @@
   			(slot-value buf 'filename)
   			(set! (slot-value buf 'filename)
   			  (cadr args))))
+	((minor-highlight major-highlight base-octave edit-step)
+	 (slot-value (ui-ref (slot-value buf 'settings-bar) (car args))
+		     'statevar))
   	((set-info) (and (slot-value buf 'modeline)
   			 (ui-modeline-set (slot-value buf 'modeline)
   					  'active-field (cadr args))))
