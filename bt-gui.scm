@@ -2287,8 +2287,8 @@
   	 (<<BlockSelect>> ,(lambda (keysym)
   			     (ui-select buf keysym))
   			  %K)
-  	 (<<Copy>> . ,(lambda () (ui-copy buf)))
-  	 (<<Paste>> . ,(lambda () (ui-paste buf)))
+  	 (<<BVCopy>> . ,(lambda () (ui-copy buf)))
+  	 (<<BVPaste>> . ,(lambda () (ui-paste buf)))
   	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
   	 (<<ClearStep>>
   	  .
@@ -2297,8 +2297,8 @@
   	       (ui-blockview-edit-cell buf '()))))
   	 (<<CutStep>> . ,(lambda () (ui-blockview-cut-current-cell buf)))
   	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
+  	 (<<InsertRow>> . ,(lambda () (ui-blockview-insert-row buf)))
   	 (<<InsertStep>> . ,(lambda () (ui-blockview-insert-cell buf)))
-  	 (<<InsertRow>> . ,(lambda () (ui-blockview-cut-row buf)))
   	 (<<BlockEntry>> ,(lambda (keysym)
   			    (ui-blockview-dispatch-entry-event buf keysym))
   			 %K)))))
