@@ -38,6 +38,7 @@ To build the Bintracker documentation, you will need [MkDocs](https://www.mkdocs
 $ pip install --user mkdocs mkdocs-material mkdocs-localsearch==0.5.0
 ```
 
+
 #### Step 2 - Compilation
 
 You are now ready to build Bintracker.
@@ -46,6 +47,11 @@ You are now ready to build Bintracker.
 $ cd build/
 $ make
 ```
+
+It should be safe to do a parallel build (`make -jX`), but it will most likely not save a lot of time.
+
+If you are using Emacs and are planning on writing code for Bintracker, you can run make with an additional `ETAGS=1` argument to generate a suitable TAGS file in the main directory.
+
 
 #### Step 3 - Emulator Setup
 
