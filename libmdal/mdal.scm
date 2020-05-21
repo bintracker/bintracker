@@ -225,11 +225,24 @@
   ;;; be an alist containing the node instance id in car, and the new value in
   ;;; cdr.
   (define (node-set! parent-node-instance node-id instances mod)
+    (print "node-set! " parent-node-instance " " node-id " " instances)
     (let* ((mdconf (mdmod-config mod))
-	   (parent-node ((node-path parent-node-instance)
-			 (mdmod-global-node mod)))
-	   (parent-id (config-get-parent-node-id node-id
-						 (config-itree mdconf))))
+	   (parent-id
+	    (config-get-parent-node-id node-id (config-itree mdconf)))
+	   (parent-node
+	    (or ((node-path parent-node-instance)
+		 (mdmod-global-node mod))
+		(let ((split-path (string-split parent-node-instance "/")))
+		  (print "before recursive node-set! " (mdmod-global-node mod))
+		  (node-set! (string-intersperse (drop-right split-path 2)
+						 "/")
+			     parent-id
+			     `((,(string->number (car (reverse split-path)))
+				#f))
+			     mod)
+		  (print "after recursive node-set! " (mdmod-global-node mod))
+		  ((node-path parent-node-instance)
+		   (mdmod-global-node mod))))))
       (if (eqv? 'block (inode-config-type (config-inode-ref parent-id mdconf)))
 	  (let ((field-index (config-get-block-field-index parent-id node-id
 							   mdconf)))
@@ -260,11 +273,14 @@
 				(+ 2 (car instance))
 			  	row))))
 	     instances))
-	  ;; TODO this probably will not work
 	  (for-each (lambda (instance)
-		      (alist-update! (car instance)
-				     (cdr instance)
-				     (alist-ref node-id (cddr parent-node))))
+		      (set! (cddr parent-node)
+			(alist-update
+			 node-id
+			 (alist-update (car instance)
+				       (cdr instance)
+				       (alist-ref node-id (cddr parent-node)))
+			 (cddr parent-node))))
 		    instances))))
 
   ;;; Delete the block field instance of FIELD-ID at ROW. Does nothing if ROW
