@@ -129,6 +129,7 @@
   		   values: (list (cadr config) (third config))))
   		;; TODO btdb-list-configs should always return a list!
   		(btdb-list-configs))
+      (tk/focus (d 'ref 'config-selector))
       (let* ((get-item-list (lambda ()
   			     (string-split
   			      (string-delete
