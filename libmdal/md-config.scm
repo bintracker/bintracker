@@ -814,6 +814,8 @@
 	   (flatten (map (cute transform-index <> (length raw-order) 0)
 			 raw-order))))
 	((pointer-matrix) (lambda (raw-order) raw-order))
+	;; TODO
+	((pointer-list) (lambda (raw-order) '()))
 	(else (error "unsupported order type")))))
 
   ;; TODO
@@ -929,27 +931,32 @@
   ;;; Resize instances of the given IBLOCK to SIZE by merging all
   ;;; instances according to ORDER, then splitting into chunks.
   (define (resize-block-instances iblock size order config)
-    (let ((order-index (config-get-block-field-index
-			(car order) (symbol-append 'R_ (car iblock)) config)))
-      (cons
-       (car iblock)
-       (split-block-instance-contents
-	size (car iblock) config
-	(concatenate
-	 (map (lambda (order-row)
-		(let* ((block-contents
-			(cddr (inode-instance-ref
-			       (list-ref order-row order-index)
-			       iblock)))
-		       (actual-length (length block-contents)))
-		  (if (< actual-length (car order-row))
-		      (append block-contents
-			      (make-list
-			       (- (car order-row) actual-length)
-			       (make-list (length (car block-contents))
-					  '())))
-		      (take block-contents (car order-row)))))
-	      (repeat-block-row-values (cddadr order))))))))
+    (print "resize-block-instances, order: " order)
+    (let* ((order-index
+	    (config-get-block-field-index
+	     (car order) (symbol-append 'R_ (car iblock)) config))
+	   (concat-blocks
+	    (concatenate
+	     (map (lambda (order-row)
+		    (let* ((block-contents
+			    (cddr (inode-instance-ref
+				   (list-ref order-row order-index)
+				   iblock)))
+			   (actual-length (length block-contents)))
+		      (if (< actual-length (car order-row))
+			  (append block-contents
+				  (make-list
+				   (- (car order-row) actual-length)
+				   (make-list (length (car block-contents))
+					      '())))
+			  (take block-contents (car order-row)))))
+		  (repeat-block-row-values (cddadr order))))))
+      (cons (car iblock)
+	    (split-block-instance-contents
+	     (or size (apply + (map car (cddr (cadr order)))))
+	     (car iblock)
+	     config
+	     concat-blocks))))
 
   ;; TODO must work for unordered groups as well
   ;;; Resize all non-order blocks in the given igroup instance to
@@ -981,6 +988,7 @@
 							  block-subnode-ids))
 						   pos)))
 				(iota (length (cdar resized-blocks)))))))))
+      (print "resize-nblocks, resized-blocks: " resized-blocks)
       (append (list (car parent-inode-instance) #f)
 	      (append original-fields+groups resized-blocks new-order))))
 
@@ -1121,10 +1129,8 @@
       (make-onode
        type: 'block
        fn: (lambda (onode parent-inode config current-org md-symbols)
-	     (let* ((parent (if resize
-				(resize-blocks parent-inode parent-inode-id
-					       resize config)
-				parent-inode))
+	     (let* ((parent (resize-blocks parent-inode parent-inode-id
+					   resize config))
 		    (order-alist
 		     (make-order-alist (subnode-ref order-id parent)
 				       source-block-ids config))
