@@ -225,7 +225,6 @@
   ;;; be an alist containing the node instance id in car, and the new value in
   ;;; cdr.
   (define (node-set! parent-node-instance node-id instances mod)
-    (print "node-set! " parent-node-instance " " node-id " " instances)
     (let* ((mdconf (mdmod-config mod))
 	   (parent-id
 	    (config-get-parent-node-id node-id (config-itree mdconf)))
@@ -233,14 +232,12 @@
 	    (or ((node-path parent-node-instance)
 		 (mdmod-global-node mod))
 		(let ((split-path (string-split parent-node-instance "/")))
-		  (print "before recursive node-set! " (mdmod-global-node mod))
 		  (node-set! (string-intersperse (drop-right split-path 2)
 						 "/")
 			     parent-id
 			     `((,(string->number (car (reverse split-path)))
 				#f))
 			     mod)
-		  (print "after recursive node-set! " (mdmod-global-node mod))
 		  ((node-path parent-node-instance)
 		   (mdmod-global-node mod))))))
       (if (eqv? 'block (inode-config-type (config-inode-ref parent-id mdconf)))
