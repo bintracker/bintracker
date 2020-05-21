@@ -12,8 +12,8 @@ OP_INCL	.equ $2c
 begin
     ld hl,musicData
 
-    .(unless (symbol-ref 'no-loop)
-        " call play\n jp begin\n")
+    ;; .(unless (symbol-ref 'no-loop)
+    ;;     " call play\n jp begin\n")
 
 play
 	ld c,(hl)				;read speed word
@@ -29,8 +29,11 @@ readPos
 	ld a,(hl)				;read first byte of the order list
 	inc hl
 	or a
-	ret z					;if it is zero, it is the end of the song
-
+	;; ret z					;if it is zero, it is the end of the song
+    .(if (symbol-ref 'no-loop)
+         " jr nz,skip\n di\n halt\n"
+         " jr z,begin\n")
+skip
 	push hl					;store the order list pointer
 	push de					;store patterns offset
 	push bc					;store speed
@@ -116,5 +119,9 @@ _l4
 	pop hl
 	jr z,readPos			;if no key was pressed, continue
 
-	ret
+    ;; 	ret
+    .(if (symbol-ref 'no-loop)
+         " di\n halt\n"
+         " ret")
+
 musicData

@@ -41,8 +41,9 @@ seqpntr .equ .(+ 1 (current-origin))
 	ld (seqpntr),sp
 	jr nz,rdptn0
 
+;; halt -> jp exit
         .(if (symbol-ref 'no-loop)
-             " jp exit\n"
+             " halt\n"
              " ld sp,loop\n jp .(+ 3 (symbol-ref 'rdseq))\n")
 
 ;******************************************************************
