@@ -40,15 +40,11 @@
 	  (symbol id: pattern0)
 	  (group id: PATTERNS from: PATTERNS nodes:
 		 ((block id: CHANS from: (TEMPO CH1 CH2 CH3 CH4)
-			 ;; resize: 16
-			 nodes: ((repeat bytes: 1 compose: 0
-					 ;; (cond ;; ((and (is-set? ?SLIDE)
-					 ;;       ;; 	     (is-set? ?NOISE))
-					 ;;       ;; 	#x80)
-					 ;;       ((is-set? ?SLIDE) 4)
-					 ;;       ((is-set? ?NOISE) 1)
-					 ;;       (else 0))
-					 )
+			 nodes: ((repeat bytes: 1 compose:
+					 (cond ((and ??SLIDE ??NOISE) #x80)
+					       (??SLIDE 4)
+					       (??NOISE 1)
+					       (else 0)))
 				 (repeat bytes: 1 compose: (- #x16 ?TICKS))
 				 (repeat bytes: 1 compose: ?DUTY2)
 				 (repeat bytes: 1 compose: ?DUTY1)

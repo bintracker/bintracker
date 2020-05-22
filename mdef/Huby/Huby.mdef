@@ -28,7 +28,7 @@
 	  (symbol id: sequence_end)
 	  (group id: PATTERNS from: PATTERNS nodes:
 		 ((block id: CH1 from: (CH1 DRUMS) resize: 8
-		  	  nodes: ((repeat bytes: 1 compose: (if (is-set? ?DRUM)
-		  						#x2c ?NOTE1))))
+		  	 nodes: ((repeat bytes: 1
+					 compose: (if ??DRUM #x2c ?NOTE1))))
 		  (block id: CH2 from: (CH2) resize: 8
 			 nodes: ((repeat bytes: 1 compose: ?NOTE2)))))))

@@ -612,16 +612,20 @@
   ;;; Evaluate the field in position FIELD-INDEX in ROW of the given
   ;;; BLOCK-INSTANCE. Evaluation will backtrace if the field node
   ;;; COMMAND-CONFIG has the `use-last-set` flag.
-  (define (eval-block-field block-instance field-index row command-config)
+  (define (eval-block-field block-instance field-index row command-config
+			    #!optional no-backtrace)
     (let ((raw-val (block-field-ref block-instance row field-index)))
-      (eval-effective-field-val
-       (if (null? raw-val)
-	   (if (command-has-flag? command-config 'use-last-set)
-	       (or (backtrace-block-fields block-instance row field-index)
+      (if no-backtrace
+	  (and (not (null? raw-val))
+	       raw-val)
+	  (eval-effective-field-val
+	   (if (null? raw-val)
+	       (if (command-has-flag? command-config 'use-last-set)
+		   (or (backtrace-block-fields block-instance row field-index)
+		       (command-default command-config))
 		   (command-default command-config))
-	       (command-default command-config))
-	   raw-val)
-       command-config)))
+	       raw-val)
+	   command-config))))
 
   ;;; Get the inode type of the parent of node NODE-ID.
   (define (get-parent-node-type node-id mdconfig)
@@ -661,13 +665,17 @@
     (cond
      ((symbol? elem)
       (let* ((symbol-name (symbol->string elem))
-	     (transformed-symbol (string->symbol (string-drop symbol-name 1))))
+	     (conditional? (string-prefix? "??" symbol-name))
+	     (transformed-symbol
+	      (string->symbol (string-drop symbol-name
+					   (if conditional? 2 1)))))
 	(cond
 	 ((string-prefix? "?" symbol-name)
-	  (let ((command-config
-		 `(,config-get-inode-source-command (quote ,transformed-symbol)
-						    config)))
-	    (if (eqv? 'group (get-parent-node-type transformed-symbol mdconfig))
+	  (let* ((command-config
+		  `(,config-get-inode-source-command (quote ,transformed-symbol)
+						     config)))
+	    (if (eqv? 'group (get-parent-node-type transformed-symbol
+						   mdconfig))
 		`(,eval-group-field
 		  (,subnode-ref (quote ,transformed-symbol) parent-node)
 		  instance-id ,command-config)
@@ -676,16 +684,16 @@
 		  ,(list-index (cute eqv? <> transformed-symbol)
 			       field-indices)
 		  instance-id ;; row
-		  ,command-config))))
+		  ,command-config
+		  ,conditional?))))
 	 ((string-prefix? "$" symbol-name)
 	  `(let ((sym-val (,alist-ref (quote ,transformed-symbol)
 				      md-symbols)))
 	     (and sym-val (,car sym-val))))
 	 (else elem))))
      ((pair? elem)
-      (if (memv (car elem) '(is-set?))
-	  (transform-compose-expr-conditional elem mdconfig field-indices)
-	  (transform-compose-expr elem mdconfig field-indices)))
+      (map (cut transform-compose-expr-element <> mdconfig field-indices)
+	   elem))
      (else elem)))
 
   ;;; Transform an output field config expression into an actual resolver

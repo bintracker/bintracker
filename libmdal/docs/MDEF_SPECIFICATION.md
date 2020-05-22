@@ -238,9 +238,9 @@ A Composition expression can be any expression that can be evaluated in the [Sch
 
 A number of primitives are provided.
 - An input node identifier prefixed by a question mark `?` can be used to retrieve the current value of that node.
+- An input node identifier prefixed by two question marks `??` can be used to check if the current node instance is set.
 - An identifier of an output symbol node prefixed by a dollar sign `$` can be used to retrieve the value of that symbol node.
 - An identifier of an output node prefixed by an exclamation mark `!` can be used to reference that output node.
-The predicate `is-set?` can be used to check if a given `field` is set in the current context. It takes an identifier prefixed with a question mark `?` as an argument.
 
 See the [Example](#example) for some uses of composition expressions.
 
@@ -347,8 +347,7 @@ ZX Spectrum beeper.
 						 ;; it sets the output value to 0x2c, otherwise it sets
 						 ;; it to the current value of the NOTE1 input node.
 			             nodes: ((field bytes: 1
-						                compose: (if (is-set? ?DRUM)
-                                                     #x2c ?NOTE1))))
+						                compose: (if ??DRUM #x2c ?NOTE1))))
 		          (block id: CH2 from: (CH2) resize: 8
 			             nodes: ((field bytes: 1 compose: ?NOTE2)))))))
 ```
