@@ -14,7 +14,7 @@
 ### [Frequently Asked Questions](FAQ.md)
 
 
-### [Wiki](https://github.com/utz82/bintracker/wiki)
+### [Wiki](https://github.com/bintracker/bintracker/wiki)
 
 
 ### Developer Documentation
@@ -22,7 +22,7 @@
 [Getting Started](hacking.md) • [Bintracker API](generated/bintracker-core.md) • [MDAL](mdal-introduction.md) • [Schemta Assembler](schemta.md) • [TODO](TODO.md)
 
 
-### [Bugtracker](https://github.com/utz82/bintracker/issues)
+### [Bugtracker](https://github.com/bintracker/bintracker/issues)
 
 
 ### Community

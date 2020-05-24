@@ -1,7 +1,7 @@
 site_name: "Bintracker Documentation"
 
-repo_name: utz82/bintracker
-repo_url: 'https://github.com/utz82/bintracker'
+repo_name: bintracker/bintracker
+repo_url: 'https://github.com/bintracker/bintracker'
 edit_uri: ""
 docs_dir: 'build/gendoc/'
 
