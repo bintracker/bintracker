@@ -229,9 +229,9 @@
   	(map integer->char
       	     (mod->bin (derive-single-pattern-mdmod
       			mmod
-      			(slot-value (current-blocks-view) 'group-id)
+      			(slot-value (current-blockview) 'group-id)
       			(ui-blockview-get-current-order-pos
-      			 (current-blocks-view)))
+      			 (current-blockview)))
       		       origin))))))
 
   (define (stop-playback)
@@ -2932,7 +2932,7 @@
       (ui-metastate buf 'apply-edit action)
       (ui-blockview-update buf)
       ;; TODO should use a safer method for determining associated block-view
-      (ui-blockview-update (current-blocks-view))
+      (ui-blockview-update (current-blockview))
       (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))))
 
@@ -2963,7 +2963,7 @@
        buf
        (list 'block-row-insert parent-instance-path block-id
   	     `((0 (,current-row ,new-row-values)))))
-      (ui-blockview-update (current-blocks-view))
+      (ui-blockview-update (current-blockview))
       (when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))))
 
@@ -2989,7 +2989,7 @@
   	       block-id
   	       `((0 (,current-row ,current-row-values)))))
   	;; TODO properly determine block view
-  	(ui-blockview-update (current-blocks-view))
+  	(ui-blockview-update (current-blockview))
 	(when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))
   	(ui-blockview-show-cursor buf))))
@@ -3034,7 +3034,7 @@
 		     field-ids))))
       (unless (null? action)
 	(ui-blockview-perform-edit buf (cons 'compound action))
-	(ui-blockview-update (current-blocks-view))
+	(ui-blockview-update (current-blockview))
 	(when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf)))))
 
@@ -3328,12 +3328,12 @@
   			     default-major-row-highlight 1 64
   			     ,(lambda ()
   				(ui-blockview-update-row-highlights
-  				 (current-blocks-view))))
+  				 (current-blockview))))
   	    (minor-highlight "/" "Set number of steps per measure"
   			     default-minor-row-highlight 2 32
   			     ,(lambda ()
   				(ui-blockview-update-row-highlights
-  				 (current-blocks-view)))))))
+  				 (current-blockview)))))))
 
   (define-method (module-view-push-undo primary: (buf <ui-module-view>)
   					action)
@@ -3381,7 +3381,7 @@
       (when action
   	(ui-metastate buf 'apply-edit action)
   	(ui-blockview-update (current-order-view))
-  	(ui-blockview-update (current-blocks-view))
+  	(ui-blockview-update (current-blockview))
   	(focus 'resume)
   	(when have-toolbar
   	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
@@ -3398,7 +3398,7 @@
       (when action
   	(ui-metastate buf 'apply-edit action)
   	(ui-blockview-update (current-order-view))
-  	(ui-blockview-update (current-blocks-view))
+  	(ui-blockview-update (current-blockview))
   	(focus 'resume)
   	(when (slot-value buf 'toolbar)
   	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
@@ -3509,7 +3509,7 @@
   			`((file (new-file ,new-file)
   				(load-file ,load-file)
   				(save-file ,save-file))
-  			  (edit (copy ,(cute ui-copy (current-blocks-view))))
+  			  (edit (copy ,(cute ui-copy (current-blockview))))
   			  (play (play-from-start ,play-from-start)
   				(play-pattern ,play-pattern)
   				(stop-playback ,stop-playback))
@@ -3684,7 +3684,7 @@
     (and (ui) (ui-ref (ui) 'module-view)))
 
   ;;; Returns the currently active `<ui-block-view>`.
-  (define (current-blocks-view)
+  (define (current-blockview)
     (and-let* ((mv (current-module-view))
   	       (zone-id (find (cute symbol-contains <> "block-view")
   			      (map car (focus 'list)))))
