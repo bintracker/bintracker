@@ -939,7 +939,6 @@
   ;;; Resize instances of the given IBLOCK to SIZE by merging all
   ;;; instances according to ORDER, then splitting into chunks.
   (define (resize-block-instances iblock size order config)
-    (print "resize-block-instances, order: " order)
     (let* ((order-index
 	    (config-get-block-field-index
 	     (car order) (symbol-append 'R_ (car iblock)) config))
@@ -996,7 +995,6 @@
 							  block-subnode-ids))
 						   pos)))
 				(iota (length (cdar resized-blocks)))))))))
-      (print "resize-nblocks, resized-blocks: " resized-blocks)
       (append (list (car parent-inode-instance) #f)
 	      (append original-fields+groups resized-blocks new-order))))
 
