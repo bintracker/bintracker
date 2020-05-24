@@ -101,7 +101,6 @@
   	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdef-name)
-    (print "create-new-module " mdef-name)
     (close-file)
     (after-load-file-hooks
      'execute
@@ -519,8 +518,6 @@
 
   ;;; Generate the alist of bv-field-configs.
   (define (blockview-make-field-configs block-ids field-ids mdef)
-    (print "in blockview-make-field-configs, block-ids: " block-ids
-  	   ", field-ids: " field-ids ", mdef " mdef)
     (letrec* ((type-tags (map (cute get-command-type-tag <> mdef) field-ids))
   	      (sizes (map (lambda (id)
   	      		    (value-display-size
@@ -616,7 +613,6 @@
 
   ;;; Map the GUI element to the display.
   (define-method (ui-show primary: (elem <ui-element>))
-    (print "ui-show/element, children " (map car (ui-children elem)))
     (unless (slot-value elem 'initialized)
       (for-each (lambda (elem)
   		  (ui-show (cdr elem)))
@@ -1042,8 +1038,6 @@
   		      (<= (get-index x1) (get-index x2)))))))
 
   (define-method (ui-show primary: (buf <ui-multibuffer>))
-    (print "ui-show/multibuffer, children: " (map car (ui-children buf))
-  	   ", child-states: " (slot-value buf 'state))
     (if (slot-value buf 'initialized)
   	(for-each (o ui-show cdr) (multibuffer-active+sorted-children buf))
   	(begin
@@ -1066,7 +1060,7 @@
   ;;; the end if BEFORE is not specified.
   (define-method (multibuffer-add primary: (buf <ui-multibuffer>)
   				  child-spec #!key before)
-    (print "multibuffer-add " child-spec)
+    ;; (print "multibuffer-add " child-spec)
     (when (alist-ref (car child-spec)
   		     (ui-children buf))
       (error (string-append "Error: Child \"" (symbol->string (car child-spec))
@@ -1099,19 +1093,21 @@
   		 (and (cadr child-spec) (not (slot-value buf 'initialized)))
   		 (caddr child-spec))
   	   (slot-value buf 'state))))
-    ;; (print "multibuffer-add " (car child-spec) ", done adding shit, state: " (slot-value buf 'state))
     (when (and (slot-value buf 'initialized)
   	       (caddr child-spec))
       ;; (print "is initialized, calling multibuffer-show from multibuffer-add")
       (multibuffer-show buf (car child-spec)))
-    (print "multibuffer-add " (car child-spec) ", final state: " (slot-value buf 'state)))
+    ;; (print "multibuffer-add " (car child-spec)
+    ;; 	   ", final state: " (slot-value buf 'state))
+    )
 
   ;;; Map the child element CHILD to the display. Does nothing if CHILD is
   ;;; already visible.
   (define-method (multibuffer-show primary: (buf <ui-multibuffer>)
   				   child)
-    (print "multibuffer-show " child " " (alist-ref child (slot-value buf 'state))
-  	   " " (map car (ui-children buf)))
+    ;; (print "multibuffer-show " child " "
+    ;; 	   (alist-ref child (slot-value buf 'state))
+    ;; 	   " " (map car (ui-children buf)))
     (let ((child-buf (alist-ref child (ui-children buf)))
   	  (state (slot-value buf 'state)))
       (when (and child-buf (not (cadr (alist-ref child state))))
@@ -1210,7 +1206,7 @@
   	  (ui-show (slot-value x 'collapse-button))))))
 
   (define-method (ui-show after: (buf <ui-buffer>))
-    (print "ui-show/buffer, children: " (ui-children buf))
+    ;; (print "ui-show/buffer, children: " (ui-children buf))
     (ui-set-callbacks (slot-value buf 'expand-button)
   		      `((expand ,(lambda () (ui-expand buf)))))
     (ui-set-callbacks (slot-value buf 'collapse-button)
@@ -1414,15 +1410,15 @@
      (packing-args '(expand: 0 fill: x))))
 
   (define-method (initialize-instance after: (buf <ui-group-field>))
-    (print "in initialize-instance/group-field")
+    ;; (print "in initialize-instance/group-field")
     (let* ((node-id (slot-value buf 'node-id))
   	   (color (get-field-color node-id (ui-metastate buf 'mdef))))
-      (print "got node-id " node-id " and color " color)
+      ;; (print "got node-id " node-id " and color " color)
       (set! (slot-value buf 'label)
   	((ui-box buf) 'create-widget 'label
   	 foreground: color text: (symbol->string node-id)
   	 width: 12))
-      (print "made label")
+      ;; (print "made label")
       (set! (slot-value buf 'entry)
   	((ui-box buf) 'create-widget 'entry
   	 bg: (colors 'row-highlight-minor) fg: color
@@ -1430,11 +1426,11 @@
   	 font: (list family: (settings 'font-mono)
   		     size: (settings 'font-size)
   		     weight: 'bold)))
-      (print "made entry")
+      ;; (print "made entry")
       (tk/pack (slot-value buf 'label)
   	       (slot-value buf 'entry)
   	       side: 'left padx: 4 pady: 4)
-      (print "packed")
+      ;; (print "packed")
       ((slot-value buf 'entry) 'insert 'end
        (normalize-field-value (cddr
     			       ((node-path
@@ -1445,7 +1441,8 @@
   				(mdmod-global-node (ui-metastate buf 'mmod))))
     			      node-id
   			      (ui-metastate buf 'mdef)))
-      (print "done initialize-instance/group-field")))
+      ;; (print "done initialize-instance/group-field")
+      ))
 
   ;;; See `<ui-module-view>` below.
   (define-method (ui-metastate primary: (buf <ui-group-field>)
@@ -1488,7 +1485,7 @@
      (packing-args '(expand: 0 fill: x))))
 
   (define-method (initialize-instance after: (buf <ui-group-fields>))
-    (print "in initialize-instance/group-fields")
+    ;; (print "in initialize-instance/group-fields")
     (let ((subnode-ids (config-get-subnode-type-ids
   			(slot-value buf 'group-id)
   			(ui-metastate buf 'mdef)
@@ -1504,7 +1501,8 @@
   		       'metastate-accessor
   		       (slot-value buf 'metastate-accessor))))
   	     subnode-ids))
-      (print "done initialize-instance/group-fields")))
+      ;; (print "done initialize-instance/group-fields")
+      ))
 
   (define-method (ui-metastate primary: (buf <ui-group-fields>)
   			       #!rest args)
@@ -1586,7 +1584,7 @@
   	    'setup `((active-field "")))))))
 
   (define-method (ui-show before: (buf <ui-basic-block-view>))
-    (print "ui-show/basic-block-view, group-id: " (slot-value buf 'group-id))
+    ;; (print "ui-show/basic-block-view, group-id: " (slot-value buf 'group-id))
     (unless (slot-value buf 'initialized)
       (let ((xscroll (slot-value buf 'xscroll))
   	    (yscroll (slot-value buf 'yscroll))
@@ -1772,14 +1770,14 @@
 
   ;;; Returns the active blockview zone as a list containing the first and last
   ;;; row in car and cadr, respectively.
-  (define-method (ui-blockview-get-active-zone primary:
-  					       (buf <ui-basic-block-view>))
-    (let ((start+end-positions (ui-blockview-start+end-positions buf))
-  	  (current-row (ui-blockview-get-current-row buf)))
+  (define-method (ui-blockview-get-active-zone
+		  primary: (buf <ui-basic-block-view>)
+		  #!optional (row (ui-blockview-get-current-row buf)))
+    (let ((start+end-positions (ui-blockview-start+end-positions buf)))
       (list-ref start+end-positions
   		(list-index (lambda (start+end)
-  			      (and (>= current-row (car start+end))
-  				   (<= current-row (cadr start+end))))
+  			      (and (>= row (car start+end))
+  				   (<= row (cadr start+end))))
   			    start+end-positions))))
 
   ;;; Return the field instance ID currently under cursor.
@@ -2014,12 +2012,13 @@
   ;;; action specifier as described in the `ui-metastate` documentation.
   (define-method (ui-blockview-perform-edit
   		  primary: (buf <ui-basic-block-view>) action)
-    (print "(ui-blockview-perform-edit " action ")")
     (ui-metastate buf 'push-undo
   		  (make-reverse-action action (ui-metastate buf 'mmod)))
     (ui-metastate buf 'apply-edit action)
     (ui-blockview-update buf)
-    (ui-metastate buf 'modified #t))
+    (ui-metastate buf 'modified #t)
+    (when (eqv? (slot-value buf 'ui-zone) (focus 'which))
+      (ui-blockview-show-cursor buf)))
 
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
@@ -2058,28 +2057,131 @@
   ;; 		    (ui-blockview-get-current-order-pos buf)
   ;; 		    (ui-blockview-get-current-field-instance buf))))
 
-  ;;; WHERE may be `'cursor`, `'selection`, ..., or a list specifying a
-  ;;; selected area of the blockview. The list must have the form
-  ;;; `(ROW1 FIELD1 ROW2 FIELD2)`, where ROW*n* is a row number and FIELD*n* is
-  ;;; a field node identifier, describing the upper left and lower right corner
-  ;;; of the selection.
+  ;;; Helper for `edit`.
+  (define-method (normalize-edit-parameters primary: (buf <ui-basic-block-view>)
+					    where what contents)
+    (let* ((field-ids (slot-value buf 'field-ids))
+	   (field-index (lambda (id)
+			  (list-index (cute eqv? <> id) field-ids)))
+	   (get-end-field
+	    (lambda (start-id amount)
+	      (let ((last-idx (+ (sub1 amount) (field-index start-id))))
+		(if (>= last-idx (length field-ids))
+		    (last field-ids)
+		    (list-ref field-ids last-idx)))))
+	   (get-affected-fields
+	    (lambda (first-id last-id)
+	      ;; TODO shouldn't it be (+ 1 (field-index last-id))?
+	      (drop (take field-ids (field-index last-id))
+		    (field-index first-id))))
+	   (selection
+	    (ui-selection buf))
+	   (cursor-pos
+	    (cons (ui-blockview-get-current-row buf)
+		  (ui-blockview-get-current-field-id buf)))
+	   (pre-normalized-contents
+	    (and contents (cond
+			   ((not (pair? contents)) `((,contents)))
+			   ((not (pair? (car contents))) `(,contents))
+			   (else contents))))
+	   (pre-normalized-start
+	    (if (pair? where)
+		(cons (car where) (cadr where))
+		(case where
+		  ((cursor) cursor-pos)
+		  ((selection)
+		   (or (and selection (cons (car selection) (cadr selection)))
+		       (error 'edit "No active selection")))
+		  ((current)
+		   (or (and selection (cons (car selection) (cadr selection)))
+		       cursor-pos)))))
+	   (get-cursor-end-pos
+	    (lambda ()
+	      (if (eqv? 'clear what)
+		  cursor-pos
+		  (cons (+ (car cursor-pos)
+			   (sub1 (apply min (map length
+						 pre-normalized-contents))))
+			(get-end-field (cdr cursor-pos)
+				       (length pre-normalized-contents))))))
+	   (pre-normalized-end
+	    (and (memv what '(set clear))
+		 (if (pair? where)
+		     (if (= 4 (length where))
+			 (cons (caddr where) (cadddr where))
+			 pre-normalized-start)
+		     (case where
+		       ((cursor) (get-cursor-end-pos))
+		       ((selection)
+			(cons (caddr selection) (cadddr selection)))
+		       ((current)
+			(or (and selection
+				 (cons (caddr selection) (cadddr selection)))
+			    (get-cursor-end-pos)))))))
+	   (normalized-start
+	    (if pre-normalized-end
+		(cons (min (car pre-normalized-start)
+			   (car pre-normalized-end))
+		      (list-ref field-ids
+				(min (field-index (cdr pre-normalized-start))
+				     (field-index (cdr pre-normalized-end)))))
+		pre-normalized-start))
+	   (normalized-end
+	    (and pre-normalized-end
+		 (cons (max (car pre-normalized-start)
+			    (car pre-normalized-end))
+		       (list-ref field-ids
+				 (max (field-index (cdr pre-normalized-start))
+				      (field-index (cdr pre-normalized-end)))))))
+	   (normalized-contents
+	    (if (eqv? 'clear what)
+		(map (lambda (field-id)
+		       (make-list (+ 1 (- (car normalized-end)
+					  (car normalized-start)))
+				  '()))
+		     (get-affected-fields (cdr normalized-start)
+					  (cdr normalized-end)))
+		(let ((circular-contents
+		       (apply circular-list
+			      (map (cute apply circular-list <>)
+				   pre-normalized-contents))))
+		  (map (lambda (field)
+			 (take field (+ 1 (- (car normalized-end)
+					     (car normalized-start)))))
+		       (take circular-contents
+			     (+ 1
+				(- (field-index (cdr normalized-end))
+				   (field-index (cdr normalized-start))))))))))
+      (list normalized-contents normalized-start normalized-end)))
+
+  ;; TODO also allow 'current, which defaults to 'selection if there is one, or
+  ;; 'cursor if there isn't.
+  ;;; WHERE may be `'cursor`, a `(ROW FIELD-ID) list specifying the first cell
+  ;;; that will be affected, `'selection`, or a list specifying a selected area
+  ;;; of the blockview. The list must have the form `(ROW1 FIELD1 ROW2 FIELD2)`,
+  ;;; where ROW*n* is a row number and FIELD*n* is a field node identifier,
+  ;;; describing the upper left and lower right corner of the selection.
+  ;;;
+  ;;; `edit` will update the journal (undo/redo), and update the display.
   (define-method (edit primary: (buf <ui-basic-block-view>) where what
   		       #!optional contents)
-    (if (pair? where)
-  	#f
-  	(case what
-  	  ((set) (case where
-  		   ((cursor) (if (pair? contents)
-  				 #f
-  				 (ui-blockview-edit-cell buf contents)))
-  		   (else #f)))
-  	  ((clear) #f)
-  	  ((insert) #f)
-  	  ((remove) #f)
-  	  ((insert-row) #f)
-  	  ((remove-row) #f)
-  	  (else (error 'edit
-  		       (string-append "Invalid action " (->string what)))))))
+    ;; (print "edit " where " " what " " contents)
+    (unless (or (pair? where)
+		(memv where '(cursor selection current)))
+      (error 'edit (string-append "Unknown location " (->string where))))
+    (when (and (not contents)
+	       (memv what '(set insert insert-row)))
+      (error 'edit (string-append "Cannot " (symbol->string what)
+				  " without CONTENTS")))
+    (let ((normalized-params
+	   (normalize-edit-parameters buf where what contents)))
+      (case what
+      	((set clear) (apply ui-blockview-blockset
+      			    (cons buf normalized-params)))
+      	((insert) #f)
+      	((remove) #f)
+      	(else (error 'edit
+      		     (string-append "Invalid action " (->string what)))))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -2261,12 +2363,8 @@
 
   (define-method (ui-paste primary: (buf <ui-basic-block-view>)
   			   #!optional (contents (clipboard)))
-    (print "in ui-paste, contents: " contents)
-    (and contents
-  	 (if (pair? contents)
-  	     '()
-  	     (edit buf (or (slot-value buf 'selection) 'cursor)
-  		   'set contents))))
+    ;; (print "in ui-paste, contents: " contents)
+    (and contents (edit buf 'current 'set contents)))
 
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
@@ -2372,15 +2470,20 @@
       (textgrid-add-tags header 'active 1)
       (ui-blockview-add-type-tags buf 1 (slot-value buf 'block-header))))
 
+  ;;; Returns the order position that the vertical cursor position ROW
+  ;;; belongs to.
+  (define-method (ui-blockview-cursor-row->order-pos
+		  primary: (buf <ui-block-view>) row)
+    (list-index (lambda (start+end)
+  		  (and (>= row (car start+end))
+  		       (<= row (cadr start+end))))
+  		(ui-blockview-start+end-positions buf)))
+
   ;;; Returns the corresponding group order position for the chunk currently
   ;;; under cursor.
-  (define-method (ui-blockview-get-current-order-pos primary:
-  						     (buf <ui-block-view>))
-    (let ((current-row (ui-blockview-get-current-row buf)))
-      (list-index (lambda (start+end)
-  		    (and (>= current-row (car start+end))
-  			 (<= current-row (cadr start+end))))
-  		  (ui-blockview-start+end-positions buf))))
+  (define-method (ui-blockview-get-current-order-pos
+		  primary: (buf <ui-block-view>))
+    (ui-blockview-cursor-row->order-pos buf (ui-blockview-get-current-row buf)))
 
   ;;; Update the command information in the status bar, based on the field that
   ;;; the cursor currently points to.
@@ -2488,6 +2591,68 @@
   		  (slot-value buf 'block-ids)
   		  block-instance-ids)))
       (ui-blockview-show-cursor buf)))
+
+  ;;; Low-level interface for `edit`. You most likely do not want to call this
+  ;;; directly. CONTENTS must be a list of lists, where each sublist represents
+  ;;; a block field node, and the contents of the sublist form the values that
+  ;;; shall be set. START and END must be a row,field-id pair specifying the
+  ;;; first and last affected cell, respectively.
+  ;;;
+  ;;; This updates the journal and the display.
+  (define-method (ui-blockview-blockset primary: (buf <ui-block-view>)
+					contents start end)
+    ;; (print "ui-blockview-blockset " start " " end)
+    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path)
+  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+	   (group-id (slot-value buf 'group-id))
+	   (order (mod-get-order-values group-id parent-instance))
+	   (all-field-ids (slot-value buf 'field-ids))
+	   (field-index (lambda (id)
+			  (list-index (cute eqv? <> id) all-field-ids)))
+	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
+			    (field-index (cdr start))))
+	   (block-ids (map (lambda (field-id)
+			     (config-get-parent-node-id
+			      field-id (config-itree (ui-metastate buf 'mdef))))
+			   field-ids))
+	   (actions
+	    (concatenate
+	     (map
+	      (lambda (field field-id block-id)
+		(filter-map
+		 (lambda (row val)
+		   (and (validate-field-value (ui-metastate buf 'mdef)
+					      field-id val #t)
+			(let ((block-inst-id
+			       (list-ref
+				(list-ref
+				 (mod-get-order-values group-id
+						       parent-instance)
+				 (ui-blockview-cursor-row->order-pos buf row))
+				(config-get-block-field-index
+				 (symbol-append group-id '_ORDER)
+				 (symbol-append 'R_ block-id)
+				 (ui-metastate buf 'mdef)))))
+			  (list 'set
+				(string-append parent-instance-path
+					       (->string block-id)
+					       "/"
+					       (number->string block-inst-id))
+				field-id
+				`((,(- row
+				       (car (ui-blockview-get-active-zone
+					     buf row)))
+				   ,val))))))
+		 (iota (- (+ 1 (car end))
+			  (car start))
+		       (car start))
+		 field))
+	      contents
+	      field-ids
+	      block-ids))))
+      (unless (null? actions)
+	(ui-blockview-perform-edit buf (cons 'compound actions)))))
 
   ;; TODO unify with specialization on ui-order-view
   ;;; Update the blockview row numbers according to the current item cache.
@@ -2799,7 +2964,8 @@
        (list 'block-row-insert parent-instance-path block-id
   	     `((0 (,current-row ,new-row-values)))))
       (ui-blockview-update (current-blocks-view))
-      (ui-blockview-show-cursor buf)))
+      (when (memv (slot-value buf 'ui-zone) (focus 'list))
+	  (ui-blockview-show-cursor buf))))
 
   ;; TODO allow deleting multiple rows and rows currently not under cursor.
   ;;; Cut (remove) the row currently under cursor.
@@ -2824,7 +2990,53 @@
   	       `((0 (,current-row ,current-row-values)))))
   	;; TODO properly determine block view
   	(ui-blockview-update (current-blocks-view))
+	(when (memv (slot-value buf 'ui-zone) (focus 'list))
+	  (ui-blockview-show-cursor buf))
   	(ui-blockview-show-cursor buf))))
+
+  ;;; Low-level interface for `edit`. You most likely do not want to call this
+  ;;; directly. CONTENTS must be a list of lists, where each sublist represents
+  ;;; a block field node, and the contents of the sublist form the values that
+  ;;; shall be set. START and END must be a row,field-id pair specifying the
+  ;;; first and last affected cell, respectively.
+  ;;;
+  ;;; This updates the journal and the display.
+  (define-method (ui-blockview-blockset primary: (buf <ui-order-view>)
+					contents start end)
+    ;; (print "ui-blockview-blockset/order " start " " end)
+    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path)
+  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+	   (group-id (slot-value buf 'group-id))
+	   (all-field-ids (slot-value buf 'field-ids))
+	   (field-index (lambda (id)
+			  (list-index (cute eqv? <> id) all-field-ids)))
+	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
+			    (field-index (cdr start))))
+	   (action (concatenate
+		    (map
+		     (lambda (field field-id)
+		       (filter-map
+			(lambda (row val)
+			  (and (validate-field-value (ui-metastate buf 'mdef)
+						     field-id val #t)
+			       (list 'set
+				     (string-append parent-instance-path
+						    (->string group-id)
+						    "_ORDER/0")
+				     field-id
+				     `((,row ,val)))))
+			(iota (- (+ 1 (car end))
+				 (car start))
+			      (car start))
+			field))
+		     contents
+		     field-ids))))
+      (unless (null? action)
+	(ui-blockview-perform-edit buf (cons 'compound action))
+	(ui-blockview-update (current-blocks-view))
+	(when (memv (slot-value buf 'ui-zone) (focus 'list))
+	  (ui-blockview-show-cursor buf)))))
 
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
@@ -2901,7 +3113,7 @@
   				"Missing 'metastate-accessor."))))
 
   (define-method (initialize-instance after: (buf <ui-blocks>))
-    (print "in initialize-instance/blocks")
+    ;; (print "in initialize-instance/blocks")
     (multibuffer-add buf `(blocks #t 2 ,<ui-block-view>
   				  group-id ,(slot-value buf 'group-id)
   				  parent-instance-path
@@ -2914,7 +3126,8 @@
   				  ,(slot-value buf 'parent-instance-path)
   				 metastate-accessor
   				 ,(slot-value buf 'metastate-accessor)))
-    (print "done initialize-instance/blocks"))
+    ;; (print "done initialize-instance/blocks")
+    )
 
   (define-method (ui-metastate primary: (buf <ui-blocks>)
   			       #!rest args)
@@ -2958,7 +3171,7 @@
   					'group))))
 
   (define-method (ui-show before: (buf <ui-subgroups>))
-    (print "calling ui-show on children of <ui-subgroups>")
+    ;; (print "calling ui-show on children of <ui-subgroups>")
     (for-each (o ui-show cdr) (slot-value buf 'subgroups))
     (for-each (lambda (subgroup)
   		((slot-value buf 'tabs) 'add (ui-box (cdr subgroup))
@@ -2996,7 +3209,7 @@
   				"Missing 'metastate-accessor."))))
 
   (define-method (initialize-instance after: (buf <ui-group>))
-    (print "in initialize-instance/group")
+    ;; (print "in initialize-instance/group")
     (let* ((group-id (slot-value buf 'group-id))
   	   (instance-path
   	    (string-append (slot-value buf 'parent-instance-path)
@@ -3269,7 +3482,7 @@
   					       (->string args)))))))
 
   (define-method (initialize-instance after: (buf <ui-module-view>))
-    (print "in initialize-instance/module-view")
+    ;; (print "in initialize-instance/module-view")
     (unless (or (slot-value buf 'mmod)
   		(slot-value buf 'filename))
       (error '|make <ui-module-view>| "Missing either 'mmod or 'current-file."))
@@ -3331,7 +3544,8 @@
   				       metastate-accessor
   				       ,(slot-value buf 'metastate-accessor)
   				       parent-instance-path "0/")))
-    (print "initialize-instance/module-view done"))
+    ;; (print "initialize-instance/module-view done")
+    )
 
   (define-method (ui-ref-by-zone-id primary: (buf <ui-module-view>)
   				    zone-id)

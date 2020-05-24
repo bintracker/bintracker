@@ -364,13 +364,17 @@
 	    (case (car action)
 	      ((set) (list 'set (cadr action) (third action)
 			   (map (lambda (id+val)
-				  (list (car id+val)
-					(mod-get-block-field-value
-					 ((node-path (cadr action))
-					  (mdmod-global-node mmod))
-					 (car id+val)
-					 (third action)
-					 (car mmod))))
+				  (list
+				   (car id+val)
+				   (let ((path ((node-path (cadr action))
+						(mdmod-global-node mmod))))
+				     (if path
+					 (mod-get-block-field-value
+					  path
+					  (car id+val)
+					  (third action)
+					  (car mmod))
+					 '()))))
 				(fourth action))))
 	      ((remove) (list 'insert (cadr action) (third action)
 			      (map (lambda (id+val)
@@ -402,10 +406,10 @@
 	      ((insert) (list 'remove (cadr action) (third action)
 			      (map car (fourth action))))
 	      ((block-row-remove) (begin (print "reversing block-row-remove")
-				    (list 'block-row-insert
-					  (cadr action)
-					  (third action)
-					  (fourth action))))
+					 (list 'block-row-insert
+					       (cadr action)
+					       (third action)
+					       (fourth action))))
 	      ((block-row-insert) (list 'block-row-remove
 					(cadr action)
 					(third action)
