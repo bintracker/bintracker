@@ -2189,7 +2189,7 @@
   					  keysym)
     (let ((note-val (keypress->note keysym (ui-metastate buf 'base-octave))))
       (when note-val (ui-blockview-edit-cell buf note-val
-  						     play-row: #t))))
+  					     play-row: #t))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.

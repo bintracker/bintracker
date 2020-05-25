@@ -17,7 +17,7 @@
 	  (<Alt-W> where))
  console: ((<Return> eval-console)
 	   (<Control-l> clear-console))
- edit: ((<Delete> clear-step)
+ edit: ((<Control-x> clear)
 	(<Key-period> repeat-last-step)
 	(<Control-BackSpace> cut-row)
 	(<BackSpace> cut-step)
