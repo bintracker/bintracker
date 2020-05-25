@@ -2071,8 +2071,7 @@
 		    (list-ref field-ids last-idx)))))
 	   (get-affected-fields
 	    (lambda (first-id last-id)
-	      ;; TODO shouldn't it be (+ 1 (field-index last-id))?
-	      (drop (take field-ids (field-index last-id))
+	      (drop (take field-ids (+ 1 (field-index last-id)))
 		    (field-index first-id))))
 	   (selection
 	    (ui-selection buf))
@@ -2130,9 +2129,10 @@
 	    (and pre-normalized-end
 		 (cons (max (car pre-normalized-start)
 			    (car pre-normalized-end))
-		       (list-ref field-ids
-				 (max (field-index (cdr pre-normalized-start))
-				      (field-index (cdr pre-normalized-end)))))))
+		       (list-ref
+			field-ids
+			(max (field-index (cdr pre-normalized-start))
+			     (field-index (cdr pre-normalized-end)))))))
 	   (normalized-contents
 	    (if (eqv? 'clear what)
 		(map (lambda (field-id)
@@ -2228,14 +2228,6 @@
   		  primary: (buf <ui-basic-block-view>) keysym)
     (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
       (when new-val (ui-blockview-edit-cell buf new-val))))
-
-  ;; ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;; ;;; field that represents a reference command.
-  ;; (define-method (ui-blockview-enter-reference
-  ;; 		  primary: (buf <ui-basic-block-view>) keysym)
-  ;;   (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
-  ;;     (when new-val
-  ;;     	(ui-blockview-edit-cell buf new-val))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a string command.
@@ -2351,7 +2343,7 @@
   				    (min (car selection)
   					 (caddr selection))))))
   		     (ui-blockview-selected-fields buf))))
-  	  (ui-cancel-selection buf)
+  	  ;; (ui-cancel-selection buf)
   	  result)
   	(ui-blockview-get-current-field-value buf)))
 
@@ -2359,12 +2351,14 @@
   ;;; the selection. If nothing is selected, copy the field value currently
   ;;; under cursor.
   (define-method (ui-copy primary: (buf <ui-basic-block-view>))
-    (clipboard 'put (ui-selected-contents buf)))
+    (clipboard 'put (ui-selected-contents buf))
+    (ui-cancel-selection buf))
 
   (define-method (ui-paste primary: (buf <ui-basic-block-view>)
   			   #!optional (contents (clipboard)))
-    ;; (print "in ui-paste, contents: " contents)
-    (and contents (edit buf 'current 'set contents)))
+    (when contents
+      (edit buf 'current 'set contents)
+      (ui-cancel-selection buf)))
 
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
@@ -2389,11 +2383,14 @@
   	 (<<BVCopy>> . ,(lambda () (ui-copy buf)))
   	 (<<BVPaste>> . ,(lambda () (ui-paste buf)))
   	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
-  	 (<<ClearStep>>
-  	  .
-  	  ,(lambda ()
-  	     (unless (null? (ui-blockview-get-current-field-value buf))
-  	       (ui-blockview-edit-cell buf '()))))
+  	 (<<ClearCurrent>>
+	  .
+	  ,(lambda ()
+	     (clipboard 'put
+	     		(if (slot-value buf 'selection)
+	     		    (ui-selected-contents buf)
+	     		    (ui-blockview-get-current-field-value buf)))
+	     (edit buf 'current 'clear)))
   	 (<<CutStep>> . ,(lambda () (ui-blockview-cut-current-cell buf)))
   	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
   	 (<<InsertRow>> . ,(lambda () (ui-blockview-insert-row buf)))
@@ -2695,6 +2692,7 @@
   					 (ui-metastate buf 'edit-step))))
 
   ;; TODO unify with specialization on ui-order-view?
+  ;;; **deprecated**, use (edit BUF 'cursor VALUE) instead
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
   ;;; accordingly.
@@ -2910,6 +2908,7 @@
   		   (symbol->string (ui-blockview-get-current-block-id buf))
   		   "/0"))
 
+  ;;; **deprecated**
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
   ;;; accordingly.
