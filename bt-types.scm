@@ -117,7 +117,7 @@
   ;;; * `(settings PARAM VALUE)` - Set a new VALUE for the setting PARAM. If
   ;;; PARAM does not exist, create a new entry for it.
   (define settings
-    (let ((s '((keymap . "EN")
+    (let ((s '((keymap . #f)
 	       (number-base . 16)
 	       (mdal-config-dir . "mdef/")
 	       (theme-generator . default-theme-generator)

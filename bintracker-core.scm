@@ -36,7 +36,8 @@
 	      (tk-end)
 	      (raise exn))
 	  (load "config/config.scm"))
-	(warning "Configuration file \"config/config.scm\" not found.")))
+	(warning "Configuration file \"config/config.scm\" not found."))
+    (unless (settings 'keymap) (load-keymap "en")))
 
   (define (info . args)
     (if (null? args)
