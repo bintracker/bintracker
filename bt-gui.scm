@@ -1235,12 +1235,14 @@
     (let ((box (ui-box buf)))
       (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker.")
   	       padx: 20 pady: 20)
-      (for-each (lambda (text)
-  		  (tk/pack (box 'create-widget 'button text: text)
+      (for-each (lambda (text command)
+  		  (tk/pack (box 'create-widget 'button text: text
+				command: command)
   			   pady: 4))
   		'("Create new module (Ctrl-N)"
   		  "Open existing module (Ctrl-O)"
-  		  "Help (F1)"))))
+  		  "Help (F1)")
+		`(,new-file ,load-file ,launch-help))))
 
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
@@ -2017,7 +2019,7 @@
     (ui-metastate buf 'apply-edit action)
     (ui-blockview-update buf)
     (ui-metastate buf 'modified #t)
-    (when (eqv? (slot-value buf 'ui-zone) (focus 'which))
+    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
       (ui-blockview-show-cursor buf)))
 
   ;;; Delete the field node instance that corresponds to the current cursor
@@ -2677,6 +2679,7 @@
   						     (buf <ui-block-view>))
     (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
       ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
+      (ui-cancel-selection buf)
       (ui-blockview-set-cursor buf
   			       (car mouse-pos)
   			       (find (cute <= <> (cadr mouse-pos))
@@ -3307,10 +3310,10 @@
   			  enabled)
       		  (paste "Paste from Clipboard (no shift)" "paste.png" enabled)
   		  (porous-paste-over "Porous paste over current data"
-  				     "porous-paste-over.png" enabled)
+  				     "porous-paste-over.png")
   		  (porous-paste-under "Porous paste under current data"
-  				      "porous-paste-under.png" enabled)
-      		  (swap "Swap Selection with Clipboard" "swap.png" enabled))
+  				      "porous-paste-under.png")
+      		  (swap "Swap Selection with Clipboard" "swap.png"))
   	    (play (stop-playback "Stop Playback" "stop.png" enabled)
       		  (play-from-start "Play Track from Start"
   				   "play-from-start.png" enabled)
@@ -3505,18 +3508,36 @@
     (when (settings 'show-toolbars)
       (set! (slot-value buf 'toolbar)
   	(make-module-view-toolbar buf (slot-value buf 'modified)))
-      (ui-set-callbacks (slot-value buf 'toolbar)
-  			`((file (new-file ,new-file)
-  				(load-file ,load-file)
-  				(save-file ,save-file))
-  			  (edit (copy ,(cute ui-copy (current-blockview))))
-  			  (play (play-from-start ,play-from-start)
-  				(play-pattern ,play-pattern)
-  				(stop-playback ,stop-playback))
-  			  (journal (undo ,(cute module-view-undo buf))
-  				   (redo ,(cute module-view-redo buf))))
-  			(slot-value buf 'modeline)
-  			'active-field))
+      (ui-set-callbacks
+       (slot-value buf 'toolbar)
+       `((file (new-file ,new-file)
+  	       (load-file ,load-file)
+  	       (save-file ,save-file))
+  	 (edit (copy ,(lambda ()
+			(and-let*
+			    ((current-zone (ui-module-view-current-zone buf)))
+			  (ui-copy current-zone))))
+	       (clear ,(lambda ()
+			 (and-let*
+			     ((current-zone (ui-module-view-current-zone buf)))
+			   (clipboard
+			    'put
+	     		    (if (slot-value current-zone 'selection)
+	     			(ui-selected-contents current-zone)
+	     			(ui-blockview-get-current-field-value
+				 current-zone)))
+			   (edit current-zone 'current 'clear))))
+	       (paste ,(lambda ()
+			 (and-let*
+			     ((current-zone (ui-module-view-current-zone buf)))
+			   (ui-paste current-zone)))))
+  	 (play (play-from-start ,play-from-start)
+  	       (play-pattern ,play-pattern)
+  	       (stop-playback ,stop-playback))
+  	 (journal (undo ,(cute module-view-undo buf))
+  		  (redo ,(cute module-view-redo buf))))
+       (slot-value buf 'modeline)
+       'active-field))
     (set! (slot-value buf 'settings-bar)
       (make-module-view-settings-bar buf))
     (set! (slot-value buf 'metastate-accessor)
@@ -3546,6 +3567,11 @@
   				       parent-instance-path "0/")))
     ;; (print "initialize-instance/module-view done")
     )
+
+  (define-method (ui-module-view-current-zone primary: (buf <ui-module-view>))
+    (let ((current-focussed (cadddr (focus 'which))))
+      (and (subclass? (class-of current-focussed) <ui-basic-block-view>)
+	   current-focussed)))
 
   (define-method (ui-ref-by-zone-id primary: (buf <ui-module-view>)
   				    zone-id)
