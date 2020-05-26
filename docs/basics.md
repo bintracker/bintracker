@@ -18,7 +18,7 @@ At a basic level, Bintracker is quite similar to other chiptune trackers. If you
 
 - The concept of "pattern length", eg. the idea of a pattern consisting of a given number of rows, does not exist in Bintracker. Patterns (as well as any other block types such as effects tables) are endless by default. You use the sequence to control pattern lengths.
 
-- [Sequences](#sequences) are moore complex than in other trackers, however you can actually ignore them. See the section on sequences below for more details.
+- [Sequences](#sequences) are more complex than in other trackers, however you can actually ignore them. See the section on sequences below for more details.
 
 - Bintracker comes with fewer safety guarantees than other trackers. Normally, a tracker will ensure that the user can only input valid, sensible data, and will never produce output that breaks on the target machine. Bintracker validates input by type checking, but it does not care about sensibility. It does not prevent you from using tones outside of the audible range, setting an absurdly high BPM value, or embedding malfunctioning assembly code.
 

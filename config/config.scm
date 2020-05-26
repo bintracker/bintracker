@@ -5,9 +5,9 @@
 ;; This is Bintracker's main configuration file. It is executed as a script on
 ;; startup.
 ;;
-;; You can edit this file to tweak Bintracker to your needs. Some common
-;; options are detailed below. For further information, refer to the manual
-;; section on configuration.
+;; You can edit this file to tweak Bintracker to your needs. Available options
+;; are detailed below. Uncomment options you want to use by removing the
+;; preceding semicolons.
 
 
 ;; Key Bindings
@@ -34,7 +34,7 @@
 (settings 'font-mono "Roboto Mono for Powerline")
 
 ;; Configure the default font size.
-(settings 'font-size 10)
+;; (settings 'font-size 10)
 
 ;; Configure the default spacing between lines of text.
 ;; (settings 'line-spacing 1)

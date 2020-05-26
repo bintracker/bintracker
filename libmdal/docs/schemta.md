@@ -4,16 +4,6 @@
 
 Schemta is a cross-platform, multi-target assembler for classic 8-bit and 16-bit architectures. It uses embedded Scheme code as a powerful replacement for traditional assembler macros. Schemta currently supports the following architectures:
 
-* MOS Technology 6502/6507/6510
-* Motorola 6809
-* Motorola 68000
-* Intel 8080
-* Atmel AVR
-* Fairchild F3850 (F8)
-* Sharp LR35902 (GBZ80)
-* Hitachi SC61860 (ESR-H)
-    - supports all known undocumented opcodes and alternative mnemonics listed at  https://github.com/utz82/SC61860-Instruction-Set
-	- arguments to `ptc` are .db/.dw pairs
 * Zilog Z80
     - supports all undocumented opcodes
 	- alternate mnemonics: `exa` for `ex af,af'`, `sls` for `sll`, `res/set (ix/iy+d)->r8` for `res/set (ix/iy+d),r8`, `in (c)` for `in f,(c)`

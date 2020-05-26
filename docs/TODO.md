@@ -1,6 +1,6 @@
 # TODO
 
-This list of items that still need to be done in Bintracker complements the [Issue Tracker](https://github.com/utz82/bintracker/issues).
+This list of items that still need to be done in Bintracker complements the [Issue Tracker](https://github.com/bintracker/bintracker/issues).
 
 Items marked with **[*]** are potentially good issues to work on as a new contributor, given some skill and knowledge in the relevant areas.
 
@@ -9,12 +9,11 @@ This list may be out of date. As a general rule of thumb, check back with us bef
 
 ## UI/UX
 
-### Accessibility
+### Interface
 
-- **[*] Write a high contrast color scheme**
-- **User testing**
-- **Explore possibilities for screen reader integration**
-- **Implement zoom** with Ctrl-+/--/0.
+- Display favorite MDEFs and recently used MMODs in welcome buffer
+- Option to disable scrollbars
+
 
 ### Design
 
@@ -28,12 +27,21 @@ This list may be out of date. As a general rule of thumb, check back with us bef
 Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea, OpenIconic) won't be of any help either, if anything they're even less complete. So there are basically two options: Either derive the missing icons from existing Material Design ones, or design a completely new, custom set of icons.
 
 
+### Accessibility
+
+- **[*] Write a high contrast color scheme**
+- **[*] User testing**
+- **Improve screen reader/text-to-speech integration**
+- **Implement zoom** with Ctrl-+/--/0.
+
+
 
 ## Infrastructure
 
 - **Set up linked permanent IRC/Discord channels.**
 - **[*]** Set up and/or self-host synchronized **backup remote git repositories**.
-- **Set up continuous integration.**
+- **Set up continuous integration.** This is a difficult task, but I would be very happy if I don't have to do it myself.
+- **Set up a bugtracker.** To minimize the risk of getting vendor-locked by Github, we should use an external ticket system. Ideally it would sync issues from Github, though.
 - **Set up a wiki.**
 
 
@@ -41,20 +49,10 @@ Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea,
 ## Documentation
 
 - **Create an index of symbols** exported by Bintracker/MDAL/Schemta that are visible at runtime
-
-
-
-## Housekeeping
-
-- **Collect licenses of used 3rd party components.**
-
-
+- **Create a list of common high-level entry points**. This requires definition anchors to be implemented in scm2wiki, so the list can link directly to the generated documentation.
+- **Register scm2wiki as an official Chicken Scheme extension**. This eliminates the need to download and install scm2wiki separately.
 
 ## Build System
-
-- **Call libmdal/Makefile recursively** from the main Makefile, to ensure that libmdal is rebuild as required. Currently libmdal must be rebuilt manually after changers.
-
-- **[*] Transition to out-of-source-builds.**.
 
 - **[*] Better detection of the user's build environment.**
 
@@ -62,6 +60,7 @@ Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea,
 
 - **[*] Build Bintracker on Windows.** See notes on building for MacOS above. Building for Windows will be more difficult though. We need a MSYS or MinGW based build system, and we need to arrange for a static build.
 
+- **Collect licenses of used 3rd party components.** We'll need to ship these with executable builds.
 
 
 ## Schemta
@@ -74,3 +73,10 @@ Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea,
 
 - **Write additional emulation backends**. VICE looks doable, at least.
 - Look into **Hardware backends**, use actual target hardware as emulation backend. We could at least support some common microcontroller boards.
+
+
+## Plugins
+
+- **Set up a separate, "official" plugin repository.**
+- **Updates**
+- **Separate button sets from UI classes.** This will allow plugins to register their own buttons on eg. module-view related buffer types.

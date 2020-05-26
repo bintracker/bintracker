@@ -12,9 +12,9 @@ If you plan on writing more than a few lines of code for Bintracker, you should 
 
 ## Reading the Source
 
-If this is your first time working iwht Scheme or another language from the Lisp family, reading the Bintracker source code can seem a bit intimidating. This section gives some general hints on how to find your way around in the Bintracker source.
+If this is your first time working with Scheme or another language from the Lisp family, reading the Bintracker source code can seem a bit intimidating. This section gives some general hints on how to find your way around in the Bintracker source.
 
-1. There are no header files, as you might be used to when coming from C or C++. However, the compiler generates various header-like files during compilation. Any `.scm` file in the source tree whose name contains more than one dot are auto-generated, you usually can ignore those.
+1. There are no header files, as you might be used to when coming from C or C++. However, the compiler generates various header-like files during compilation. Any `.scm` files in the source tree whose name contains more than one dot are auto-generated, you usually can ignore those.
 
 2. There is no explicit `main`. The top level source file is `bintracker.scm`, which recursively depends on all other files in the source tree.
 

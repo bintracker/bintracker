@@ -10,4 +10,6 @@ To get started, type
 
 at the `repl>` prompt at the bottom of the Bintracker main window.
 
+Note that the REPL always uses decimal numbers, even when the `number-base` setting not set to 10.
+
 For more information on how to interact with Bintracker through the REPL, consult the [Developer Documentation](hacking.md).

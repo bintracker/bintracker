@@ -13,9 +13,14 @@
   ;;; ## Hooks
   ;; ---------------------------------------------------------------------------
 
+  ;;; Hooks are procedures that are registered to be called at specific moments
+  ;;; during program execution. Hooks are organized in hook sets.
+
   ;;; Bintracker defines various hook sets for different tasks, including
-  ;;; application start-up (`on-startup-hooks`), and file operations
-  ;;; (`after-load-file-hooks`, `on-close-file-hooks`, `on-save-file-hooks`).
+  ;;; application start-up (`on-startup-hooks`, see
+  ;;; [`bintracker-core`](bintracker-core.md)), and file operations
+  ;;; (`after-load-file-hooks`, `on-close-file-hooks`, `on-save-file-hooks`;
+  ;;; see [`bt-gui`](bt-gui.md)).
   ;;; Plug-ins, `config/config.scm`, and other user code may extend and modify
   ;;; these sets. For details, see documentation for the `make-hooks` procedure
   ;;; below.

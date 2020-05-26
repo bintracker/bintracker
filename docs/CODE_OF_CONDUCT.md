@@ -71,8 +71,8 @@ Once the team has a complete account of the events they will make a decision as 
 - Nothing (if we determine no violation occurred).
 - A private reprimand from the working group to the individual(s) involved.
 - A public reprimand.
-- An imposed vacation (i.e. asking someone to "take a week off" from a mailing list or IRC).
-- A permanent or temporary ban from some or all Django spaces (mailing lists, IRC, etc.)
+- An imposed vacation (i.e. asking someone to "take a week off" from a forum or chat).
+- A permanent or temporary ban from some or all Bintracker spaces (github org, forums, chat, etc.)
 - A request for a public or private apology.
 
 We'll respond within one week to the person who filed the report with either a resolution or an explanation of why the situation is not yet resolved.

@@ -2,14 +2,6 @@
 
 This specification draft outlines the **upcoming** MDAL Module (MMOD) standard Version 2. The standard is not yet finalized, and may change at any point.
 
-Notable changes from Version 1 include:
-
-- The custom syntax is replaced by Symbolic Expressions.
-- Node instances are addressed through numerical identifiers instead of named strings.
-- Automatic scope resolution is dropped, and replaced by explicit Assignments.
-- The Group element is introduced.
-- Order lists (sequences) no longer have special syntax, and instead are treated as ordinary Blocks. Order Lists are now entirely virtual and always use a matrix style like in Famitracker or LSDJ, as opposed to glob style used by XM.
-
 
 ## Contents
 
@@ -201,3 +193,14 @@ The following example assumes an underlying MDAL engine definition that specifie
 
 )                                       ;; end of the module.
 ```
+
+## Changes from Version 1
+
+Notable changes from Version 1 include:
+
+- Name change: MDMOD -> MMDO
+- The custom syntax is replaced by Symbolic Expressions.
+- Node instances are addressed through numerical identifiers instead of named strings.
+- Automatic scope resolution is dropped, and replaced by explicit Assignments.
+- The Group element is introduced.
+- Order lists (sequences) no longer have special syntax, and instead are treated as ordinary Blocks. Order Lists are now entirely virtual and always use a matrix style like in Famitracker or LSDJ, as opposed to glob style used by XM.

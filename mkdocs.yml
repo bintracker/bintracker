@@ -37,7 +37,6 @@ site_dir: 'build/documentation'
 nav:
   - Main: index.md
   - Quickstart: quickstart.md
-  - "Frequently Asked Questions": FAQ.md
   - User Manual:
       - Introduction: about.md
       - Setup: setup.md
@@ -73,6 +72,7 @@ nav:
       - "Schemta Assembler":
           - Introduction: 'schemta.md'
           - Schemta API: 'generated/schemta.md'
+  - "Frequently Asked Questions": FAQ.md
   - Contributing: contributing.md
   - "Code of Conduct": CODE_OF_CONDUCT.md
 

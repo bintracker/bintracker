@@ -6,7 +6,7 @@ Welcome!
 
 #### Report a bug or suggest an improvement
 
-Go to the [Issue Tracker](https://github.com/utz82/bintracker/issues) on Github. If using Github is not an option for you, you can also use the [contact form](https://bintracker.org/contact/).
+Go to the [Issue Tracker](https://github.com/bintracker/bintracker/issues) on Github. If using Github is not an option for you, you can also use the [contact form](https://bintracker.org/contact/).
 
 
 #### Get started as a new contributor
