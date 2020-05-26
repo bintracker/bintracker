@@ -2391,6 +2391,7 @@
 	     		    (ui-selected-contents buf)
 	     		    (ui-blockview-get-current-field-value buf)))
 	     (edit buf 'current 'clear)))
+	 (<<DeleteCurrent>> . ,(lambda () (edit buf 'current 'clear)))
   	 (<<CutStep>> . ,(lambda () (ui-blockview-cut-current-cell buf)))
   	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
   	 (<<InsertRow>> . ,(lambda () (ui-blockview-insert-row buf)))

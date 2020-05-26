@@ -18,6 +18,7 @@
  console: ((<Return> eval-console)
 	   (<Control-l> clear-console))
  edit: ((<Control-x> clear)
+	(<Delete> delete)
 	(<Key-period> repeat-last-step)
 	(<Control-BackSpace> cut-row)
 	(<BackSpace> cut-step)
