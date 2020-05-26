@@ -2106,7 +2106,7 @@
 			(get-end-field (cdr cursor-pos)
 				       (length pre-normalized-contents))))))
 	   (pre-normalized-end
-	    (and (memv what '(set clear))
+	    (and (memv what '(set clear insert))
 		 (if (pair? where)
 		     (if (= 4 (length where))
 			 (cons (caddr where) (cadddr where))
@@ -2148,13 +2148,24 @@
 			      (map (cute apply circular-list <>)
 				   pre-normalized-contents))))
 		  (map (lambda (field)
-			 (take field (+ 1 (- (car normalized-end)
-					     (car normalized-start)))))
+			 (take field
+			       (+ 1 (- (car normalized-end)
+				       (car normalized-start)))))
 		       (take circular-contents
-			     (+ 1
-				(- (field-index (cdr normalized-end))
-				   (field-index (cdr normalized-start))))))))))
+			     (+ 1 (- (field-index (cdr normalized-end))
+				     (field-index
+				      (cdr normalized-start))))))))))
       (list normalized-contents normalized-start normalized-end)))
+
+  ;;; Low-level interface for `edit`. See ui-blockview-blockedit for details.
+  (define-method (ui-blockview-blockset primary: (buf <ui-basic-block-view>)
+					contents start end)
+    (ui-blockview-blockedit buf contents start end 'set))
+
+  ;;; Low-level interface for `edit`. See ui-blockview-blockedit for details.
+  (define-method (ui-blockview-blockinsert primary: (buf <ui-basic-block-view>)
+					   contents start end)
+    (ui-blockview-blockedit buf contents start end 'insert))
 
   ;; TODO also allow 'current, which defaults to 'selection if there is one, or
   ;; 'cursor if there isn't.
@@ -2172,26 +2183,23 @@
 		(memv where '(cursor selection current)))
       (error 'edit (string-append "Unknown location " (->string where))))
     (when (and (not contents)
-	       (memv what '(set insert insert-row)))
+	       (memv what '(set insert)))
       (error 'edit (string-append "Cannot " (symbol->string what)
 				  " without CONTENTS")))
-    (let ((normalized-params
-	   (normalize-edit-parameters buf where what contents)))
-      (case what
-      	((set clear) (apply ui-blockview-blockset
-      			    (cons buf normalized-params)))
-      	((insert) #f)
-      	((remove) #f)
-      	(else (error 'edit
-      		     (string-append "Invalid action " (->string what)))))))
+    (apply (case what
+      	     ((set clear) ui-blockview-blockset)
+      	     ((insert) ui-blockview-blockinsert)
+      	     ((cut) ui-blockview-blockcut)
+      	     (else (error 'edit (string-append "Invalid action "
+					       (->string what)))))
+	   (cons buf (normalize-edit-parameters buf where what contents))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
   (define-method (ui-blockview-enter-note primary: (buf <ui-basic-block-view>)
   					  keysym)
     (let ((note-val (keypress->note keysym (ui-metastate buf 'base-octave))))
-      (when note-val (ui-blockview-edit-cell buf note-val
-  					     play-row: #t))))
+      (when note-val (ui-blockview-edit-cell buf note-val play-row: #t))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -2398,6 +2406,12 @@
   	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
   	 (<<InsertRow>> . ,(lambda () (ui-blockview-insert-row buf)))
   	 (<<InsertStep>> . ,(lambda () (ui-blockview-insert-cell buf)))
+	 (<<InsertFromClipboard>>
+	  .
+	  ,(lambda ()
+	     (when (clipboard)
+	       (edit buf 'current 'insert (clipboard)))))
+	 (<<CutSelection>> . ,(lambda () (edit buf 'current 'cut)))
   	 (<<BlockEntry>> ,(lambda (keysym)
   			    (ui-blockview-dispatch-entry-event buf keysym))
   			 %K)))))
@@ -2599,7 +2613,67 @@
   ;;; first and last affected cell, respectively.
   ;;;
   ;;; This updates the journal and the display.
-  (define-method (ui-blockview-blockset primary: (buf <ui-block-view>)
+  (define-method (ui-blockview-blockedit primary: (buf <ui-block-view>)
+					 contents start end action-type)
+    ;; (print "ui-blockview-blockedit " start " " end " " action-type)
+    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path)
+  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+	   (group-id (slot-value buf 'group-id))
+	   (order (mod-get-order-values group-id parent-instance))
+	   (all-field-ids (slot-value buf 'field-ids))
+	   (field-index (lambda (id)
+			  (list-index (cute eqv? <> id) all-field-ids)))
+	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
+			    (field-index (cdr start))))
+	   (block-ids (map (lambda (field-id)
+			     (config-get-parent-node-id
+			      field-id (config-itree (ui-metastate buf 'mdef))))
+			   field-ids))
+	   (actions
+	    (concatenate
+	     (map
+	      (lambda (field field-id block-id)
+		(filter-map
+		 (lambda (row val)
+		   (and-let*
+		       ((pre-validated-val
+			 (validate-field-value (ui-metastate buf 'mdef)
+					       field-id val #t))
+			(validated-val
+			 (or pre-validated-val
+			     (and (eqv? action-type 'insert) '())))
+			(block-inst-id
+			 (list-ref
+			  (list-ref
+			   (mod-get-order-values group-id
+						 parent-instance)
+			   (ui-blockview-cursor-row->order-pos buf row))
+			  (config-get-block-field-index
+			   (symbol-append group-id '_ORDER)
+			   (symbol-append 'R_ block-id)
+			   (ui-metastate buf 'mdef)))))
+		     (list action-type
+			   (string-append parent-instance-path
+					  (->string block-id)
+					  "/"
+					  (number->string block-inst-id))
+			   field-id
+			   `((,(- row
+				  (car (ui-blockview-get-active-zone
+					buf row)))
+			      ,validated-val)))))
+		 (iota (- (+ 1 (car end))
+			  (car start))
+		       (car start))
+		 field))
+	      contents
+	      field-ids
+	      block-ids))))
+      (unless (null? actions)
+	(ui-blockview-perform-edit buf (cons 'compound actions)))))
+
+  (define-method (ui-blockview-blockcut primary: (buf <ui-block-view>)
 					contents start end)
     ;; (print "ui-blockview-blockset " start " " end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
@@ -2634,7 +2708,7 @@
 				 (symbol-append group-id '_ORDER)
 				 (symbol-append 'R_ block-id)
 				 (ui-metastate buf 'mdef)))))
-			  (list 'set
+			  (list 'insert
 				(string-append parent-instance-path
 					       (->string block-id)
 					       "/"
@@ -3004,8 +3078,8 @@
   ;;; first and last affected cell, respectively.
   ;;;
   ;;; This updates the journal and the display.
-  (define-method (ui-blockview-blockset primary: (buf <ui-order-view>)
-					contents start end)
+  (define-method (ui-blockview-blockedit primary: (buf <ui-order-view>)
+					 contents start end action-type)
     ;; (print "ui-blockview-blockset/order " start " " end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
@@ -3023,7 +3097,7 @@
 			(lambda (row val)
 			  (and (validate-field-value (ui-metastate buf 'mdef)
 						     field-id val #t)
-			       (list 'set
+			       (list action-type
 				     (string-append parent-instance-path
 						    (->string group-id)
 						    "_ORDER/0")
@@ -3530,7 +3604,12 @@
 	       (paste ,(lambda ()
 			 (and-let*
 			     ((current-zone (ui-module-view-current-zone buf)))
-			   (ui-paste current-zone)))))
+			   (ui-paste current-zone))))
+	       (insert ,(lambda ()
+			  (and-let*
+			      ((contents (clipboard))
+			       (current-zone (ui-module-view-current-zone buf)))
+			    (edit current-zone 'current 'insert contents)))))
   	 (play (play-from-start ,play-from-start)
   	       (play-pattern ,play-pattern)
   	       (stop-playback ,stop-playback))

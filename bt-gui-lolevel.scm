@@ -504,7 +504,11 @@
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
     (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step))
-    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row)))
+    (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
+    (tk/event 'add '<<InsertFromClipboard>>
+	      (inverse-key-binding 'edit 'insert-from-clipboard))
+    (tk/event 'add '<<CutSelection>>
+	      (inverse-key-binding 'edit 'cut-selection)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
   ;;; evaluated before the local bindings of WIDGET. This is necessary to

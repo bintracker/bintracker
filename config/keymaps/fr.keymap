@@ -25,6 +25,8 @@
 	(<Control-Insert> insert-row)
 	(<Insert> insert-step)
 	(<Control-c> copy)
+	(<Control-V> insert-from-clipboard)
+	(<Control-X> cut-selection)
 	(<Control-v> paste))
  note-entry: ((<Key-ampersand> "rest")
 	      (<Key-w> "c")
