@@ -2098,7 +2098,7 @@
 		       cursor-pos)))))
 	   (get-cursor-end-pos
 	    (lambda ()
-	      (if (eqv? 'clear what)
+	      (if (memv what '(clear cut))
 		  cursor-pos
 		  (cons (+ (car cursor-pos)
 			   (sub1 (apply min (map length
@@ -2106,7 +2106,7 @@
 			(get-end-field (cdr cursor-pos)
 				       (length pre-normalized-contents))))))
 	   (pre-normalized-end
-	    (and (memv what '(set clear insert))
+	    (and (memv what '(set clear insert cut))
 		 (if (pair? where)
 		     (if (= 4 (length where))
 			 (cons (caddr where) (cadddr where))
@@ -2136,25 +2136,27 @@
 			(max (field-index (cdr pre-normalized-start))
 			     (field-index (cdr pre-normalized-end)))))))
 	   (normalized-contents
-	    (if (eqv? 'clear what)
-		(map (lambda (field-id)
-		       (make-list (+ 1 (- (car normalized-end)
-					  (car normalized-start)))
-				  '()))
-		     (get-affected-fields (cdr normalized-start)
-					  (cdr normalized-end)))
-		(let ((circular-contents
-		       (apply circular-list
-			      (map (cute apply circular-list <>)
-				   pre-normalized-contents))))
-		  (map (lambda (field)
-			 (take field
-			       (+ 1 (- (car normalized-end)
-				       (car normalized-start)))))
-		       (take circular-contents
-			     (+ 1 (- (field-index (cdr normalized-end))
-				     (field-index
-				      (cdr normalized-start))))))))))
+	    (if (eqv? 'cut what)
+		#f
+		(if (eqv? 'clear what)
+		    (map (lambda (field-id)
+			   (make-list (+ 1 (- (car normalized-end)
+					      (car normalized-start)))
+				      '()))
+			 (get-affected-fields (cdr normalized-start)
+					      (cdr normalized-end)))
+		    (let ((circular-contents
+			   (apply circular-list
+				  (map (cute apply circular-list <>)
+				       pre-normalized-contents))))
+		      (map (lambda (field)
+			     (take field
+				   (+ 1 (- (car normalized-end)
+					   (car normalized-start)))))
+			   (take circular-contents
+				 (+ 1 (- (field-index (cdr normalized-end))
+					 (field-index
+					  (cdr normalized-start)))))))))))
       (list normalized-contents normalized-start normalized-end)))
 
   ;;; Low-level interface for `edit`. See ui-blockview-blockedit for details.
@@ -2178,7 +2180,6 @@
   ;;; `edit` will update the journal (undo/redo), and update the display.
   (define-method (edit primary: (buf <ui-basic-block-view>) where what
   		       #!optional contents)
-    ;; (print "edit " where " " what " " contents)
     (unless (or (pair? where)
 		(memv where '(cursor selection current)))
       (error 'edit (string-append "Unknown location " (->string where))))
@@ -2675,7 +2676,6 @@
 
   (define-method (ui-blockview-blockcut primary: (buf <ui-block-view>)
 					contents start end)
-    ;; (print "ui-blockview-blockset " start " " end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
   	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
@@ -2693,36 +2693,29 @@
 	   (actions
 	    (concatenate
 	     (map
-	      (lambda (field field-id block-id)
-		(filter-map
-		 (lambda (row val)
-		   (and (validate-field-value (ui-metastate buf 'mdef)
-					      field-id val #t)
-			(let ((block-inst-id
-			       (list-ref
-				(list-ref
-				 (mod-get-order-values group-id
-						       parent-instance)
-				 (ui-blockview-cursor-row->order-pos buf row))
-				(config-get-block-field-index
-				 (symbol-append group-id '_ORDER)
-				 (symbol-append 'R_ block-id)
-				 (ui-metastate buf 'mdef)))))
-			  (list 'insert
-				(string-append parent-instance-path
-					       (->string block-id)
-					       "/"
-					       (number->string block-inst-id))
-				field-id
-				`((,(- row
-				       (car (ui-blockview-get-active-zone
-					     buf row)))
-				   ,val))))))
+	      (lambda (field-id block-id)
+		(map
+		 (lambda (row)
+		   (let ((block-inst-id
+			  (list-ref
+			   (list-ref
+			    (mod-get-order-values group-id
+						  parent-instance)
+			    (ui-blockview-cursor-row->order-pos buf row))
+			   (config-get-block-field-index
+			    (symbol-append group-id '_ORDER)
+			    (symbol-append 'R_ block-id)
+			    (ui-metastate buf 'mdef)))))
+		     (list 'remove
+			   (string-append parent-instance-path
+					  (->string block-id)
+					  "/"
+					  (number->string block-inst-id))
+			   field-id
+			   `((,(car start) ())))))
 		 (iota (- (+ 1 (car end))
 			  (car start))
-		       (car start))
-		 field))
-	      contents
+		       (car start))))
 	      field-ids
 	      block-ids))))
       (unless (null? actions)
@@ -3112,10 +3105,44 @@
       (unless (null? action)
 	(ui-blockview-perform-edit buf (cons 'compound action))
 	(ui-blockview-update (current-blockview))
-	(when (memv (slot-value buf 'ui-zone) (focus 'list))
+	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
-  ;; TODO storing/restoring insert mark position is a cludge. Generally we want
+  (define-method (ui-blockview-blockcut primary: (buf <ui-order-view>)
+					contents start end)
+    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path)
+  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+	   (group-id (slot-value buf 'group-id))
+	   (order (mod-get-order-values group-id parent-instance))
+	   (all-field-ids (slot-value buf 'field-ids))
+	   (field-index (lambda (id)
+			  (list-index (cute eqv? <> id) all-field-ids)))
+	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
+			    (field-index (cdr start))))
+	   (actions
+	    (concatenate
+	     (map
+	      (lambda (field-id)
+		(map
+		 (lambda (row)
+		   (list 'remove
+			 (string-append parent-instance-path
+					(->string group-id)
+					"_ORDER/0")
+			 field-id
+			 `((,(car start) ()))))
+		 (iota (- (+ 1 (car end))
+			  (car start))
+		       (car start))))
+	      field-ids))))
+      (unless (null? actions)
+	(ui-blockview-perform-edit buf (cons 'compound actions))
+	(ui-blockview-update (current-blockview))
+	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
+	  (ui-blockview-show-cursor buf)))))
+
+;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
   ;;; Update the blockview display.
   ;;; The procedure attempts to be "smart" about updating, ie. it tries to not
