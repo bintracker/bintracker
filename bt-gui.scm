@@ -3404,7 +3404,8 @@
   	    (journal (undo "Undo last edit" "undo.png")
   		     (redo "Redo last edit" "redo.png"))
   	    (edit (copy "Copy Selection" "copy.png" enabled)
-      		  (cut "Cut Selection (delete with shift)" "cut.png" enabled)
+      		  (cut-selection "Cut Selection (delete with shift)" "cut.png"
+				 enabled)
       		  (clear "Clear Selection (delete, no shift)" "clear.png"
   			 enabled)
       		  (insert "Insert from Clipbard (with shift)" "insert.png"
@@ -3628,6 +3629,12 @@
 	     			(ui-blockview-get-current-field-value
 				 current-zone)))
 			   (edit current-zone 'current 'clear))))
+	       (cut-selection
+		,(lambda ()
+		   (and-let*
+		       ((current-zone (ui-module-view-current-zone buf))
+			(_ (ui-selection current-zone)))
+		     (edit current-zone 'selection 'cut))))
 	       (paste ,(lambda ()
 			 (and-let*
 			     ((current-zone (ui-module-view-current-zone buf)))
