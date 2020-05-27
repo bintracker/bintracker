@@ -2,7 +2,7 @@
 
 ## Compiling from Source
 
-Currently the only way to run Bintracker is to build it from the source code.
+Currently the only verified way to run Bintracker is to build it from the source code.
 
 
 ### Linux
@@ -43,9 +43,7 @@ $ cd build/
 $ make
 ```
 
-It should be safe to do a parallel build (`make -jX`), but it will most likely not save a lot of time.
-
-If you are using Emacs and are planning on writing code for Bintracker, you can run make with an additional `ETAGS=1` argument to generate a suitable TAGS file in the main directory.
+You can do a parallel build (`make -jX`), however time savings will be minimal. You can `make run-tests` to run unit tests on libmdal. If you are using Emacs and are planning on writing code for Bintracker, you can run make with an additional `ETAGS=1` argument to generate a suitable TAGS file in the main directory.
 
 
 #### Step 3 - Emulator Setup

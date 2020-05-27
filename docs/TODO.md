@@ -80,3 +80,14 @@ Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea,
 - **Set up a separate, "official" plugin repository.**
 - **Updates**
 - **Separate button sets from UI classes.** This will allow plugins to register their own buttons on eg. module-view related buffer types.
+
+### Plugin Ideas
+
+- **git** as low-level dependency for the Project Manager and Online Collab plugins.
+- The **Project Manager** will allow users to put works under version control.
+- **Online Collaboration**. This is still in the brainstorming phase, but I think something like remote shared buffers (as in, remote shared desktop) + git could work, eg. one user holds the "master" branch and shares their module buffer. I'll need someone who is competent with web security to help with this.
+- **Snippets**, a database driven library of user-created patches, instruments, melodies, etc.
+- **Fuzzy finder**. A tool that searches for features within modules (samples, sections, snippets).
+- **Piano Roll**
+- **Graph View**, a buffer that allows editing blocks as a set of drawable curves.
+- **AlgoComp**, a collection of utilities for algorithmic music generation.

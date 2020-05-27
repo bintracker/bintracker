@@ -158,7 +158,8 @@ docs: gendoc-dirs\
  gendoc/generated/utils/md-note-table.md
 	for file in ../docs/*.md; do cp $$file gendoc/; done
 	for file in ../libmdal/docs/*.md; do cp $$file gendoc/; done
-	cp -r ../docs/assets/ gendoc/assets/
+	cp -r ../docs/assets/ gendoc/
+	cp -r ../docs/images/ gendoc/
 	cd .. && mkdocs build
 
 gendoc-dirs:
