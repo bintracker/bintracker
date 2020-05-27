@@ -1414,7 +1414,19 @@
   (define-method (initialize-instance after: (buf <ui-group-field>))
     ;; (print "in initialize-instance/group-field")
     (let* ((node-id (slot-value buf 'node-id))
-  	   (color (get-field-color node-id (ui-metastate buf 'mdef))))
+  	   (color (get-field-color node-id (ui-metastate buf 'mdef)))
+	   (get-normalized-current-val
+	    (lambda ()
+	      (normalize-field-value
+	       (cddr
+    		((node-path
+    		  (string-append
+    		   (slot-value buf 'parent-instance-path)
+    		   (symbol->string node-id)
+    		   "/0/"))
+  		 (mdmod-global-node (ui-metastate buf 'mmod))))
+    	       node-id
+  	       (ui-metastate buf 'mdef)))))
       ;; (print "got node-id " node-id " and color " color)
       (set! (slot-value buf 'label)
   	((ui-box buf) 'create-widget 'label
@@ -1433,18 +1445,41 @@
   	       (slot-value buf 'entry)
   	       side: 'left padx: 4 pady: 4)
       ;; (print "packed")
-      ((slot-value buf 'entry) 'insert 'end
-       (normalize-field-value (cddr
-    			       ((node-path
-    				 (string-append
-    				  (slot-value buf 'parent-instance-path)
-    				  (symbol->string node-id)
-    				  "/0/"))
-  				(mdmod-global-node (ui-metastate buf 'mmod))))
-    			      node-id
-  			      (ui-metastate buf 'mdef)))
+      ((slot-value buf 'entry) 'insert 'end (get-normalized-current-val))
+      (tk/bind (slot-value buf 'entry) '<Return>
+	       (lambda ()
+		 (let* ((new-val (begin (tk/update 'idletasks)
+					((slot-value buf 'entry) 'get)))
+			(validated-new-val
+			 (validate-field-value
+			  (ui-metastate buf 'mdef)
+			  node-id
+			  (case (command-type (config-get-inode-source-command
+					       node-id (ui-metastate buf 'mdef)))
+			    ((int uint) (string->number new-val (settings 'number-base)))
+			    ((string) new-val)
+			    ((trigger) #t)
+			    ((key ukey) (string->symbol new-val))
+			    (else #f))
+			  #t)))
+		   (if validated-new-val
+		       (edit buf 'set validated-new-val)
+		       (begin ((slot-value buf 'entry) 'delete 0 'end)
+			      ((slot-value buf 'entry) 'insert 'end
+			       (get-normalized-current-val)))))))
       ;; (print "done initialize-instance/group-field")
       ))
+
+  (define-method (edit primary: (buf <ui-group-field>)
+		       what #!optional val)
+    (case what
+      ((set) (ui-metastate buf 'apply-edit
+			   (list 'set
+				 (slot-value buf 'parent-instance-path)
+				 (slot-value buf 'node-id)
+				 `((0 #f . ,val)))))
+      (else (error '|edit group-field|
+		   (string-append "Invalid action " (->string what))))))
 
   ;;; See `<ui-module-view>` below.
   (define-method (ui-metastate primary: (buf <ui-group-field>)
