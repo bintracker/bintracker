@@ -40,8 +40,9 @@ nav:
   - User Manual:
       - Introduction: about.md
       - Setup: setup.md
-      - "Basic Usage": basics.md
       - Configuration: configuration.md
+      - "Key Bindings": keybindings.md
+      - "Basic Usage": basics.md
       - "The REPL": repl.md
   - "Developer Documentation":
       - "Getting Started": hacking.md
