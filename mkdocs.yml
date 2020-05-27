@@ -42,7 +42,7 @@ nav:
       - Setup: setup.md
       - Configuration: configuration.md
       - "Key Bindings": keybindings.md
-      - "Basic Usage": basics.md
+      - "Editing Modules": editing.md
       - "The REPL": repl.md
   - "Developer Documentation":
       - "Getting Started": hacking.md

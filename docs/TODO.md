@@ -4,16 +4,21 @@ This list of items that still need to be done in Bintracker complements the [Iss
 
 Items marked with **[*]** are potentially good issues to work on as a new contributor, given some skill and knowledge in the relevant areas.
 
-This list may be out of date. As a general rule of thumb, check back with us before starting to work on an issue.
+This list may be out of date. As a general rule of thumb, check back with us before starting to work on an issue, using the [issue Tracker](https://github.com/bintracker/bintracker/issues) or the [contact form](https://bintracker.org/contact/).
 
 
 ## UI/UX
 
 ### Interface
 
-- Display favorite MDEFs and recently used MMODs in welcome buffer
-- Option to disable scrollbars
+- **Option to disable scrollbars**
+- **i18n**: Separate print strings and provide translations.
+- **[*] More keymaps**
 
+### Discovery
+
+- **Display favorite MDEFs and recently used MMODs in welcome buffer**
+- **Internal documentation system**. The plan is to make the `info` command the central entry point to the internal help/documentation system. Internal documentation will draw from various sources (Bintracker source, keybinding info, MDEFs, plugins...). The internal doc system should be extensible, so plugins could collect further documentation from external sources (CPU instruction sets, hardware specifications, etc.)
 
 ### Design
 

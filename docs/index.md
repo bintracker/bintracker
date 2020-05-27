@@ -8,7 +8,7 @@
 
 ### User Manual
 
-[Introduction](about.md) • [Setup](setup.md) • [Basic Usage](basics.md)
+[Introduction](about.md) • [Setup](setup.md) • [Usage](editing.md)
 
 
 ### [Frequently Asked Questions](FAQ.md)

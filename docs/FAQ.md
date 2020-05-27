@@ -1,32 +1,41 @@
 # Frequently Asked Questions
 
+## Features
 
-## General
-
-#### Can I do *X* in Bintracker?
+### Can I do *X* in Bintracker?
 
 The answer is probably yes, though it might not be convenient do to so (yet).
 
+### Which platforms will be added next?
 
-#### Any plans for Android/iOS support?
+Probably Atari VCS/2600, Fairchild Channel F, and Tandy CoCo/Dragon 32/64.
+
+### Will Bintracker support FM chips?
+
+Yes, this is planned, but will not happen soon. Especially OPL2/3 support will require a lot of work. In the meantime, consider [VGM Music Maker](https://battleofthebits.org/lyceum/View/Vgm+Music+Maker/), [Deflemask](http://www.deflemask.com), or [AdlibTracker II](http://www.adlibtracker.net).
+
+### Any plans for Android/iOS support?
 
 Not yet. We may support mobile devices some day but not in the near future.
 
 
-#### I'm using a French/German/other non-standard keyboard. How can I change the key bindings?
 
-Go to your Bintracker folder, and open the file `config.scm` from the `config` subfolder in a text editor. Find the line that says `(load-keymap "en")` and change the `"en"` part to `"fr"`, `"de"`, or whatever layout you use. See the `keymap` subfolder of the `config` folder for a list of available keymaps. If no suitable keymap exists, you can derive your own by copying one of the existing keymaps and editing it.
+## Usage
+
+### I'm using a French/German/other non-standard keyboard layout. How can I change the key bindings?
+
+Go to your Bintracker folder, and open the file `config.scm` from the `config` subfolder in a text editor. Find the line that says `;; (load-keymap "en")`, remove the two semicolons, and change the `"en"` part to `"fr"`, `"de"`, or whatever layout you use. See the `keymap` subfolder of the `config` folder for a list of available keymaps. If no suitable keymap exists, you can derive your own by copying one of the existing keymaps and editing it.
 
 
 
 ## Development
 
-#### Why are there so many parenthesis?
+### Why are there so many parenthesis?
 
 [Yes](https://xkcd.com/297/).
 
 
-#### What do those `' `ticks and ``` ``backticks do?
+### What do those `' `ticks and ``` ``backticks do?
 
 It's syntactic sugar for `(quote ...)` and `(quasiquote)`. To oversimplify a lot, [quotation](https://www.gnu.org/software/mit-scheme/documentation/mit-scheme-ref/Quoting.html) is Scheme's means of figuring out whether something is code or data. Normally expressions are considered to be code, and are evaluated as such when the interpreter encounters them. Quoting turns code into data.
 

@@ -1,18 +1,11 @@
-# Bintracker Basics
-
-This article gives a condensed overview of the things you need to know in order to get started with Bintracker.
+# Editing Modules
 
 
-### IMPORTANT: Security Advice
-
-Despite the name, Bintracker is not a tracker. It is a virtual machine running a tracker application by default. However, the virtual machine can also run other code, which means it can do *bad things* to your computer. Things that can run code in Bintracker include plug-ins, configuration files, modules (.mmod), and engine definitions (.mdef) including support files.
-
-**As a rule of thumb, never open files, install add-ons, or run code snippets from untrusted sources on the internet, unless you have checked them and understand what they do.**
-
+## Preface
 
 ### Differences from Other Trackers
 
-At a basic level, Bintracker is quite similar to other chiptune trackers. If you have used any modern tracker like Famitracker, OpenMPT, or TIAtracker, you will probably feel at home easily. There are, however, a few notable differences.
+At a basic level, Bintracker is quite similar to other chiptune trackers. If you have used any modern tracker like Famitracker, OpenMPT, or TIAtracker, you will probably feel right at home. There are, however, a few notable differences.
 
 - Bintracker is a meta-tracker, meaning it supports different sound engines on various platforms. How the Bintracker interface looks depends largely on the sound engine you use. Some engines may have a very unusual layout that is not very tracker-like.
 
@@ -27,9 +20,15 @@ At a basic level, Bintracker is quite similar to other chiptune trackers. If you
 - Bintracker auto-optimizes the song data, which means you do not need to worry about optimizing for size. In fact, it most likely will not have the intended effect: The MDAL module structure is virtual, which means there is no 1:1 correspondence between what you see in Bintracker, and what the target sound engine uses.
 
 
-## Editing Modules
+### Security Advice
 
-### Sequences
+Despite the name, Bintracker is not a tracker. It is a virtual machine running a tracker application by default. However, the virtual machine can also run other code, which means it can do *bad things* to your computer. Things that can run code in Bintracker include plug-ins, configuration files, modules (.mmod), and engine definitions (.mdef) including support files.
+
+**As a rule of thumb, never open files, install add-ons, or run code snippets from untrusted sources on the internet, unless you have checked them and understand what they do.**
+
+
+
+## Sequences
 
 In Bintracker, sequences (also known as song orders) are quite complex, and somewhat different from other trackers. Fortunately, you can avoid dealing with sequences altogether by using [automatic sequencing](#automatic-sequencing).
 
@@ -42,7 +41,7 @@ In terms of generated output data size, all three sequencing modes are equally e
 **TODO** Currently only low level mode is implemented.
 
 
-#### Low Level Sequence Mode
+### Low Level Sequence Mode
 
 Bintracker's low level sequences are multi-track, or "matrix" sequences, as used in Famitracker and many native chipmusic trackers. Each channel in the sound engine has its own track in the sequence. Pattern numbers are unique per track. So pattern 00 in track 1 is different from pattern 00 in track 2, for example.
 
@@ -51,13 +50,13 @@ The first track in this sequence mode (labelled "ROWS") is the step length. Patt
 The remaining tracks correspond to the channels of the sound engine. Some engines may define additional sequence tracks in the sequence to handle transpose commands etc.
 
 
-#### Compact Sequence Mode
+### Compact Sequence Mode
 
 Compact sequences are similar to single-track sequences that you may be familiar with from XM trackers. All channels in the sound engine share a single, common track in the sequence.
 
 The first column in compact mode is identical to the step length (Rows) track in low level sequences. The second track is the combined pattern number for all channels. An engine may define additional tracks, see above.
 
 
-#### Automatic Sequence Mode
+### Automatic Sequence Mode
 
 Automatic sequencing removes the need to deal with sequences altogether. Instead of a sequence with multiple steps, you just get a single, endless pattern.
