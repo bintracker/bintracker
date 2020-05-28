@@ -23,7 +23,7 @@
   ;;; update window title by looking at current file name and 'modified'
   ;;; property
   (define (update-window-title!)
-    (let ((current-mv (current-module-view)))
+    (let ((current-mv (current 'module-view)))
       (tk/wm 'title tk
   	     (if current-mv
   		 (string-append
@@ -38,8 +38,8 @@
   ;;; should be saved, then execute the procedure PROC unless the user
   ;;; cancelled the action. With no unsaved changes, simply execute PROC.
   (define (do-proc-with-exit-dialogue dialogue-string proc)
-    (if (and (current-module-view)
-  	     (ui-metastate (current-module-view) 'modified))
+    (if (and (current 'module-view)
+  	     (ui-metastate (current 'module-view) 'modified))
   	(match (exit-with-unsaved-changes-dialog dialogue-string)
   	  ("yes" (begin (save-file)
   			(proc)))
@@ -51,7 +51,7 @@
   (define (exit-bintracker)
     (do-proc-with-exit-dialogue "exit"
   				(lambda ()
-  				  (when (current-module-view)
+  				  (when (current 'module-view)
   				    (multibuffer-delete (ui) 'module-view))
   				  (btdb-close!)
   				  (tk-end))))
@@ -65,7 +65,7 @@
   ;;; Close the currently opened module file.
   (define (close-file)
     ;; TODO disable menu option
-    (when (current-module-view)
+    (when (current 'module-view)
       (do-proc-with-exit-dialogue
        "closing"
        (lambda () (on-close-file-hooks 'execute)))))
@@ -158,16 +158,16 @@
     (make-hooks
      `(write-file
        . ,(lambda ()
-  	    (mdmod->file (ui-metastate (current-module-view) 'mmod)
-  			 (ui-metastate (current-module-view) 'filename))
-  	    (ui-metastate (current-module-view) 'modified #f)))
+  	    (mdmod->file (ui-metastate (current 'module-view) 'mmod)
+  			 (ui-metastate (current 'module-view) 'filename))
+  	    (ui-metastate (current 'module-view) 'modified #f)))
      `(update-window-title . ,update-window-title!)))
 
   ;;; Save the current MDAL module. If no file name has been specified yet,
   ;;; promt the user for one.
   (define (save-file)
-    (when (ui-metastate (current-module-view) 'modified)
-      (if (ui-metastate (current-module-view) 'filename)
+    (when (ui-metastate (current 'module-view) 'modified)
+      (if (ui-metastate (current 'module-view) 'filename)
   	  (on-save-file-hooks 'execute)
   	  (save-file-as))))
 
@@ -177,25 +177,25 @@
   		     filetypes: '(((MDAL Modules) (.mdal)))
   		     defaultextension: '.mdal)))
       (unless (string-null? filename)
-  	(ui-metastate (current-module-view) 'filename filename)
+  	(ui-metastate (current 'module-view) 'filename filename)
   	(on-save-file-hooks 'execute))))
 
   (define (export-bin)
-    (and-let* ((mmod (current-mmod))
+    (and-let* ((mmod (current 'mmod))
   	       (filename (tk/get-save-file*
   			  filetypes: '(((Binary) (.bin)))
   			  defaultextension: '.bin))
   	       (_ (not (string-null? filename))))
-      (mod-export-bin filename mmod (config-default-origin (current-mdef)))))
+      (mod-export-bin filename mmod (config-default-origin (current 'mdef)))))
 
-  ;;; Calls undo on (current-module-view).
+  ;;; Calls undo on (current 'module-view).
   (define (undo)
-    (and-let* ((mv (current-module-view)))
+    (and-let* ((mv (current 'module-view)))
       (ui-metastate mv 'undo)))
 
-  ;;; Calls redo on (current-module-view).
+  ;;; Calls redo on (current 'module-view).
   (define (redo)
-    (and-let* ((mv (current-module-view)))
+    (and-let* ((mv (current 'module-view)))
       (ui-metastate mv 'redo)))
 
   ;;; Launch the online help in the user's default system web browser.
@@ -216,26 +216,26 @@
   ;; ---------------------------------------------------------------------------
 
   (define (play-from-start)
-    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
+    (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
   	   (origin (config-default-origin (car mmod))))
-      ((ui-metastate (current-module-view) 'emulator) 'run origin
+      ((ui-metastate (current 'module-view) 'emulator) 'run origin
        (list->string (map integer->char (mod->bin mmod origin))))))
 
   (define (play-pattern)
-    (let* ((mmod (ui-metastate (current-module-view) 'mmod))
+    (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
   	   (origin (config-default-origin (car mmod))))
-      ((ui-metastate (current-module-view) 'emulator) 'run origin
+      ((ui-metastate (current 'module-view) 'emulator) 'run origin
        (list->string
   	(map integer->char
       	     (mod->bin (derive-single-pattern-mdmod
       			mmod
-      			(slot-value (current-blockview) 'group-id)
+      			(slot-value (current 'blockview) 'group-id)
       			(ui-blockview-get-current-order-pos
-      			 (current-blockview)))
+      			 (current 'blockview)))
       		       origin))))))
 
   (define (stop-playback)
-    ((ui-metastate (current-module-view) 'emulator) 'pause))
+    ((ui-metastate (current 'module-view) 'emulator) 'pause))
 
 
   ;; ---------------------------------------------------------------------------
@@ -3098,7 +3098,7 @@
       (ui-metastate buf 'apply-edit action)
       (ui-update buf)
       ;; TODO should use a safer method for determining associated block-view
-      (ui-update (current-blockview))
+      (ui-update (current 'blockview))
       (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))))
 
@@ -3129,7 +3129,7 @@
        buf
        (list 'block-row-insert parent-instance-path block-id
   	     `((0 (,current-row ,new-row-values)))))
-      (ui-update (current-blockview))
+      (ui-update (current 'blockview))
       (when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))))
 
@@ -3155,7 +3155,7 @@
   	       block-id
   	       `((0 (,current-row ,current-row-values)))))
   	;; TODO properly determine block view
-  	(ui-update (current-blockview))
+  	(ui-update (current 'blockview))
 	(when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))
   	(ui-blockview-show-cursor buf))))
@@ -3200,7 +3200,7 @@
 		     field-ids))))
       (unless (null? action)
 	(ui-blockview-perform-edit buf (cons 'compound action))
-	(ui-update (current-blockview))
+	(ui-update (current 'blockview))
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
@@ -3234,7 +3234,7 @@
 	      field-ids))))
       (unless (null? actions)
 	(ui-blockview-perform-edit buf (cons 'compound actions))
-	(ui-update (current-blockview))
+	(ui-update (current 'blockview))
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
@@ -3533,12 +3533,12 @@
   			     default-major-row-highlight 1 64
   			     ,(lambda ()
   				(ui-blockview-update-row-highlights
-  				 (current-blockview))))
+  				 (current 'blockview))))
   	    (minor-highlight "/" "Set number of steps per measure"
   			     default-minor-row-highlight 2 32
   			     ,(lambda ()
   				(ui-blockview-update-row-highlights
-  				 (current-blockview)))))))
+  				 (current 'blockview)))))))
 
   (define-method (module-view-push-undo primary: (buf <ui-module-view>)
   					action)
@@ -3585,10 +3585,9 @@
   	  (have-toolbar (slot-value buf 'toolbar)))
       (when action
   	(ui-metastate buf 'apply-edit action)
-  	(ui-update (current-order-view))
-  	(ui-update (current-blockview))
-	(print "module-view-undo, current-group-fields " (current-group-fields))
-	(ui-update (current-group-fields))
+  	(ui-update (current 'order-view))
+  	(ui-update (current 'blockview))
+	(ui-update (current 'group-fields))
   	(focus 'resume)
   	(when have-toolbar
   	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
@@ -3604,9 +3603,9 @@
     (let ((action (module-view-pop-redo buf)))
       (when action
   	(ui-metastate buf 'apply-edit action)
-  	(ui-update (current-order-view))
-  	(ui-update (current-blockview))
-	(ui-update (current-group-fields))
+  	(ui-update (current 'order-view))
+  	(ui-update (current 'blockview))
+	(ui-update (current 'group-fields))
   	(focus 'resume)
   	(when (slot-value buf 'toolbar)
   	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
@@ -3921,56 +3920,42 @@
   ;;; ### Auxiliary module UI accessor procedures
   ;; ---------------------------------------------------------------------------
 
-  ;;; These accessors use `(state 'ui) to determine which part of a module
+  ;;; This accessor can be used to retrieve various components of the module
   ;;; interface the user is currently interacting with. This is inevitably a
   ;;; brittle solution, so be careful when using these.
-
-  ;;; Returns the currently active `<ui-module-view>`.
-  (define (current-module-view)
-    (and (ui) (ui-ref (ui) 'module-view)))
-
-  ;;; Returns the currently active `<ui-block-view>`.
-  (define (current-blockview)
-    (and-let* ((mv (current-module-view))
-  	       (zone-id (find (cute symbol-contains <> "block-view")
-  			      (map car (focus 'list)))))
-      (ui-ref-by-zone-id mv zone-id)))
-
-  ;;; Returns the currently active `<ui-order-view>`.
-  (define (current-order-view)
-    (and-let* ((mv (current-module-view))
-  	       (zone-id (find (cute symbol-contains <> "order-view")
-  			      (map car (focus 'list)))))
-      (ui-ref-by-zone-id mv zone-id)))
-
-  ;;; Returns the currently active `<ui-group-fields>`.
-  (define (current-group-fields)
-    (and-let* ((mv (current-module-view))
-  	       (zone-id (find (cute symbol-contains <> "group-fields")
-  			      (map car (focus 'list)))))
-      (ui-ref-by-zone-id mv zone-id)))
-
-  ;;; Returns the MDAL module associated with `(current-module-view)`
-  (define (current-mmod)
-    (and-let* ((mv (current-module-view)))
-      (ui-metastate mv 'mmod)))
-
-  ;;; Returns the MDAL engine definition associated with
-  ;;; `(current-module-view)`.
-  (define (current-mdef)
-    (and-let* ((mv (current-module-view)))
-      (ui-metastate mv 'mdef)))
-
-  ;;; Returns the emulator associated with `(current-module-view)`.
-  (define (current-emulator)
-    (and-let* ((mv (current-module-view)))
-      (ui-metastate mv 'emulator)))
-
-  ;;; Returns the ui buffer that currently has input focus.
-  ;; focus 'which
-  (define (current-buffer)
-    (and (focus 'which)
-  	 (focus 'assoc (car (focus 'which)))))
+  ;;;
+  ;;; WHAT must be one of the following:
+  ;;;
+  ;;; - `module-view`: The current `<ui-module-view>` instance.
+  ;;; - `blockview`: The current `<ui-blockview>` instance.
+  ;;; - `order-view`: The current `<ui-order-view>` instance.
+  ;;; - `group-fields`: The current `<ui-group-fields>` instance.
+  ;;; - `mmod`: The current MDAL module.
+  ;;; - `mdef`: The current MDAL engine definition.
+  ;;; - `emulator`: The current emulator object.
+  ;;; - `buffer`: The current focussed buffer.
+  (define (current what)
+    (let ((find-module-element
+	   (lambda (partial-id)
+	     (and-let* ((mv (current 'module-view))
+  			(zone-id (find (cute symbol-contains <> partial-id)
+  				       (map car (focus 'list)))))
+	       (ui-ref-by-zone-id mv zone-id)))))
+      (case what
+	((module-view) (and (ui) (ui-ref (ui) 'module-view)))
+	((blockview) (find-module-element "block-view"))
+	((order-view) (find-module-element "order-view"))
+	((group-fields) (find-module-element "group-fields"))
+	((mmod) (and-let* ((mv (current 'module-view)))
+		  (ui-metastate mv 'mmod)))
+	((mdef) (and-let* ((mv (current 'module-view)))
+		  (ui-metastate mv 'mdef)))
+	((emulator) (and-let* ((mv (current 'module-view)))
+		      (ui-metastate mv 'emulator)))
+	((buffer) (and (focus 'which)
+  		       (focus 'assoc (car (focus 'which)))))
+	(else (error 'current
+		     (string-append "Unknown element " (->string what)))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -4030,12 +4015,12 @@
     	   	 (text-to-speech (car args))
     	   	 (case (car args)
     	   	   ((where)
-    	   	    (and (current-buffer)
-    	   		 (text-to-speech (ui-where (current-buffer))))
+    	   	    (and (current 'buffer)
+    	   		 (text-to-speech (ui-where (current 'buffer))))
     	   	    #t)
     	   	   ((what)
-    	   	    (and (current-buffer)
-    	   		 (text-to-speech (ui-what (current-buffer))))
+    	   	    (and (current 'buffer)
+    	   		 (text-to-speech (ui-what (current 'buffer))))
     	   	    #t)
     	   	   ((sanitize) (text-to-speech (sanitize-string (cadr args))))
     	   	   (else (text-to-speech (sanitize-string
