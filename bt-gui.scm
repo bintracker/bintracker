@@ -3414,12 +3414,16 @@
   (define-method (ui-ref-by-zone-id primary: (buf <ui-group>)
   				    zone-id)
     (let* ((group-blocks (alist-ref 'blocks (ui-children buf)))
+	   (group-fields (alist-ref 'fields (ui-children buf)))
   	   (ref-block (and group-blocks
   			   (find (lambda (child)
   				   (eqv? zone-id (slot-value (cdr child)
   							     'ui-zone)))
   				 (ui-children group-blocks)))))
       (or (and ref-block (cdr ref-block))
+	  (and group-fields
+	       (eqv? zone-id (slot-value group-fields 'ui-zone))
+	       group-fields)
   	  ;; TODO Awful contraption that needlessly runs `ui-ref-by-zone` twice,
   	  ;; but can't wrap my head around how to do it otherwise atm
   	  (and-let* ((subgroups (alist-ref 'subgroups (ui-children buf)))
