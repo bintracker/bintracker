@@ -26,9 +26,9 @@ _skip
 	push hl			;preserve HL' for return to BASIC
 	ld (oldSP),sp
 	ld hl,musicdata
-	ld a,(hl)
-	ld (speed),a
-	inc hl
+	;; ld a,(hl)
+	;; ld (speed),a
+	;; inc hl
 	ld (seqpntr),hl
 
 ;******************************************************************
@@ -60,9 +60,11 @@ rdptn
 	and $1f
 	jp nz,exit
 
-speed .equ .(+ 2 (current-origin))
-	ld bc,0			;timer
-	exx
+;; speed .equ .(+ 2 (current-origin))
+;; 	ld bc,0			;timer
+;; 	exx
+        ld c,0
+
 
 patpntr .equ .(+ 1 (current-origin))			;fetch pointer to pattern data
 	ld sp,0
@@ -70,13 +72,16 @@ patpntr .equ .(+ 1 (current-origin))			;fetch pointer to pattern data
 	pop af
 	jr z,rdseq
 
+        ld b,a
+        exx
+
 	jp c,noiseCore
 	jp pe,slideCore
 	jp m,noiseslideCore
 
 ;******************************************************************
 regularCore
-	ld (ch1Length),a
+	;; ld (ch1Length),a
 
 	ld a,$10
 	ld (stopch),a
@@ -154,10 +159,10 @@ duty3 .equ .(+ 1 (current-origin))
 	dec c			;4
 	jr nz,playRegular	;12
 				;224
-	ld a,b
-ch1Length .equ .(+ 1 (current-origin))
-	sub $ff				;= timer - actual length
-	jr z,_skip
+;; 	ld a,b
+;; ch1Length .equ .(+ 1 (current-origin))
+;; 	sub $ff				;= timer - actual length
+;; 	jr z,_skip
 	djnz playRegular
 	jp rdptn
 
@@ -170,7 +175,7 @@ _skip
 
 ;******************************************************************
 noiseCore
-	ld (ch1Lengtha),a
+	;; ld (ch1Lengtha),a
 
 	ld a,$10
 	ld (stopcha),a
@@ -246,11 +251,11 @@ duty3a .equ .(+ 1 (current-origin))
 	dec c			;4
 	jr nz,playNoise		;12
 				;224
-	ld a,b
+;; 	ld a,b
 
-ch1Lengtha .equ .(+ 1 (current-origin))
-	sub $ff				;= timer - actual length
-	jr z,_skip
+;; ch1Lengtha .equ .(+ 1 (current-origin))
+;; 	sub $ff				;= timer - actual length
+;; 	jr z,_skip
 	djnz playNoise
 	jp rdptn
 
@@ -262,7 +267,7 @@ _skip
 
 ;******************************************************************
 slideCore
-	ld (ch1Lengthb),a
+	;; ld (ch1Lengthb),a
 
 	ld a,$10
 	ld (stopchb),a
@@ -344,9 +349,9 @@ duty3b .equ .(+ 1 (current-origin))
 				;224
 	ld a,b
 
-ch1Lengthb .equ .(+ 1 (current-origin))
-	sub $ff				;= timer - actual length
-	jr z,_skip
+;; ch1Lengthb .equ .(+ 1 (current-origin))
+;; 	sub $ff				;= timer - actual length
+;; 	jr z,_skip
 	srl d
 	djnz playSlide
 	jp rdptn
@@ -359,7 +364,7 @@ _skip
 
 ;******************************************************************
 noiseslideCore
-	ld (ch1Lengthc),a
+	;; ld (ch1Lengthc),a
 
 	ld a,$10
 	ld (stopchc),a
@@ -437,9 +442,9 @@ duty3c .equ .(+ 1 (current-origin))
 				;224
 	ld a,b
 
-ch1Lengthc .equ .(+ 1 (current-origin))
-	sub $ff				;= timer - actual length
-	jr z,_skip
+;; ch1Lengthc .equ .(+ 1 (current-origin))
+;; 	sub $ff				;= timer - actual length
+;; 	jr z,_skip
 	srl d
 	djnz playNoiseSlide
 	jp rdptn
@@ -462,4 +467,5 @@ oldSP .equ .(+ 1 (current-origin))
 
 
 musicdata
-loop .equ .(+ 1 (current-origin))
+loop
+;; loop .equ .(+ 1 (current-origin))

@@ -1,0 +1,80 @@
+(mdal-module
+  #:version
+  2
+  #:config
+  "quattropic"
+  #:config-version
+  1.0
+  (AUTHOR "unknown")
+  (TITLE "untitled")
+  (LICENSE "All Rights Reserved")
+  ;; (SPEED 6)
+  (PATTERNS
+    (TEMPO 16)
+    (CH1 ((NOTE1 c3))
+         ((NOTE1 d#3))
+         ((NOTE1 g3))
+         ((NOTE1 a#3))
+         ((NOTE1 c4))
+         ((NOTE1 d#4))
+         ((NOTE1 g4))
+         ((NOTE1 a#4))
+         ((NOTE1 c5))
+         ((NOTE1 d#5))
+         ((NOTE1 g5))
+         ((NOTE1 a#5))
+         ((NOTE1 c6))
+         ((NOTE1 d#6))
+         ((NOTE1 g6))
+         ((NOTE1 a#6)))
+    (CH2 2
+         (c3 16)
+         ((NOTE2 d#3))
+         ((NOTE2 g3))
+         ((NOTE2 a#3))
+         ((NOTE2 c4))
+         ((NOTE2 d#4))
+         ((NOTE2 g4))
+         ((NOTE2 a#4))
+         ((NOTE2 c5))
+         ((NOTE2 d#5))
+         ((NOTE2 g5))
+         ((NOTE2 a#5))
+         ((NOTE2 c6))
+         ((NOTE2 d#6)))
+    (CH2 #:id
+         1
+         (c3 16)
+         ((NOTE2 d#3))
+         ((NOTE2 g3))
+         ((NOTE2 a#3))
+         ((NOTE2 c4))
+         ((NOTE2 d#4))
+         ((NOTE2 g4))
+         ((NOTE2 a#4))
+         ((NOTE2 c5))
+         ((NOTE2 d#5))
+         ((NOTE2 g5))
+         ((NOTE2 a#5))
+         ((NOTE2 c6))
+         ((NOTE2 d#6))
+         ((NOTE2 g6))
+         ((NOTE2 a#6)))
+    (CH3 ((NOTE3 c5) (SLIDE 1))
+         ((NOTE3 rest))
+         2
+         ((NOTE3 c3) (DUTY3 64))
+         3
+         ((NOTE3 c5) (SLIDE 1))
+         ((NOTE3 rest))
+         2
+         ((NOTE3 c3) (DUTY3 64))
+         3)
+    (CH4 4
+         ((NOTE4 a5) (NOISE 1))
+         ((NOTE4 rest))
+         6
+         ((NOTE4 a5) (NOISE 1))
+         ((NOTE4 rest))
+         2)
+    (ORDER (16 0 0 0 0 0) (16 0 0 1 0 0) (16 0 0 1 0 0))))
