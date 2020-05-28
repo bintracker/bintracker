@@ -445,6 +445,7 @@
 						 (->string args)))))))
 
   (define (copy arg)
-    (clipboard 'put arg))
+    (clipboard 'put arg)
+    arg)
 
   ) ;; end module bt-state
