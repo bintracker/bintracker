@@ -11,7 +11,7 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  srfi-1 srfi-13 srfi-69
+	  (chicken port) srfi-1 srfi-13 srfi-69
 	  coops typed-records simple-exceptions pstk list-utils stack
 	  bt-types bt-db bt-emulation mdal)
 
@@ -433,16 +433,16 @@
   ;;;
   ;;; MDAL field node data is commonly stored as a plain list of values (for a
   ;;; single field node) or a list of such lists (for multiple field nodes).
-  (define clipboard
-    (let ((contents #f))
-      (lambda args
-	(if (null? args)
-	    contents
-	    (case (car args)
-	      ((put) (set! contents (cadr args)))
-	      ((get) contents)
-	      (else (error 'clipboard (string-append "Unsupported command "
-						     (->string args)))))))))
+  (define (clipboard . args)
+    (if (null? args)
+	(let ((cb-contents (tk/clipboard 'get)))
+	  (and (string? cb-contents)
+	       (with-input-from-string cb-contents read)))
+	(case (car args)
+	  ((put) (tk/clipboard 'clear)
+	   (tk/clipboard 'append (->string (cadr args))))
+	  (else (error 'clipboard (string-append "Unsupported command "
+						 (->string args)))))))
 
   (define (copy arg)
     (clipboard 'put arg))
