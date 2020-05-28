@@ -357,7 +357,7 @@
   (define (make-reverse-action action mmod)
     (print "make-reverse-action action mmod, action: " action)
     (if (eqv? 'compound (car action))
-	(list 'compound (map (cute make-reverse-action <> mmod)
+	(cons 'compound (map (cute make-reverse-action <> mmod)
 			     (reverse (cdr action))))
 	(if (eqv? 'block (config-get-parent-node-type (third action)
 						      (car mmod)))
