@@ -942,6 +942,9 @@
     (let* ((order-index
 	    (config-get-block-field-index
 	     (car order) (symbol-append 'R_ (car iblock)) config))
+	   (block-field-count (length (config-get-subnode-ids
+				       (car iblock)
+				       (config-itree config))))
 	   (concat-blocks
 	    (concatenate
 	     (map (lambda (order-row)
@@ -952,10 +955,8 @@
 			   (actual-length (length block-contents)))
 		      (if (< actual-length (car order-row))
 			  (append block-contents
-				  (make-list
-				   (- (car order-row) actual-length)
-				   (make-list (length (car block-contents))
-					      '())))
+				  (make-list (- (car order-row) actual-length)
+					     (make-list block-field-count '())))
 			  (take block-contents (car order-row)))))
 		  (repeat-block-row-values (cddadr order))))))
       (cons (car iblock)
