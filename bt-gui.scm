@@ -1539,15 +1539,38 @@
   			'field)))
       (set! (ui-children buf)
   	(map (lambda (field-id)
-  	       (cons field-id
-  		     (make <ui-group-field>
-  		       'parent (slot-value buf 'content-box)
-  		       'node-id field-id
-  		       'parent-instance-path
-  		       (slot-value buf 'parent-instance-path)
-  		       'metastate-accessor
-  		       (slot-value buf 'metastate-accessor))))
+	       (let ((widget (make <ui-group-field>
+  		     	       'parent (slot-value buf 'content-box)
+  		     	       'node-id field-id
+  		     	       'parent-instance-path
+  		     	       (slot-value buf 'parent-instance-path)
+  		     	       'metastate-accessor
+  		     	       (slot-value buf 'metastate-accessor))))
+		 (tk/bind (slot-value widget 'entry) '<Tab>
+		 	  (lambda ()
+		 	    (ui-unfocus
+		 	     (cdr (list-ref (ui-children buf)
+		 			    (slot-value buf 'active-index))))
+		 	    (set! (slot-value buf 'active-index)
+		 	      (if (>= (+ 1 (slot-value buf 'active-index))
+		 		      (length (ui-children buf)))
+		 		  0
+		 		  (+ 1 (slot-value buf 'active-index))))
+		 	    (ui-focus
+		 	     (cdr (list-ref (ui-children buf)
+		 			    (slot-value buf 'active-index))))))
+		 (tk/bind (slot-value widget 'entry) '<Button-1>
+			  (lambda ()
+			    (ui-unfocus buf)
+			    (set! (slot-value buf 'active-index)
+			      (list-index (cute eqv? field-id <>)
+					  (map car (ui-children buf))))
+			    (focus 'set (slot-value buf 'ui-zone))
+			    (ui-focus buf)))
+  		 (cons field-id widget)))
   	     subnode-ids))
+      ;; (tk/bind (ui-box buf) '<Button-1>
+      ;; 	       (lambda () (focus 'set (slot-value buf 'ui-zone))))
       ;; (print "done initialize-instance/group-fields")
       ))
 
@@ -1558,8 +1581,8 @@
   (define-method (ui-show after: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'add
        (slot-value buf 'ui-zone)
-       (lambda () (ui-focus (cdar (ui-children buf))))
-       (lambda () (ui-unfocus (cdar (ui-children buf))))
+       (lambda () (ui-focus buf))
+       (lambda () (ui-unfocus buf))
        buf))
 
   (define-method (ui-hide after: (buf <ui-group-fields>))
@@ -1568,7 +1591,15 @@
   (define-method (ui-destroy before: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
-  (define-method (ui-update (buf <ui-group-fields>))
+  (define-method (ui-focus primary: (buf <ui-group-fields>))
+    (ui-focus (cdr (list-ref (ui-children buf)
+			     (slot-value buf 'active-index)))))
+
+  (define-method (ui-unfocus primary: (buf <ui-group-fields>))
+    (ui-unfocus (cdr (list-ref (ui-children buf)
+			       (slot-value buf 'active-index)))))
+
+  (define-method (ui-update primary: (buf <ui-group-fields>))
     (let ((mdef (ui-metastate buf 'mdef))
 	  (global-node (mdmod-global-node (ui-metastate buf 'mmod))))
       (for-each (lambda (field)
