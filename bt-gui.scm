@@ -1673,7 +1673,7 @@
   		       yscrollcommand: `(,yscroll set))
   	(block-content 'mark 'set 'insert "1.0")
   	(ui-blockview-bind-events buf)))
-    (ui-blockview-update buf)
+    (ui-update buf)
     ((slot-value buf 'focus-controller) 'add
      (slot-value buf 'ui-zone)
      (lambda () (ui-blockview-focus buf))
@@ -2082,7 +2082,7 @@
     (ui-metastate buf 'push-undo
   		  (make-reverse-action action (ui-metastate buf 'mmod)))
     (ui-metastate buf 'apply-edit action)
-    (ui-blockview-update buf)
+    (ui-update buf)
     (ui-metastate buf 'modified #t)
     (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
       (ui-blockview-show-cursor buf)))
@@ -2854,7 +2854,7 @@
       		      (slot-value buf 'group-id)
       		      (ui-blockview-get-current-order-pos buf)
       		      (ui-blockview-get-current-field-instance buf)))
-      (ui-blockview-update buf)
+      (ui-update buf)
       (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))
       (ui-metastate buf 'modified #t)))
@@ -2867,7 +2867,7 @@
   ;;; perform unnecessary updates. This makes the procedure fast enough to be
   ;;; used after any change to the blockview's content, rather than manually
   ;;; updating the part of the content that has changed.
-  (define-method (ui-blockview-update primary: (buf <ui-block-view>))
+  (define-method (ui-update primary: (buf <ui-block-view>))
     (let ((new-item-list (ui-blockview-get-item-list buf)))
       (unless (equal? new-item-list (slot-value buf 'item-cache))
   	(let ((current-mark-pos ((slot-value buf 'block-content)
@@ -3065,9 +3065,9 @@
       (ui-metastate buf 'push-undo
   		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
-      (ui-blockview-update buf)
+      (ui-update buf)
       ;; TODO should use a safer method for determining associated block-view
-      (ui-blockview-update (current-blockview))
+      (ui-update (current-blockview))
       (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))))
 
@@ -3098,7 +3098,7 @@
        buf
        (list 'block-row-insert parent-instance-path block-id
   	     `((0 (,current-row ,new-row-values)))))
-      (ui-blockview-update (current-blockview))
+      (ui-update (current-blockview))
       (when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))))
 
@@ -3124,7 +3124,7 @@
   	       block-id
   	       `((0 (,current-row ,current-row-values)))))
   	;; TODO properly determine block view
-  	(ui-blockview-update (current-blockview))
+  	(ui-update (current-blockview))
 	(when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))
   	(ui-blockview-show-cursor buf))))
@@ -3169,7 +3169,7 @@
 		     field-ids))))
       (unless (null? action)
 	(ui-blockview-perform-edit buf (cons 'compound action))
-	(ui-blockview-update (current-blockview))
+	(ui-update (current-blockview))
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
@@ -3203,7 +3203,7 @@
 	      field-ids))))
       (unless (null? actions)
 	(ui-blockview-perform-edit buf (cons 'compound actions))
-	(ui-blockview-update (current-blockview))
+	(ui-update (current-blockview))
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
@@ -3214,7 +3214,7 @@
   ;;; perform unnecessary updates. This makes the procedure fast enough to be
   ;;; used after any change to the blockview's content, rather than manually
   ;;; updating the part of the content that has changed.
-  (define-method (ui-blockview-update primary: (buf <ui-order-view>))
+  (define-method (ui-update primary: (buf <ui-order-view>))
     (let ((new-item-list (ui-blockview-get-item-list buf)))
       (unless (equal? new-item-list (slot-value buf 'item-cache))
   	(let ((current-mark-pos ((slot-value buf 'block-content)
@@ -3554,8 +3554,8 @@
   	  (have-toolbar (slot-value buf 'toolbar)))
       (when action
   	(ui-metastate buf 'apply-edit action)
-  	(ui-blockview-update (current-order-view))
-  	(ui-blockview-update (current-blockview))
+  	(ui-update (current-order-view))
+  	(ui-update (current-blockview))
 	(print "module-view-undo, current-group-fields " (current-group-fields))
 	(ui-update (current-group-fields))
   	(focus 'resume)
@@ -3573,8 +3573,8 @@
     (let ((action (module-view-pop-redo buf)))
       (when action
   	(ui-metastate buf 'apply-edit action)
-  	(ui-blockview-update (current-order-view))
-  	(ui-blockview-update (current-blockview))
+  	(ui-update (current-order-view))
+  	(ui-update (current-blockview))
 	(ui-update (current-group-fields))
   	(focus 'resume)
   	(when (slot-value buf 'toolbar)
