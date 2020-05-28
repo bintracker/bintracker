@@ -1454,9 +1454,11 @@
 			 (validate-field-value
 			  (ui-metastate buf 'mdef)
 			  node-id
-			  (case (command-type (config-get-inode-source-command
-					       node-id (ui-metastate buf 'mdef)))
-			    ((int uint) (string->number new-val (settings 'number-base)))
+			  (case (command-type
+				 (config-get-inode-source-command
+				  node-id (ui-metastate buf 'mdef)))
+			    ((int uint) (string->number
+					 new-val (settings 'number-base)))
 			    ((string) new-val)
 			    ((trigger) #t)
 			    ((key ukey) (string->symbol new-val))
@@ -1470,14 +1472,22 @@
       ;; (print "done initialize-instance/group-field")
       ))
 
+  (define-method (ui-group-field-perform-edit primary: (buf <ui-group-field>)
+					      action)
+    (ui-metastate buf 'push-undo
+  		  (make-reverse-action action (ui-metastate buf 'mmod)))
+    (ui-metastate buf 'apply-edit action)
+    (ui-metastate buf 'modified #t))
+
   (define-method (edit primary: (buf <ui-group-field>)
 		       what #!optional val)
     (case what
-      ((set) (ui-metastate buf 'apply-edit
-			   (list 'set
-				 (slot-value buf 'parent-instance-path)
-				 (slot-value buf 'node-id)
-				 `((0 #f . ,val)))))
+      ((set) (ui-group-field-perform-edit
+	      buf
+	      (list 'set
+		    (slot-value buf 'parent-instance-path)
+		    (slot-value buf 'node-id)
+		    `((0 #f . ,val)))))
       (else (error '|edit group-field|
 		   (string-append "Invalid action " (->string what))))))
 
@@ -1557,6 +1567,26 @@
 
   (define-method (ui-destroy before: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
+
+  (define-method (ui-update (buf <ui-group-fields>))
+    (let ((mdef (ui-metastate buf 'mdef))
+	  (global-node (mdmod-global-node (ui-metastate buf 'mmod))))
+      (for-each (lambda (field)
+		  (let ((entry (slot-value field 'entry))
+			(node-id (slot-value field 'node-id)))
+		    (entry 'delete 0 'end)
+		    (entry 'insert 'end
+			   (normalize-field-value
+			    (cddr
+    			     ((node-path
+    			       (string-append
+    				(slot-value buf 'parent-instance-path)
+    				(symbol->string node-id)
+    				"/0/"))
+  			      global-node))
+    			    node-id
+			    mdef))))
+		(map cdr (ui-children buf)))))
 
   ;; TODO expand: 1 fill: both?
   ;;; Abstract base class for `<ui-block-view>` and `<ui-order-view>`,
@@ -3522,6 +3552,8 @@
   	(ui-metastate buf 'apply-edit action)
   	(ui-blockview-update (current-order-view))
   	(ui-blockview-update (current-blockview))
+	(print "module-view-undo, current-group-fields " (current-group-fields))
+	(ui-update (current-group-fields))
   	(focus 'resume)
   	(when have-toolbar
   	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
@@ -3539,6 +3571,7 @@
   	(ui-metastate buf 'apply-edit action)
   	(ui-blockview-update (current-order-view))
   	(ui-blockview-update (current-blockview))
+	(ui-update (current-group-fields))
   	(focus 'resume)
   	(when (slot-value buf 'toolbar)
   	  (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
@@ -3724,12 +3757,16 @@
   (define-method (ui-ref-by-zone-id primary: (buf <ui-module-view>)
   				    zone-id)
     (let* ((group-blocks (alist-ref 'blocks (ui-children buf)))
+	   (group-fields (alist-ref 'fields (ui-children buf)))
   	   (ref-block (and group-blocks
   			   (find (lambda (child)
   				   (eqv? zone-id (slot-value (cdr child)
   							     'ui-zone)))
   				 (ui-children group-blocks)))))
       (or (and ref-block (cdr ref-block))
+	  (and group-fields
+	       (eqv? zone-id (slot-value group-fields 'ui-zone))
+	       group-fields)
   	  ;; TODO Awful contraption that needlessly runs `ui-ref-by-zone` twice,
   	  ;; but can't wrap my head around how to do it otherwise atm
   	  (and-let* ((subgroups (alist-ref 'subgroups (ui-children buf)))
@@ -3868,6 +3905,13 @@
   (define (current-order-view)
     (and-let* ((mv (current-module-view))
   	       (zone-id (find (cute symbol-contains <> "order-view")
+  			      (map car (focus 'list)))))
+      (ui-ref-by-zone-id mv zone-id)))
+
+  ;;; Returns the currently active `<ui-group-fields>`.
+  (define (current-group-fields)
+    (and-let* ((mv (current-module-view))
+  	       (zone-id (find (cute symbol-contains <> "group-fields")
   			      (map car (focus 'list)))))
       (ui-ref-by-zone-id mv zone-id)))
 

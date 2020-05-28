@@ -394,11 +394,12 @@
 	      ((set)
 	       (list 'set (cadr action) (third action)
 		     (map (lambda (id+val)
-			    (list (car id+val)
+			    (cons (car id+val)
 				  (cdr ((node-path
 			  		 (string-append
-					  (cadr action) "/"
+					  (cadr action)
 					  (symbol->string (third action))
+					  "/"
 			  		  (->string (car id+val))))
 			  		(mdmod-global-node mmod)))))
 			  (fourth action))))
