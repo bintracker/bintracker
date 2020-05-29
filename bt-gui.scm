@@ -2311,6 +2311,16 @@
     (display "key entry")
     (newline))
 
+  (define-method (ui-blockview-repeat-last-set
+		  primary: (buf <ui-basic-block-view>))
+    (and-let* ((field-idx (ui-blockview-get-current-field-index buf))
+	       (val (find (lambda (v)
+			    (and v (not (null? v))))
+			  (map (cute list-ref <> field-idx)
+			       (take (concatenate (slot-value buf 'item-cache))
+				     (ui-blockview-get-current-row buf))))))
+      (ui-blockview-edit-cell buf val)))
+
   ;;; Helper method for `ui-blockview-enter-numeric`. Constructs a new block
   ;;; field value from the Tk key symbol KEYSYM, assuming that the cursor is
   ;;; currently positioned on the field digit being edited.
@@ -2511,7 +2521,9 @@
 	 (<<CutSelection>> . ,(lambda () (edit buf 'current 'cut)))
   	 (<<BlockEntry>> ,(lambda (keysym)
   			    (ui-blockview-dispatch-entry-event buf keysym))
-  			 %K)))))
+  			 %K)
+	 (<<RepeatLastSet>> . ,(lambda ()
+				 (ui-blockview-repeat-last-set buf)))))))
 
   ;;; A class representing the display of an MDAL group node's blocks, minus the
   ;;; order block. Pattern display is implemented using this class.

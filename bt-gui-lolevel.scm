@@ -508,7 +508,9 @@
     (tk/event 'add '<<InsertFromClipboard>>
 	      (inverse-key-binding 'edit 'insert-from-clipboard))
     (tk/event 'add '<<CutSelection>>
-	      (inverse-key-binding 'edit 'cut-selection)))
+	      (inverse-key-binding 'edit 'cut-selection))
+    (tk/event 'add '<<RepeatLastSet>>
+	      (inverse-key-binding 'edit 'repeat-last-set)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
   ;;; evaluated before the local bindings of WIDGET. This is necessary to
