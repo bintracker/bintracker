@@ -46,6 +46,7 @@ nav:
       - "The REPL": repl.md
   - "Developer Documentation":
       - "Getting Started": hacking.md
+      - Quickref: quickref.md
       - "Style Guide": style-guide.md
       - "TODO List": TODO.md
       - "Writing Plugins": writing-plugins.md
@@ -73,6 +74,7 @@ nav:
       - "Schemta Assembler":
           - Introduction: 'schemta.md'
           - Schemta API: 'generated/schemta.md'
+      - Examples: examples.md
   - "Frequently Asked Questions": FAQ.md
   - Contributing: contributing.md
   - "Code of Conduct": CODE_OF_CONDUCT.md
