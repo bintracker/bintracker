@@ -3042,8 +3042,17 @@
   ;;; at the first nesting level.
   (define-method (ui-blockview-get-item-list primary: (buf <ui-order-view>))
     (let ((group-id (slot-value buf 'group-id)))
+      ;; (map (lambda (row)
+      ;; 	     (print "row: " row)
+      ;; 	     (map (lambda (field)
+      ;; 		    (print "field: " field)
+      ;; 		    (if (null? field) #f field))
+      ;; 		  row))
+      ;; 	   (cddr (mod-get-group-instance-order
+      ;; 		  (ui-blockview-parent-instance buf)
+      ;; 		  (slot-value buf 'group-id))))
       (list (mod-get-order-values group-id
-  				  (ui-blockview-parent-instance buf)))))
+      				  (ui-blockview-parent-instance buf)))))
 
   ;;; Returns the chunk from the item cache that the cursor is currently on.
   (define-method (ui-blockview-get-current-chunk primary:
