@@ -15,9 +15,13 @@ The following dependencies are required to build Bintracker:
 - Chicken Scheme >=5.0 + extensions
 - Mkdocs + Mkdocs-material + Mkdocs-localsearch
 
-First you need to install [Chicken Scheme](https://call-cc.org), version 5.0 or newer.
+First, obtain the source:
 
-Chicken is available through most distro package repositories. However, for advanced users we recommend to build it from source and do a user install.
+```sh
+$ git clone https://github.com/bintracker/bintracker.git
+```
+
+Next,install [Chicken Scheme](https://call-cc.org), version 5.0 or newer. Chicken is available through most distro package repositories. However, for advanced users we recommend to build it from source and do a user install.
 
 After installing Chicken itself, you need to install the extensions required by Bintracker.
 
@@ -50,7 +54,10 @@ You can do a parallel build (`make -jX`), however time savings will be minimal. 
 
 If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame64` is in your search path. If your MAME executable is not named "mame64", edit the file `config/emulators.scm` accordingly.
 
-For most target systems you want to emulate, you will also need to obtain ROM files. Copy ROM files to `roms/MACHINE`, where MACHINE is MAME's target system identifier string. Bintracker itself does not ship ROM files.
+For most target systems you want to emulate, you will also need to obtain ROM files. Copy ROM files to `roms/MACHINE`, where MACHINE is MAME's target system identifier string. Bintracker itself does not ship ROM files except for a handful of open source replacement ROMs.
+
+
+Once you've completed these steps, you can run the `bintracker` executable in the `build` directory.
 
 
 ### MacOS, BSD, Windows
