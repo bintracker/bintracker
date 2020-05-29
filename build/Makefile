@@ -201,6 +201,7 @@ config:
 .PHONY: roms
 roms:
 	cp -r $(BT_SRC)roms/ .
+	mv roms/spectrum/opense.rom roms/spectrum/spectrum.rom
 
 .PHONY: plugins
 plugins:

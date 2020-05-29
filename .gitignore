@@ -6,7 +6,9 @@ libmdal/unittests/test_builds/
 libmdal/docs/generated
 tclkit/
 cfg/
-roms/
+roms/a2600
+roms/channelf
+roms/spectrum/spectrum.rom
 build/*
 !build/Makefile
 resources/icons/*.png.*.png
