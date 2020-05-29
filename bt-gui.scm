@@ -2980,7 +2980,11 @@
   			(cut-row "Delete step" "delete-row.png" enabled))
   		  (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
   				 (simple "Simplified sequence"
-  					 "seq-simple.png"))))))))
+  					 "seq-simple.png")))))
+	(ui-set-callbacks
+	 (slot-value buf 'toolbar)
+	 `((edit (insert-row ,(lambda () (ui-blockview-insert-row buf)))
+		  (cut-row ,(lambda () (ui-blockview-cut-row buf)))))))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-order-view>))
