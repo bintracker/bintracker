@@ -201,7 +201,9 @@ config:
 .PHONY: roms
 roms:
 	cp -r $(BT_SRC)roms/ .
+ifneq (,$(wildcard roms/spectrum.rom))
 	mv roms/spectrum/opense.rom roms/spectrum/spectrum.rom
+endif
 
 .PHONY: plugins
 plugins:
