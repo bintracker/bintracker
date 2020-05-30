@@ -18,7 +18,6 @@
 ;; Bintracker's key bindings in detail. We recommend starting by copying one
 ;; of the existing keymaps.
 ;; (load-keymap "en")
-(load-keymap "de")
 
 
 ;; General Appearance
@@ -31,7 +30,7 @@
 
 ;; Configure the font used in Bintracker. This should be a monospaced font that
 ;; is installed on your computer.
-(settings 'font-mono "Roboto Mono for Powerline")
+;; (settings 'font-mono "Roboto Mono for Powerline")
 
 ;; Configure the default font size.
 ;; (settings 'font-size 10)
