@@ -141,6 +141,7 @@ gendoc/generated/utils/md-note-table.md: $(MDAL_SRC)utils/md-note-table.scm
 gendoc/generated/schemta.md: $(MDAL_SRC)schemta.scm
 
 docs: gendoc-dirs\
+ plugin-docs\
  gendoc/generated/bintracker-core.md\
  gendoc/generated/bt-gui.md\
  gendoc/generated/bt-gui-lolevel.md\
@@ -164,6 +165,7 @@ docs: gendoc-dirs\
 
 gendoc-dirs:
 	mkdir -p gendoc/
+	mkdir -p gendoc/plugins/
 	mkdir -p gendoc/generated/
 	mkdir -p gendoc/generated/utils/
 
@@ -208,6 +210,11 @@ endif
 .PHONY: plugins
 plugins:
 	cp -r $(BT_SRC)plugins .
+
+.PHONY: plugin-docs
+plugin-docs:
+	mkdir -p gendoc/plugins/mml
+	cp $(BT_SRC)plugins/mml/README.md gendoc/plugins/mml/
 
 .PHONY: resources
 resources:

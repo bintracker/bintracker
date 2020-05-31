@@ -44,6 +44,9 @@ nav:
       - "Key Bindings": keybindings.md
       - "Editing Modules": editing.md
       - "The REPL": repl.md
+      - Plugins:
+          - Overview: plugins.md
+          - mml: 'plugins/mml/README.md'
   - "Developer Documentation":
       - "Getting Started": hacking.md
       - Quickref: quickref.md
