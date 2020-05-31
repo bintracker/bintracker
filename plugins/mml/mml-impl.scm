@@ -3,11 +3,11 @@
     (mml::read)
 
   (import scheme (chicken base) (chicken string)
-	  srfi-1 srfi-13 srfi-14 comparse bt-state)
+	  srfi-1 srfi-13 srfi-14 comparse bt-state simple-exceptions)
 
   ;; Define PEG parser rules to parse MML strings using comparse
 
-  (define digits+dots
+  (define (digits+dots)
     (sequence* ((digits (as-string (sequence (maybe (in char-set:digit))
 					     (maybe (in char-set:digit)))))
 		(dots (sequence (maybe (is #\.))
@@ -19,13 +19,13 @@
   (define note
     (sequence* ((note (as-string (in (string->char-set "abcdefg"))))
 		(note-mod (as-string (maybe (in (string->char-set "+-#")))))
-		(length-mod digits+dots))
+		(length-mod (digits+dots)))
 	       (result (cons* 'note (string-append note note-mod)
 			      length-mod))))
 
   (define rest
     (sequence* ((_ (in (string->char-set "rp")))
-		(modifiers digits+dots))
+		(modifiers (digits+dots)))
 	       (result (cons* 'note "rest" modifiers))))
 
   (define articulation
@@ -55,9 +55,14 @@
 
   ;; The main tokenizer procedure
   (define (tokenize-mml str)
-    (parse (followed-by (zero-or-more mml-token)
-			end-of-input)
-	   (string-downcase (string-delete char-set:whitespace str))))
+    (print "tokenize-mml " str)
+    (handle-exceptions
+	exn
+	(begin (print-call-chain)
+	       (raise exn))
+      (parse (followed-by (zero-or-more mml-token)
+			  end-of-input)
+	     (string-downcase (string-delete char-set:whitespace str)))))
 
   ;; Translate note names from MML to MDAL.
   (define (normalize-note-name mml-name octave)
@@ -81,6 +86,7 @@
 
   ;; Convert MML tokens into ticks, where each tick represents a 1/2048th note.
   (define (tokens->ticks mml-tokens)
+    (print "tokens->ticks " mml-tokens)
     (letrec*
 	((octave 4)
 	 (time 128)
