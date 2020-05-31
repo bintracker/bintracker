@@ -86,8 +86,7 @@
 
   ;; Convert MML tokens into ticks, where each tick represents a 1/2048th note.
   (define (tokens->ticks mml-tokens)
-    (print "tokens->ticks " mml-tokens)
-    (letrec*
+     (letrec*
 	((octave 4)
 	 (time 128)
 	 (articulation 7/8)
@@ -174,9 +173,9 @@
   ;;; should make up a quarter note (max. 512), then the output will be
   ;;; requantized accordingly. QUANTIZE-TO defaults to 512, which means the
   ;;; command will return 1/2048th notes.
-  (define (mml::read str #!optional quantize-to)
+  (define (mml::read str #!optional (quantize-to 8))
     (let ((ticks (tokens->ticks (tokenize-mml str))))
-      (if (and quantize-to (< quantize-to 128))
+      (if (and (positive? quantize-to) (< quantize-to 128))
 	  (requantize ticks (round (/ 512 (* 4 quantize-to))))
-	  ticks)))
+	  (error 'mml::read "Invalid quatization unit"))))
 )
