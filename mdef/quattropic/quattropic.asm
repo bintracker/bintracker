@@ -64,6 +64,7 @@ rdptn
 ;; 	ld bc,0			;timer
 ;; 	exx
         ld c,0
+        exx
 
 
 patpntr .equ .(+ 1 (current-origin))			;fetch pointer to pattern data
@@ -72,6 +73,7 @@ patpntr .equ .(+ 1 (current-origin))			;fetch pointer to pattern data
 	pop af
 	jr z,rdseq
 
+        exx
         ld b,a
         exx
 
