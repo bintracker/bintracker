@@ -198,7 +198,7 @@ The following example assumes an underlying MDAL engine definition that specifie
 
 Notable changes from Version 1 include:
 
-- Name change: MDMOD -> MMDO
+- Name change: MDMOD -> MMOD
 - The custom syntax is replaced by Symbolic Expressions.
 - Node instances are addressed through numerical identifiers instead of named strings.
 - Automatic scope resolution is dropped, and replaced by explicit Assignments.

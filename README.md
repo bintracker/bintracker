@@ -9,7 +9,7 @@
 
 Bintracker is an advanced, cross-platform chiptune music editor that supports many different sound routines on a wide range of 8-bit and 16-bit platforms. It is also a live programming environment running on top of [Chicken Scheme](https://call-cc.org/).
 
-At a basic level, Bintracker looks and feels like a [music tracker](https://en.wikipedia.org/wiki/Tracker_(music_software)), and can perfectly well be used as such. However, it also incorporates a range of features normally found in [digitial audio workstations](https://en.wikipedia.org/wiki/Digital_audio_workstation) and [audio programming languages](https://en.wikipedia.org/wiki/Audio_programming_language).
+At a basic level, Bintracker looks and feels like a [music tracker](https://en.wikipedia.org/wiki/Tracker_(music_software)), and can perfectly well be used as such. However, it also incorporates a range of features normally found in [digital audio workstations](https://en.wikipedia.org/wiki/Digital_audio_workstation) and [audio programming languages](https://en.wikipedia.org/wiki/Audio_programming_language).
 
 Both the editor itself, as well as the range of supported chiptune drivers and target platforms can be easily extended through plugins.
 

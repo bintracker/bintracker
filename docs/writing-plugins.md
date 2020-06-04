@@ -59,7 +59,7 @@ When plugins are loaded, all their bindings are imported into the global namespa
 
 This will only make `myplug::foo` available in the global namespace, without leaking `internal-proc`.
 
-For anything more comlex, a better approach is to put the actual implementation in a separate file, wrapping the plugin code in a [Chicken module](https://wiki.call-cc.org/man/5/Modules). The above example, rewritten using this approach would look something like this:
+For anything more complex, a better approach is to put the actual implementation in a separate file, wrapping the plugin code in a [Chicken module](https://wiki.call-cc.org/man/5/Modules). The above example, rewritten using this approach would look something like this:
 
 ```Scheme
 ;; file plugins/myplug/myplug-impl.scm
