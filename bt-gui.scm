@@ -218,21 +218,19 @@
   (define (play-from-start)
     (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
   	   (origin (config-default-origin (car mmod))))
-      ((ui-metastate (current 'module-view) 'emulator) 'run origin
-       (list->string (map integer->char (mod->bin mmod origin))))))
+      ((ui-metastate (current 'module-view) 'emulator)
+       'run origin (mod->bin mmod origin))))
 
   (define (play-pattern)
     (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
   	   (origin (config-default-origin (car mmod))))
       ((ui-metastate (current 'module-view) 'emulator) 'run origin
-       (list->string
-  	(map integer->char
-      	     (mod->bin (derive-single-pattern-mdmod
-      			mmod
-      			(slot-value (current 'blockview) 'group-id)
-      			(ui-blockview-get-current-order-pos
-      			 (current 'blockview)))
-      		       origin))))))
+       (mod->bin (derive-single-pattern-mdmod
+      		  mmod
+      		  (slot-value (current 'blockview) 'group-id)
+      		  (ui-blockview-get-current-order-pos
+      		   (current 'blockview)))
+      		 origin))))
 
   (define (stop-playback)
     ((ui-metastate (current 'module-view) 'emulator) 'pause))
@@ -3658,11 +3656,9 @@
   		       (origin (config-default-origin (car mmod))))
   		  ((slot-value buf 'emulator) 'run
   		   origin
-  		   (list->string
-  		    (map integer->char
-  			 (mod->bin (apply derive-single-row-mdmod
-  					  (cons mmod (cddr args)))
-  				   origin '((no-loop #t)))))))))))
+  		   (mod->bin (apply derive-single-row-mdmod
+  				    (cons mmod (cddr args)))
+  			     origin '((no-loop #t)))))))))
   	((modified)
   	 (if (null? (cdr args))
   	     (slot-value buf 'modified)

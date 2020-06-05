@@ -194,7 +194,6 @@
 
   ;;; Create an target from a target config file
   (define (target-generator target-id path-prefix)
-    (print "target-generator, (string? target-id): " (string? target-id))
     (let* ((mk-target-decl
 	    (lambda (#!key id cpu clock-speed (default-start-address 0)
 			   (exports '()))
@@ -209,8 +208,6 @@
 		   (read (open-input-file (string-append path-prefix
 							 "mdal-targets/"
 							 target-id ".scm"))))))
-      (print "got all the shit")
-      (print "target-decl/cpu is string? " (string? (cadr target-decl)))
       (make-target-platform
        id: (car target-decl)
        cpu: (cadr target-decl)

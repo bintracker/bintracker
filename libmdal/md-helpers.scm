@@ -55,7 +55,7 @@
     (letrec* ((make-bytes (lambda (restval remaining-bytes)
 			    (if (zero? remaining-bytes)
 				'()
-				(cons (bitwise-and #xff restval)
+				(cons (integer->char (bitwise-and #xff restval))
 				      (make-bytes (quotient restval #x100)
 						  (sub1 remaining-bytes))))))
 	      (byte-list (make-bytes i number-of-bytes)))

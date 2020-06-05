@@ -20,9 +20,11 @@
   ;;; The following other commands may be available, depending on the features
   ;;; of the emulator application:
   ;;;
-  ;;; * `'exec src` - Execute source code `src` on the emulator's interpreter.
+  ;;; * `'exec CMD` - Execute raw command on the emulator's interpreter. The
+  ;;; details of CMD depend on the receiving emulator. For MAME commands, see
+  ;;; `mame-bridge/mame-startup.lua`.
   ;;; * `'info` - Display information about the emulated machine.
-  ;;; * `'run address%code` - Load and run `code` at address.
+  ;;; * `'run ADDRESS CODE` - Load and run the list of bytes CODE at ADDRESS.
   ;;; * `'pause` - Pause emulation.
   ;;; * `'unpause` - Unpause emulation.
   ;;; * `'start` - Launch emulator program in new thread.
@@ -90,7 +92,8 @@
 	  ((unpause) (send-command "u"))
 	  ((run) (send-command
 		  (string-append "b" (number->string (cadr args))
-				 "%" (base64-encode (caddr args)))))
+				 "%" (base64-encode
+				      (list->string (caddr args))))))
 	  ((reset) (send-command (if (and (not (null? (cdr args)))
 					  (eqv? 'hard (cadr args)))
 				     "rh" "rs")))

@@ -772,11 +772,12 @@
 			"Internal error in assemble-node. This is a bug.")))
 	 ast-node state)))
 
-  (: ast->bytes (list -> list))
+  (: ast->bytes (list -> (list-of char)))
   (define (ast->bytes ast)
-    (concatenate (remove (lambda (node)
-			   (memq (car node) '(swap-namespace swap-target)))
-			 ast)))
+    (map integer->char
+	 (concatenate (remove (lambda (node)
+				(memq (car node) '(swap-namespace swap-target)))
+			      ast))))
 
   (define target-cache
     (let ((cache '()))
@@ -1025,7 +1026,7 @@
       (and result
 	   (call-with-output-file outfilename
 	     (lambda (port)
-  	       (write-string (list->string (map integer->char result))
+  	       (write-string (list->string result)
 			     #f
 			     port))))))
 
