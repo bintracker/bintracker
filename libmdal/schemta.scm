@@ -772,30 +772,6 @@
 			"Internal error in assemble-node. This is a bug.")))
 	 ast-node state)))
 
-
-
-  ;; ;;; Do an assembler pass on the given abstract source tree. This may have
-  ;; ;;; side effects, namely current origin is updated, and `asm-state-done?` may
-  ;; ;;; be updated to signal whether another pass is required.
-  ;; (define (do-assembler-pass ast)
-  ;;   ;; we assume that this is the last pass required, unless proven otherwise
-  ;;   (do ((old-ast ast (cdr old-ast))
-  ;; 	 (next-ast '() (let ((next-nodes (assemble-node (car old-ast))))
-  ;; 			 (if next-nodes
-  ;; 			     (append next-ast next-nodes)
-  ;; 			     next-ast))))
-  ;; 	((null-list? old-ast) next-ast)))
-
-  ;; ;;; Run `do-assembler-pass` on the current abstract source tree in
-  ;; ;;; *asm-state*, and update it with the result.
-  ;; (define (do-pass-and-set-ast!)
-  ;;   (let ((current-target (target))
-  ;; 	  (init-origin (current-origin)))
-  ;;     (done!)
-  ;;     (set-ast! (do-assembler-pass (ast)))
-  ;;     (set-current-origin! init-origin)
-  ;;     (asm-state-target-set! *asm-state* current-target)))
-
   (: ast->bytes (list -> list))
   (define (ast->bytes ast)
     (concatenate (remove (lambda (node)
@@ -813,6 +789,7 @@
 	      (else (error 'target-cache (string-append "Invalid command "
 							(->string args)))))))))
 
+  ;;; Low level interace for `make-target`.
   (define (construct-target #!key endian registers register-sets
 			    addressing-modes conditions condition-sets
 			    extra instructions)
@@ -883,6 +860,8 @@
 				(cdr ins))))
 		   instructions))))))))
 
+  ;;; Creates an `asm-target` struct for the given TARGET-NAME, which must be
+  ;;; a string.
   (define (make-target target-name)
     (let ((target-sym (string->symbol target-name)))
       (or (target-cache 'get target-sym)
@@ -924,6 +903,37 @@
 			    (cons result ast))))))
 
   ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
+  ;;; Parses the assembly source code string SOURCE and returns an assembly
+  ;;; object. TARGET-CPU must be a string identifying the initial target CPU
+  ;;; architecture.
+  ;;;
+  ;;; The resulting assembly object ASM can be called as follows:
+  ;;;
+  ;;; `(ASM 'done?)`
+  ;;;
+  ;;; Returns #t if no more passes are required to complete the assembly.
+  ;;;
+  ;;; `(ASM 'ast)`
+  ;;;
+  ;;; Returns the current abstract syntax tree.
+  ;;;
+  ;;; `(ASM 'local-namespace)`
+  ;;;
+  ;;; Returns the current local assembly namespace. Mostly used internally.
+  ;;;
+  ;;; `(ASM 'target)`
+  ;;;
+  ;;; Returns an `asm-target` struct defining the current target CPU
+  ;;; architecture.
+  ;;;
+  ;;; `(ASM 'assemble MAX-PASSES)`
+  ;;;
+  ;;; Assemble the source, using a maximum of MAX-PASSES passes.
+  ;;;
+  ;;; `(ASM 'result)`
+  ;;;
+  ;;; If no more passes are required, returns the assembled machine code as a
+  ;;; list of integer values. Otherwise, returns #f.
   (define (make-assembly target-cpu source
 			 #!optional (org 0) (extra-symbols '()))
     (let* ((initial-target (the (struct asm-target) (make-target target-cpu)))
