@@ -229,7 +229,7 @@ For accessing assembly level global and local symbols in Scheme, the `symbol-ref
 
 Conversely, you can define new assembly level symbols with the `add-symbol!` and `add-local-symbol!` procedures, which take a symbol identifier and a value as arguments.
 
-The current origin address can be retrieved with the procedure `current-origin`, which takes no arguments.
+The current origin address can be retrieved with the variable `current-origin`.
 
 Returned assembly code can in turn contain s-expression directives, though the usefulness of this may be questionable.
 
@@ -274,15 +274,15 @@ Schemta provides PEG parser combinators through [comparse](https://api.call-cc.o
 
 A plain number. Returns the numeric value.
 
-**`a-numeric`**
+**`numeric`**
 
-Any of a-number, a-symbol, or a-sexp-directive.
+Any of a-number, symbol, or a-sexp-directive.
 
-**`-sexp-directive`**
+**`sexp-directive`**
 
 TODO...
 
-**`a-symbol`**
+**`symbol`**
 
 An assembly level symbol. Returns `(symbol SYM).
 

@@ -33,7 +33,7 @@ _skip
 
 ;******************************************************************
 rdseq
-seqpntr .equ .(+ 1 (current-origin))
+seqpntr .equ .(+ 1 current-origin)
 	ld sp,0
 	xor a
 	pop de			;pattern pointer to DE
@@ -67,7 +67,7 @@ rdptn
         exx
 
 
-patpntr .equ .(+ 1 (current-origin))			;fetch pointer to pattern data
+patpntr .equ .(+ 1 current-origin)			;fetch pointer to pattern data
 	ld sp,0
 
 	pop af
@@ -121,7 +121,7 @@ playRegular
 	exx			;4
 	add hl,de		;11
 	ld a,h			;4
-duty1 .equ .(+ 1 (current-origin))
+duty1 .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -129,7 +129,7 @@ duty1 .equ .(+ 1 (current-origin))
 
 	add ix,bc		;15
 	ld a,ixh		;8
-duty2 .equ .(+ 1 (current-origin))
+duty2 .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -142,17 +142,17 @@ duty2 .equ .(+ 1 (current-origin))
 
 	add hl,sp		;11
 	ld a,h			;4
-duty4 .equ .(+ 1 (current-origin))
+duty4 .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
-stopch .equ .(+ 1 (current-origin))
+stopch .equ .(+ 1 current-origin)
 	and $10			;7
 	out ($fe),a		;11
 
 
 	add iy,de		;15
 	ld a,iyh		;8
-duty3 .equ .(+ 1 (current-origin))
+duty3 .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -216,7 +216,7 @@ playNoise
 	exx			;4
 	add hl,de		;11
 	ld a,h			;4
-duty1a .equ .(+ 1 (current-origin))
+duty1a .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -224,7 +224,7 @@ duty1a .equ .(+ 1 (current-origin))
 
 	add ix,bc		;15
 	ld a,ixh		;8
-duty2a .equ .(+ 1 (current-origin))
+duty2a .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -235,16 +235,16 @@ duty2a .equ .(+ 1 (current-origin))
 
 	add hl,sp		;11
 	ld a,h			;4
-duty4a .equ .(+ 1 (current-origin))
+duty4a .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
-stopcha .equ .(+ 1 (current-origin))
+stopcha .equ .(+ 1 current-origin)
 	and $10			;7
 	out ($fe),a		;11
 
 	add iy,de		;15
 	ld a,iyh		;8
-duty3a .equ .(+ 1 (current-origin))
+duty3a .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -307,7 +307,7 @@ playSlide
 	exx			;4
 	add hl,de		;11
 	ld a,h			;4
-duty1b .equ .(+ 1 (current-origin))
+duty1b .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -315,7 +315,7 @@ duty1b .equ .(+ 1 (current-origin))
 
 	add ix,bc		;15
 	ld a,ixh		;8
-duty2b .equ .(+ 1 (current-origin))
+duty2b .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -327,16 +327,16 @@ duty2b .equ .(+ 1 (current-origin))
 
 	add hl,sp		;11
 	ld a,h			;4
-duty4b .equ .(+ 1 (current-origin))
+duty4b .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
-stopchb .equ .(+ 1 (current-origin))
+stopchb .equ .(+ 1 current-origin)
 	and $10			;7
 	out ($fe),a		;11
 
 	add iy,de		;15
 	ld a,iyh		;8
-duty3b .equ .(+ 1 (current-origin))
+duty3b .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 
@@ -404,7 +404,7 @@ playNoiseSlide
 	exx			;4
 	add hl,de		;11
 	ld a,h			;4
-duty1c .equ .(+ 1 (current-origin))
+duty1c .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -412,7 +412,7 @@ duty1c .equ .(+ 1 (current-origin))
 
 	add ix,bc		;15
 	ld a,ixh		;8
-duty2c .equ .(+ 1 (current-origin))
+duty2c .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -423,16 +423,16 @@ duty2c .equ .(+ 1 (current-origin))
 
 	add hl,sp		;11
 	ld a,h			;4
-duty4c .equ .(+ 1 (current-origin))
+duty4c .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
-stopchc .equ .(+ 1 (current-origin))
+stopchc .equ .(+ 1 current-origin)
 	and $10			;7
 	out ($fe),a		;11
 
 	add iy,de		;15
 	ld a,iyh		;8
-duty3c .equ .(+ 1 (current-origin))
+duty3c .equ .(+ 1 current-origin)
 	cp $80			;7
 	sbc a,a			;4
 	and $10			;7
@@ -459,7 +459,7 @@ _skip
 
 ;******************************************************************
 exit
-oldSP .equ .(+ 1 (current-origin))
+oldSP .equ .(+ 1 current-origin)
 	ld sp,0
 	pop hl
 	exx

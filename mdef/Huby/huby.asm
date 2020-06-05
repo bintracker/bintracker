@@ -67,7 +67,7 @@ readRow
 	ld e,a
 
 	cp OP_INCL				;if first note is #2c, it is drum sound
-	jr z,.(+ 3 (current-origin))
+	jr z,.(+ 3 current-origin)
 	xor a
 	ld (soundLoop_slide),a
 

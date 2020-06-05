@@ -24,8 +24,8 @@
 
   (import scheme (chicken base) (chicken string) (chicken bitwise) (chicken io)
 	  (chicken port) (chicken module) (chicken file) (chicken type)
-	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69
-	  byte-blob comparse typed-records simple-exceptions)
+	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 miscmacros
+	  comparse typed-records simple-exceptions)
 
   (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string))
 
@@ -39,170 +39,44 @@
     ((extra '()) : (list-of (list symbol *)))
     ((instructions (make-hash-table)) : hash-table))
 
-  (defstruct asm-state
-    ((target #f) : (or false (struct asm-target)))
-    ((symbols '()) : (list-of (list symbol fixnum)))
-    ((local-namespace '000__void) : symbol)
-    ((current-origin 0) : fixnum)
-    ((ast '()) : list)
-    ((done? #t) : boolean))
-
-  (: *asm-state* (struct asm-state))
-  (define *asm-state* (make-asm-state))
-
-  (: *target-cache* (list-of (list symbol (struct asm-target))))
-  (define *target-cache* '())
-
   (: *schemta-include-path* string)
   (define *schemta-include-path* "mdal-targets/")
 
   (define (set-schemta-include-path! p)
     (set! *schemta-include-path* p))
 
-  (define (reset-asm-state!)
-    (asm-state-target-set! *asm-state* #f)
-    (asm-state-symbols-set! *asm-state* '())
-    (asm-state-local-namespace-set! *asm-state* '000__void)
-    (asm-state-current-origin-set! *asm-state* 0)
-    (asm-state-ast-set! *asm-state* '())
-    (asm-state-done?-set! *asm-state* #t))
-
-  ;;; parse an alist of operand option definitions and convert the parser
-  ;;; definition keys into actual parsers
-  (define (eval-operand-options op-lst operand-count)
-    (letrec ((eval-ops (lambda (local-ops depth)
-			 (if (>= depth operand-count)
-			     (cons 'list local-ops)
-			     (map (lambda (opt)
-				    (list (eval (car opt))
-					  (eval-ops (cadr opt) (+ 1 depth))))
-				  local-ops)))))
-      (eval-ops op-lst 0)))
-
-  ;;; create an asm-target struct from a target definition expression
-  (define (construct-asm-target #!key endian registers register-sets
-				addressing-modes conditions condition-sets
-				extra instructions)
-    (let ((eval-fn-mapping (lambda (x) (list (car x) (eval (cadr x))))))
-      (begin
-	(asm-state-target-set!
-	 *asm-state*
-	 (make-asm-target endian: endian
-			  registers: registers
-			  register-sets: register-sets
-			  conditions: conditions
-			  condition-sets: condition-sets))
-	(asm-target-addressing-modes-set! (target)
-					  (map eval-fn-mapping addressing-modes))
-	(asm-target-extra-set! (target) (map eval-fn-mapping extra))
-	(asm-target-instructions-set!
-	 (target)
-	 (alist->hash-table
-	  (map (lambda (ins)
-		 (list (car ins)
-		       (map (lambda (opts)
-			      (cons (car opts)
-				    (if (= 0 (car opts))
-					(cons 'list (cadr opts))
-					(map (lambda (parser)
-					       (eval-operand-options
-						parser (car opts)))
-					     (cdr opts)))))
-			    (cdr ins))))
-	       instructions))))))
-
-  (define (target) (asm-state-target *asm-state*))
-
-  ;;; Set the asm target to the target definition defined in {{target-name}}.
-  ;;; before calling this function, ensure that `*schemta-include-path* points
-  ;;; to a folder containing the required target configurations.
-  (define (set-target! target-name)
-    (let* ((target-sym (string->symbol target-name))
-	   (target-ref (alist-ref target-sym *target-cache*)))
-      (if target-ref
-	  (asm-state-target-set! *asm-state* (car target-ref))
-	  (let ((config-filename (string-append *schemta-include-path*
-						target-name
-						".scm")))
-	    (if (file-exists? config-filename)
-		(begin
-		  (apply construct-asm-target
-			 (cdr (with-input-from-file config-filename read)))
-		  (set! *target-cache* (cons (list target-sym (target))
-					     *target-cache*)))
-		(error (string-append "target configuration " config-filename
-				      " not found")))))))
-
-  (define (symbols) (asm-state-symbols *asm-state*))
-
-  (define (set-symbols! lst) (asm-state-symbols-set! *asm-state* lst))
-
-  (define (add-symbol! name val)
-    (set-symbols! (cons (list name val) (symbols))))
-
-  (define (local-namespace) (asm-state-local-namespace *asm-state*))
-
-  (define (set-local-namespace! name)
-    (asm-state-local-namespace-set! *asm-state* name))
-
-  (define (current-origin) (asm-state-current-origin *asm-state*))
-
-  (define (set-current-origin! val)
-    (asm-state-current-origin-set! *asm-state* val))
-
-  (define (inc-current-origin! offset)
-    (set-current-origin! (+ offset (current-origin))))
-
-  (define (ast) (asm-state-ast *asm-state*))
-
-  (define (set-ast! ast)
-    (asm-state-ast-set! *asm-state* ast))
-
-  (define (done?) (asm-state-done? *asm-state*))
-
-  (define (done!) (asm-state-done?-set! *asm-state* #t))
-
-  (define (require-another-pass!) (asm-state-done?-set! *asm-state* #f))
-
+  ;; These are bound dynamically during parsing/assembling.
+  (define register #f)
+  (define address #f)
+  (define condition #f)
+  (define extras #f)
+  (define condition-value #f)
+  (define register-value #f)
+  (define numeric #f)
+  (define current-origin #f)
+  (define symbol #f)
+  (define symbol-ref #f)
 
   ;; ---------------------------------------------------------------------------
   ;; Assembler primitives
   ;; ---------------------------------------------------------------------------
 
   ;;; Return the least significant byte of N.
-  (: lsb (fixnum -> fixnum))
+  (: lsb (fixnum --> fixnum))
   (define (lsb n) (bitwise-and #xff n))
 
   ;;; Return the most significant byte of word N. If N is a too large to be
   ;;; be represented in a word (2 bytes), returns the msb of `N & 0xffff`.
-  (: msb (fixnum -> fixnum))
+  (: msb (fixnum --> fixnum))
   (define (msb n) (bitwise-and #xff (quotient n 256)))
 
   ;;; Return the least significant word of N.
-  (: lsw (fixnum -> fixnum))
+  (: lsw (fixnum --> fixnum))
   (define (lsw n) (bitwise-and #xffff n))
 
   ;;; Returns the most significant word of N.
-  (: msw (fixnum -> fixnum))
+  (: msw (fixnum --> fixnum))
   (define (msw n) (bitwise-and #xffff (quotient n #x10000)))
-
-  (: register-value (symbol -> (or false fixnum)))
-  (define (register-value r)
-    (car (alist-ref r (asm-target-registers (target)))))
-
-  (: condition-value (symbol -> (or false fixnum)))
-  (define (condition-value c)
-    (car (alist-ref c (asm-target-conditions (target)))))
-
-  (: extra (symbol -> *))
-  (define (extra what)
-    (car (alist-ref what (asm-target-extra (target)))))
-
-  ;;; Get the value of asm-level symbol S, or `#f` if symbol cannot be resolved.
-  (: symbol-ref (symbol -> fixnum))
-  (define (symbol-ref s)
-    (let ((v (alist-ref s (symbols))))
-      (if v (car v) #f)))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Instruction Parser
@@ -235,8 +109,7 @@
   ;;; Match operands against instruction parser options.
   (define (match-operands operands parser-options)
     (let ((m (find (lambda (po)
-		     (parse (followed-by (car po)
-					 end-of-input)
+		     (parse (followed-by (car po) end-of-input)
 			    (car operands)))
 		  parser-options)))
       (if m
@@ -246,35 +119,43 @@
 	  (error 'match-operands (string-append "invalid operand in "
 						(->string operands))))))
 
-  (define (parse-operands operands)
+  (define (parse-operands operands target)
     (map (lambda (op)
-	   (parse (apply any-of
-			 (append (list a-numeric (register 'all)
-				       (condition 'all))
-				 (map cadr
-				      (asm-target-addressing-modes (target)))))
-		  op))
+	   (parse
+	    (apply any-of
+		   (append (list (a-numeric target)
+				 (set-parser 'all
+					     asm-target-registers
+					     asm-target-register-sets
+					     target)
+				 (set-parser 'all
+					     asm-target-conditions
+					     asm-target-condition-sets
+					     target))
+			   (map cadr
+				(asm-target-addressing-modes target))))
+	    op))
 	 operands))
 
   ;;; Match the operands of an instruction against the options in the
   ;;; target instruction table, and return a list containing the parsed operands
   ;;; in car, and the output composition in cadr.
-  (define (resolve-operands operands option-lst)
+  (define (resolve-operands operands option-lst target)
     (let ((base (alist-ref (length operands) option-lst)))
       (if base
 	  (if (null-list? operands)
 	      (list '() base)
-	      (list (parse-operands operands)
+	      (list (parse-operands operands target)
 		    (match-operands operands (car base))))
 	  (error "wrong number of operands"))))
 
   ;;; Returns either an asm-instruction structure, or a list of bytes if the
   ;;; instruction can be resolved immediately.
-  (define (resolve-instruction opcode operands)
-    (let ((options (hash-table-ref (asm-target-instructions (target))
+  (define (resolve-instruction opcode operands target)
+    (let ((options (hash-table-ref (asm-target-instructions target)
 				   opcode)))
       (if options
-	  (resolve-operands operands (car options))
+	  (resolve-operands operands (car options) target)
 	  (error (string-append "unknown mnemonic: " (->string opcode))))))
 
   ;; ---------------------------------------------------------------------------
@@ -365,13 +246,13 @@
      (zero-or-more (in (char-set-union char-set:letter+digit
 				       (string->char-set "_-+*/!?%.:="))))))
 
-  (define a-label
+  (define (a-label target)
     (sequence* ((head (as-string (one-or-more (in char-set:letter))))
 		(remainder a-symbol-name))
 	       (let ((lbl (string->symbol
 			   (string-downcase (string-append head remainder)))))
-		 (if (or (alist-ref lbl (asm-target-registers (target)))
-			 (alist-ref lbl (asm-target-conditions (target))))
+		 (if (or (alist-ref lbl (asm-target-registers target))
+			 (alist-ref lbl (asm-target-conditions target)))
 		     fail
 		     (result (list 'label lbl))))))
 
@@ -382,7 +263,8 @@
 			  (string->symbol
 			   (string-downcase (string-append "_" r))))))))
 
-  (define a-symbol (any-of a-label a-local-label))
+  (define (a-symbol target)
+    (any-of (a-label target) a-local-label))
 
   (define a-sexp-directive
     (sequence* ((_ (zero-or-more (in horizontal-whitespace)))
@@ -396,7 +278,7 @@
 		(sexp a-sexp-string))
 	       (result (string-append "." sexp))))
 
-  (define a-opcode
+  (define (an-opcode target)
     (sequence* ((_ (one-or-more (in horizontal-whitespace)))
 		(head (as-string (one-or-more (in char-set:letter))))
 		(remainder (as-string (zero-or-more
@@ -404,12 +286,12 @@
 	       (let ((opcode (string->symbol
 			      (string-downcase (string-append head
 							      remainder)))))
-		 (if (hash-table-ref/default (asm-target-instructions (target))
+		 (if (hash-table-ref/default (asm-target-instructions target)
 					     opcode #f)
 		     (result opcode)
 		     fail))))
 
-  (define a-operand
+  (define an-operand
     (enclosed-by
      (zero-or-more (in horizontal-whitespace))
      (any-of a-sexp-directive-string
@@ -424,10 +306,10 @@
 		   (lambda (r) (result (string-downcase r)))))
      (maybe (is #\,))))
 
-  (define a-instruction
-    (sequence* ((opcode a-opcode)
-		(operands (zero-or-more a-operand)))
-	       (let* ((output-lst (resolve-instruction opcode operands))
+  (define (an-instruction target)
+    (sequence* ((opcode (an-opcode target))
+		(operands (zero-or-more an-operand)))
+	       (let* ((output-lst (resolve-instruction opcode operands target))
 		      (parsed-operands (car output-lst))
 		      (composition (cadr output-lst)))
 		 (result (list 'instruction (sub1 (length composition))
@@ -479,7 +361,8 @@
     (bind a-sexp-string
 	  (lambda (s) (result (with-input-from-string s read)))))
 
-  (define a-numeric (any-of a-number a-symbol a-sexp-directive))
+  (define (a-numeric target)
+    (any-of a-number (a-symbol target) a-sexp-directive))
 
     (define (a-directive-using-string-operand id)
     (sequence* ((_ (char-seq (symbol->string id)))
@@ -493,134 +376,117 @@
 
   (define cpu-directive
     (bind (a-directive-using-string-operand 'cpu)
-	  (lambda (r) (begin (set-target! (third r))
+	  ;; TODO shouldn't it be cadr instead of third?
+	  (lambda (r) (begin ;; (set-target! (third r))
 			     (result r)))))
 
-  (define org-directive
+  (define (org-directive target)
     (sequence* ((_ (char-seq "org"))
 		(_ (one-or-more (in horizontal-whitespace)))
-		(arg a-numeric))
+		(arg (a-numeric target)))
 	       (result (list 'org arg))))
 
-  (define numeric-operands
-    (sequence* ((arg1 a-numeric)
+  (define (numeric-operands target)
+    (sequence* ((arg1 (a-numeric target))
 		(args (zero-or-more
 		       (sequence* ((_ (is #\,))
 				   (_ (zero-or-more (in horizontal-whitespace)))
-				   (rr a-numeric))
+				   (rr (a-numeric target)))
 				  (result rr)))))
 	       (result (cons arg1 args))))
 
-  (define (a-directive-using-max-2-numeric-operands id)
+  (define (a-directive-using-max-2-numeric-operands id target)
     (sequence* ((_ (char-seq (symbol->string id)))
 		(_ (one-or-more (in horizontal-whitespace)))
-		(args numeric-operands))
+		(args (numeric-operands target)))
 	       (if (> (length args) 2)
 		   fail
 		   (result (list id args)))))
 
-  (define align-directive (a-directive-using-max-2-numeric-operands 'align))
+  (define (align-directive target)
+    (a-directive-using-max-2-numeric-operands 'align target))
 
-  (define ds-directive (a-directive-using-max-2-numeric-operands 'ds))
+  (define (ds-directive target)
+    (a-directive-using-max-2-numeric-operands 'ds target))
 
-  (define (a-directive-using-multiple-numeric-operands id)
+  (define (a-directive-using-multiple-numeric-operands id target)
     (sequence* ((_ (char-seq (symbol->string id)))
 		(_ (one-or-more (in horizontal-whitespace)))
-		(args numeric-operands))
+		(args (numeric-operands target)))
 	       (result (list id args))))
 
-  (define dw-directive (a-directive-using-multiple-numeric-operands 'dw))
+  (define (dw-directive target)
+    (a-directive-using-multiple-numeric-operands 'dw target))
 
-  (define dl-directive (a-directive-using-multiple-numeric-operands 'dl))
+  (define (dl-directive target)
+    (a-directive-using-multiple-numeric-operands 'dl target))
 
-  (define db-directive
-    (any-of (a-directive-using-multiple-numeric-operands 'db)
+  (define (db-directive target)
+    (any-of (a-directive-using-multiple-numeric-operands 'db target)
 	    (sequence* ((_ (char-seq "db"))
 			(_ (one-or-more (in horizontal-whitespace)))
 			(arg a-quoted-string))
 		       (result (list 'db arg)))))
 
-  (define a-directive
+  (define (a-directive target)
     (sequence* ((_ (zero-or-more (in horizontal-whitespace)))
 		(_ (is #\.))
-		(directive (any-of db-directive dw-directive dl-directive
-				   ds-directive org-directive align-directive
-				   include-directive incbin-directive
+		(directive (any-of (db-directive target)
+				   (dw-directive target)
+				   (dl-directive target)
+				   (ds-directive target)
+				   (org-directive target)
+				   (align-directive target)
+				   include-directive
+				   incbin-directive
 				   cpu-directive)))
 	       (result (cons 'directive directive))))
 
 
-  (define a-assign (sequence* ((_ (zero-or-more (in horizontal-whitespace)))
-			       (sym a-symbol)
-			       (_ (one-or-more (in horizontal-whitespace)))
-			       (_ (char-seq ".equ"))
-			       (_ (one-or-more (in horizontal-whitespace)))
-			       (val a-numeric))
-			      (result (list 'assign sym val))))
+  (define (a-assign target)
+    (sequence* ((_ (zero-or-more (in horizontal-whitespace)))
+		(sym (a-symbol target))
+		(_ (one-or-more (in horizontal-whitespace)))
+		(_ (char-seq ".equ"))
+		(_ (one-or-more (in horizontal-whitespace)))
+		(val (a-numeric target)))
+	       (result (list 'assign sym val))))
 
-  (define (set-parser set-id collection sub-collection)
+  (define (set-parser set-id collection sub-collection target)
     (bind (apply any-of
   		 (map (o char-seq symbol->string)
   		      (if (eq? 'all set-id)
-  			  (map car (collection (target)))
-  			  (car (alist-ref set-id (sub-collection (target)))))))
+  			  (map car (collection target))
+  			  (car (alist-ref set-id (sub-collection target))))))
   	  (lambda (r) (result (string->symbol r)))))
 
-  (define (register set)
-    (set-parser set asm-target-registers asm-target-register-sets))
-
-  (define (condition set)
-    (set-parser set asm-target-conditions asm-target-condition-sets))
-
-  (define (address type)
-    (car (alist-ref type (asm-target-addressing-modes (target)))))
-
-  (define a-element
-    (any-of a-assign a-directive a-sexp-directive a-symbol a-instruction))
+  (define (an-element target)
+    (any-of (a-assign target)
+	    (a-directive target)
+	    a-sexp-directive
+	    (a-symbol target)
+	    (an-instruction target)))
 
   (define a-blank-line
     (bind (followed-by (sequence (zero-or-more (in horizontal-whitespace))
 				 (maybe a-comment))
-		       (is #\newline))
+		       (any-of (is #\newline)
+			       end-of-input))
 	  (lambda (r) (result '()))))
 
-  (define a-line
+  (define (a-line target)
     (any-of
-     (sequence* ((elem (any-of a-blank-line a-element))
+     (sequence* ((elem (any-of a-blank-line (an-element target)))
 		 (_ (zero-or-more (in horizontal-whitespace)))
 		 (_ (maybe a-comment))
-		 (_ (is #\newline)))
+		 (_ (any-of (is #\newline)
+			    end-of-input)))
 		(result elem))
-     a-symbol))
+     (a-symbol target)))
 
   (define (count-newlines str)
     (count (lambda (a) (equal? #\n a))
 	   (string->list str)))
-
-  ;;; Call `parse-source` on SOURCE and set *asm-state*-ast accoringly.
-  ;;; You may want to call `reset-asm-state!` before calling this function.
-  (define (set-ast-from-source! source)
-    (set-ast! (parse-source source)))
-
-  ;;; parse the given assembly source and output the abstract source tree.
-  ;;; SOURCE must be a string. You may want to call `reset-asm-state!`
-  ;;; before calling this function.
-  (define (parse-source source)
-    (let ((linecount (count-newlines source))
-	  (current-target (target)))
-      (receive (ast remainder)
-	  (parse (one-or-more a-line) (string-append source "\n"))
-	(if (parse end-of-input remainder)
-	    (begin (asm-state-target-set! *asm-state* current-target)
-		   (remove null-list? ast))
-	    ;; TODO ugly af and not working
-	    (error (string-append
-		    "error in line "
-		    (number->string
-		     (+ 1 (- linecount (count-newlines
-					(parse (as-string (one-or-more item))
-					       remainder)))))
-		    " remainder: " (->string remainder)))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -631,271 +497,526 @@
     (equal? #\_ ((o car string->list symbol->string)
 		 sym)))
 
-  (define (have-all-symbols? required-symbols)
+  (define (have-all-symbols? required-symbols state)
     (every (lambda (sym)
-	     (alist-ref (if (is-local-symbol? sym)
-			    (symbol-append (local-namespace) sym)
-			    sym)
-			(symbols)))
-	   required-symbols))
+  	     (alist-ref (if (is-local-symbol? sym)
+  			    (symbol-append (state 'local-namespace) sym)
+  			    sym)
+  			(state 'symbols)))
+  	   required-symbols))
 
-  (define (eval-operand op)
+  (define (eval-operand op state)
     (if (pair? op)
-	(case (car op)
-	  ((label) (car (alist-ref (cadr op) (symbols))))
-	  ((local-label) (car (alist-ref (symbol-append (local-namespace)
-						       (cadr op))
-					(symbols))))
-	  ((sexp-directive) (eval (cadr op)))
-	  ;; TODO address etc
-	  (else op))
-	(if (number? op)
-	    op
-	    `(quote ,op))))
+  	(case (car op)
+  	  ((label)
+	   (car (alist-ref (cadr op) (state 'symbols))))
+  	  ((local-label)
+	   (car (alist-ref (symbol-append (state 'local-namespace)
+					  (cadr op))
+  			   (state 'symbols))))
+  	  ((sexp-directive)
+	   (let ((res (do-sexp-directive op state)))
+	     (if (and (pair? res) (eqv? 'sexp-directive (car (flatten res))))
+		 #f
+		 res)))
+  	  ;; TODO address etc
+  	  (else op))
+  	(if (number? op) op `(quote ,op))))
 
-  (define (do-instruction node)
-    (if (have-all-symbols? (fourth node))
-	(let* ((evaluated-operands (map eval-operand (third node)))
-	       (operand-map (map (lambda (op n)
-				   (list (string->symbol
-					  (string-append "%op"
-							 (number->string n)))
-					 op))
-				 evaluated-operands
-				 (iota (length evaluated-operands) 1 1)))
-	       (res (list (eval `(let ,operand-map ,(last node))))))
-	  (set-current-origin! (+ (cadr node) (current-origin)))
-	  res)
-	(begin (require-another-pass!)
-	       (set-current-origin! (+ (cadr node) (current-origin)))
-	       (list node))))
+  (define (do-instruction node state)
+    (or (and (have-all-symbols? (fourth node) state)
+	     (let ((target (state 'target)))
+	       (fluid-let
+		   ((condition-value
+		     (lambda (c)
+		       (car (alist-ref c (asm-target-conditions target)))))
+		    (register-value
+		     (lambda (r)
+		       (car (alist-ref r (asm-target-registers target)))))
+		    (extras
+		     (lambda (what)
+		       (car (alist-ref what (asm-target-extra target)))))
+		    (current-origin (state 'current-origin))
+		    (symbol-ref
+		     (lambda (s)
+		       (and-let* ((v (alist-ref s (state 'symbols))))
+			 (car v)))))
+		 (let ((require-current-org (memv 'current-origin
+						  (flatten (last node))))
+		       (org (state 'current-origin))
+		       (evaluated-operands
+			(map (cute eval-operand <> state) (third node))))
+		   (when org (state 'current-origin (+ org (cadr node))))
+		   (if (and (every identity evaluated-operands)
+			    (or (not require-current-org) org))
+		       (let* ((operand-map
+			       (map (lambda (op n)
+  				      (list (string->symbol
+  					     (string-append "%op"
+							    (number->string n)))
+  					    op))
+  				    evaluated-operands
+  				    (iota (length evaluated-operands) 1 1)))
+  			      (res (list (eval `(let ,operand-map
+						  ,(last node))))))
+  			 res)
+		       (begin (state 'done? #f)
+			      (list node)))))))
+  	(begin (and-let* ((org (state 'current-origin)))
+  		 (state 'current-origin (+ org (cadr node))))
+	       (state 'done? #f)
+  	       (list node))))
 
   ;;; Execute .equ directive.
-  (define (do-assign node)
+  (define (do-assign node state)
     (let ((result (cond
-		   ((number? (third node)) (third node))
-		   ((and (pair? (third node))
-			 (eqv? 'sexp-directive (car (third node))))
-		    (do-sexp-directive (third node)))
-		   (else (error 'do-assign (->string node))))))
-      (if (and result (not (null? result)))
-	  (begin (add-symbol! (if (eq? 'label (caadr node))
-				  (cadadr node)
-				  (symbol-append (local-namespace)
-						 (cadadr node)))
-			      result)
-		 #f)
-	  (begin (require-another-pass!)
-		 (list node)))))
+  		   ((number? (third node)) (third node))
+  		   ((and (pair? (third node))
+  			 (eqv? 'sexp-directive (car (third node))))
+  		    (do-sexp-directive (third node) state))
+  		   (else (error 'schemta#do-assign (->string node))))))
+      (if (and result (not (null? result))
+	       (not (memv 'sexp-directive (flatten (list result)))))
+  	  (begin (state 'symbols
+			(cons (list
+			       (if (eqv? 'label (caadr node))
+  				   (cadadr node)
+  				   (symbol-append (state 'local-namespace)
+  						  (cadadr node)))
+  			       result)
+			      (state 'symbols)))
+  		 '())
+  	  (list node))))
 
   ;;; Create a global symbol and set to current origin. This will also set the
   ;;; current local-namespace.
-  (define (do-label node)
-    (add-symbol! (cadr node) (current-origin))
-    (set-local-namespace! (cadr node))
-    (list (list 'swap-namespace (cadr node))))
+  (define (do-label node state)
+    (state 'local-namespace (cadr node))
+    (let ((org (state 'current-origin)))
+      (if org
+	  (begin (state 'symbols (cons (list (cadr node) org) (state 'symbols)))
+		 (list (list 'swap-namespace (cadr node))))
+          (list node))))
 
   ;;; Create local symbol and set to current origin. Will also create a global
   ;;; symbol which prefixes the current local-namespace.
-  (define (do-local-label node)
-    (add-symbol! (symbol-append (local-namespace) (cadr node))
-		 (current-origin))
-    #f)
+  (define (do-local-label node state)
+    (let ((org (state 'current-origin)))
+      (if org
+	  (begin (state 'symbols
+			(cons (list (symbol-append (state 'local-namespace)
+						   (cadr node))
+				    org)
+			      (state 'symbols)))
+		 '())
+	  (list node))))
 
   ;;; get fill byte value for align/ds nodes
   (define (get-fill-param node)
     (if (> (length (third node)) 1)
-	((o lsb eval-operand cadr third) node)
-	0))
+	(let ((res ((o eval-operand cadr third) node)))
+	  (if res (lsb res) #f))
+  	0))
 
-  (define (word->bytes w)
-    (if (eq? 'little (asm-target-endian (target)))
-	(list (lsb w) (msb w))
-	(list (msb w) (lsb w))))
+  (define (word->bytes w target)
+    (if (eq? 'little (asm-target-endian target))
+  	(list (lsb w) (msb w))
+  	(list (msb w) (lsb w))))
 
-  (define (long->bytes l)
-    (if (eq? 'little (asm-target-endian (target)))
-	(append (word->bytes l) (word->bytes (msw l)))
-	(append (word->bytes (msw l) (word->bytes l)))))
+  (define (long->bytes l target)
+    (if (eq? 'little (asm-target-endian target))
+  	(append (word->bytes l) (word->bytes (msw l)))
+  	(append (word->bytes (msw l) (word->bytes l)))))
 
+  (: string->bytes (string --> (list-of integer)))
   (define (string->bytes str)
     (map char->integer (string->list str)))
 
   ;; TODO .pseudo-org
   ;;; Execute asm directive
-  (define (do-directive node)
+  (define (do-directive node state)
     (case (cadr node)
       ((db) (let* ((is-pair? (pair? (third node)))
-		   (len (if is-pair?
-			    (length (third node))
-			    (string-length (third node))))
-		   (res (if is-pair?
-			    (map (lambda (op)
-				   (if (string? op)
-				       (string->bytes op)
-				       (eval-operand op)))
-				 (list (third node)))
-			    (map char->integer (string->list (third node))))))
-	      (inc-current-origin! len)
-	      res))
-      ((dw) (let ((res (list (flatten (map (o word->bytes eval-operand)
-					   (apply list (third node)))))))
-	      (inc-current-origin! (* 2 (length (third node))))
-	      res))
-      ((dl) (let ((res (list (flatten (map (o long->bytes eval-operand)
-					   (apply list (third node)))))))
-	      (inc-current-origin! (* 4 (length (third node))))
-	      res))
-      ((ds) (let ((res (list (make-list (caaddr node) (get-fill-param node)))))
-	      (inc-current-origin! (caaddr node))
-	      res))
-      ((align) (let ((align (caaddr node)))
-		 (when (= 0 (caaddr node)) (error "cannot align to 0"))
-		 (let* ((nextorg (* align
-				    (quotient (+ (current-origin) (sub1 align))
-					      align)))
-			(fillbytes (list (make-list (- nextorg (current-origin))
-						    (get-fill-param node)))))
-		   (set-current-origin! nextorg)
-		   fillbytes)))
-      ((cpu) (begin (set-target! (third node))
-		    #f))
+      		   (len (if is-pair?
+      			    (length (third node))
+      			    (string-length (third node))))
+      		   (res (if is-pair?
+      			    (map (lambda (op)
+      				   (if (string? op)
+      				       (string->bytes op)
+      				       (eval-operand op state)))
+      				 (list (third node)))
+      			    (string->bytes (third node)))))
+	      (and-let* ((org (state 'current-origin)))
+      		(state 'current-origin (+ org len)))
+	      ;; TODO (list res)?
+      	      (or (and (every identity res)
+		       (list res))
+		  (begin (state 'done? #f) (list node)))))
+      ((dw) (let ((res (list (flatten
+			      (map (lambda (arg)
+				     (word->bytes (eval-operand arg state)
+						  (state 'target)))
+      				   (apply list (third node)))))))
+	      (and-let* ((org (state 'current-origin)))
+		(state 'current-origin (+ org (* 2 (length (third node))))))
+	      (if (every identity (car res))
+		  res
+		  (begin (state 'done? #f) (list node)))))
+      ((dl) (let ((res (list (flatten
+			      (map (lambda (arg)
+				     (word->bytes (eval-operand arg state)
+						  (state 'target)))
+      				   (apply list (third node)))))))
+	      (and-let* ((org (state 'current-origin)))
+		(state 'current-origin (+ org (* 4 (length (third node))))))
+	      (if (every identity (car res))
+		  res
+		  (begin (state 'done? #f) (list node)))))
+      ((ds) (or (and-let* ((fillbyte (get-fill-param node)))
+		  (and-let* ((org (state 'current-origin)))
+		    (state 'current-origin (+ org (caaddr node))))
+      		  (list (make-list (caaddr node) fillbyte)))
+		(begin (state 'done? #f) (list node))))
+      ((align)
+       (when (zero? (caaddr node))
+	 (error 'schemta#do-directive "cannot align to 0"))
+       (or (and-let* ((org (state 'current-org))
+		      (align (caaddr node))
+		      (nextorg (* align (quotient (+ org (sub1 align))
+      						  align)))
+		      (fillbyte (get-fill-param node))
+      		      (fill (list (make-list (- nextorg org) fillbyte))))
+      		     (state 'current-origin! nextorg)
+      		     fill)
+	   (begin (state 'current-origin #f) (state 'done #f) (list node))))
+      ((cpu)
+       (state 'target (make-target (third node)))
+       (list 'swap-target (third node)))
       ((include) (if (file-exists? (third node))
-		     (let ((sub-ast (parse-source
-				     (string-intersperse
-				      (read-lines
-				       (open-input-file (third node)))
-				      "\n"))))
-		       ;; TODO must append to ast, not cons
-		       (do-assembler-pass sub-ast))
-		     (error (string-append "included file " (third node)
-					   " not found"))))
+		     (parse-source (call-with-input-file (third node)
+				     (cute read-string #f <>))
+				   (state 'target)
+				   '())
+      		     (error 'schemta#do-directive
+			    (string-append "included file " (third node)
+      					   " not found"))))
       ((incbin) (if (file-exists? (third node))
-		    (let ((bytes ((o u8vector->list byte-blob->u8vector
-				     file->byte-blob third)
-				  node)))
-		      (inc-current-origin! (length bytes))
-		      (list bytes))
-		    (error (string-append "included binary " (third node)
-					  " not found"))))
-      ((org) (begin (when (< (third node) (current-origin))
-		      (error "invalid origin offset"))
-		    (let ((fillbytes (list (make-list (- (third node)
-							 (current-origin))
-						      0))))
-		      (set-current-origin! (third node))
-		      fillbytes)))
-      (else (error "Internal error in do-directive. This is a bug."))))
+      		    (let ((bytes (map char->integer
+				      (string->list
+				       (call-with-input-file (third node)
+					 (cute read-string #f <>))))))
+		      (when (state 'current-origin)
+      			(state 'current-origin (+ (state 'current-origin)
+						  (length bytes))))
+      		      (list bytes))
+      		    (error 'schemta#do-directive
+			   (string-append "included binary " (third node)
+      					  " not found"))))
+      ((org)
+       (let ((old-org (state 'current-origin)))
+	 (state 'current-origin (third node))
+	 (if old-org
+	     (begin (when (< (third node) old-org)
+  		      (error 'schemta#do-directive "invalid origin offset"))
+  		    (list (make-list (- (third node) old-org) 0)))
+	     (list node))))
+      (else (error 'schemta#do-directive (string-append "Invalid directive "
+							(->string (cadr node))
+							". This is a bug.")))))
 
   ;;; Execute a sexp-directive
-  (define (do-sexp-directive node)
-    (let ((res (eval (cadr node))))
-      (cond
-       ((string? res) (do-assembler-pass (parse-source res)))
-       ((number? res) res)
-       (else '()))))
+  (define (do-sexp-directive node state)
+    (if (and (or (and (list? (cadr node))
+		      (memv 'current-origin (flatten (cadr node))))
+		 (eqv? 'current-origin (cadr node)))
+	     (not (state 'current-origin)))
+	(begin (state 'done? #f) (list node))
+	(fluid-let ((current-origin (state 'current-origin))
+		    (symbol-ref
+		     (lambda (s)
+		       (and-let* ((v (alist-ref s (state 'symbols))))
+			 (car v)))))
+	  (let ((res (eval (cadr node))))
+	    (cond
+	     ((string? res) (begin (state 'done? #f)
+				   (state 'current-origin #f)
+				   (parse-source res (state 'target) '())))
+	     ((number? res) res)
+	     (else '()))))))
 
-  (define (do-swap-namespace node)
-    (set-local-namespace! (cadr node))
+  (define (do-swap-namespace node state)
+    (state 'local-namespace (cadr node))
     (list node))
 
+  (define (do-swap-target node state)
+    (state 'target (make-target (cadr node))))
+
   ;;; dispatch AST-NODE to evaluator procedures
-  (define (assemble-node ast-node)
+  (: assemble-node (list procedure -> list))
+  (define (assemble-node ast-node state)
     (if (number? (car ast-node))
-	(begin (inc-current-origin! (length ast-node))
-	       (list ast-node))
-	(case (car ast-node)
-	  ((instruction) (do-instruction ast-node))
-	  ((assign) (do-assign ast-node))
-	  ((label) (do-label ast-node))
-	  ((local-label) (do-local-label ast-node))
-	  ((directive) (do-directive ast-node))
-	  ((sexp-directive) (do-sexp-directive ast-node))
-	  ((swap-namespace) (do-swap-namespace ast-node))
-	  (else (error "Internal error in assemble-node. This is a bug.")))))
+  	(begin (and-let* ((org (state 'current-origin)))
+		 (state 'current-origin (+ org (length ast-node))))
+  	       (list ast-node))
+	((case (car ast-node)
+  	   ((instruction) do-instruction)
+  	   ((assign) do-assign)
+  	   ((label) do-label)
+  	   ((local-label) do-local-label)
+  	   ((directive) do-directive)
+  	   ((sexp-directive) do-sexp-directive)
+  	   ((swap-namespace) do-swap-namespace)
+	   ((swap-target) do-swap-target)
+  	   (else (error 'schemta#assemble-node
+			"Internal error in assemble-node. This is a bug.")))
+	 ast-node state)))
 
-  ;;; Do an assembler pass on the given abstract source tree. This may have
-  ;;; side effects, namely current origin is updated, and `asm-state-done?` may
-  ;;; be updated to signal whether another pass is required.
-  (define (do-assembler-pass ast)
-    ;; we assume that this is the last pass required, unless proven otherwise
-    (do ((old-ast ast (cdr old-ast))
-	 (next-ast '() (let ((next-nodes (assemble-node (car old-ast))))
-			 (if next-nodes
-			     (append next-ast next-nodes)
-			     next-ast))))
-	((null-list? old-ast) next-ast)))
 
-  ;;; Run `do-assembler-pass` on the current abstract source tree in
-  ;;; *asm-state*, and update it with the result.
-  (define (do-pass-and-set-ast!)
-    (let ((current-target (target))
-	  (init-origin (current-origin)))
-      (done!)
-      (set-ast! (do-assembler-pass (ast)))
-      (set-current-origin! init-origin)
-      (asm-state-target-set! *asm-state* current-target)))
 
+  ;; ;;; Do an assembler pass on the given abstract source tree. This may have
+  ;; ;;; side effects, namely current origin is updated, and `asm-state-done?` may
+  ;; ;;; be updated to signal whether another pass is required.
+  ;; (define (do-assembler-pass ast)
+  ;;   ;; we assume that this is the last pass required, unless proven otherwise
+  ;;   (do ((old-ast ast (cdr old-ast))
+  ;; 	 (next-ast '() (let ((next-nodes (assemble-node (car old-ast))))
+  ;; 			 (if next-nodes
+  ;; 			     (append next-ast next-nodes)
+  ;; 			     next-ast))))
+  ;; 	((null-list? old-ast) next-ast)))
+
+  ;; ;;; Run `do-assembler-pass` on the current abstract source tree in
+  ;; ;;; *asm-state*, and update it with the result.
+  ;; (define (do-pass-and-set-ast!)
+  ;;   (let ((current-target (target))
+  ;; 	  (init-origin (current-origin)))
+  ;;     (done!)
+  ;;     (set-ast! (do-assembler-pass (ast)))
+  ;;     (set-current-origin! init-origin)
+  ;;     (asm-state-target-set! *asm-state* current-target)))
+
+  (: ast->bytes (list -> list))
   (define (ast->bytes ast)
     (concatenate (remove (lambda (node)
-			   (memq (car node) '(swap-namespace)))
+			   (memq (car node) '(swap-namespace swap-target)))
 			 ast)))
 
-  ;;; Assemble the string SOURCE, returning a list of byte values.
+  (define target-cache
+    (let ((cache '()))
+      (lambda args
+	(if (null? args)
+	    cache
+	    (case (car args)
+	      ((add) (alist-update! (cadr args) (caddr args) cache))
+	      ((get) (alist-ref (cadr args) cache))
+	      (else (error 'target-cache (string-append "Invalid command "
+							(->string args)))))))))
+
+  (define (construct-target #!key endian registers register-sets
+			    addressing-modes conditions condition-sets
+			    extra instructions)
+    (fluid-let ((register
+		 (lambda (set-id)
+		   (bind (apply any-of
+				(map (o char-seq symbol->string)
+				     (if (eq? 'all set-id)
+					 (map car registers)
+					 (car (alist-ref set-id
+							 register-sets)))))
+			 (lambda (r) (result (string->symbol r))))))
+		(condition
+		 (lambda (set-id)
+		   (bind (apply any-of
+				(map (o char-seq symbol->string)
+				     (if (eq? 'all set-id)
+					 (map car conditions)
+					 (car (alist-ref set-id
+							 condition-sets)))))
+			 (lambda (r) (result (string->symbol r))))))
+		(numeric
+		 (a-numeric (make-asm-target registers: registers
+					     conditions:  conditions)))
+		(symbol
+		 (a-symbol (make-asm-target registers: registers
+					    conditions: conditions))))
+      (let* ((eval-fn-mapping (lambda (x) (list (car x) (eval (cadr x)))))
+	     (_addressing-modes (map eval-fn-mapping addressing-modes))
+	     (_extra (map eval-fn-mapping extra)))
+	(fluid-let ((address (lambda (type)
+			       (car (alist-ref type _addressing-modes))))
+		    (extras (lambda (id) (car (alist-ref id _extra))))
+		    (condition-value (lambda (c)
+				       (car (alist-ref c conditions))))
+		    (register-value (lambda (r)
+				      (car (alist-ref r registers)))))
+	  (letrec ((eval-operand-options
+		    (lambda (ops operand-count depth)
+		      (if (>= depth operand-count)
+			  (cons 'list ops)
+			  (map (lambda (opt)
+				 (list (eval (car opt))
+				       (eval-operand-options
+					(cadr opt) operand-count (+ 1 depth))))
+			       ops)))))
+	    (make-asm-target
+	     endian: endian
+	     registers: registers
+	     register-sets: register-sets
+	     conditions: conditions
+	     condition-sets: condition-sets
+	     addressing-modes: _addressing-modes
+	     extra: _extra
+	     instructions:
+	     (alist->hash-table
+	      (map (lambda (ins)
+		     (list (car ins)
+			   (map (lambda (opts)
+				  (cons
+				   (car opts)
+				   (if (= 0 (car opts))
+				       (cons 'list (cadr opts))
+				       (map (lambda (parser)
+					      (eval-operand-options
+					       parser (car opts) 0))
+					    (cdr opts)))))
+				(cdr ins))))
+		   instructions))))))))
+
+  (define (make-target target-name)
+    (let ((target-sym (string->symbol target-name)))
+      (or (target-cache 'get target-sym)
+	  (let ((config-filename (string-append *schemta-include-path*
+						target-name
+						".scm")))
+	    (if (file-exists? config-filename)
+		(let ((config-expr (with-input-from-file config-filename read)))
+		  (if (eqv? 'asm-target (car config-expr))
+		      (let ((target (apply construct-target (cdr config-expr))))
+			(target-cache 'add target-sym target)
+			target)
+		      (error 'schemta#make-target
+			     "Not an asm target definition")))
+		(error (string-append "target configuration " config-filename
+				      " not found")))))))
+
+  ;;; parse the given assembly SOURCE and output the abstract source tree.
+  ;;; SOURCE must be a string.
+  ;; (: parse-source (string (struct asm-target) list -> list))
+  (define (parse-source source target ast)
+    (receive (result remainder)
+	(parse (a-line target) source)
+      (unless result
+	(error 'schemta#parse-source
+	       (string-append "Failed to parse source, stopped at: "
+			      (->string remainder))))
+      (if (parse end-of-input remainder)
+	  (reverse (if (null? result)
+		       ast
+		       (cons result ast)))
+	  (if (null? result)
+	      (parse-source remainder target ast)
+	      (parse-source remainder
+			    (if (and (eqv? 'directive (car result))
+				     (eqv? 'cpu (caadr result)))
+				(make-target (cadadr result))
+				target)
+			    (cons result ast))))))
+
+  ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
+  (define (make-assembly target-cpu source
+			 #!optional (org 0) (extra-symbols '()))
+    (let* ((initial-target (the (struct asm-target) (make-target target-cpu)))
+	   (target (the (struct asm-target) initial-target))
+	   (symbols (the list extra-symbols))
+	   (local-namespace (the symbol '000__void))
+	   (current-origin (the integer org))
+	   (ast (parse-source source target '()))
+	   (pass (the integer 0))
+	   (done? (the boolean #f))
+	   (reset-state! (the (-> undefined)
+			      (lambda ()
+				(set! current-origin org)
+				(set! target initial-target)
+				(set! local-namespace '000__void)
+				(set! done? #t))))
+	   (accessor (the procedure
+			  (lambda args
+			    (if (= 1 (length args))
+				(case (car args)
+				  ((target) target)
+				  ((symbols) symbols)
+				  ((current-origin) current-origin)
+				  ((local-namespace) local-namespace)
+				  ((done?) done?))
+				(case (car args)
+				  ((target) (set! target (cadr args)))
+				  ((symbols) (set! symbols (cadr args)))
+				  ((current-origin) (set! current-origin
+						      (cadr args)))
+				  ((local-namespace) (set! local-namespace
+						       (cadr args)))
+				  ((done?) (set! done? (cadr args)))))))))
+      (lambda args
+	(if (null? args)
+	    (error 'assembly "Missing command arguments")
+	    (case (car args)
+	      ((done?) done?)
+	      ((ast) ast)
+	      ((symbols) symbols)
+	      ((local-namespace) local-namespace)
+	      ((target) target)
+	      ((assemble)
+	       (let ((initial-pass pass))
+		 (until (or done? (= pass (+ initial-pass (cadr args))))
+			(reset-state!)
+			(set! ast
+			  (concatenate
+			   (map-in-order (cute assemble-node <> accessor)
+					 ast)))
+			(set! pass (+ 1 pass)))
+		 done?))
+	      ((result) (and done? (ast->bytes ast)))
+	      (else (error 'assembly (string-append "Invalid command "
+						    (->string args)))))))))
+
+   ;;; Assemble the string SOURCE, returning a list of byte values.
   ;;; TARGET-CPU must be a symbol identifying the instruction set to use.
   ;;; `#:org` takes a start address (origin, defaults to 0). `#:extra-symbols`
   ;;; takes a list of key, value pairs that will be defined as assembly-level
   ;;; symbols. Note that the values may be arbitrary types. You can change the
   ;;; maximum number of assembler passes to run by specifying `#:max-passes`.
   (define (assemble target-cpu source
-		    #!key (org 0) extra-symbols (max-passes 3))
-    (letrec ((do-asm-passes
-	      (lambda (current-pass)
-		(when (= current-pass max-passes)
-		  (error 'assemble
-			 (string-append
-			  "FAILED: number of passes exceeded\n"
-			  "Unresolved nodes: "
-			  (->string
-			   (remove (lambda (node)
-				     (or (not (any (complement number?) node))
-					 (eqv? (car node) 'swap-namespace)))
-				   (ast))))))
-		(do-pass-and-set-ast!)
-		(if (done?)
-		    (ast->bytes (ast))
-		    (do-asm-passes (+ 1 current-pass))))))
-      (set-target! target-cpu)
-      (set-current-origin! org)
-      (set-symbols! (append (or extra-symbols '()) (symbols)))
-      (set-ast-from-source! source)
-      (do-asm-passes 0)))
+  		    #!key (org 0) (extra-symbols '()) (max-passes 3))
+    (let ((asm (make-assembly target-cpu source org extra-symbols)))
+      (asm 'assemble max-passes)
+      ;; TODO return assembly if !result
+      (asm 'result)))
 
   ;;; Read and assemble the source file FILENAME, returning a list of byte
   ;;; values. See `assemble` for further details.
-  (define (asm-file->bytes target-cpu filename #!key org extra-symbols
-			   (max-passes 3))
-    (reset-asm-state!)
+  (define (asm-file->bytes target-cpu filename #!key (org 0) (extra-symbols '())
+  			   (max-passes 3))
     (assemble target-cpu
-	      (string-append (read-string #f (open-input-file filename)) "\n")
-	      org: org extra-symbols: extra-symbols max-passes: max-passes))
-
-  (define (write-bytes bytes port)
-    (byte-blob-write port (list->byte-blob bytes)))
+  	      (call-with-input-file filename (cute read-string #f <>))
+  	      org: org extra-symbols: extra-symbols max-passes: max-passes))
 
   ;;; Read and assemble INFILENAME, and write the result to OUTFILENAME.
   ;;; See `assemble` for further details.
   (define (asm-file->bin-file target-cpu infilename
-			      #!key (outfilename (string-append infilename
-								".bin"))
-			      org extra-symbols (max-passes 3)
-			      ;; TODO unused
-			      emit-symbols emit-listing)
-    (call-with-output-file outfilename
-      (lambda (port)
-	(write-bytes (asm-file->bytes target-cpu infilename
-				      org: org extra-symbols: extra-symbols
-				      max-passes: max-passes)
-		     port))))
+  			      #!key (outfilename (string-append infilename
+  								".bin"))
+  			      (org 0) (extra-symbols '()) (max-passes 3)
+  			      ;; TODO unused
+  			      emit-symbols emit-listing)
+    (let ((result (asm-file->bytes target-cpu infilename
+  				   org: org extra-symbols: extra-symbols
+  				   max-passes: max-passes)))
+      (and result
+	   (call-with-output-file outfilename
+	     (lambda (port)
+  	       (write-string (list->string (map integer->char result))
+			     #f
+			     port))))))
 
   ) ;; end module schemta
