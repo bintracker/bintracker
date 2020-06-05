@@ -19,7 +19,7 @@
   ;; ---------------------------------------------------------------------------
 
   (define *supported-config-versions* (make-range min: 2 max: 2))
-  (define *supported-mdmod-versions* (make-range min: 2 max: 2))
+  (define *supported-mmod-versions* (make-range min: 2 max: 2))
 
   ;; ---------------------------------------------------------------------------
   ;;; ## MDCONF: TARGETS
@@ -177,8 +177,8 @@
 	      (map car (hash-table->alist (config-commands cfg))))
     (printf "\nINODE TREE:\n~S\n\n" (config-itree cfg)))
 
-  ;;; Return the configuration ID of the mdmod M.
-  (define (mdmod-config-id m) (config-id (car m)))
+  ;;; Return the configuration ID of the mmod M.
+  (define (mmod-config-id m) (config-id (car m)))
 
   ;;; Return the command config for the given ID.
   (define (config-command-ref id cfg)
@@ -285,7 +285,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDMOD: OUTPUT NODES
+  ;;; ## MMOD: OUTPUT NODES
   ;; ---------------------------------------------------------------------------
 
   (defstruct onode
@@ -527,7 +527,7 @@
   ;;; Libmdal does not come with a default compiler for transforming MDAL
   ;;; modules into the desired binary or asm output. Instead, a dedicated
   ;;; compiler procedure is generated for each MDAL configuration. This
-  ;;; procedure takes as input an `mdmod` structure and the current origin
+  ;;; procedure takes as input an `mmod` structure and the current origin
   ;;; (assembly start address) and produces a list of resolved output nodes
   ;;; (onodes), which can be further processed into binary or assembly output.
   ;;; The compiler procedure is stored in the config-compiler field of the
@@ -1288,7 +1288,7 @@
   ;;; Generate a compiler from the given output config expression.
   ;;; `proto-config` must be a config struct with all fields resolved
   ;;; except the config-comiler itself.
-  ;;; The compiler is a procedure taking 2 arguments: an mdmod structure,
+  ;;; The compiler is a procedure taking 2 arguments: an mmod structure,
   ;;; and an origin (address at which to compile). It returns a list of output
   ;;; nodes, which can be further processed by `write-bin` or `write-asm`.
   ;;; The compiler will throw an exception of type 'compiler-failed
@@ -1298,8 +1298,8 @@
 			<> proto-config config-dir path-prefix)
 		      output-expr)))
       (lambda (mod origin #!optional extra-symbols)
-	(car (compile-otree otree (cadr (mdmod-global-node mod))
-			    (mdmod-config mod)
+	(car (compile-otree otree (cadr (mmod-global-node mod))
+			    (mmod-config mod)
 			    origin (or extra-symbols '()))))))
 
 

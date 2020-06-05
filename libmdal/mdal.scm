@@ -79,23 +79,23 @@
 			      node-id (cddr instance) mdconfig))))))
 
   ;;; Write the MDAL module MOD to an .mdal file.
-  (define (mdmod->file mod filename)
+  (define (mmod->file mod filename)
     (call-with-output-file filename
       (lambda (port)
 	(pp (append (list 'mdal-module 'version: mdal-version
-			  'config: (mdmod-config-id mod)
+			  'config: (mmod-config-id mod)
 			  'config-version:
 			  (plugin-version->real
 			   (config-plugin-version (car mod))))
 		    (mod-group-instance-contents->node-expr
-		     'GLOBAL (cddr (cadr (mdmod-global-node mod)))
-		     (mdmod-config mod)))
+		     'GLOBAL (cddr (cadr (mmod-global-node mod)))
+		     (mmod-config mod)))
 	    port))))
 
   ;; TODO and a list of symbols for mod->asm?
   ;;; Compile a module to an onode tree.
   (define (mod-compile mod origin #!optional (extra-symbols '()))
-    ((config-compiler (mdmod-config mod))
+    ((config-compiler (mmod-config mod))
      mod origin (cons `(mdal_current_module ,mod)
 		      extra-symbols)))
 
@@ -225,12 +225,12 @@
   ;;; be an alist containing the node instance id in car, and the new value in
   ;;; cdr.
   (define (node-set! parent-node-instance node-id instances mod)
-    (let* ((mdconf (mdmod-config mod))
+    (let* ((mdconf (mmod-config mod))
 	   (parent-id
 	    (config-get-parent-node-id node-id (config-itree mdconf)))
 	   (parent-node
 	    (or ((node-path parent-node-instance)
-		 (mdmod-global-node mod))
+		 (mmod-global-node mod))
 		(let ((split-path (string-split parent-node-instance "/")))
 		  (node-set! (string-intersperse (drop-right split-path 2)
 						 "/")
@@ -239,7 +239,7 @@
 				#f))
 			     mod)
 		  ((node-path parent-node-instance)
-		   (mdmod-global-node mod))))))
+		   (mmod-global-node mod))))))
       (if (eqv? 'block (inode-config-type (config-inode-ref parent-id mdconf)))
 	  (let ((field-index (config-get-block-field-index parent-id node-id
 							   mdconf)))
@@ -326,10 +326,10 @@
 
   ;;; Delete one or more INSTANCES from the node with NODE-ID.
   (define (node-remove! parent-instance-path node-id instances mod)
-    (let* ((mdconf (mdmod-config mod))
+    (let* ((mdconf (mmod-config mod))
 	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
 	   (parent-instance ((node-path parent-instance-path)
-			     (mdmod-global-node mod))))
+			     (mmod-global-node mod))))
       (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
 	  (for-each (lambda (instance)
 		      (when (> (length parent-instance) (+ 2 (car instance)))
@@ -345,10 +345,10 @@
   ;;; Insert one or more INSTANCES into the node with NODE-ID. INSTANCES
   ;;; must be a list of node-instance-id, value pairs.
   (define (node-insert! parent-instance-path node-id instances mod)
-    (let* ((mdconf (mdmod-config mod))
+    (let* ((mdconf (mmod-config mod))
 	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
 	   (parent-instance ((node-path parent-instance-path)
-			     (mdmod-global-node mod))))
+			     (mmod-global-node mod))))
       (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
 	  (for-each (lambda (instance)
 		      (set! (cddr parent-instance)
@@ -368,9 +368,9 @@
   ;;; Rows shall be a list of lists, where each sublist contains a row number
   ;;; in car, and a list of field values in cdr.
   (define (block-row-insert! parent-instance-path block-id instances mod)
-    (letrec* ((mdef (mdmod-config mod))
+    (letrec* ((mdef (mmod-config mod))
 	      (parent-instance ((node-path parent-instance-path)
-				(mdmod-global-node mod)))
+				(mmod-global-node mod)))
 	      (block-instances-to-update (map car instances))
 	      (empty-row (make-list (length (config-get-subnode-ids
 					     block-id
@@ -434,7 +434,7 @@
   ;;; containing a row number in car.
   (define (block-row-remove! parent-instance-path block-id instances mod)
     (let ((parent-instance ((node-path parent-instance-path)
-			    (mdmod-global-node mod)))
+			    (mmod-global-node mod)))
 	  (block-instances-to-update (map car instances)))
       (set! (cddr parent-instance)
 	(alist-update
@@ -487,19 +487,19 @@
 			    (config-get-subnode-ids node-id
 						    (config-itree mdconf)))))))
 
-  ;;; Generate a new, empty mdmod based on the config MDCONF. Block instances
+  ;;; Generate a new, empty mmod based on the config MDCONF. Block instances
   ;;; are generated with length BLOCK-LENGTH by default, unless other
   ;;; constraints apply from the config.
-  (define (generate-new-mdmod mdconf block-length)
+  (define (generate-new-mmod mdconf block-length)
     (cons mdconf `(GLOBAL ,(generate-new-inode-instance
 			    mdconf 'GLOBAL block-length))))
 
   ;;; Derive a new MDAL module from the module MOD, which contains a single
   ;;; row of block data in the group with GROUP-ID. The row is composed from
   ;;; position ROW in the set of patterns represented by ORDER-POS.
-  (define (derive-single-row-mdmod mod group-id order-pos row)
+  (define (derive-single-row-mmod mod group-id order-pos row)
     (letrec*
-	((config (mdmod-config mod))
+	((config (mmod-config mod))
 	 (order-id (symbol-append group-id '_ORDER))
 	 (make-single-row-group
 	  (lambda (node-instance)
@@ -548,13 +548,13 @@
 						(map extract-nodes
 						     (cddr node-instance)))))))
 		       (cdr root))))))
-      (cons config (extract-nodes (mdmod-global-node mod)))))
+      (cons config (extract-nodes (mmod-global-node mod)))))
 
   ;;; Derive a new MDAL module from the module MOD, with the order list of
   ;;; group GROUP-ID modified to only contain the step ORDER-POS.
-  (define (derive-single-pattern-mdmod mod group-id order-pos)
+  (define (derive-single-pattern-mmod mod group-id order-pos)
     (letrec*
-	((config (mdmod-config mod))
+	((config (mmod-config mod))
 	 (extract-nodes
 	  (lambda (root)
 	    (cons (car root)
@@ -574,7 +574,7 @@
 			    (append (take node-instance 2)
 				    (map extract-nodes (cddr node-instance))))))
 		       (cdr root))))))
-      (cons (mdmod-config mod)
-	    (extract-nodes (mdmod-global-node mod)))))
+      (cons (mmod-config mod)
+	    (extract-nodes (mmod-global-node mod)))))
 
   ) ;; end module mdal

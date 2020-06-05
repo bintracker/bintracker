@@ -367,7 +367,7 @@
 				  (list
 				   (car id+val)
 				   (let ((path ((node-path (cadr action))
-						(mdmod-global-node mmod))))
+						(mmod-global-node mmod))))
 				     (if path
 					 (mod-get-block-field-value
 					  path
@@ -381,7 +381,7 @@
 				     (list (car id+val)
 					   (mod-get-block-field-value
 					    ((node-path (cadr action))
-					     (mdmod-global-node mmod))
+					     (mmod-global-node mmod))
 					    (car id+val)
 					    (third action)
 					    (car mmod))))
@@ -401,7 +401,7 @@
 					  (symbol->string (third action))
 					  "/"
 			  		  (->string (car id+val))))
-			  		(mdmod-global-node mmod)))))
+			  		(mmod-global-node mmod)))))
 			  (fourth action))))
 	      ((remove) (list 'insert (cadr action) (third action)))
 	      ((insert) (list 'remove (cadr action) (third action)

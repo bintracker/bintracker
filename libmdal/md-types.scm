@@ -9,7 +9,7 @@
 	  srfi-1 srfi-13 md-helpers)
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDMOD: Input Nodes
+  ;;; ## MMOD: Input Nodes
   ;; ---------------------------------------------------------------------------
 
   ;; TODO should this always succeed as well? Then we can construct whole node
@@ -34,13 +34,13 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDMOD: Module
+  ;;; ## MMOD: Module
   ;; ---------------------------------------------------------------------------
 
   ;;; The internal representation of an MDAL module is a pair containing
   ;;; an MDAL `config` as the first element, and the global module node as the
   ;;; second element, so `(config . global-node)`. libmdal provides the
-  ;;; accessors `mdmod-config` and `mdmod-global-node` for dealing with the
+  ;;; accessors `mmod-config` and `mmod-global-node` for dealing with the
   ;;; elements of a module.
   ;;;
   ;;; The structure of `global-node` mirrors that of the MDAL module
@@ -57,8 +57,8 @@
   ;;;   values for each block field subnode. Unset (empty) fields are
   ;;;   represented by `null` (the empty list).
 
-  (define (mdmod-config m) (car m))
-  (define (mdmod-global-node m) (cdr m))
+  (define (mmod-config m) (car m))
+  (define (mmod-global-node m) (cdr m))
 
   ;;----------------------------------------------------------------------------
   ;;; ### mod accessor functions
@@ -101,7 +101,7 @@
 
   ;;; Given the contents of a block instance, return the contents such that
   ;;; empty fields are replaced with the last set value.
-  ;;; Helper for `mod-get-order-values` and `derive-single-row-mdmod`.
+  ;;; Helper for `mod-get-order-values` and `derive-single-row-mmod`.
   (define (repeat-block-row-values rows)
     (letrec ((repeat-values
 	      (lambda (rows previous-row)

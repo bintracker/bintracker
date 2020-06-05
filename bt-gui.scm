@@ -104,7 +104,7 @@
     (close-file)
     (after-load-file-hooks
      'execute
-     (generate-new-mdmod (file->config (settings 'mdal-config-dir) mdef-name)
+     (generate-new-mmod (file->config (settings 'mdal-config-dir) mdef-name)
   			 (settings 'default-block-length))
      #f))
 
@@ -158,7 +158,7 @@
     (make-hooks
      `(write-file
        . ,(lambda ()
-  	    (mdmod->file (ui-metastate (current 'module-view) 'mmod)
+  	    (mmod->file (ui-metastate (current 'module-view) 'mmod)
   			 (ui-metastate (current 'module-view) 'filename))
   	    (ui-metastate (current 'module-view) 'modified #f)))
      `(update-window-title . ,update-window-title!)))
@@ -225,7 +225,7 @@
     (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
   	   (origin (config-default-origin (car mmod))))
       ((ui-metastate (current 'module-view) 'emulator) 'run origin
-       (mod->bin (derive-single-pattern-mdmod
+       (mod->bin (derive-single-pattern-mmod
       		  mmod
       		  (slot-value (current 'blockview) 'group-id)
       		  (ui-blockview-get-current-order-pos
@@ -1422,7 +1422,7 @@
     		   (slot-value buf 'parent-instance-path)
     		   (symbol->string node-id)
     		   "/0/"))
-  		 (mdmod-global-node (ui-metastate buf 'mmod))))
+  		 (mmod-global-node (ui-metastate buf 'mmod))))
     	       node-id
   	       (ui-metastate buf 'mdef)))))
       ;; (print "got node-id " node-id " and color " color)
@@ -1599,7 +1599,7 @@
 
   (define-method (ui-update primary: (buf <ui-group-fields>))
     (let ((mdef (ui-metastate buf 'mdef))
-	  (global-node (mdmod-global-node (ui-metastate buf 'mmod))))
+	  (global-node (mmod-global-node (ui-metastate buf 'mmod))))
       (for-each (lambda (field)
 		  (let ((entry (slot-value field 'entry))
 			(node-id (slot-value field 'node-id)))
@@ -1734,7 +1734,7 @@
   (define-method (ui-blockview-parent-instance
   		  primary: (buf <ui-basic-block-view>))
     ((node-path (slot-value buf 'parent-instance-path))
-     (mdmod-global-node (ui-metastate buf 'mmod))))
+     (mmod-global-node (ui-metastate buf 'mmod))))
 
   ;;; Generic procedure for mapping tags to the field columns of a textgrid.
   ;;; This can be used either on `block-header`, or on `block-content` slots.
@@ -2659,7 +2659,7 @@
     (let* ((current-row (ui-blockview-get-current-field-instance buf))
   	   (parent-instance-path (slot-value buf 'parent-instance-path))
   	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
   	   (block-instance-ids
   	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
   						 parent-instance)
@@ -2687,7 +2687,7 @@
     (let* ((current-row (ui-blockview-get-current-field-instance buf))
   	   (parent-instance-path (slot-value buf 'parent-instance-path))
   	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
   	   (block-instance-ids
   	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
   						 parent-instance)
@@ -2725,7 +2725,7 @@
     ;; (print "ui-blockview-blockedit " start " " end " " action-type)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
 	   (group-id (slot-value buf 'group-id))
 	   (order (mod-get-order-values group-id parent-instance))
 	   (all-field-ids (slot-value buf 'field-ids))
@@ -2784,7 +2784,7 @@
 					contents start end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
 	   (group-id (slot-value buf 'group-id))
 	   (order (mod-get-order-values group-id parent-instance))
 	   (all-field-ids (slot-value buf 'field-ids))
@@ -3144,7 +3144,7 @@
   		    (list-ref (mod-get-order-values
   			       (slot-value buf 'group-id)
   			       ((node-path parent-instance-path)
-  				(mdmod-global-node (ui-metastate buf 'mmod))))
+  				(mmod-global-node (ui-metastate buf 'mmod))))
   			      (sub1 current-row)))))
   	   (block-id (symbol-append (slot-value buf 'group-id)
   				    '_ORDER)))
@@ -3166,7 +3166,7 @@
   	      (list-ref (mod-get-order-values
   			 (slot-value buf 'group-id)
   			 ((node-path parent-instance-path)
-  			  (mdmod-global-node (ui-metastate buf 'mmod))))
+  			  (mmod-global-node (ui-metastate buf 'mmod))))
   			current-row))
   	     (block-id (symbol-append (slot-value buf 'group-id) '_ORDER)))
   	(unless (zero? current-row)
@@ -3195,7 +3195,7 @@
     ;; (print "ui-blockview-blockset/order " start " " end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
 	   (group-id (slot-value buf 'group-id))
 	   (all-field-ids (slot-value buf 'field-ids))
 	   (field-index (lambda (id)
@@ -3231,7 +3231,7 @@
 					contents start end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mdmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
 	   (group-id (slot-value buf 'group-id))
 	   (order (mod-get-order-values group-id parent-instance))
 	   (all-field-ids (slot-value buf 'field-ids))
@@ -3656,7 +3656,7 @@
   		       (origin (config-default-origin (car mmod))))
   		  ((slot-value buf 'emulator) 'run
   		   origin
-  		   (mod->bin (apply derive-single-row-mdmod
+  		   (mod->bin (apply derive-single-row-mmod
   				    (cons mmod (cddr args)))
   			     origin '((no-loop #t)))))))))
   	((modified)
@@ -3716,7 +3716,7 @@
       (error '|make <ui-module-view>| "Missing either 'mmod or 'current-file."))
     (unless (slot-value buf 'mmod)
       (set! (slot-value buf 'mmod)
-  	(file->mdmod (slot-value buf 'filename) (settings 'mdal-config-dir))))
+  	(file->mmod (slot-value buf 'filename) (settings 'mdal-config-dir))))
     (unless (slot-value buf 'filename)
       (set! (slot-value buf 'modified) #t))
     (when (settings 'show-modelines)
@@ -3871,7 +3871,7 @@
   ;;; `block-row-insert`, or `block-row-remove`.
   ;;; PARENT-INSTANCE-PATH is a fully qualified MDAL node path string denoting
   ;;; the parent node instance of the node that you want to edit (ie. a path
-  ;;; starting at the global inode, see md-types/MDMOD for details),
+  ;;; starting at the global inode, see md-types/MMOD for details),
   ;;; NODE-ID is the ID of the node you want to edit, and INSTANCES is an
   ;;; alist where the keys are node instance ID numbers and the values are the
   ;;; values that you want to set. For `block-row-insert/remove`, INSTANCES must

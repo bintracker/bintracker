@@ -152,7 +152,7 @@
 	       ((no-config) "No CONFIG specified")
 	       ((incompatible-config-version)
 		"MDAL configuration version incompatible with module")
-	       ((not-mdmod) "Not an MDAL module")
+	       ((not-mmod) "Not an MDAL module")
 	       ((no-mdal-version) "No MDAL version specified")
 	       ((unsupported-mdal-version)
 		(string-append "Unsupported MDAL version: "

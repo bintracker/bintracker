@@ -2,7 +2,7 @@
 ;; Copyright (c) utz/irrlicht project 2018-2020
 ;; See LICENSE for license details.
 
-;;; The .mdmod parser implementation.
+;;; The .mmod parser implementation.
 (module md-parser *
 
   (import scheme (chicken base) (chicken io) (chicken string)
@@ -60,7 +60,7 @@
 	  row)))
 
   ;;; Parse the contents of a block node instance into the internal
-  ;;; representation. This parser should be applied to a mdmod node expression,
+  ;;; representation. This parser should be applied to a mmod node expression,
   ;;; with the appropriate MDCONFIG cons'd.
   (define (mod-parse-block-instance mdconfig block-id #!rest contents
 				    #!key name (id 0))
@@ -105,7 +105,7 @@
 			     mdconfig parent-group-contents))
 
   ;;; Parse the contents of a group node instance into the internal
-  ;;; representation. This parser should be applied to a mdmod node expression,
+  ;;; representation. This parser should be applied to a mmod node expression,
   ;;; with the appropriate MDCONFIG cons'd.
   (define (mod-parse-group-instance mdconfig node-id #!rest contents
 				    #!key name (id 0))
@@ -120,13 +120,13 @@
 		      subnode-id mdconfig actual-contents))
 		   (config-get-subnode-ids node-id (config-itree mdconfig))))))
 
-  ;;; Check if mdmod s-expression specifies a supported MDAL version
+  ;;; Check if mmod s-expression specifies a supported MDAL version
   ;;; This procedure should be applied to a mod-sexp.
-  (define (check-mdmod-version head #!rest args #!key version)
+  (define (check-mmod-version head #!rest args #!key version)
     (unless (eqv? head 'mdal-module)
-      (raise-local 'not-mdmod))
+      (raise-local 'not-mmod))
     (unless version (raise-local 'no-mdal-version))
-    (unless (in-range? version *supported-mdmod-versions*)
+    (unless (in-range? version *supported-mmod-versions*)
       (raise-local 'unsupported-mdal-version version))
     version)
 
@@ -140,8 +140,8 @@
   (define (mod-get-config-version head #!rest args #!key config-version)
     (read-config-plugin-version config-version))
 
-  ;;; Construct an mdmod object from a given .mdal module file
-  (define (file->mdmod filepath config-dir-path #!optional (path-prefix ""))
+  ;;; Construct an mmod object from a given .mdal module file
+  (define (file->mmod filepath config-dir-path #!optional (path-prefix ""))
     (handle-exceptions
 	exn
 	(cond ((exn-any-of? exn '(unsupported-mdal-version
@@ -151,7 +151,7 @@
 		       (string-append "In " filepath " "))))
 	      (else (abort exn)))
       (let ((mod-sexp (read (open-input-file filepath text:))))
-        (apply check-mdmod-version mod-sexp)
+        (apply check-mmod-version mod-sexp)
 	(let* ((cfg-name (apply mod-get-config-name mod-sexp))
 	       (plugin-version (apply mod-get-config-version mod-sexp))
 	       (config (file->config config-dir-path cfg-name path-prefix)))

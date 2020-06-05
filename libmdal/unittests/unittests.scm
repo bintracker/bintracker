@@ -6,7 +6,7 @@
 
 (define my-config-path "mdef/")
 (define my-cfg (file->config my-config-path "Huby"))
-(define my-mod (file->mdmod "tunes/demotunes/huby-test.mmod"
+(define my-mod (file->mmod "tunes/demotunes/huby-test.mmod"
 			    my-config-path))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
@@ -162,23 +162,23 @@
 				  '(version: config: config-version:)))
 
  (test-group
-  "MDMOD integrity checks"
+  "MMOD integrity checks"
 
   (test "not an MDAL module"
 	"Not an MDAL module"
 	(with-exn-handler (lambda (e) (message e))
 			  (lambda ()
-			    (apply check-mdmod-version
+			    (apply check-mmod-version
 				   '(mdal-modul version: 4)))))
 
-  (test "valid mdmod version"
-	2 (apply check-mdmod-version my-mod-expr))
+  (test "valid mmod version"
+	2 (apply check-mmod-version my-mod-expr))
 
-  (test "invalid mdmod version"
+  (test "invalid mmod version"
 	"Unsupported MDAL version: 4"
 	(with-exn-handler (lambda (e) (message e))
 			  (lambda ()
-			    (apply check-mdmod-version
+			    (apply check-mmod-version
 				   '(mdal-module version: 4)))))
 
   (test "mod-get-config-name"
@@ -276,7 +276,7 @@
 (test-group
  "MD-MODULE/Inodes"
 
- (define my-global-inode-instance (cadr (mdmod-global-node my-mod)))
+ (define my-global-inode-instance (cadr (mmod-global-node my-mod)))
 
  (test "subnode-ref"
        (find (lambda (node)
@@ -295,45 +295,45 @@
 
  (test "node-path to inode instance"
        '(1 #f (e2))
-       ((node-path "0/PATTERNS/0/CH2/1") (mdmod-global-node my-mod)))
+       ((node-path "0/PATTERNS/0/CH2/1") (mmod-global-node my-mod)))
 
  (test "node-path to subnode"
        '(CH2 (0 #f (a2))
 	     (1 #f (e2)))
-       ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
+       ((node-path "0/PATTERNS/0/CH2") (mmod-global-node my-mod)))
 
  ;; TODO move into subgroup "high level accessors"
  (test "mod-get-group-instance-blocks"
-       (list ((node-path "0/PATTERNS/0/DRUMS") (mdmod-global-node my-mod))
- 	     ((node-path "0/PATTERNS/0/CH1") (mdmod-global-node my-mod))
- 	     ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod)))
+       (list ((node-path "0/PATTERNS/0/DRUMS") (mmod-global-node my-mod))
+ 	     ((node-path "0/PATTERNS/0/CH1") (mmod-global-node my-mod))
+ 	     ((node-path "0/PATTERNS/0/CH2") (mmod-global-node my-mod)))
        (mod-get-group-instance-blocks
- 	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+ 	((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
  	'PATTERNS my-cfg))
 
  (test "mod-get-group-instance-order"
        ((node-path "0/PATTERNS/0/PATTERNS_ORDER/0")
- 	(mdmod-global-node my-mod))
+ 	(mmod-global-node my-mod))
        (mod-get-group-instance-order
- 	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+ 	((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
  	'PATTERNS))
 
  (test "mod-get-order-values"
        '((16 0 0 0)
 	 (16 0 0 1))
        (mod-get-order-values 'PATTERNS ((node-path "0/PATTERNS/0")
-					(mdmod-global-node my-mod))))
+					(mmod-global-node my-mod))))
 
  (test "get-ordered-group-length"
        32
        (get-ordered-group-length 'PATTERNS
  				 ((node-path "0/PATTERNS/0")
- 				  (mdmod-global-node my-mod))))
+ 				  (mmod-global-node my-mod))))
 
   (test "mod-get-row-values"
         '(#t c4 #f)
         (mod-get-row-values ((node-path "0/PATTERNS/0")
- 			     (mdmod-global-node my-mod))
+ 			     (mmod-global-node my-mod))
  			    '(0 0 0)
  			    4
 			    my-cfg))
@@ -356,7 +356,7 @@
   	 (#f rest #f)
   	 (#f #f #f))
         (mod-get-block-values ((node-path "0/PATTERNS/0")
-  			       (mdmod-global-node my-mod))
+  			       (mmod-global-node my-mod))
   			      '(16 0 0 0)
 			      my-cfg))
   )
@@ -377,7 +377,7 @@
 			     (CH1 ,(append '(0 #f) (make-list 16 '(()))))
 			     (CH2 ,(append '(0 #f) (make-list 16 '(()))))
 			     (PATTERNS_ORDER (0 #f (16 0 0 0))))))))
-       (generate-new-mdmod my-cfg 16))
+       (generate-new-mmod my-cfg 16))
 
  (test "Generate a one-row module"
        '(GLOBAL (0 #f
@@ -390,7 +390,7 @@
 				(CH1 (0 #f (a3)))
 				(CH2 (0 #f (a2)))
 				(PATTERNS_ORDER (0 #f (1 0 0 0)))))))
-       (mdmod-global-node (derive-single-row-mdmod my-mod 'PATTERNS 0 0)))
+       (mmod-global-node (derive-single-row-mmod my-mod 'PATTERNS 0 0)))
  )
 
 
@@ -398,12 +398,12 @@
  "Compiler Generator"
 
  (define my-parent-node ((node-path "0")
-			 (mdmod-global-node my-mod)))
+			 (mmod-global-node my-mod)))
 
  (test  "eval-group-field"
 	120
 	(eval-group-field
-	 (subnode-ref 'BPM (inode-instance-ref 0 (mdmod-global-node my-mod)))
+	 (subnode-ref 'BPM (inode-instance-ref 0 (mmod-global-node my-mod)))
 	 0 (config-get-inode-source-command 'BPM my-cfg)))
 
  (test "eval-block-field"
@@ -411,7 +411,7 @@
 				      'NOTE2 my-cfg))
 		       'a2)
        (eval-block-field ((node-path "0/PATTERNS/0/CH2/0")
-			  (mdmod-global-node my-mod))
+			  (mmod-global-node my-mod))
 			 0 10 (config-command-ref 'NOTE my-cfg)))
 
  (test "get-required-symbols"
@@ -446,7 +446,7 @@
        '((0 #f (a2) (rest) (()) (())))
        (split-block-instance-contents
 	4 'CH2 my-cfg
-	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mdmod-global-node my-mod)))))
+	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mmod-global-node my-mod)))))
 
  (test "resize-block-instances"
        '((CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
@@ -455,9 +455,9 @@
 	      (3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
 	 (CH2 (0 #f (a2) (rest) (()) (()))))
        `(,(resize-block-instances
-	   ((node-path "0/PATTERNS/0/CH2") (mdmod-global-node my-mod))
+	   ((node-path "0/PATTERNS/0/CH2") (mmod-global-node my-mod))
 	   8
-	   ((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mdmod-global-node my-mod))
+	   ((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mmod-global-node my-mod))
 	   my-cfg)
 	 ,(resize-block-instances
 	   '(CH2 (0 #f (a2)))
@@ -485,7 +485,7 @@
 			      (8 2 2 2)
 			      (8 3 3 3))))
        (resize-blocks
-	((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+	((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
 	'PATTERNS 8 my-cfg))
 
  (test "make-order-alist"
@@ -493,7 +493,7 @@
        (make-order-alist
 	(subnode-ref 'PATTERNS_ORDER
 		     (resize-blocks
-		      ((node-path "0/PATTERNS/0") (mdmod-global-node my-mod))
+		      ((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
 		      'PATTERNS 8 my-cfg))
 	'(CH1 CH2)
 	my-cfg))
@@ -525,10 +525,10 @@
 (test-group
  "Export & Compilation"
 
- (test "mdmod->file"
+ (test "mmod->file"
        "013ed7fbb6d1602bc267afe2d16788b2"
        (begin
-	 (mdmod->file my-mod "test.mmod")
+	 (mmod->file my-mod "test.mmod")
 	 (file-md5sum "test.mmod")))
 
  (test "mod->bin"
