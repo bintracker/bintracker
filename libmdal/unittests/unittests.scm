@@ -6,7 +6,7 @@
 
 (define my-config-path "mdef/")
 (define my-cfg (file->config my-config-path "Huby"))
-(define my-mod (file->mdmod "tunes/demotunes/huby-test.mdal"
+(define my-mod (file->mdmod "tunes/demotunes/huby-test.mmod"
 			    my-config-path))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
@@ -154,7 +154,7 @@
 (test-group
  "MD-Module/Parser"
 
- (define my-mod-expr (read (open-input-file "tunes/demotunes/huby-test.mdal"
+ (define my-mod-expr (read (open-input-file "tunes/demotunes/huby-test.mmod"
 					    text:)))
 
  (define my-global-node-contents (remove-keyword-args
@@ -528,8 +528,8 @@
  (test "mdmod->file"
        "013ed7fbb6d1602bc267afe2d16788b2"
        (begin
-	 (mdmod->file my-mod "test.mdal")
-	 (file-md5sum "test.mdal")))
+	 (mdmod->file my-mod "test.mmod")
+	 (file-md5sum "test.mmod")))
 
  (test "mod->bin"
        (map integer->char

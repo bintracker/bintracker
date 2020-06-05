@@ -92,7 +92,7 @@
   (define (load-file)
     (close-file)
     (let ((filename (tk/get-open-file*
-  		     filetypes: '{{{MDAL Modules} {.mdal}} {{All Files} *}})))
+  		     filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}})))
       (unless (string-null? filename)
   	(handle-exceptions
   	    exn
@@ -174,8 +174,8 @@
   ;;; Save the current MDAL module under a new, different name.
   (define (save-file-as)
     (let ((filename (tk/get-save-file*
-  		     filetypes: '(((MDAL Modules) (.mdal)))
-  		     defaultextension: '.mdal)))
+  		     filetypes: '(((MDAL Modules) (.mmod)))
+  		     defaultextension: '.mmod)))
       (unless (string-null? filename)
   	(ui-metastate (current 'module-view) 'filename filename)
   	(on-save-file-hooks 'execute))))

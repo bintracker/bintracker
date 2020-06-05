@@ -234,7 +234,7 @@ mdal-targets:
 .PHONY: run-tests
 run-tests: mdal.so
 	cp -t ./ $(MDAL_SRC)unittests/unittests.scm && csi unittests.scm -e
-	-rm unittests.scm test.mdal
+	-rm unittests.scm test.mmod
 
 .PHONY: clean
 clean:
