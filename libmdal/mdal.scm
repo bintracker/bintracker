@@ -6,7 +6,7 @@
 
   (import scheme (chicken base) (chicken module) (chicken pretty-print)
 	  (chicken format) (chicken string) (chicken bitwise) (chicken sort)
-	  srfi-1 srfi-4 srfi-13 srfi-69 typed-records
+	  (chicken io) srfi-1 srfi-13 srfi-69 typed-records
 	  (only list-utils list-copy* list-set!)
 	  md-config md-helpers md-types md-parser)
   (reexport md-config md-helpers md-types md-parser)
@@ -116,8 +116,7 @@
   (define (mod-export-bin filename mod origin)
     (call-with-output-file filename
       (lambda (port)
-	(write-u8vector (list->u8vector (mod->bin mod origin))
-			port))))
+	(write-string (list->string (mod->bin mod origin)) #f port))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Additional accessors
