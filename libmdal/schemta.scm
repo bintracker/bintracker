@@ -612,9 +612,9 @@
 	  (list node))))
 
   ;;; get fill byte value for align/ds nodes
-  (define (get-fill-param node)
+  (define (get-fill-param node state)
     (if (> (length (third node)) 1)
-	(let ((res ((o eval-operand cadr third) node)))
+	(let ((res (eval-operand (cadr (third node)) state)))
 	  (if res (lsb res) #f))
   	0))
 
@@ -625,8 +625,8 @@
 
   (define (long->bytes l target)
     (if (eq? 'little (asm-target-endian target))
-  	(append (word->bytes l) (word->bytes (msw l)))
-  	(append (word->bytes (msw l) (word->bytes l)))))
+  	(append (word->bytes l target) (word->bytes (msw l) target))
+  	(append (word->bytes (msw l) (word->bytes l target)))))
 
   (: string->bytes (string --> (list-of integer)))
   (define (string->bytes str)
@@ -673,7 +673,7 @@
 	      (if (every identity (car res))
 		  res
 		  (begin (state 'done? #f) (list node)))))
-      ((ds) (or (and-let* ((fillbyte (get-fill-param node)))
+      ((ds) (or (and-let* ((fillbyte (get-fill-param node state)))
 		  (and-let* ((org (state 'current-origin)))
 		    (state 'current-origin (+ org (caaddr node))))
       		  (list (make-list (caaddr node) fillbyte)))
@@ -685,7 +685,7 @@
 		      (align (caaddr node))
 		      (nextorg (* align (quotient (+ org (sub1 align))
       						  align)))
-		      (fillbyte (get-fill-param node))
+		      (fillbyte (get-fill-param node state))
       		      (fill (list (make-list (- nextorg org) fillbyte))))
       		     (state 'current-origin! nextorg)
       		     fill)
