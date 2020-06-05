@@ -691,8 +691,8 @@
       		     fill)
 	   (begin (state 'current-origin #f) (state 'done #f) (list node))))
       ((cpu)
-       (state 'target (make-target (third node)))
-       (list 'swap-target (third node)))
+       (state 'target (make-target (string->symbol (third node))))
+       (list 'swap-target (string->symbol (third node))))
       ((include) (if (file-exists? (third node))
 		     (parse-source (call-with-input-file (third node)
 				     (cute read-string #f <>))
@@ -861,18 +861,18 @@
 		   instructions))))))))
 
   ;;; Creates an `asm-target` struct for the given TARGET-NAME, which must be
-  ;;; a string.
+  ;;; a symbol.
   (define (make-target target-name)
-    (let ((target-sym (string->symbol target-name)))
-      (or (target-cache 'get target-sym)
+    (let ((target-str (symbol->string target-name)))
+      (or (target-cache 'get target-name)
 	  (let ((config-filename (string-append *schemta-include-path*
-						target-name
+						target-str
 						".scm")))
 	    (if (file-exists? config-filename)
 		(let ((config-expr (with-input-from-file config-filename read)))
 		  (if (eqv? 'asm-target (car config-expr))
 		      (let ((target (apply construct-target (cdr config-expr))))
-			(target-cache 'add target-sym target)
+			(target-cache 'add target-name target)
 			target)
 		      (error 'schemta#make-target
 			     "Not an asm target definition")))
@@ -898,13 +898,13 @@
 	      (parse-source remainder
 			    (if (and (eqv? 'directive (car result))
 				     (eqv? 'cpu (caadr result)))
-				(make-target (cadadr result))
+				(make-target (string->symbol (cadadr result)))
 				target)
 			    (cons result ast))))))
 
   ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
   ;;; Parses the assembly source code string SOURCE and returns an assembly
-  ;;; object. TARGET-CPU must be a string identifying the initial target CPU
+  ;;; object. TARGET-CPU must be a symbol identifying the initial target CPU
   ;;; architecture.
   ;;;
   ;;; The resulting assembly object ASM can be called as follows:
