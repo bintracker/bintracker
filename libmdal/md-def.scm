@@ -4,7 +4,7 @@
 
 ;;; The Interface to MDCONF configurations.
 (module md-def
-    (*supported-config-versions*
+    (*supported-mdef-versions*
      *supported-mmod-versions*
      make-cpu
      cpu-id
@@ -69,9 +69,9 @@
      do-compiler-pass
      compile-otree
      make-compiler
-     read-config-plugin-version
-     read-config
-     file->config)
+     read-mdef-plugin-version
+     read-mdef
+     file->mdef)
 
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
@@ -86,7 +86,7 @@
   ;; MDAL: GLOBAL VARS
   ;; ---------------------------------------------------------------------------
 
-  (define *supported-config-versions* (make-range min: 2 max: 2))
+  (define *supported-mdef-versions* (make-range min: 2 max: 2))
   (define *supported-mmod-versions* (make-range min: 2 max: 2))
 
   ;; ---------------------------------------------------------------------------
@@ -1377,7 +1377,7 @@
 
   ;;; Evaluate the plugin-version keyword argument of an mdal-config expression.
   ;;; Returns a `plugin-version` struct.
-  (define (read-config-plugin-version version-arg)
+  (define (read-mdef-plugin-version version-arg)
     (unless (and (number? version-arg)
 		 (= 2 (length (string-split (number->string version-arg)
 					    "."))))
@@ -1388,22 +1388,22 @@
       (make-plugin-version major: (car major/minor) minor: (cadr major/minor))))
 
   ;;; Main mdalconfig s-expression evaluator. You probably want to call this
-  ;;; through `read-config`.
-  (define (eval-mdalconfig id config-dir path-prefix
-			   #!key mdconf-version plugin-version target commands
-			   input output default-origin (description ""))
-    (unless (and mdconf-version plugin-version target commands input output)
+  ;;; through `read-mdef`.
+  (define (eval-mdef id def-dir path-prefix
+		     #!key mdef-version plugin-version target commands
+		     input output default-origin (description ""))
+    (unless (and mdef-version plugin-version target commands input output)
       (raise-local 'incomplete-config))
-    (unless (in-range? mdconf-version *supported-config-versions*)
-      (raise-local 'unsupported-mdconf-version mdconf-version))
-    (let* ((_version (read-config-plugin-version plugin-version))
+    (unless (in-range? mdef-version *supported-mdef-versions*)
+      (raise-local 'unsupported-mdconf-version mdef-version))
+    (let* ((_version (read-mdef-plugin-version plugin-version))
 	   (_target (target-generator (->string target)
 				      path-prefix))
 	   (itree (eval-inode-tree input))
 	   (_input (alist->hash-table
 		    (append (get-config-inodes input)
 			    (make-default-inode-configs))))
-	   (proto-config
+	   (proto-def
 	    (make-config
 	     id: id
 	     plugin-version: _version
@@ -1415,25 +1415,24 @@
 		 (target-platform-default-start-address _target)))))
       (make-config id: id plugin-version: _version target: _target
 		   description: description
-		   commands: (config-commands proto-config)
+		   commands: (config-commands proto-def)
 		   itree: itree inodes: _input default-origin: default-origin
-		   compiler: (make-compiler output proto-config config-dir
+		   compiler: (make-compiler output proto-def def-dir
 					    path-prefix))))
 
-  ;;; Evaluate the given `mdconf` s-expression, and return a config record.
-  (define (read-config mdconf id config-dir path-prefix)
-    (unless (and (pair? mdconf)
-		 (eqv? 'mdal-config (car mdconf)))
+  ;;; Evaluate the given `mdef` s-expression, and return a config record.
+  (define (read-mdef mdef id def-dir path-prefix)
+    (unless (and (pair? mdef) (eqv? 'mdal-definition (car mdef)))
       (raise-local 'not-mdconf))
-    (apply eval-mdalconfig (append (list id config-dir path-prefix)
-				   (cdr mdconf))))
+    (apply eval-mdef (append (list id def-dir path-prefix)
+				   (cdr mdef))))
 
-  ;;; Generate an config record from an .mdconf configuration file.
+  ;;; Generate an mdef struct from an .mdef file.
   ;;; `parent-dir` is the file path to the parent directory of the directory
-  ;;; containing the .mdconf file.
-  (define (file->config parent-dir config-name #!optional (path-prefix ""))
-    (let* ((config-dir (string-append parent-dir config-name "/"))
-	   (filepath (string-append config-dir config-name ".mdef")))
+  ;;; containing the .mdef file.
+  (define (file->mdef parent-dir def-name #!optional (path-prefix ""))
+    (let* ((def-dir (string-append parent-dir def-name "/"))
+	   (filepath (string-append def-dir def-name ".mdef")))
       (handle-exceptions
 	  exn
 	  (cond ((exn-any-of? exn '(not-mdconf unsupported-mdconf-version
@@ -1443,14 +1442,15 @@
 				 "In " filepath
 				 (if (string-null? (location exn))
 				     "" (string-append ", " (location exn))))))
-		   (raise ((amend-exn
-			    exn (string-append exn-loc "\nInvalid config: ")
+		   (raise ((amend-exn exn
+				      (string-append
+				       exn-loc "\nInvalid MDAL definition: ")
 			    'invalid-config)
 			   exn-loc))))
 		(else (abort exn)))
 	(call-with-input-file
 	    filepath
 	  (lambda (port)
-	    (read-config (read port) config-name config-dir path-prefix))))))
+	    (read-mdef (read port) def-name def-dir path-prefix))))))
 
   )  ;; end module md-def

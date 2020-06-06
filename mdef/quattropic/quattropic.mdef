@@ -1,5 +1,5 @@
-(mdal-config
- mdconf-version: 2 plugin-version: 1.0 target: spectrum48
+(mdal-definition
+ mdef-version: 2 plugin-version: 1.0 target: spectrum48
  description: "A four channel pulse interleaving beeper engine with noise mode
  and slides. By utz 2015."
  default-origin: #x8000

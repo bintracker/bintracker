@@ -104,7 +104,7 @@
     (close-file)
     (after-load-file-hooks
      'execute
-     (generate-new-mmod (file->config (settings 'mdal-config-dir) mdef-name)
+     (generate-new-mmod (file->mdef (settings 'mdal-config-dir) mdef-name)
   			 (settings 'default-block-length))
      #f))
 

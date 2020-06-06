@@ -138,8 +138,8 @@
     config)
 
   ;;; Read the config-version keyword argument. Returns a plugin-version struct.
-  (define (mod-get-config-version head #!rest args #!key config-version)
-    (read-config-plugin-version config-version))
+  (define (mod-get-mdef-plugin-version head #!rest args #!key config-version)
+    (read-mdef-plugin-version config-version))
 
   ;;; Construct an mmod object from a given .mmod module file
   (define (file->mmod filepath config-dir-path #!optional (path-prefix ""))
@@ -154,15 +154,15 @@
       (let ((mod-sexp (read (open-input-file filepath text:))))
         (apply check-mmod-version mod-sexp)
 	(let* ((cfg-name (apply mod-get-config-name mod-sexp))
-	       (plugin-version (apply mod-get-config-version mod-sexp))
-	       (config (file->config config-dir-path cfg-name path-prefix)))
+	       (plugin-version (apply mod-get-mdef-plugin-version mod-sexp))
+	       (def (file->mdef config-dir-path cfg-name path-prefix)))
 	  (unless (plugin-versions-compatible? plugin-version
-					       (config-plugin-version config))
+					       (config-plugin-version def))
 	    (raise-local 'incompatible-config-version))
-	  (cons config
+	  (cons def
 		(list 'GLOBAL
 		      (apply mod-parse-group-instance
-			     (append `(,config GLOBAL)
+			     (append `(,def GLOBAL)
 				     (remove-keyword-args
 				      (cdr mod-sexp)
 				      '(version:
