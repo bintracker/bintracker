@@ -127,14 +127,14 @@
 		"missing reference-to specifier")
 	       ((nonnumeric-command-range)
 		"range used on command not of type int/uint")
-	       ((incomplete-config)
+	       ((incomplete-mdef)
 		"incomplete mdalconfig specification")
-	       ((missing-config-plugin-version
+	       ((missing-mdef-plugin-version
 		 "missing or incorrect config plugin version specification"))
-	       ((unsupported-mdconf-version)
-		(string-append "unsupported MDCONF version "
+	       ((unsupported-mdef-version)
+		(string-append "unsupported MDEF version "
 			       (->string (car args))))
-	       ((not-mdconf) "Not an MDCONF specification.")
+	       ((not-mdef) "Not an MDEF specification.")
 	       ((not-command)
 		(string-append "Not an MDAL command specification."
 			       (->string (car args))))

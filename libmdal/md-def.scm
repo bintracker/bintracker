@@ -2,7 +2,7 @@
 ;; Copyright (c) utz/irrlicht project 2018-2020
 ;; See LICENSE for license details.
 
-;;; The Interface to MDCONF configurations.
+;;; The Interface to MDAL Engine Definitions.
 (module md-def
     (*supported-mdef-versions*
      *supported-mmod-versions*
@@ -90,7 +90,7 @@
   (define *supported-mmod-versions* (make-range min: 2 max: 2))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDCONF: TARGETS
+  ;;; ## MDEF: TARGETS
   ;; ---------------------------------------------------------------------------
 
   (defstruct cpu
@@ -101,7 +101,7 @@
     id cpu clock-speed default-start-address exports)
 
   ;; ---------------------------------------------------------------------------
-  ;; ## MDCONF: INPUT NODE CONFIGURATION
+  ;; ## MDEF: INPUT NODE CONFIGURATION
   ;; ---------------------------------------------------------------------------
 
   ;; TODO can be replaced by md-helpers/range
@@ -206,7 +206,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## MDCONF: MASTER CONFIGURATION
+  ;;; ## MDEF: MASTER CONFIGURATION
   ;; ---------------------------------------------------------------------------
 
   ;; TODO: where to handle max-binsize?
@@ -214,7 +214,7 @@
   (defstruct plugin-version
     major minor)
 
-  ;;; Check whether the MDCONF plugin-version AVAILABLE-VERSION is compatible
+  ;;; Check whether the MDEF plugin-version AVAILABLE-VERSION is compatible
   ;;; with REQUESTED-VERSION. Versions are considered compatible if the major
   ;;; versions match, and the minor version argument of AVAILABLE-VERSION is
   ;;; greater than or equal to the minor version argument of REQUESTED-VERSION.
@@ -231,7 +231,7 @@
 		    "."
 		    (number->string (plugin-version-minor version)))))
 
-  ;;; The datatype that represents MDCONFigurations internally.
+  ;;; The datatype that represents MDAL definitions internally.
   (defstruct config
     id target plugin-version description commands
     itree inodes default-origin compiler)
@@ -602,7 +602,7 @@
   ;;; relevant config structure.
   ;;;
   ;;; The compiler function itself is generated as follows:
-  ;;; For each element in the list of output elements specified in the MDCONF
+  ;;; For each element in the list of output elements specified in the MDEF
   ;;; configuration, an output node (onode, `onode` structure) is generated.
   ;;; Onodes are initially in an "unresolved" state, unless their output can be
   ;;; evaluated at the time the compiler is generated.
@@ -1372,7 +1372,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### MDCONF Parser
+  ;;; ### MDEF Parser
   ;; ---------------------------------------------------------------------------
 
   ;;; Evaluate the plugin-version keyword argument of an mdal-config expression.
@@ -1381,7 +1381,7 @@
     (unless (and (number? version-arg)
 		 (= 2 (length (string-split (number->string version-arg)
 					    "."))))
-      (raise-local 'missing-config-plugin-version))
+      (raise-local 'missing-mdef-plugin-version))
     (let ((major/minor (map string->number
 			    (string-split (number->string version-arg)
 					  "."))))
@@ -1393,9 +1393,9 @@
 		     #!key mdef-version plugin-version target commands
 		     input output default-origin (description ""))
     (unless (and mdef-version plugin-version target commands input output)
-      (raise-local 'incomplete-config))
+      (raise-local 'incomplete-mdef))
     (unless (in-range? mdef-version *supported-mdef-versions*)
-      (raise-local 'unsupported-mdconf-version mdef-version))
+      (raise-local 'unsupported-mdef-version mdef-version))
     (let* ((_version (read-mdef-plugin-version plugin-version))
 	   (_target (target-generator (->string target)
 				      path-prefix))
@@ -1423,7 +1423,7 @@
   ;;; Evaluate the given `mdef` s-expression, and return a config record.
   (define (read-mdef mdef id def-dir path-prefix)
     (unless (and (pair? mdef) (eqv? 'mdal-definition (car mdef)))
-      (raise-local 'not-mdconf))
+      (raise-local 'not-mdef))
     (apply eval-mdef (append (list id def-dir path-prefix)
 				   (cdr mdef))))
 
@@ -1435,9 +1435,9 @@
 	   (filepath (string-append def-dir def-name ".mdef")))
       (handle-exceptions
 	  exn
-	  (cond ((exn-any-of? exn '(not-mdconf unsupported-mdconf-version
-					       incomplete-config
-					       invalid-command))
+	  (cond ((exn-any-of? exn '(not-mdef unsupported-mdef-version
+					     incomplete-mdef
+					     invalid-command))
 		 (let ((exn-loc (string-append
 				 "In " filepath
 				 (if (string-null? (location exn))
@@ -1445,7 +1445,7 @@
 		   (raise ((amend-exn exn
 				      (string-append
 				       exn-loc "\nInvalid MDAL definition: ")
-			    'invalid-config)
+			    'invalid-mdef)
 			   exn-loc))))
 		(else (abort exn)))
 	(call-with-input-file
