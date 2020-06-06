@@ -49,7 +49,7 @@ Any MDEF configuration is a single s-expression in the form
 ```Scheme
 (mdal-definition
  mdef-version: 2
- plugin-version: MAJOR.MINOR
+ engine-version: MAJOR.MINOR
  target: TARGET
  [default-origin: ORIGIN-ADDRESS]
  [description: DESCRIPTION]
@@ -104,7 +104,7 @@ The following command types are recognized:
 |`ukey`        | Command takes keys as an input and produces unsigned integer output. Requires a key map to be specified with the `keys:` keyword. Note commands should normally use this type.
 |`reference`   | Command takes unsigned integer values as input, which are assumed to be references to instances of a block or group input element.
 |`string`      | Command takes a string as input.
-|`trigger`     | Command takes no input, ie. the command itself is the input. Trigger commands may not have the `use_last_set` flag set.
+|`trigger`     | Command takes no input, ie. the command itself is the input. Trigger commands may not have the `use-last-set` flag set.
 
 #### Command Flags
 
@@ -112,9 +112,9 @@ All MDAL implementation support at least the following flags:
 
 | flag     | description|
 |----------|------------|
-|`enable_modifiers`| Only useful for `key`/`ukey` type commands. Permits users to perform arithmetic modification of the mapped values.|
-|`use_last_set`|Implicitly repeat the last set value on unset nodes, instead of falling back on the default value. This is useful for sound engines where values must be repeated on each row (so the user does not have to worry about this).|
-|`is_note` | Assume that the given `ukey` command is a note command. This is ignored by the MDAL compiler, but naturally is a very helpful piece of information for tracker front-ends.
+|`enable-modifiers`| Only useful for `key`/`ukey` type commands. Permits users to perform arithmetic modification of the mapped values.|
+|`use-last-set`|Implicitly repeat the last set value on unset nodes, instead of falling back on the default value. This is useful for sound engines where values must be repeated on each row (so the user does not have to worry about this).|
+|`is-note` | Assume that the given `ukey` command is a note command. This is ignored by the MDAL compiler, but naturally is a very helpful piece of information for tracker front-ends.
 
 In addition to the flags listed above, any number user-defined flags may be specified, which could be read by a tracker, for example.
 
@@ -298,7 +298,7 @@ ZX Spectrum beeper.
 ```scheme
 (mdal-definition  ;; each MDEF must start with this
  mdef-version: 2  ;; version of the MDEF Standard to use
- plugin-version: 1.0 ;; major.minor version of this definition
+ engine-version: 1.0 ;; major.minor version of this engine definition
  target: spectrum48  ;; target specification
  description: "A simple 2 channel pin pulse (PFM) engine in less than 100 bytes.
  By Shiru 2011, 2013."  ;; An optional description of the music player.
@@ -308,7 +308,7 @@ ZX Spectrum beeper.
  ;; list of commands
  commands: ((command id: BPM bits: 16 type: uint default: 140)
 	        (command id: NOTE bits: 8 type: ukey
-		             tags: (enable_modifiers use_last_set is_note)
+		             tags: (enable-modifiers use-last-set is-note)
 		             keys: (make-dividers 118 8 0 -4)
 		             default: "rest")
 	        (command id: DRUM type: trigger default: #f description:

@@ -1,5 +1,5 @@
 (mdal-module
- #:version 2 #:config "Huby" #:config-version 1.0
+ #:version 2 #:mdef "Huby" #:engine-version 1.0
 
  (AUTHOR "utz")
  (TITLE "Huby Test")

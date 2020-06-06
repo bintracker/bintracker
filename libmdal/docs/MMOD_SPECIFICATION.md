@@ -66,10 +66,10 @@ Instance identifiers and names are omitted for Field members of Block nodes. If 
 The contents of an MDAL module are wrapped in an implicit root node, called the `GLOBAL` node. It takes the form
 
 ```Scheme
-(mdal-module #:version VERSION #:config CONFIG SUBNODE ...)
+(mdal-module #:version VERSION #:mdef DEF #:engine-version VERSION2 SUBNODE ...)
 ```
 
-where `VERSION` is the MMOD standard version (eg. 2), `CONFIG` is a string naming the module's MDEF configuration, followed by one or more `SUBNODE`s.
+where VERSION is the MMOD standard version (eg. 2), DEF is a string naming the module's MDEF configuration, VERSION2 is the required MDEF engine version, followed by one or more SUBNODEs.
 
 
 #### Field Nodes
@@ -152,7 +152,8 @@ The following example assumes an underlying MDAL engine definition that specifie
 
 (mdal-module
   #:version 2                           ;; required: MMOD standard version
-  #:config "MyConfig"                   ;; specify the MDAL engine definition to use.
+  #:mdef "MyConfig"                     ;; specify the MDAL engine definition to use.
+  #:engine-version: 1.0                 ;; specify the version of the MDAL engine definition to use.
 
   (AUTHOR "Great Artist")               ;; This is "My Great Song" by "Great Artist"
   (TITLE "My Great Song")               ;; AUTHOR and TITLE are available for all configurations.

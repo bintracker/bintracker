@@ -14,18 +14,18 @@
 ;;;
 ;;; ## Default Tables
 ;;;
-;;; ### configs
+;;; ### mdefs
 ;;;
-;;; The `configs` table contains information about the installed MDAL
-;;; configurations. It contains the following columns:
+;;; The `mdefs` table contains information about the installed MDAL
+;;; definitions. It contains the following columns:
 ;;;
-;;; - `id` - configuration name
-;;; - `version` - plugin version
-;;; - `hash` - MD5 hash of the .mdconf file
+;;; - `id` - definition name
+;;; - `version` - engine version
+;;; - `hash` - MD5 hash of the .mdef file
 ;;; - `platform` - target platform
 ;;; - `description` - configuration description
 ;;;
-;;; The `configs` table is automatically updated during startup of Bintracker.
+;;; The `mdefs` table is automatically updated during startup of Bintracker.
 (module bt-db
     *
 
@@ -47,25 +47,25 @@
       (finalize! btdb)
       (set! btdb #f)))
 
-  (define mdal-config-dir "mdef/")
+  (define mdal-mdef-dir "mdef/")
 
-  (define (get-config-dir-subdirs)
+  (define (get-mdef-dir-subdirs)
     (filter (lambda (file)
-	      (directory? (string-append mdal-config-dir file)))
-	    (directory mdal-config-dir)))
+	      (directory? (string-append mdal-mdef-dir file)))
+	    (directory mdal-mdef-dir)))
 
-  ;; (define (bt-db-get-config-hash mdconf-id)
+  ;; (define (bt-db-get-mdef-hash mdef-id)
   ;;   '())
 
-  ;; (define (bt-db-get-config-info mdconf-id)
+  ;; (define (bt-db-get-mdef-info mdef-id)
   ;;   '())
 
-  ;;; Returns the list of available MDAL configurations. The returned list has
-  ;;; the form `(CONFIG-ID, PLUGIN-VERSION, TARGET-PLATFORM, DESCRIPTION)`.
-  (define (btdb-list-configs #!optional (platform 'any))
+  ;;; Returns the list of available MDAL definitions. The returned list has
+  ;;; the form `(MDEF-ID, ENGINE-VERSION, TARGET-PLATFORM, DESCRIPTION)`.
+  (define (btdb-list-mdefs #!optional (platform 'any))
     (map-row (lambda args args) btdb
 	      (string-append
-	       "SELECT id, version, platform, description FROM configs"
+	       "SELECT id, version, platform, description FROM mdefs"
 	       (if (eqv? platform 'any)
 		   ""
 		   (string-append " WHERE platform='" (->string platform)
@@ -73,118 +73,118 @@
 	       ";")))
 
   (define (btdb-list-platforms)
-    (map-row identity btdb "SELECT DISTINCT platform FROM configs"))
+    (map-row identity btdb "SELECT DISTINCT platform FROM mdefs"))
 
-  ;;; Collect information on the MDAL configuration named MDCONF-ID into a
+  ;;; Collect information on the MDAL definition named MDEF-ID into a
   ;;; list, which has the form `(VERSION HASH TARGET-PLATFORM DESCRIPTION)`.
-  ;;; Returns `#f` if the config is not found in the MDAL configuration
+  ;;; Returns `#f` if the mdef is not found in the MDAL definition
   ;;; directory.
-  (define (gather-config-info mdconf-id)
-    (let ((mdconf (file->mdef mdal-config-dir mdconf-id)))
-      (and mdconf
+  (define (gather-mdef-info mdef-id)
+    (let ((mdef (file->mdef mdal-mdef-dir mdef-id)))
+      (and mdef
 	   (list (string-append
-		  (number->string (plugin-version-major
-				   (config-plugin-version mdconf)))
-		  "." (number->string (plugin-version-minor
-				       (config-plugin-version mdconf))))
-		 (file-md5sum (string-append mdal-config-dir mdconf-id
-  					     "/" mdconf-id ".mdef"))
-		 (target-platform-id (config-target mdconf))
-		 (config-description mdconf)))))
+		  (number->string (engine-version-major
+				   (mdef-engine-version mdef)))
+		  "." (number->string (engine-version-minor
+				       (mdef-engine-version mdef))))
+		 (file-md5sum (string-append mdal-mdef-dir mdef-id
+  					     "/" mdef-id ".mdef"))
+		 (target-platform-id (mdef-target mdef))
+		 (mdef-description mdef)))))
 
-  ;;; Add the MDAL configuration named MDCONF-ID to the Bintracker database.
-  (define (btdb-add-config! mdconf-id)
-    (let ((info (gather-config-info mdconf-id)))
+  ;;; Add the MDAL definition named MDEF-ID to the Bintracker database.
+  (define (btdb-add-mdef! mdef-id)
+    (let ((info (gather-mdef-info mdef-id)))
       (when info
   	(execute btdb (string-append
-  		       "INSERT INTO configs (id, version, "
-  		       "hash, platform, description) VALUES ('" mdconf-id
+  		       "INSERT INTO mdefs (id, version, "
+  		       "hash, platform, description) VALUES ('" mdef-id
 		       "', '" (car info)
   		       "', '" (cadr info)
 		       "', '" (third info)
   		       "', '" (or (fourth info) "") "');")))))
 
-  ;;; Remove the MDAL configuration named MDCONF-ID from the Bintracker
+  ;;; Remove the MDAL definition named MDEF-ID from the Bintracker
   ;;; database.
-  (define (btdb-remove-config! mdconf-id)
-    (execute btdb (string-append "DELETE FROM configs WHERE id='"
-				 mdconf-id "';")))
+  (define (btdb-remove-mdef! mdef-id)
+    (execute btdb (string-append "DELETE FROM mdefs WHERE id='"
+				 mdef-id "';")))
 
-  ;;; Update the MDAL configuration named MDCONF-ID in the Bintracker
+  ;;; Update the MDAL definition named MDEF-ID in the Bintracker
   ;;; database.
-  (define (btdb-update-config! mdconf-id)
-    (let ((info (gather-config-info mdconf-id)))
-      (execute btdb (string-append "UPDATE configs SET "
+  (define (btdb-update-mdef! mdef-id)
+    (let ((info (gather-mdef-info mdef-id)))
+      (execute btdb (string-append "UPDATE mdefs SET "
 				   "version='" (car info)
 				   "', hash='" (cadr info)
 				   "', platform='" (third info)
 				   "', description='" (fourth info)
-				   "' WHERE id='" mdconf-id "';"))))
+				   "' WHERE id='" mdef-id "';"))))
 
-  ;;; Scan the MDAL config directory, and update the Bintracker database
-  ;;; accordingly. Configurations no longer found in the config directory are
-  ;;; deleted from the database, newly found configurations are added, and
-  ;;; entries for modified configurations are updated.
-  (define (btdb-scan-mdal-configs!)
-    (let ((config-dirs (get-config-dir-subdirs)))
+  ;;; Scan the MDAL mdef directory, and update the Bintracker database
+  ;;; accordingly. Definitions no longer found in the mdef directory are
+  ;;; deleted from the database, newly found definitions are added, and
+  ;;; entries for modified definitions are updated.
+  (define (btdb-scan-mdal-mdefs!)
+    (let ((mdef-dirs (get-mdef-dir-subdirs)))
       (for-each (lambda (db-entry)
-      		  (display (string-append "removing config: " db-entry))
+      		  (display (string-append "removing mdef: " db-entry))
       		  (newline)
-      		  (btdb-remove-config! db-entry))
+      		  (btdb-remove-mdef! db-entry))
       		(remove (lambda (db-entry)
-      			  (member db-entry config-dirs))
-      			(map-row identity btdb "SELECT id FROM configs;")))
-      (let* ((current-configs (map-row identity btdb "SELECT id FROM configs;"))
+      			  (member db-entry mdef-dirs))
+      			(map-row identity btdb "SELECT id FROM mdefs;")))
+      (let* ((current-mdefs (map-row identity btdb "SELECT id FROM mdefs;"))
 	     (new-dirs (remove (lambda (dir)
-				 (member dir current-configs))
-			       config-dirs)))
+				 (member dir current-mdefs))
+			       mdef-dirs)))
 	(unless (null? new-dirs)
 	  (execute btdb
 		   (string-append
-		    "INSERT INTO configs (id, version, "
+		    "INSERT INTO mdefs (id, version, "
 		    "hash, platform, description) VALUES "
 		    (string-intersperse
 		     (map (lambda (id)
 			    (string-append "('"
 					   (string-intersperse
-					    (cons id (gather-config-info id))
+					    (cons id (gather-mdef-info id))
 					    "', '")
 					   "')"))
 			  new-dirs)
 		     ", ")
 		    ";")))
 	(for-each (lambda (dir)
-		    (display (string-append "found updated config: " dir))
+		    (display (string-append "found updated mdef: " dir))
 		    (newline)
-		    (btdb-update-config! dir))
+		    (btdb-update-mdef! dir))
 		  (remove
 		   (lambda (dir)
 		     (string=
-		      (file-md5sum (string-append mdal-config-dir dir "/"
+		      (file-md5sum (string-append mdal-mdef-dir dir "/"
 		  				  dir ".mdef"))
 		      (first-result btdb
 		  		    (string-append
-		  		     "SELECT hash FROM configs WHERE id='"
+		  		     "SELECT hash FROM mdefs WHERE id='"
 		  		     dir "';"))))
-		   config-dirs)))))
+		   mdef-dirs)))))
 
   ;;; Update the Bintracker Database on first run of the application.
-  ;;; Creates the `configs` table if necessary, then scans the MDAL config
-  ;;; directory for new or modified configurations and adds them to the database
+  ;;; Creates the `mdefs` table if necessary, then scans the MDAL mdef
+  ;;; directory for new or modified definitions and adds them to the database
   ;;; as required.
   (define (btdb-update!)
     (when (null? (map-row identity btdb
 			  (string-append
   	  		   "SELECT name FROM sqlite_master "
-  	  		   "WHERE type='table' AND name='configs';")))
+  	  		   "WHERE type='table' AND name='mdefs';")))
       (print "regenerating database")
       (execute btdb (string-append
-  		     "create table configs "
+  		     "create table mdefs "
   		     "(id TINYTEXT PRIMARY KEY,"
 		     " version DECIMAL(2, 2), hash CHAR(32), "
   		     "platform TINYTEXT, description MEDIUMTEXT);")))
-    (btdb-scan-mdal-configs!))
+    (btdb-scan-mdal-mdefs!))
 
-  ;; TODO table for last-used files, record for "favourite configs"
+  ;; TODO table for last-used files, record for "favourite mdefs"
 
   ) ;; end module bt-db

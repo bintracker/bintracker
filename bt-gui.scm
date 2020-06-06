@@ -101,15 +101,16 @@
   	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdef-name)
+    (print "create-new-module " mdef-name)
     (close-file)
     (after-load-file-hooks
      'execute
-     (generate-new-mmod (file->mdef (settings 'mdal-config-dir) mdef-name)
-  			 (settings 'default-block-length))
+     (generate-new-mmod (file->mdef (settings 'mdal-mdef-dir) mdef-name)
+  			(settings 'default-block-length))
      #f))
 
   ;; TODO abort when user aborts closing of current workfile
-  ;;; Opens a dialog for users to chose an MDAL configuration. Based on the
+  ;;; Opens a dialog for users to chose an MDAL definition. Based on the
   ;;; user's choice, a new MDAL module is created and displayed.
   (define (new-file)
     (let ((d (make-dialogue))
@@ -118,40 +119,42 @@
       (d 'add 'widget 'platform-selector
   	 `(combobox state: readonly values: ,(cons "any" platforms)))
       ((d 'ref 'platform-selector) 'set "any")
-      (d 'add 'widget 'config-selector
+      (d 'add 'widget 'mdef-selector
   	 '(treeview columns: (Name Version Platform)
   		    show: tree
   		    selectmode: browse))
-      (for-each (lambda (config)
-  		  ((d 'ref 'config-selector) 'insert '{} 'end
-  		   text: (car config)
-  		   values: (list (cadr config) (third config))))
-  		;; TODO btdb-list-configs should always return a list!
-  		(btdb-list-configs))
-      (tk/focus (d 'ref 'config-selector))
+      (for-each (lambda (mdef)
+  		  ((d 'ref 'mdef-selector) 'insert '{} 'end
+  		   text: (car mdef)
+  		   values: (list (cadr mdef) (third mdef))))
+  		;; TODO btdb-list-mdefs should always return a list!
+  		(btdb-list-mdefs))
+      (tk/focus (d 'ref 'mdef-selector))
       (let* ((get-item-list (lambda ()
-  			     (string-split
-  			      (string-delete
-  			       (string->char-set "{}")
-  			       (->string ((d 'ref 'config-selector)
-  					  'children '{}))))))
+  			      (string-split
+  			       (string-delete
+  				(string->char-set "{}")
+  				(->string ((d 'ref 'mdef-selector)
+  					   'children '{}))))))
   	     (initial-item-list (get-item-list)))
   	(d 'add 'finalizer
   	   (lambda a
+	     (print "doing finalizer " a)
   	     (and-let*
   		 ((item-list (get-item-list))
   		  (_ (not (null? item-list)))
-  		  (selected-def ((d 'ref 'config-selector)
-  				 'item ((d 'ref 'config-selector) 'focus)
+  		  (selected-def ((d 'ref 'mdef-selector)
+  				 'item ((d 'ref 'mdef-selector) 'focus)
   				 text:)))
+	       (print "selected: " selected-def)
   	       (create-new-module (if (string-null? selected-def)
-  				      ((d 'ref 'config-selector)
+  				      ((d 'ref 'mdef-selector)
   				       'item (car item-list)
   				       text:)
   				      selected-def)))))
   	(unless (null? initial-item-list)
-  	  ((d 'ref 'config-selector) 'focus (car initial-item-list))
-  	  ((d 'ref 'config-selector) 'selection 'set
+  	  ((d 'ref 'mdef-selector) 'focus (car initial-item-list))
+  	  ((d 'ref 'mdef-selector) 'selection 'set
   	   (list (car initial-item-list)))))))
 
   (define on-save-file-hooks
@@ -159,7 +162,7 @@
      `(write-file
        . ,(lambda ()
   	    (mmod->file (ui-metastate (current 'module-view) 'mmod)
-  			 (ui-metastate (current 'module-view) 'filename))
+  			(ui-metastate (current 'module-view) 'filename))
   	    (ui-metastate (current 'module-view) 'modified #f)))
      `(update-window-title . ,update-window-title!)))
 
@@ -186,7 +189,7 @@
   			  filetypes: '(((Binary) (.bin)))
   			  defaultextension: '.bin))
   	       (_ (not (string-null? filename))))
-      (mod-export-bin filename mmod (config-default-origin (current 'mdef)))))
+      (mod-export-bin filename mmod (mdef-default-origin (current 'mdef)))))
 
   ;;; Calls undo on (current 'module-view).
   (define (undo)
@@ -217,13 +220,13 @@
 
   (define (play-from-start)
     (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
-  	   (origin (config-default-origin (car mmod))))
+  	   (origin (mdef-default-origin (car mmod))))
       ((ui-metastate (current 'module-view) 'emulator)
        'run origin (mod->bin mmod origin))))
 
   (define (play-pattern)
     (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
-  	   (origin (config-default-origin (car mmod))))
+  	   (origin (mdef-default-origin (car mmod))))
       ((ui-metastate (current 'module-view) 'emulator) 'run origin
        (mod->bin (derive-single-pattern-mmod
       		  mmod
@@ -309,7 +312,7 @@
   ;;; Replaces empty values with dots, changes numbers depending on number
   ;;; format setting, and turns everything into a string.
   (define (normalize-field-value val field-id mdef)
-    (let* ((command-config (config-get-inode-source-command field-id mdef))
+    (let* ((command-config (mdef-get-inode-source-command field-id mdef))
   	   (display-size (value-display-size command-config)))
       (cond ((not val) (list->string (make-list display-size #\.)))
   	    ((null? val) (list->string (make-list display-size #\space)))
@@ -326,7 +329,7 @@
 
   ;;; Get the color tag asscociated with the field's command type.
   (define (get-field-color-tag field-id mdef)
-    (let ((command-config (config-get-inode-source-command field-id mdef)))
+    (let ((command-config (mdef-get-inode-source-command field-id mdef)))
       (if (memq 'is-note (command-flags command-config))
   	  'text-1
   	  (case (command-type command-config)
@@ -365,7 +368,7 @@
 
   ;;; Get the appropriate command type tag to set the item color.
   (define (get-command-type-tag field-id mdef)
-    (let ((command-config (config-get-inode-source-command field-id mdef)))
+    (let ((command-config (mdef-get-inode-source-command field-id mdef)))
       (if (memq 'is-note (command-flags command-config))
   	  'note
   	  (case (command-type command-config)
@@ -426,8 +429,8 @@
     (tg 'tag 'configure 'string foreground: (colors 'text-6))
     (tg 'tag 'configure 'modifier foreground: (colors 'text-7))
     (tg 'tag 'configure 'active font: (list (settings 'font-mono)
-  					     (settings 'font-size)
-  					     "bold")))
+  					    (settings 'font-size)
+  					    "bold")))
 
   ;;; Abstraction over Tk's `textwidget tag add` command.
   ;;; Contrary to Tk's convention, ROW uses 0-based indexing.
@@ -496,7 +499,7 @@
   ;;; Returns the number of characters that the blockview cursor should span
   ;;; for the given `field-id`.
   (define (field-id->cursor-size field-id mdef)
-    (let ((cmd-config (config-get-inode-source-command field-id mdef)))
+    (let ((cmd-config (mdef-get-inode-source-command field-id mdef)))
       (if (memq 'is-note (command-flags cmd-config))
   	  3
   	  (if (memq (command-type cmd-config)
@@ -509,7 +512,7 @@
   ;;; result will be one, otherwise it will be equal to the number of characters
   ;;; needed to represent the valid input range for the field's source command.
   (define (field-id->cursor-digits field-id mdef)
-    (let ((cmd-config (config-get-inode-source-command field-id mdef)))
+    (let ((cmd-config (mdef-get-inode-source-command field-id mdef)))
       (if (memq (command-type cmd-config)
   		'(key ukey))
   	  1 (value-display-size cmd-config))))
@@ -519,7 +522,7 @@
     (letrec* ((type-tags (map (cute get-command-type-tag <> mdef) field-ids))
   	      (sizes (map (lambda (id)
   	      		    (value-display-size
-  			     (config-get-inode-source-command id mdef)))
+  			     (mdef-get-inode-source-command id mdef)))
   	      		  field-ids))
   	      (cursor-widths (map (cute field-id->cursor-size <> mdef)
   				  field-ids))
@@ -527,8 +530,8 @@
   			      field-ids))
   	      (tail-fields
   	       (map (lambda (id)
-  	      	      (car (reverse (config-get-subnode-ids
-  				     id (config-itree mdef)))))
+  	      	      (car (reverse (mdef-get-subnode-ids
+  				     id (mdef-itree mdef)))))
   	      	    (drop-right block-ids 1)))
   	      (convert-sizes
   	       (lambda (sizes start)
@@ -876,13 +879,13 @@
   			 (lambda ()
   			   (ui-modeline-set modeline segment-id ""))))
 
-  		      ;; (bind-info-status
-  		      ;;  button
-  		      ;;  (string-append (car (alist-ref (car cb)
-  		      ;; 				      (ui-setup buf)))
-  		      ;; 	" " (key-binding->info 'global (car cb))))
-  		      )))
-  		callbacks)))
+  	     ;; (bind-info-status
+  	     ;;  button
+  	     ;;  (string-append (car (alist-ref (car cb)
+  	     ;; 				      (ui-setup buf)))
+  	     ;; 	" " (key-binding->info 'global (car cb))))
+  	     )))
+       callbacks)))
 
 
   ;;; A class representing a toolbar metawidget, consisting of
@@ -1289,8 +1292,8 @@
   		  (lambda () (repl-clear buf)))
   	(set! (slot-value buf 'initialized) #t)
   	(tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
-  		(lambda ()
-  		  (focus-controller 'set (slot-value buf 'ui-zone)))))
+  		  (lambda ()
+  		    (focus-controller 'set (slot-value buf 'ui-zone)))))
       (focus-controller 'add (slot-value buf 'ui-zone)
   			(lambda () (ui-focus buf))
   			(lambda () #t)
@@ -1453,7 +1456,7 @@
 			  (ui-metastate buf 'mdef)
 			  node-id
 			  (case (command-type
-				 (config-get-inode-source-command
+				 (mdef-get-inode-source-command
 				  node-id (ui-metastate buf 'mdef)))
 			    ((int uint) (string->number
 					 new-val (settings 'number-base)))
@@ -1531,7 +1534,7 @@
 
   (define-method (initialize-instance after: (buf <ui-group-fields>))
     ;; (print "in initialize-instance/group-fields")
-    (let ((subnode-ids (config-get-subnode-type-ids
+    (let ((subnode-ids (mdef-get-subnode-type-ids
   			(slot-value buf 'group-id)
   			(ui-metastate buf 'mdef)
   			'field)))
@@ -1578,10 +1581,10 @@
 
   (define-method (ui-show after: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'add
-       (slot-value buf 'ui-zone)
-       (lambda () (ui-focus buf))
-       (lambda () (ui-unfocus buf))
-       buf))
+     (slot-value buf 'ui-zone)
+     (lambda () (ui-focus buf))
+     (lambda () (ui-unfocus buf))
+     buf))
 
   (define-method (ui-hide after: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
@@ -1630,7 +1633,7 @@
      (parent-instance-path
       (error '|make <ui-basic-block-view>| "Missing 'parent-instance-path."))
      (metastate-accessor (error '|make <ui-basic-block-view>|
-  			   "Missing 'metastate-accessor."))
+  				"Missing 'metastate-accessor."))
      field-ids
      field-configs
      header-frame
@@ -1818,8 +1821,8 @@
   ;;; currently on.
   (define-method (ui-blockview-get-current-block-id primary:
   						    (buf <ui-basic-block-view>))
-    (config-get-parent-node-id (ui-blockview-get-current-field-id buf)
-  			       (config-itree (ui-metastate buf 'mdef))))
+    (mdef-get-parent-node-id (ui-blockview-get-current-field-id buf)
+  			     (mdef-itree (ui-metastate buf 'mdef))))
 
   ;;; Returns the bv-field-configuration for the field that the cursor is
   ;;; currently on.
@@ -1842,8 +1845,8 @@
   ;;; currently on.
   (define-method (ui-blockview-get-current-field-command
   		  primary: (buf <ui-basic-block-view>))
-    (config-get-inode-source-command (ui-blockview-get-current-field-id buf)
-  				     (ui-metastate buf 'mdef)))
+    (mdef-get-inode-source-command (ui-blockview-get-current-field-id buf)
+  				   (ui-metastate buf 'mdef)))
 
   ;;; Determine the start and end positions of each item chunk in the
   ;;; blockview's item cache.
@@ -2545,12 +2548,12 @@
     (let ((group-id (slot-value buf 'group-id)))
       (set! (slot-value buf 'block-ids)
   	(remove (cute eq? <> (symbol-append group-id '_ORDER))
-  		(config-get-subnode-type-ids group-id
-  					     (ui-metastate buf 'mdef)
-  					     'block)))
+  		(mdef-get-subnode-type-ids group-id
+  					   (ui-metastate buf 'mdef)
+  					   'block)))
       (set! (slot-value buf 'field-ids)
-  	(flatten (map (cute config-get-subnode-ids <>
-  			    (config-itree (ui-metastate buf 'mdef)))
+  	(flatten (map (cute mdef-get-subnode-ids <>
+  			    (mdef-itree (ui-metastate buf 'mdef)))
   		      (slot-value buf 'block-ids))))
       (set! (slot-value buf 'field-configs)
   	(blockview-make-field-configs
@@ -2574,8 +2577,8 @@
   			     (filter
   			      (lambda (field-config)
   				(memq (car field-config)
-  				      (config-get-subnode-ids
-  				       id (config-itree
+  				      (mdef-get-subnode-ids
+  				       id (mdef-itree
   					   (ui-metastate buf 'mdef)))))
   			      (slot-value buf 'field-configs))))))
   	      (slot-value buf 'block-ids)))
@@ -2674,10 +2677,10 @@
   			  `((,instance-id
   			     (,current-row
   			      ,(make-list
-  				(length (config-get-subnode-ids
+  				(length (mdef-get-subnode-ids
   					 block-id
-  					 (config-itree (ui-metastate buf
-  								     'mdef))))
+  					 (mdef-itree (ui-metastate buf
+  								   'mdef))))
   				'()))))))
   		  (slot-value buf 'block-ids)
   		  block-instance-ids)))
@@ -2702,10 +2705,10 @@
   			  `((,instance-id
   			     (,current-row
   			      ,(make-list
-  				(length (config-get-subnode-ids
+  				(length (mdef-get-subnode-ids
   					 block-id
-  					 (config-itree (ui-metastate buf
-  								     'mdef))))
+  					 (mdef-itree (ui-metastate buf
+  								   'mdef))))
   				;; TODO: in this case we need the actual
   				;; block values.
   				'()))))))
@@ -2734,8 +2737,8 @@
 	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
 			    (field-index (cdr start))))
 	   (block-ids (map (lambda (field-id)
-			     (config-get-parent-node-id
-			      field-id (config-itree (ui-metastate buf 'mdef))))
+			     (mdef-get-parent-node-id
+			      field-id (mdef-itree (ui-metastate buf 'mdef))))
 			   field-ids))
 	   (actions
 	    (concatenate
@@ -2756,7 +2759,7 @@
 			   (mod-get-order-values group-id
 						 parent-instance)
 			   (ui-blockview-cursor-row->order-pos buf row))
-			  (config-get-block-field-index
+			  (mdef-get-block-field-index
 			   (symbol-append group-id '_ORDER)
 			   (symbol-append 'R_ block-id)
 			   (ui-metastate buf 'mdef)))))
@@ -2793,8 +2796,8 @@
 	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
 			    (field-index (cdr start))))
 	   (block-ids (map (lambda (field-id)
-			     (config-get-parent-node-id
-			      field-id (config-itree (ui-metastate buf 'mdef))))
+			     (mdef-get-parent-node-id
+			      field-id (mdef-itree (ui-metastate buf 'mdef))))
 			   field-ids))
 	   (actions
 	    (concatenate
@@ -2808,7 +2811,7 @@
 			    (mod-get-order-values group-id
 						  parent-instance)
 			    (ui-blockview-cursor-row->order-pos buf row))
-			   (config-get-block-field-index
+			   (mdef-get-block-field-index
 			    (symbol-append group-id '_ORDER)
 			    (symbol-append 'R_ block-id)
 			    (ui-metastate buf 'mdef)))))
@@ -2974,8 +2977,8 @@
   (define-method (initialize-instance after: (buf <ui-order-view>))
     (let ((group-id (slot-value buf 'group-id)))
       (set! (slot-value buf 'field-ids)
-  	(config-get-subnode-ids (symbol-append group-id '_ORDER)
-  				(config-itree (ui-metastate buf 'mdef))))
+  	(mdef-get-subnode-ids (symbol-append group-id '_ORDER)
+  			      (mdef-itree (ui-metastate buf 'mdef))))
       (set! (slot-value buf 'field-configs)
   	(blockview-make-field-configs
   	 (list (symbol-append group-id '_ORDER))
@@ -2994,7 +2997,7 @@
 	(ui-set-callbacks
 	 (slot-value buf 'toolbar)
 	 `((edit (insert-row ,(lambda () (ui-blockview-insert-row buf)))
-		  (cut-row ,(lambda () (ui-blockview-cut-row buf)))))))))
+		 (cut-row ,(lambda () (ui-blockview-cut-row buf)))))))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-order-view>))
@@ -3154,7 +3157,7 @@
   	     `((0 (,current-row ,new-row-values)))))
       (ui-update (current 'blockview))
       (when (memv (slot-value buf 'ui-zone) (focus 'list))
-	  (ui-blockview-show-cursor buf))))
+	(ui-blockview-show-cursor buf))))
 
   ;; TODO allow deleting multiple rows and rows currently not under cursor.
   ;;; Cut (remove) the row currently under cursor.
@@ -3261,7 +3264,7 @@
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
-;; TODO storing/restoring insert mark position is a cludge. Generally we want
+  ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.
   ;;; Update the blockview display.
   ;;; The procedure attempts to be "smart" about updating, ie. it tries to not
@@ -3294,8 +3297,8 @@
     (unless (slot-value buf 'initialized)
       ((slot-value buf 'rownums)
        'configure width: 5 yscrollcommand: `(,(slot-value buf 'yscroll) set))
-       ((slot-value buf 'rownum-header) 'configure height: 1 width: 5)
-       ((slot-value buf 'block-header) 'configure height: 1)))
+      ((slot-value buf 'rownum-header) 'configure height: 1 width: 5)
+      ((slot-value buf 'block-header) 'configure height: 1)))
 
   (define-method (ui-where primary: (buf <ui-order-view>))
     (let ((field-id
@@ -3345,8 +3348,8 @@
   				  ,(slot-value buf 'metastate-accessor)))
     (multibuffer-add buf `(order #t 1 ,<ui-order-view>
   				 group-id ,(slot-value buf 'group-id)
-  				  parent-instance-path
-  				  ,(slot-value buf 'parent-instance-path)
+  				 parent-instance-path
+  				 ,(slot-value buf 'parent-instance-path)
   				 metastate-accessor
   				 ,(slot-value buf 'metastate-accessor)))
     ;; (print "done initialize-instance/blocks")
@@ -3389,9 +3392,9 @@
   			'metastate-accessor (slot-value buf 'metastate-accessor)
   			'parent-instance-path
   			(slot-value buf 'parent-instance-path))))
-  	   (config-get-subnode-type-ids (slot-value buf 'group-id)
-  					(ui-metastate buf 'mdef)
-  					'group))))
+  	   (mdef-get-subnode-type-ids (slot-value buf 'group-id)
+  				      (ui-metastate buf 'mdef)
+  				      'group))))
 
   (define-method (ui-show before: (buf <ui-subgroups>))
     ;; (print "calling ui-show on children of <ui-subgroups>")
@@ -3444,17 +3447,17 @@
   	   (metastate-accessor (slot-value buf 'metastate-accessor))
   	   (mmod (ui-metastate buf 'mmod))
   	   (mdef (ui-metastate buf 'mdef)))
-      (unless (null? (config-get-subnode-type-ids group-id mdef 'field))
+      (unless (null? (mdef-get-subnode-type-ids group-id mdef 'field))
   	(multibuffer-add buf
   			 `(fields #t 1 ,<ui-group-fields> group-id ,group-id
   				  parent-instance-path ,instance-path
   				  metastate-accessor ,metastate-accessor)))
-      (unless (null? (config-get-subnode-type-ids group-id mdef 'block))
+      (unless (null? (mdef-get-subnode-type-ids group-id mdef 'block))
   	(multibuffer-add buf `(blocks #t 2 ,<ui-blocks>
   				      group-id ,group-id
   				      metastate-accessor ,metastate-accessor
   				      parent-instance-path ,instance-path)))
-      (unless (null? (config-get-subnode-type-ids group-id mdef 'group))
+      (unless (null? (mdef-get-subnode-type-ids group-id mdef 'group))
         (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
   					 group-id ,group-id
   					 metastate-accessor ,metastate-accessor
@@ -3567,7 +3570,7 @@
   					action)
     (let* ((journal (slot-value buf 'journal))
   	   (stack-depth (app-journal-undo-stack-depth journal))
-  	  (journal-limit (settings 'journal-limit)))
+  	   (journal-limit (settings 'journal-limit)))
       (when (>= stack-depth journal-limit)
   	(stack-cut! (app-journal-undo-stack journal)
   		    0 (quotient journal-limit 2))
@@ -3587,7 +3590,7 @@
   	   (let ((action (stack-pop! (app-journal-undo-stack journal))))
   	     (app-journal-undo-stack-depth-set! journal (sub1 stack-depth))
   	     (module-view-push-redo buf
-  	      (make-reverse-action action (slot-value buf 'mmod)))
+  				    (make-reverse-action action (slot-value buf 'mmod)))
   	     action))))
 
   (define-method (module-view-push-redo primary: (buf <ui-module-view>)
@@ -3600,7 +3603,7 @@
       (and (not (stack-empty? redo-stack))
   	   (let ((action (stack-pop! redo-stack)))
   	     (module-view-push-undo buf
-  	      (make-reverse-action action (slot-value buf 'mmod)))
+  				    (make-reverse-action action (slot-value buf 'mmod)))
   	     action))))
 
   (define-method (module-view-undo primary: (buf <ui-module-view>))
@@ -3638,7 +3641,7 @@
   	  (when (stack-empty? (app-journal-redo-stack
   			       (slot-value buf 'journal)))
   	    (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
-  			'disabled 'redo))))))
+  			  'disabled 'redo))))))
 
   ;;; Construct a module view metastate accessor procedure. Helper for
   ;;; `<ui-module-view>` constructor.
@@ -3653,7 +3656,7 @@
   	     (case (cadr args)
   	       ((play-row)
   		(let* ((mmod (slot-value buf 'mmod))
-  		       (origin (config-default-origin (car mmod))))
+  		       (origin (mdef-default-origin (car mmod))))
   		  ((slot-value buf 'emulator) 'run
   		   origin
   		   (mod->bin (apply derive-single-row-mmod
@@ -3716,17 +3719,17 @@
       (error '|make <ui-module-view>| "Missing either 'mmod or 'current-file."))
     (unless (slot-value buf 'mmod)
       (set! (slot-value buf 'mmod)
-  	(file->mmod (slot-value buf 'filename) (settings 'mdal-config-dir))))
+  	(file->mmod (slot-value buf 'filename) (settings 'mdal-mdef-dir))))
     (unless (slot-value buf 'filename)
       (set! (slot-value buf 'modified) #t))
     (when (settings 'show-modelines)
       (set! (slot-value buf 'modeline)
   	(make <ui-modeline> 'parent (ui-box buf)
   	      'setup `((platform ,(->string (target-platform-id
-  					     (config-target
+  					     (mdef-target
   					      (car (slot-value buf 'mmod)))))
   				 1)
-  		       (engine ,(->string (config-id
+  		       (engine ,(->string (mdef-id
   					   (car (slot-value buf 'mmod))))
   			       2)
   		       (active-field "")))))
@@ -3778,24 +3781,24 @@
       (make-module-view-settings-bar buf))
     (set! (slot-value buf 'metastate-accessor)
       (make-metastate-accessor buf))
-    (unless (null? (config-get-subnode-type-ids 'GLOBAL
-  						(car (slot-value buf 'mmod))
-  						'field))
+    (unless (null? (mdef-get-subnode-type-ids 'GLOBAL
+  					      (car (slot-value buf 'mmod))
+  					      'field))
       (multibuffer-add buf `(fields #t 1 ,<ui-group-fields>
   				    group-id GLOBAL
   				    parent-instance-path "0/"
   				    metastate-accessor
   				    ,(slot-value buf 'metastate-accessor))))
-    (unless (null? (config-get-subnode-type-ids 'GLOBAL
-  						(car (slot-value buf 'mmod))
-  						'block))
+    (unless (null? (mdef-get-subnode-type-ids 'GLOBAL
+  					      (car (slot-value buf 'mmod))
+  					      'block))
       (multibuffer-add buf `(blocks #t 2 ,<ui-blocks> group-id GLOBAL
   				    metastate-accessor
   				    ,(slot-value buf 'metastate-accessor)
   				    parent-instance-path "")))
-    (unless (null? (config-get-subnode-type-ids 'GLOBAL
-  						(car (slot-value buf 'mmod))
-  						'group))
+    (unless (null? (mdef-get-subnode-type-ids 'GLOBAL
+  					      (car (slot-value buf 'mmod))
+  					      'group))
       (multibuffer-add buf `(subgroups #t 2 ,<ui-subgroups>
   				       group-id GLOBAL
   				       metastate-accessor
@@ -3929,7 +3932,7 @@
     (unless (slot-value buf 'initialized)
       (set! (slot-value buf 'emulator)
   	(platform->emulator (target-platform-id
-  			     (config-target (car (slot-value buf 'mmod))))))
+  			     (mdef-target (car (slot-value buf 'mmod))))))
       ((module-view-emulator buf) 'start)
       (update-window-title!)))
 

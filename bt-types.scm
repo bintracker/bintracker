@@ -124,7 +124,7 @@
   (define settings
     (let ((s '((keymap . #f)
 	       (number-base . 16)
-	       (mdal-config-dir . "mdef/")
+	       (mdal-mdef-dir . "mdef/")
 	       (theme-generator . default-theme-generator)
 	       (startup-layout .
 		((welcome #t 5 <ui-welcome-buffer>)

@@ -38,10 +38,9 @@
   ;;; ### Output generation
   ;;----------------------------------------------------------------------------
 
-  (define (mod-block-instance-contents->expr block-id contents mdconfig)
+  (define (mod-block-instance-contents->expr block-id contents mdef)
     (letrec
-	((field-ids (config-get-subnode-ids block-id
-					    (config-itree mdconfig)))
+	((field-ids (mdef-get-subnode-ids block-id (mdef-itree mdef)))
 	 (collapse-empty-rows
 	  (lambda (rows)
 	    (if (null? rows)
@@ -63,27 +62,27 @@
 				 field-ids row))))
 	    contents))))
 
-  (define (mod-node->node-expr node-id node-contents mdconfig)
-    (map (cute mod-node-instance->instance-expr node-id <> mdconfig)
+  (define (mod-node->node-expr node-id node-contents mdef)
+    (map (cute mod-node-instance->instance-expr node-id <> mdef)
 	 node-contents))
 
-  (define (mod-group-instance-contents->node-expr group-id contents mdconfig)
+  (define (mod-group-instance-contents->node-expr group-id contents mdef)
     (letrec ((resolve-nesting (lambda (subnode)
 				(if (null? subnode)
 				    '()
 				    (append (car subnode)
 					    (resolve-nesting (cdr subnode)))))))
       (resolve-nesting
-	   (filter-map (lambda (node-id)
-			 (let ((node-expr (mod-node->node-expr
-					   node-id (alist-ref node-id contents)
-					   mdconfig)))
-			   (and (pair? node-expr)
-				node-expr)))
-		       (config-get-subnode-ids group-id
-					       (config-itree mdconfig))))))
+       (filter-map (lambda (node-id)
+		     (let ((node-expr (mod-node->node-expr
+				       node-id (alist-ref node-id contents)
+				       mdef)))
+		       (and (pair? node-expr)
+			    node-expr)))
+		   (mdef-get-subnode-ids group-id
+					 (mdef-itree mdef))))))
 
-  (define (mod-node-instance->instance-expr node-id instance mdconfig)
+  (define (mod-node-instance->instance-expr node-id instance mdef)
     (cons (if (symbol-contains node-id "_ORDER")
 	      'ORDER node-id)
 	  (append (if (not (zero? (car instance)))
@@ -92,31 +91,31 @@
 		  (if (cadr instance)
 		      (list 'name: (cadr instance))
 		      '())
-		  (case (inode-config-type (config-inode-ref node-id mdconfig))
+		  (case (inode-config-type (mdef-inode-ref node-id mdef))
 		    ((field) (list (cddr instance)))
 		    ((block) (mod-block-instance-contents->expr
-			      node-id (cddr instance) mdconfig))
+			      node-id (cddr instance) mdef))
 		    ((group) (mod-group-instance-contents->node-expr
-			      node-id (cddr instance) mdconfig))))))
+			      node-id (cddr instance) mdef))))))
 
   ;;; Write the MDAL module MOD to an .mdal file.
   (define (mmod->file mod filename)
     (call-with-output-file filename
       (lambda (port)
 	(pp (append (list 'mdal-module 'version: mdal-version
-			  'config: (mmod-config-id mod)
-			  'config-version:
-			  (plugin-version->real
-			   (config-plugin-version (car mod))))
+			  'mdef: (mmod-mdef-id mod)
+			  'engine-version:
+			  (engine-version->real
+			   (mdef-engine-version (car mod))))
 		    (mod-group-instance-contents->node-expr
 		     'GLOBAL (cddr (cadr (mmod-global-node mod)))
-		     (mmod-config mod)))
+		     (mmod-mdef mod)))
 	    port))))
 
   ;; TODO and a list of symbols for mod->asm?
   ;;; Compile a module to an onode tree.
   (define (mod-compile mod origin #!optional (extra-symbols '()))
-    ((config-compiler (mmod-config mod))
+    ((mdef-compiler (mmod-mdef mod))
      mod origin (cons `(mdal_current_module ,mod)
 		      extra-symbols)))
 
@@ -145,28 +144,28 @@
 
   ;;; Returns the group instance's block nodes, except the order node. The
   ;;; order node can be retrieved with `mod-get-group-instance-order` instead.
-  (define (mod-get-group-instance-blocks igroup-instance igroup-id config)
+  (define (mod-get-group-instance-blocks igroup-instance igroup-id mdef)
     (map (cute subnode-ref <> igroup-instance)
   	 (filter (lambda (id)
   		   (not (symbol-contains id "_ORDER")))
-  		 (config-get-subnode-type-ids igroup-id config 'block))))
+  		 (mdef-get-subnode-type-ids igroup-id mdef 'block))))
 
   ;; TODO this is very inefficient
   ;;; Get the value of field FIELD-ID in ROW of BLOCK-INSTANCE.
-  (define (mod-get-block-field-value block-instance row field-id mdconf)
+  (define (mod-get-block-field-value block-instance row field-id mdef)
     (if (> (- (length block-instance) 2)
 	   row)
 	(list-ref (list-ref (cddr block-instance)
 			    row)
-		  (config-get-block-field-index (config-get-parent-node-id
-						 field-id (config-itree mdconf))
-						field-id mdconf))
+		  (mdef-get-block-field-index (mdef-get-parent-node-id
+					       field-id (mdef-itree mdef))
+					      field-id mdef))
 	'()))
 
-  ;;; Set the active MD command info string from the given mdconf config-inode
+  ;;; Set the active MD command info string from the given mdef config-inode
   ;;; FIELD-ID.
   (define (md-command-info field-id mdef)
-    (let ((command (config-get-inode-source-command field-id mdef)))
+    (let ((command (mdef-get-inode-source-command field-id mdef)))
       (string-append
        (symbol->string field-id) ": "
        (if (command-has-flag? command 'is-note)
@@ -196,9 +195,9 @@
 		     (and (not (null? value))
 			  value))
 		   (if (>= row (length block-contents))
-		       (make-list (length (config-get-subnode-ids
+		       (make-list (length (mdef-get-subnode-ids
 					   (car block-node)
-					   (config-itree mdef)))
+					   (mdef-itree mdef)))
 				  '())
 		       (list-ref block-contents row)))))
 	  block-instance-ids
@@ -245,9 +244,9 @@
   ;;; be an alist containing the node instance id in car, and the new value in
   ;;; cdr.
   (define (node-set! parent-node-instance node-id instances mod)
-    (let* ((mdconf (mmod-config mod))
+    (let* ((mdef (mmod-mdef mod))
 	   (parent-id
-	    (config-get-parent-node-id node-id (config-itree mdconf)))
+	    (mdef-get-parent-node-id node-id (mdef-itree mdef)))
 	   (parent-node
 	    (or ((node-path parent-node-instance)
 		 (mmod-global-node mod))
@@ -260,17 +259,17 @@
 			     mod)
 		  ((node-path parent-node-instance)
 		   (mmod-global-node mod))))))
-      (if (eqv? 'block (inode-config-type (config-inode-ref parent-id mdconf)))
-	  (let ((field-index (config-get-block-field-index parent-id node-id
-							   mdconf)))
+      (if (eqv? 'block (inode-config-type (mdef-inode-ref parent-id mdef)))
+	  (let ((field-index (mdef-get-block-field-index parent-id node-id
+							 mdef)))
 	    (for-each
 	     (lambda (instance)
 	       ;; TODO utterly messy work-around because applying
 	       ;; list-set! directly trashes the list contents
 	       (if (< (length parent-node) (+ 3 (car instance)))
-		   (let ((blank-row (make-list (length (config-get-subnode-ids
+		   (let ((blank-row (make-list (length (mdef-get-subnode-ids
 							parent-id
-							(config-itree mdconf)))
+							(mdef-itree mdef)))
 					       '())))
 		     (set! (cddr parent-node)
 		       (append (cddr parent-node)
@@ -302,14 +301,14 @@
 
   ;;; Delete the block field instance of FIELD-ID at ROW. Does nothing if ROW
   ;;; does not exist in BLOCK-INSTANCE.
-  (define (remove-block-field block-instance field-id row mdconf)
+  (define (remove-block-field block-instance field-id row mdef)
     (when (> (- (length block-instance) 2)
 	     row)
       (let* ((columns (transpose (cddr block-instance)))
-	     (block-id (config-get-parent-node-id
-			field-id (config-itree mdconf)))
-	     (field-index (config-get-block-field-index
-			   block-id field-id mdconf)))
+	     (block-id (mdef-get-parent-node-id
+			field-id (mdef-itree mdef)))
+	     (field-index (mdef-get-block-field-index
+			   block-id field-id mdef)))
 	(transpose (map (lambda (column index)
 			  (if (= index field-index)
 			      (append (take column row)
@@ -322,20 +321,20 @@
   ;;; Insert an instance of the block field FIELD-ID into the block node
   ;;; instance BLOCK-INSTANCE, inserting at ROW and setting VALUE. Returns a
   ;;; fresh block node instance.
-  (define (insert-block-field block-instance field-id row value mdconf)
-    (let* ((block-id (config-get-parent-node-id field-id (config-itree mdconf)))
+  (define (insert-block-field block-instance field-id row value mdef)
+    (let* ((block-id (mdef-get-parent-node-id field-id (mdef-itree mdef)))
 	   (columns
 	    (transpose
 	     (if (> (length block-instance) (+ 2 row))
 		 (cddr block-instance)
 		 (append (cddr block-instance)
 			 (make-list (- row (- (length block-instance) 3))
-				    (make-list (length (config-get-subnode-ids
+				    (make-list (length (mdef-get-subnode-ids
 							block-id
-							(config-itree mdconf)))
+							(mdef-itree mdef)))
 					       '()))))))
 	   (field-index
-	    (config-get-block-field-index block-id field-id mdconf)))
+	    (mdef-get-block-field-index block-id field-id mdef)))
       (transpose (map (lambda (column index)
 			(if (= index field-index)
 			    (append (take column row)
@@ -346,16 +345,16 @@
 
   ;;; Delete one or more INSTANCES from the node with NODE-ID.
   (define (node-remove! parent-instance-path node-id instances mod)
-    (let* ((mdconf (mmod-config mod))
-	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
+    (let* ((mdef (mmod-mdef mod))
+	   (parent-id (mdef-get-parent-node-id node-id (mdef-itree mdef)))
 	   (parent-instance ((node-path parent-instance-path)
 			     (mmod-global-node mod))))
-      (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
+      (if (eqv? 'block (mdef-get-parent-node-type node-id mdef))
 	  (for-each (lambda (instance)
 		      (when (> (length parent-instance) (+ 2 (car instance)))
 			(set! (cddr parent-instance)
 			  (remove-block-field parent-instance node-id
-					      (car instance) mdconf))))
+					      (car instance) mdef))))
 		    instances)
 	  ;; TODO this likely doesn't work.
 	  (for-each (cute alist-delete!
@@ -365,16 +364,16 @@
   ;;; Insert one or more INSTANCES into the node with NODE-ID. INSTANCES
   ;;; must be a list of node-instance-id, value pairs.
   (define (node-insert! parent-instance-path node-id instances mod)
-    (let* ((mdconf (mmod-config mod))
-	   (parent-id (config-get-parent-node-id node-id (config-itree mdconf)))
+    (let* ((mdef (mmod-mdef mod))
+	   (parent-id (mdef-get-parent-node-id node-id (mdef-itree mdef)))
 	   (parent-instance ((node-path parent-instance-path)
 			     (mmod-global-node mod))))
-      (if (eqv? 'block (config-get-parent-node-type node-id mdconf))
+      (if (eqv? 'block (mdef-get-parent-node-type node-id mdef))
 	  (for-each (lambda (instance)
 		      (set! (cddr parent-instance)
 			(insert-block-field parent-instance node-id
 					    (car instance) (cadr instance)
-					    mdconf)))
+					    mdef)))
 		    instances)
 	  ;; TODO this likely does not work
 	  (for-each (lambda (instance)
@@ -388,18 +387,16 @@
   ;;; Rows shall be a list of lists, where each sublist contains a row number
   ;;; in car, and a list of field values in cdr.
   (define (block-row-insert! parent-instance-path block-id instances mod)
-    (letrec* ((mdef (mmod-config mod))
+    (letrec* ((mdef (mmod-mdef mod))
 	      (parent-instance ((node-path parent-instance-path)
 				(mmod-global-node mod)))
 	      (block-instances-to-update (map car instances))
-	      (empty-row (make-list (length (config-get-subnode-ids
+	      (empty-row (make-list (length (mdef-get-subnode-ids
 					     block-id
-					     (config-itree mdef)))
+					     (mdef-itree mdef)))
 				    '()))
 	      (insert-rows
 	       (lambda (orig-rows new-rows row-idx)
-		 (print "insert-rows, orig-rows: " orig-rows ", new-rows: " new-rows
-			", row-idx: " row-idx)
 		 (if (null? new-rows)
 		     orig-rows
 		     (if (= row-idx (caar new-rows))
@@ -465,52 +462,52 @@
   ;;; ### Generators
   ;; ---------------------------------------------------------------------------
 
-  ;; TODO respect config constraints on number of instances to generate
-  ;;; Generate a new, empty inode instance based on the config MDCONF.
-  (define (generate-new-inode-instance mdconf node-id block-length)
+  ;; TODO respect mdef constraints on number of instances to generate
+  ;;; Generate a new, empty inode instance based on the MDAL definition MDEF.
+  (define (generate-new-inode-instance mdef node-id block-length)
     (append '(0 #f)
-	    (case (inode-config-type (hash-table-ref (config-inodes mdconf)
+	    (case (inode-config-type (hash-table-ref (mdef-inodes mdef)
 						     node-id))
-	      ((field) (command-default (config-get-inode-source-command
-					 node-id mdconf)))
+	      ((field) (command-default (mdef-get-inode-source-command
+					 node-id mdef)))
 	      ((block)
 	       (if (symbol-contains node-id "_ORDER")
 		   (list (cons block-length
 			       (make-list
-				(sub1 (length (config-get-subnode-ids
-					       node-id (config-itree mdconf))))
+				(sub1 (length (mdef-get-subnode-ids
+					       node-id (mdef-itree mdef))))
 				0)))
 		   (make-list block-length
 			      (make-list
-			       (length (config-get-subnode-ids
-					node-id (config-itree mdconf)))
+			       (length (mdef-get-subnode-ids
+					node-id (mdef-itree mdef)))
 			       '()))))
 	      ((group) (map (lambda (subnode-id)
 			      (list subnode-id
 				    (generate-new-inode-instance
-				     mdconf subnode-id block-length)))
-			    (config-get-subnode-ids node-id
-						    (config-itree mdconf)))))))
+				     mdef subnode-id block-length)))
+			    (mdef-get-subnode-ids node-id
+						  (mdef-itree mdef)))))))
 
-  ;;; Generate a new, empty mmod based on the config MDCONF. Block instances
-  ;;; are generated with length BLOCK-LENGTH by default, unless other
-  ;;; constraints apply from the config.
-  (define (generate-new-mmod mdconf block-length)
-    (cons mdconf `(GLOBAL ,(generate-new-inode-instance
-			    mdconf 'GLOBAL block-length))))
+  ;;; Generate a new, empty mmod based on the MDAL engine definition MDEF. Block
+  ;;; instances are generated with length BLOCK-LENGTH by default, unless other
+  ;;; constraints apply from the mdef.
+  (define (generate-new-mmod mdef block-length)
+    (cons mdef `(GLOBAL ,(generate-new-inode-instance
+			  mdef 'GLOBAL block-length))))
 
   ;;; Derive a new MDAL module from the module MOD, which contains a single
   ;;; row of block data in the group with GROUP-ID. The row is composed from
   ;;; position ROW in the set of patterns represented by ORDER-POS.
   (define (derive-single-row-mmod mod group-id order-pos row)
     (letrec*
-	((config (mmod-config mod))
+	((mdef (mmod-mdef mod))
 	 (order-id (symbol-append group-id '_ORDER))
 	 (make-single-row-group
 	  (lambda (node-instance)
 	    (let ((block-ids (remove (cute eqv? <> order-id)
-				     (config-get-subnode-ids
-				      group-id (config-itree config))))
+				     (mdef-get-subnode-ids
+				      group-id (mdef-itree mdef))))
 		  (order-pos (list-ref (mod-get-order-values group-id
 							     node-instance)
 				       order-pos)))
@@ -535,17 +532,17 @@
 				  (if (> (length rows) row)
 				      (list-ref rows row)
 				      (make-list (length
-						  (config-get-subnode-ids
+						  (mdef-get-subnode-ids
 						   (car subnode)
-						   (config-itree config)))
+						   (mdef-itree mdef)))
 						 '())))))))
 		    (cddr node-instance))))))
 	 (extract-nodes
 	  (lambda (root)
 	    (cons (car root)
 		  (map (lambda (node-instance)
-			 (case (inode-config-type (config-inode-ref (car root)
-								    config))
+			 (case (inode-config-type (mdef-inode-ref (car root)
+								  mdef))
 			   ((field block) node-instance)
 			   ((group) (if (eqv? group-id (car root))
 					(make-single-row-group node-instance)
@@ -553,19 +550,19 @@
 						(map extract-nodes
 						     (cddr node-instance)))))))
 		       (cdr root))))))
-      (cons config (extract-nodes (mmod-global-node mod)))))
+      (cons mdef (extract-nodes (mmod-global-node mod)))))
 
   ;;; Derive a new MDAL module from the module MOD, with the order list of
   ;;; group GROUP-ID modified to only contain the step ORDER-POS.
   (define (derive-single-pattern-mmod mod group-id order-pos)
     (letrec*
-	((config (mmod-config mod))
+	((mdef (mmod-mdef mod))
 	 (extract-nodes
 	  (lambda (root)
 	    (cons (car root)
 		  (map (lambda (node-instance)
-			 (case (inode-config-type (config-inode-ref (car root)
-								    config))
+			 (case (inode-config-type (mdef-inode-ref (car root)
+								  mdef))
 			   ((field) node-instance)
 			   ((block)
 			    (if (eqv? (car root)
@@ -579,7 +576,7 @@
 			    (append (take node-instance 2)
 				    (map extract-nodes (cddr node-instance))))))
 		       (cdr root))))))
-      (cons (mmod-config mod)
+      (cons (mmod-mdef mod)
 	    (extract-nodes (mmod-global-node mod)))))
 
   ) ;; end module mdal

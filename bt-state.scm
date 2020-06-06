@@ -359,7 +359,7 @@
     (if (eqv? 'compound (car action))
 	(cons 'compound (map (cute make-reverse-action <> mmod)
 			     (reverse (cdr action))))
-	(if (eqv? 'block (config-get-parent-node-type (third action)
+	(if (eqv? 'block (mdef-get-parent-node-type (third action)
 						      (car mmod)))
 	    (case (car action)
 	      ((set) (list 'set (cadr action) (third action)

@@ -1,9 +1,9 @@
 (mdal-module
   #:version
   2
-  #:config
+  #:mdef
   "quattropic"
-  #:config-version
+  #:engine-version
   1.0
   (AUTHOR "unknown")
   (TITLE "untitled")

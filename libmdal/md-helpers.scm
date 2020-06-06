@@ -128,9 +128,9 @@
 	       ((nonnumeric-command-range)
 		"range used on command not of type int/uint")
 	       ((incomplete-mdef)
-		"incomplete mdalconfig specification")
-	       ((missing-mdef-plugin-version
-		 "missing or incorrect config plugin version specification"))
+		"incomplete mdef specification")
+	       ((missing-mdef-engine-version
+		 "missing or incorrect mdef engine version specification"))
 	       ((unsupported-mdef-version)
 		(string-append "unsupported MDEF version "
 			       (->string (car args))))
@@ -149,9 +149,9 @@
 		(string-append "inode of type " (->string (car args))
 			       " may not be a child of a block inode"))
 	       ((missing-onode-id) "missing id specifier")
-	       ((no-config) "No CONFIG specified")
-	       ((incompatible-config-version)
-		"MDAL configuration version incompatible with module")
+	       ((no-mdef) "No MDEF specified")
+	       ((incompatible-mdef-version)
+		"installed MDAL definition version incompatible with module")
 	       ((not-mmod) "Not an MDAL module")
 	       ((no-mdal-version) "No MDAL version specified")
 	       ((unsupported-mdal-version)

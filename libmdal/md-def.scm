@@ -26,34 +26,34 @@
      display-inode-config
      single-instance-node?
      validate-field-value
-     make-plugin-version
-     plugin-version-major
-     plugin-version-minor
-     plugin-versions-compatible?
-     plugin-version->real
-     make-config
-     config-id
-     config-target
-     config-plugin-version
-     config-description
-     config-commands
-     config-itree
-     config-inodes
-     config-default-origin
-     config-compiler
-     display-config
-     mmod-config-id
-     config-command-ref
-     config-inode-ref
-     config-get-target-endianness
-     config-get-parent-node-id
-     config-get-parent-node-type
-     config-get-node-ancestors-ids
-     config-get-subnode-ids
-     config-get-subnode-type-ids
-     config-get-block-field-index
-     config-get-inode-source-command
-     config-get-node-default
+     make-engine-version
+     engine-version-major
+     engine-version-minor
+     engine-versions-compatible?
+     engine-version->real
+     make-mdef
+     mdef-id
+     mdef-target
+     mdef-engine-version
+     mdef-description
+     mdef-commands
+     mdef-itree
+     mdef-inodes
+     mdef-default-origin
+     mdef-compiler
+     display-mdef
+     mmod-mdef-id
+     mdef-command-ref
+     mdef-inode-ref
+     mdef-get-target-endianness
+     mdef-get-parent-node-id
+     mdef-get-parent-node-type
+     mdef-get-node-ancestors-ids
+     mdef-get-subnode-ids
+     mdef-get-subnode-type-ids
+     mdef-get-block-field-index
+     mdef-get-inode-source-command
+     mdef-get-node-default
      make-onode
      onode-type
      onode-size
@@ -69,7 +69,7 @@
      do-compiler-pass
      compile-otree
      make-compiler
-     read-mdef-plugin-version
+     read-mdef-engine-version
      read-mdef
      file->mdef)
 
@@ -171,12 +171,11 @@
   ;;; Note that for modifier, reference, and label commands, only a type check
   ;;; is performed. If NO-EXN is provided and `#t`, then `#f` is returned on
   ;;; validation failure, rather than raising an exception.
-  (define (validate-field-value mdconfig field-id field-value
+  (define (validate-field-value mdef field-id field-value
 				#!optional no-exn)
-    (let ((command-config (config-command-ref
-			   (inode-config-cmd-id (config-inode-ref field-id
-								  mdconfig))
-			   mdconfig)))
+    (let ((command-config (mdef-command-ref
+			   (inode-config-cmd-id (mdef-inode-ref field-id mdef))
+			   mdef)))
       (if (or (null? field-value)
 	      (case (command-type command-config)
 		((int uint)
@@ -211,54 +210,54 @@
 
   ;; TODO: where to handle max-binsize?
 
-  (defstruct plugin-version
+  (defstruct engine-version
     major minor)
 
-  ;;; Check whether the MDEF plugin-version AVAILABLE-VERSION is compatible
+  ;;; Check whether the MDEF engine-version AVAILABLE-VERSION is compatible
   ;;; with REQUESTED-VERSION. Versions are considered compatible if the major
   ;;; versions match, and the minor version argument of AVAILABLE-VERSION is
   ;;; greater than or equal to the minor version argument of REQUESTED-VERSION.
-  (define (plugin-versions-compatible? available-version requested-version)
-    (and (= (plugin-version-major available-version)
-	    (plugin-version-major requested-version))
-	 (>= (plugin-version-minor available-version)
-	     (plugin-version-minor requested-version))))
+  (define (engine-versions-compatible? available-version requested-version)
+    (and (= (engine-version-major available-version)
+	    (engine-version-major requested-version))
+	 (>= (engine-version-minor available-version)
+	     (engine-version-minor requested-version))))
 
-  ;;; Convert the plugin-version struct VERSION to a real number.
-  (define (plugin-version->real version)
+  ;;; Convert the engine-version struct VERSION to a real number.
+  (define (engine-version->real version)
     (string->number
-     (string-append (number->string (plugin-version-major version))
+     (string-append (number->string (engine-version-major version))
 		    "."
-		    (number->string (plugin-version-minor version)))))
+		    (number->string (engine-version-minor version)))))
 
   ;;; The datatype that represents MDAL definitions internally.
-  (defstruct config
-    id target plugin-version description commands
+  (defstruct mdef
+    id target engine-version description commands
     itree inodes default-origin compiler)
 
-  (define (display-config cfg)
-    (printf "#<config ~S>\n\n" (config-id cfg))
-    (when (config-description cfg)
-      (printf "DESCRIPTION:\n~A\n\n" (config-description cfg)))
+  (define (display-mdef cfg)
+    (printf "#<mdef ~S>\n\n" (mdef-id cfg))
+    (when (mdef-description cfg)
+      (printf "DESCRIPTION:\n~A\n\n" (mdef-description cfg)))
     (printf "COMMANDS:\n\n")
     (for-each (cute printf "~A\n" <>)
-	      (map car (hash-table->alist (config-commands cfg))))
-    (printf "\nINODE TREE:\n~S\n\n" (config-itree cfg)))
+	      (map car (hash-table->alist (mdef-commands cfg))))
+    (printf "\nINODE TREE:\n~S\n\n" (mdef-itree cfg)))
 
   ;;; Return the configuration ID of the mmod M.
-  (define (mmod-config-id m) (config-id (car m)))
+  (define (mmod-mdef-id m) (mdef-id (car m)))
 
   ;;; Return the command config for the given ID.
-  (define (config-command-ref id cfg)
-    (hash-table-ref/default (config-commands cfg) id #f))
+  (define (mdef-command-ref id cfg)
+    (hash-table-ref/default (mdef-commands cfg) id #f))
 
   ;;; Return the inode config for the given ID.
-  (define (config-inode-ref id cfg)
-    (hash-table-ref/default (config-inodes cfg) id #f))
+  (define (mdef-inode-ref id cfg)
+    (hash-table-ref/default (mdef-inodes cfg) id #f))
 
   ;;; Returns the endianness of the configuration's target platform.
-  (define (config-get-target-endianness cfg)
-    ((o cpu-endianness target-platform-cpu config-target) cfg))
+  (define (mdef-get-target-endianness cfg)
+    ((o cpu-endianness target-platform-cpu mdef-target) cfg))
 
   ;;; Create an target from a target config file
   (define (target-generator target-id path-prefix)
@@ -284,34 +283,34 @@
        exports: (fifth target-decl))))
 
   ;;; Return the ID of the parent of the given inode in the given inode tree
-  (define (config-get-parent-node-id inode-id itree)
+  (define (mdef-get-parent-node-id inode-id itree)
     (cond ((not (memv inode-id (flatten (cdar itree)))) #f)
 	  ((member inode-id (map car (cadar itree))) (caar itree))
-	  (else (config-get-parent-node-id
+	  (else (mdef-get-parent-node-id
 		 inode-id
 		 (filter (lambda (node)
 			   (member inode-id (flatten node)))
 			 (cadar itree))))))
 
   ;;; Return the inode type of the parent node of INODE-ID.
-  (define (config-get-parent-node-type inode-id mdconf)
+  (define (mdef-get-parent-node-type inode-id mdef)
     (and (not (eqv? inode-id 'GLOBAL))
 	 (inode-config-type
-	  (config-inode-ref (config-get-parent-node-id inode-id
-						       (config-itree mdconf))
-			    mdconf))))
+	  (mdef-inode-ref (mdef-get-parent-node-id inode-id
+						       (mdef-itree mdef))
+			    mdef))))
 
   ;;; Return the list of ancestor IDs of the given inode in the given inode tree
   ;;; The returned list is sorted from the closest ancestor to the most distant.
-  (define  (config-get-node-ancestors-ids inode-id itree)
-    (let ((parent (config-get-parent-node-id inode-id itree)))
+  (define  (mdef-get-node-ancestors-ids inode-id itree)
+    (let ((parent (mdef-get-parent-node-id inode-id itree)))
       (if (not parent)
 	  '()
-	  (cons parent (config-get-node-ancestors-ids parent itree)))))
+	  (cons parent (mdef-get-node-ancestors-ids parent itree)))))
 
   ;;; Return the IDs of the direct child nodes of INODE-ID in the given
   ;;; inode tree ITREE.
-  (define (config-get-subnode-ids inode-id itree)
+  (define (mdef-get-subnode-ids inode-id itree)
     (let ((get-nodes (lambda (tree)
 		       (let ((nodes (alist-ref inode-id tree eq?)))
 			 (if (null? nodes)
@@ -319,36 +318,35 @@
 			     (map car (car nodes)))))))
       (and (member inode-id (flatten itree))
 	   (if (not (member inode-id (flatten (car itree))))
-	       (config-get-subnode-ids inode-id (cdr itree))
+	       (mdef-get-subnode-ids inode-id (cdr itree))
 	       (if (not (member inode-id (map car itree)))
-		   (config-get-subnode-ids inode-id (cadar itree))
+		   (mdef-get-subnode-ids inode-id (cadar itree))
 		   (get-nodes itree))))))
 
-  ;; TODO inconsistent with other itree traversers as it accepts a config,
+  ;; TODO inconsistent with other itree traversers as it accepts a mdef,
   ;; rather than an itree
   ;;; return the IDs of the direct child nodes of a given parent inode ID
-  ;;; in the given config, filtered by type
-  (define (config-get-subnode-type-ids inode-id config type)
+  ;;; in the given mdef, filtered by type
+  (define (mdef-get-subnode-type-ids inode-id mdef type)
     (filter (lambda (id)
-	      (eq? type (inode-config-type (config-inode-ref id config))))
-	    (config-get-subnode-ids inode-id (config-itree config))))
+	      (eq? type (inode-config-type (mdef-inode-ref id mdef))))
+	    (mdef-get-subnode-ids inode-id (mdef-itree mdef))))
 
   ;;; Returns the row index of the field subnode FIELD-ID in instances of
   ;;; the block node BLOCK-ID.
-  (define (config-get-block-field-index block-id field-id config)
+  (define (mdef-get-block-field-index block-id field-id mdef)
     (list-index (cute eqv? <> field-id)
-		(config-get-subnode-ids block-id (config-itree config))))
+		(mdef-get-subnode-ids block-id (mdef-itree mdef))))
 
-  ;; TODO rename to slighly more sane `config-get-inode-command`
+  ;; TODO rename to slighly more sane `mdef-get-inode-command`
   ;;; Return the source command of a given inode
-  (define (config-get-inode-source-command node-id config)
-    (config-command-ref (inode-config-cmd-id
-			 (config-inode-ref node-id config))
-			config))
+  (define (mdef-get-inode-source-command node-id mdef)
+    (mdef-command-ref (inode-config-cmd-id (mdef-inode-ref node-id mdef))
+			mdef))
 
-  ;;; Get the default value of a given inode config
-  (define (config-get-node-default node-id config)
-    (let ((node-cmd (config-get-inode-source-command node-id config)))
+  ;;; Get the default value of a given inode mdef
+  (define (mdef-get-node-default node-id mdef)
+    (let ((node-cmd (mdef-get-inode-source-command node-id mdef)))
       (and node-cmd (command-default node-cmd))))
 
 
@@ -371,7 +369,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## CONFIG PARSER + COMPILER GENERATOR
+  ;;; ## MDEF PARSER + COMPILER GENERATOR
   ;; ---------------------------------------------------------------------------
 
   ;;; Generate a local itree from the given list of inode config expressions.
@@ -445,7 +443,7 @@
   ;;; hash table of commands also contains the required auto-generated order
   ;;; and default commands. An itree (nested list of inode IDs) must be passed
   ;;; in for this purpose.
-  (define (get-config-commands commands itree path-prefix target)
+  (define (get-mdef-commands commands itree path-prefix target)
     (hash-table-merge
      (alist->hash-table
       (append (make-default-commands)
@@ -522,7 +520,7 @@
 	   (lambda (type #!key id from min-instances max-instances
 			 instances flags nodes)
 	     (check-inode-spec type id from nodes parent-type)
-	     (let* ((subnodes (if nodes (get-config-inodes nodes type) '()))
+	     (let* ((subnodes (if nodes (get-mdef-inodes nodes type) '()))
 		    (order-nodes (if (and (pair? flags) (memq 'ordered flags))
 				     (make-order-config-nodes id subnodes)
 				     '())))
@@ -554,7 +552,7 @@
   ;;; Evaluate the input node configuration expressions. Returns an alist of
   ;;; input nodes. The caller will probably want to convert the result into a
   ;;; hash table.
-  (define (get-config-inodes inode-configs #!optional parent-type)
+  (define (get-mdef-inodes inode-configs #!optional parent-type)
     (if (null? inode-configs)
 	'()
 	(append (if (eqv? 'clone (caar inode-configs))
@@ -562,7 +560,7 @@
 					parent-type)
 		    (eval-inode-config (car inode-configs)
 				       parent-type))
-		(get-config-inodes (cdr inode-configs)))))
+		(get-mdef-inodes (cdr inode-configs)))))
 
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
@@ -598,8 +596,8 @@
   ;;; procedure takes as input an `mmod` structure and the current origin
   ;;; (assembly start address) and produces a list of resolved output nodes
   ;;; (onodes), which can be further processed into binary or assembly output.
-  ;;; The compiler procedure is stored in the config-compiler field of the
-  ;;; relevant config structure.
+  ;;; The compiler procedure is stored in the mdef-compiler field of the
+  ;;; relevant mdef structure.
   ;;;
   ;;; The compiler function itself is generated as follows:
   ;;; For each element in the list of output elements specified in the MDEF
@@ -639,10 +637,10 @@
   ;;; and blocks.
   ;;;
   ;;; Onode-fn procedures have the signature
-  ;;; `(proc onode parent-inode config current-org md-symbols)`
+  ;;; `(proc onode parent-inode mdef current-org md-symbols)`
   ;;; where `onode` is the onode itself, `parent-inode` is FIXME a misnomer,
   ;;; it is the parent inode instance,
-  ;;; `config` is the module's `config` structure, `current-org` is the
+  ;;; `mdef` is the module's `mdef` structure, `current-org` is the
   ;;; current asm origin address, and `md-symbols` is a list of additional mdal
   ;;; symbols generated.
   ;;; Onode-fns output a list containing the processed onode, the next origin
@@ -697,19 +695,18 @@
 	   command-config))))
 
   ;;; Get the inode type of the parent of node NODE-ID.
-  (define (get-parent-node-type node-id mdconfig)
+  (define (get-parent-node-type node-id mdef)
     (inode-config-type
-     (config-inode-ref (config-get-parent-node-id node-id
-						  (config-itree mdconfig))
-		       mdconfig)))
+     (mdef-inode-ref (mdef-get-parent-node-id node-id (mdef-itree mdef))
+		       mdef)))
 
   ;;; Transform a conditional special form in an onode compose expression into
   ;;; a resolver procedure call. EXPR must be a list containing the form
   ;;; symbol in car, and an inode name in cadr.
-  (define (transform-compose-expr-conditional expr mdconfig field-indices)
+  (define (transform-compose-expr-conditional expr mdef field-indices)
     (let* ((node-id (string->symbol (string-drop (symbol->string (cadr expr))
 						 1)))
-	   (parent-type (get-parent-node-type node-id mdconfig)))
+	   (parent-type (get-parent-node-type node-id mdef)))
       (case (car expr)
 	((is-set?)
 	 (if (eqv? parent-type 'group)
@@ -727,9 +724,9 @@
 			  	       field-indices)))))
 	(else (error "Unsupported conditional in onode compose expr")))))
 
-  ;;; Helper for `transform-compose-expr`. Transforms an output field config
+  ;;; Helper for `transform-compose-expr`. Transforms an output field def
   ;;; expresssion element into a resolver procedure call.
-  (define (transform-compose-expr-element elem mdconfig
+  (define (transform-compose-expr-element elem emdef
 					  #!optional field-indices)
     (cond
      ((symbol? elem)
@@ -741,10 +738,10 @@
 	(cond
 	 ((string-prefix? "?" symbol-name)
 	  (let* ((command-config
-		  `(,config-get-inode-source-command (quote ,transformed-symbol)
-						     config)))
+		  `(,mdef-get-inode-source-command (quote ,transformed-symbol)
+						     mdef)))
 	    (if (eqv? 'group (get-parent-node-type transformed-symbol
-						   mdconfig))
+						   emdef))
 		`(,eval-group-field
 		  (,subnode-ref (quote ,transformed-symbol) parent-node)
 		  instance-id ,command-config)
@@ -761,29 +758,29 @@
 	     (and sym-val (,car sym-val))))
 	 (else elem))))
      ((pair? elem)
-      (map (cut transform-compose-expr-element <> mdconfig field-indices)
+      (map (cut transform-compose-expr-element <> emdef field-indices)
 	   elem))
      (else elem)))
 
   ;;; Transform an output field config expression into an actual resolver
   ;;; procedure body.
-  (define (transform-compose-expr expr mdconfig #!optional field-indices)
+  (define (transform-compose-expr expr emdef #!optional field-indices)
     ;; TODO bad naming for block fields, instance id = row,
     ;; parent-node = block inst
-    (eval (append (list 'lambda '(instance-id parent-node md-symbols config)
+    (eval (append (list 'lambda '(instance-id parent-node md-symbols mdef)
 			(if (pair? expr)
 			    (map (cute transform-compose-expr-element
-				   <> mdconfig field-indices)
+				   <> emdef field-indices)
 				 expr)
-			    (transform-compose-expr-element expr mdconfig
+			    (transform-compose-expr-element expr emdef
 							    field-indices))))))
 
-  ;;; Generate an onode config of type `symbol`. Call this procedure by
-  ;;; `apply`ing it to an onode config expression.
-  (define (make-osymbol proto-config config-dir path-prefix #!key id)
+  ;;; Generate an onode def of type `symbol`. Call this procedure by
+  ;;; `apply`ing it to an onode def expression.
+  (define (make-osymbol proto-mdef mdef-dir path-prefix #!key id)
     (unless id (raise-local 'missing-onode-id))
     (make-onode type: 'symbol size: 0
-		fn: (lambda (onode parent-inode config current-org md-symbols)
+		fn: (lambda (onode parent-inode mdef current-org md-symbols)
 		      (if current-org
 			  (list (make-onode type: 'symbol size: 0 val: #t)
 				current-org
@@ -797,27 +794,27 @@
   ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
   ;;    oasm node
   ;; 4. store asm text somehow for retrieval on asm output generation?
-  (define (make-oasm proto-config config-dir path-prefix
+  (define (make-oasm proto-mdef mdef-dir path-prefix
 		     #!key file code no-cache)
-    (let ((cpu (cpu-id (target-platform-cpu (config-target proto-config)))))
+    (let ((cpu (cpu-id (target-platform-cpu (mdef-target proto-mdef)))))
       (if no-cache
 	  (make-onode
 	   type: 'asm
-	   fn: (lambda (onode parent-inode config current-org md-symbols)
+	   fn: (lambda (onode parent-inode mdef current-org md-symbols)
   		 (let* ((output (asm-file->bytes
   				 cpu
-  				 (string-append config-dir file)
+  				 (string-append mdef-dir file)
   				 org: current-org
   				 extra-symbols: md-symbols))
   			(output-length (length output)))
   		   (list (make-onode type: 'asm size: output-length val: output)
 			 #f md-symbols))))
-	  ;; TODO we could pass in proto-config, at least
+	  ;; TODO we could pass in proto-mdef, at least
 	  (let* ((make-output (lambda (extra-syms)
 				(asm-file->bytes
   				 cpu
-  				 (string-append config-dir file)
-  				 org: (config-default-origin proto-config)
+  				 (string-append mdef-dir file)
+  				 org: (mdef-default-origin proto-mdef)
   				 extra-symbols: extra-syms)))
 		 (looping-version (make-output '()))
 		 (loop-length (length looping-version))
@@ -825,7 +822,7 @@
 		 (non-loop-length (length non-looping-version)))
 	    (make-onode
 	     type: 'asm
-	     fn: (lambda (onode parent-inode config current-org md-symbols)
+	     fn: (lambda (onode parent-inode mdef current-org md-symbols)
 		   (let ((no-loop? (alist-ref 'no-loop md-symbols)))
 		     (list (make-onode type: 'asm
 				       size: (if no-loop?
@@ -855,18 +852,18 @@
 
   ;; TODO
   ;; - check if direct-resolvable
-  (define (make-ofield proto-config config-dir path-prefix #!key bytes compose)
-    (let ((compose-proc (transform-compose-expr compose proto-config))
-	  (endianness (config-get-target-endianness proto-config))
+  (define (make-ofield proto-mdef mdef-dir path-prefix #!key bytes compose)
+    (let ((compose-proc (transform-compose-expr compose proto-mdef))
+	  (endianness (mdef-get-target-endianness proto-mdef))
 	  (required-symbols (get-required-symbols compose)))
       (make-onode
        type: 'field size: bytes
-       fn: (lambda (onode parent-inode config current-org md-symbols)
+       fn: (lambda (onode parent-inode mdef current-org md-symbols)
 	     (list (if (have-required-symbols required-symbols md-symbols)
 		       (make-onode
 			type: 'field size: bytes
 			val: (int->bytes (compose-proc 0 parent-inode md-symbols
-						       config)
+						       mdef)
 					 bytes endianness))
 		       onode)
 		   (and current-org (+ current-org bytes))
@@ -896,18 +893,18 @@
 	(else (error "unsupported order type")))))
 
   ;; TODO
-  (define (make-oorder proto-config config-dir path-prefix #!key from layout
+  (define (make-oorder proto-mdef mdef-dir path-prefix #!key from layout
 		       element-size (base-index 0))
     (let ((transformer-proc (make-order-transformer layout base-index))
 	  (order-symbol (symbol-append '_mdal_order_ from)))
       (make-onode
        type: 'order
-       fn: (lambda (onode parent-inode config current-org md-symbols)
+       fn: (lambda (onode parent-inode mdef current-org md-symbols)
 	     (if (alist-ref order-symbol md-symbols)
 		 (let* ((output
 			 (flatten
 			  (map (cute int->bytes <> element-size
-				     (config-get-target-endianness config))
+				     (mdef-get-target-endianness mdef))
 			       (transformer-proc
 				(car (alist-ref (symbol-append '_mdal_order_
 							       from)
@@ -944,13 +941,13 @@
   ;;; Empty field instances in the first row of a block instance will be
   ;;; replaced with the last set value if the field's command has the
   ;;; `use-last-set` flag.
-  (define (split-block-instance-contents size block-id mdconfig contents)
-    (let* ((field-ids (config-get-subnode-ids block-id
-					      (config-itree mdconfig)))
+  (define (split-block-instance-contents size block-id mdef contents)
+    (let* ((field-ids (mdef-get-subnode-ids block-id
+					      (mdef-itree mdef)))
 	   (backtrace-targets
   	    (map (lambda (field-id)
-  		   (command-has-flag? (config-get-inode-source-command
-  				       field-id mdconfig)
+  		   (command-has-flag? (mdef-get-inode-source-command
+  				       field-id mdef)
   				      'use-last-set))
   		 field-ids))
 	   (need-backtrace (any (cute eq? #t <>) backtrace-targets))
@@ -969,8 +966,7 @@
 						(command-type field-cmd))))
 				(command-default field-cmd)
 				'()))
-			  (map (cute config-get-inode-source-command <>
-				     mdconfig)
+			  (map (cute mdef-get-inode-source-command <> mdef)
   			       field-ids)
 			  backtrace-targets)
 		     (make-list (sub1 (- size (modulo (length contents)
@@ -1007,13 +1003,13 @@
 
   ;;; Resize instances of the given IBLOCK to SIZE by merging all
   ;;; instances according to ORDER, then splitting into chunks.
-  (define (resize-block-instances iblock size order config)
+  (define (resize-block-instances iblock size order mdef)
     (let* ((order-index
-	    (config-get-block-field-index
-	     (car order) (symbol-append 'R_ (car iblock)) config))
-	   (block-field-count (length (config-get-subnode-ids
+	    (mdef-get-block-field-index
+	     (car order) (symbol-append 'R_ (car iblock)) mdef))
+	   (block-field-count (length (mdef-get-subnode-ids
 				       (car iblock)
-				       (config-itree config))))
+				       (mdef-itree mdef))))
 	   (repeated-order-values
 	    (repeat-block-row-values (cddadr order)))
 	   (concat-blocks
@@ -1034,16 +1030,16 @@
 	    (split-block-instance-contents
 	     (or size (apply + (map car repeated-order-values)))
 	     (car iblock)
-	     config
+	     mdef
 	     concat-blocks))))
 
   ;; TODO must work for unordered groups as well
   ;;; Resize all non-order blocks in the given igroup instance to
   ;;; SIZE, and emit a new igroup instance with a new order.
-  (define (resize-blocks parent-inode-instance parent-inode-id size config)
+  (define (resize-blocks parent-inode-instance parent-inode-id size mdef)
     (let* ((order-id (symbol-append parent-inode-id '_ORDER))
-	   (block-subnode-ids (config-get-subnode-type-ids
-			       parent-inode-id config 'block))
+	   (block-subnode-ids (mdef-get-subnode-type-ids
+			       parent-inode-id mdef 'block))
 	   (original-fields+groups
 	    (filter (lambda (subnode)
 		      (not (memq (car subnode) block-subnode-ids)))
@@ -1055,7 +1051,7 @@
 		    (cddr parent-inode-instance)))
 	   (original-order (subnode-ref order-id parent-inode-instance))
 	   (resized-blocks
-	    (map (cute resize-block-instances <> size original-order config)
+	    (map (cute resize-block-instances <> size original-order mdef)
 		 original-blocks))
 	   (new-order
 	    (list
@@ -1072,22 +1068,22 @@
 
   ;; TODO in theory we do not need to emit md-symbols (see resolve-oblock)
   ;;; Helper function for `make-oblock`.
-  (define (make-oblock-rowfield proto-config parent-block-ids
+  (define (make-oblock-rowfield proto-mdef parent-block-ids
 				#!key bytes compose)
     (let ((compose-proc (transform-compose-expr
-			 compose proto-config
+			 compose proto-mdef
 			 (concatenate
-			  (map (cute config-get-subnode-ids
-				 <> (config-itree proto-config))
+			  (map (cute mdef-get-subnode-ids
+				 <> (mdef-itree proto-mdef))
 			       parent-block-ids))))
-	  (endianness (config-get-target-endianness proto-config)))
+	  (endianness (mdef-get-target-endianness proto-mdef)))
       (make-onode
        type: 'field size: bytes fn:
-       (lambda (onode parent-inode instance-id config current-org md-symbols)
+       (lambda (onode parent-inode instance-id mdef current-org md-symbols)
 	 (list (make-onode
 		type: 'field size: bytes
 		val: (int->bytes (compose-proc instance-id parent-inode
-					       md-symbols config)
+					       md-symbols mdef)
 				 bytes endianness))
 	       (and current-org (+ current-org bytes))
 	       md-symbols)))))
@@ -1096,13 +1092,13 @@
   ;;; Generate an alist where the keys represent the oblock's output order, and
   ;;; the values represent the associated input order rows. Rows are sorted
   ;;; according to how the required-fields are specified.
-  (define (make-order-alist order required-fields mdconfig)
+  (define (make-order-alist order required-fields mdef)
     (let* ((order-instance (cadr order))
 	   (order-length (length (cddr order-instance)))
 	   (required-field-ids (map (cute symbol-append 'R_ <>)
 				    required-fields))
-	   (order-fields (config-get-subnode-ids (car order)
-						 (config-itree mdconfig)))
+	   (order-fields (mdef-get-subnode-ids (car order)
+						 (mdef-itree mdef)))
 	   (raw-order
 	    (map (lambda (order-pos)
 		   (map (lambda (field-id)
@@ -1111,7 +1107,7 @@
 			   (list-index (cute eqv? field-id <>)
 				       order-fields)
 			   order-pos
-			   (config-get-inode-source-command field-id mdconfig)))
+			   (mdef-get-inode-source-command field-id mdef)))
 			required-field-ids))
 		 (iota order-length)))
 	   (unique-combinations '()))
@@ -1148,7 +1144,7 @@
   ;; may change in the future though. TODO
   ;; TODO currently just returns the onode val
   (define (resolve-oblock iblock-instances field-prototypes
-			  config current-org md-symbols)
+			  mdef current-org md-symbols)
     (let* ((origin current-org)
 	   (final-result
 	    (map-in-order
@@ -1160,7 +1156,7 @@
 		     (let ((result ((onode-fn field-prototype)
 				    field-prototype
 				    block-instance row-pos
-				    config origin md-symbols)))
+				    mdef origin md-symbols)))
 		       (set! origin (cadr result))
 		       (onode-val (car result))))
 		   field-prototypes))
@@ -1171,11 +1167,11 @@
   ;;; Helper for `make-oblock`.
   ;;; Sort a list of oblock source node IDs to match the order in which the
   ;;; module configuration provides them.
-  (define (order-oblock-sources sources parent-node-id mdconf)
+  (define (order-oblock-sources sources parent-node-id mdef)
     (filter-map (lambda (subnode-id)
 		  (and (memv subnode-id sources)
 		       subnode-id))
-		(config-get-subnode-ids parent-node-id (config-itree mdconf))))
+		(mdef-get-subnode-ids parent-node-id (mdef-itree mdef))))
 
   ;;; Oblock compilation works as follows:
   ;;; 1. The parent inode instance contents are resized if necessary, and a new
@@ -1190,34 +1186,34 @@
   ;;;    instance-val includes the combined field nodes of the required source
   ;;;    iblock instances.
   ;;; 6. The pseudo block instances are passed to the field evaluators.
-  (define (make-oblock proto-config config-dir path-prefix
+  (define (make-oblock proto-mdef mdef-dir path-prefix
 		       #!key id from resize nodes)
-    (let* ((parent-inode-id (car (config-get-node-ancestors-ids
-				  (car from) (config-itree proto-config))))
+    (let* ((parent-inode-id (car (mdef-get-node-ancestors-ids
+				  (car from) (mdef-itree proto-mdef))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
 	   (source-block-ids (order-oblock-sources from parent-inode-id
-						   proto-config))
+						   proto-mdef))
 	   ;; TODO repeat vs static
 	   (field-prototypes (map (lambda (node)
 				    (apply make-oblock-rowfield
-					   (append (list proto-config
+					   (append (list proto-mdef
 							 source-block-ids)
 						   (cdr node))))
 				  nodes)))
       (make-onode
        type: 'block
-       fn: (lambda (onode parent-inode config current-org md-symbols)
+       fn: (lambda (onode parent-inode mdef current-org md-symbols)
 	     (let* ((parent (resize-blocks parent-inode parent-inode-id
-					   resize config))
+					   resize mdef))
 		    (order-alist
 		     (make-order-alist (subnode-ref order-id parent)
-				       source-block-ids config))
+				       source-block-ids mdef))
 		    (unique-order-combinations (delete-duplicates order-alist))
 		    (result
 		     (resolve-oblock (make-pseudo-block-instances
 				      parent source-block-ids
 				      unique-order-combinations)
-				     field-prototypes config current-org
+				     field-prototypes mdef current-org
 				     md-symbols)))
 	       (list (make-onode type: 'block
 				 size: (length (flatten (car result)))
@@ -1245,9 +1241,9 @@
   ;;         -> or use something like force/delay
   ;;            -> or generally use virtual pointers for everything and only
   ;;               resolve on final output -> most flexible solution
-  (define (make-ogroup proto-config config-dir path-prefix #!key id from nodes)
+  (define (make-ogroup proto-mdef mdef-dir path-prefix #!key id from nodes)
     (let* ((otree (map (cute dispatch-onode-expr
-			 <> proto-config config-dir path-prefix)
+			 <> proto-mdef mdef-dir path-prefix)
 		       nodes))
 	   (generate-order
 	    (lambda (syms)
@@ -1257,14 +1253,14 @@
 				    (get-oblock-order-ids nodes)))))))
       (make-onode
        type: 'group
-       fn: (lambda (onode parent-inode config current-org md-symbols)
+       fn: (lambda (onode parent-inode mdef current-org md-symbols)
 	     (let* ((subtree-result
 		     (compile-otree
 		      otree
 		      ;; TODO currently assuming there's only one instance, but
 		      ;;      actually must be done for every instance
 		      (inode-instance-ref 0 (subnode-ref from parent-inode))
-		      config current-org md-symbols))
+		      mdef current-org md-symbols))
 		    (subtree-size (apply + (map onode-size
 						(car subtree-result))))
 		    (new-symbols (third subtree-result)))
@@ -1276,9 +1272,9 @@
 
   ;;; Dispatch output note config expressions to the appropriate onode
   ;;; generators
-  (define (dispatch-onode-expr expr proto-config config-dir path-prefix)
+  (define (dispatch-onode-expr expr proto-mdef mdef-dir path-prefix)
     (apply (case (car expr)
-	     ((comment) (lambda (proto-cfg config-dir c p)
+	     ((comment) (lambda (proto-mdef mdef-dir c p)
 			  (make-onode type: 'comment size: 0 val: c)))
 	     ((asm) make-oasm)
 	     ((symbol) make-osymbol)
@@ -1287,7 +1283,7 @@
 	     ((group) make-ogroup)
 	     ((order) make-oorder)
 	     (else (error "unsupported output node type")))
-	   (append (list proto-config config-dir path-prefix) (cdr expr))))
+	   (append (list proto-mdef mdef-dir path-prefix) (cdr expr))))
 
   ;; TODO currently dead code, is it still useful?
   ;;; Compute the total size of the binary output of a list of onodes. Returns
@@ -1305,13 +1301,13 @@
   ;;; Do a single compiler pass run over the given otree.
   ;;; Returns a list containing the updated otree in the 1st slot, the updated
   ;;; origin in the 2nd slot, and the updated list of symbols in the 3rd slot.
-  (define (do-compiler-pass otree parent-inode config origin md-symbols)
+  (define (do-compiler-pass otree parent-inode mdef origin md-symbols)
     (let* ((org origin)
 	   (syms md-symbols)
 	   (resolve-node
 	    (lambda (onode)
 	      (if (onode-fn onode)
-		  (let ((result ((onode-fn onode) onode parent-inode config
+		  (let ((result ((onode-fn onode) onode parent-inode mdef
 				 org syms)))
 		    (set! org (cadr result))
 		    (set! syms (caddr result))
@@ -1326,13 +1322,13 @@
   ;;; list of md-symbols in the 3rd slot.
   ;;; Will throw an exception of type 'compiler-failed if the otree cannot
   ;;; be resolved after 3 passes.
-  (define (compile-otree otree parent-inode config origin md-symbols)
+  (define (compile-otree otree parent-inode mdef origin md-symbols)
     (letrec
 	((run-compiler
 	  (lambda (current-otree current-symbols passes)
 	    (when (> passes 2) (raise-local 'compiler-failed))
 	    (let ((tree-result
-		   (do-compiler-pass current-otree parent-inode config
+		   (do-compiler-pass current-otree parent-inode mdef
 				     origin current-symbols)))
 	      ;; if done resolving nodes
 	      ;; (display "pass ")
@@ -1354,20 +1350,20 @@
   ;; TODO haven't thought about optional fields at all yet (how about "only-if")
   ;;      also, more conditions, eg. required-if begin etc...
   ;;; Generate a compiler from the given output config expression.
-  ;;; `proto-config` must be a config struct with all fields resolved
-  ;;; except the config-comiler itself.
+  ;;; `proto-mdef` must be a mdef struct with all fields resolved
+  ;;; except the mdef-comiler itself.
   ;;; The compiler is a procedure taking 2 arguments: an mmod structure,
   ;;; and an origin (address at which to compile). It returns a list of output
   ;;; nodes, which can be further processed by `write-bin` or `write-asm`.
   ;;; The compiler will throw an exception of type 'compiler-failed
   ;;; if it cannot resolve all output nodes after 3 passes.
-  (define (make-compiler output-expr proto-config config-dir path-prefix)
+  (define (make-compiler output-expr proto-mdef mdef-dir path-prefix)
     (let ((otree (map (cute dispatch-onode-expr
-			<> proto-config config-dir path-prefix)
+			<> proto-mdef mdef-dir path-prefix)
 		      output-expr)))
       (lambda (mod origin #!optional extra-symbols)
 	(car (compile-otree otree (cadr (mmod-global-node mod))
-			    (mmod-config mod)
+			    (mmod-mdef mod)
 			    origin (or extra-symbols '()))))))
 
 
@@ -1375,64 +1371,65 @@
   ;;; ### MDEF Parser
   ;; ---------------------------------------------------------------------------
 
-  ;;; Evaluate the plugin-version keyword argument of an mdal-config expression.
-  ;;; Returns a `plugin-version` struct.
-  (define (read-mdef-plugin-version version-arg)
+  ;;; Evaluate the engine-version keyword argument of an mdal-mdef expression.
+  ;;; Returns a `engine-version` struct.
+  (define (read-mdef-engine-version version-arg)
     (unless (and (number? version-arg)
 		 (= 2 (length (string-split (number->string version-arg)
 					    "."))))
-      (raise-local 'missing-mdef-plugin-version))
+      (raise-local 'missing-mdef-engine-version))
     (let ((major/minor (map string->number
 			    (string-split (number->string version-arg)
 					  "."))))
-      (make-plugin-version major: (car major/minor) minor: (cadr major/minor))))
+      (make-engine-version major: (car major/minor) minor: (cadr major/minor))))
 
-  ;;; Main mdalconfig s-expression evaluator. You probably want to call this
+  ;;; Main mdalmdef s-expression evaluator. You probably want to call this
   ;;; through `read-mdef`.
-  (define (eval-mdef id def-dir path-prefix
-		     #!key mdef-version plugin-version target commands
+  (define (eval-mdef id mdef-dir path-prefix
+		     #!key mdef-version engine-version target commands
 		     input output default-origin (description ""))
-    (unless (and mdef-version plugin-version target commands input output)
+    (unless (and mdef-version engine-version target commands input output)
       (raise-local 'incomplete-mdef))
     (unless (in-range? mdef-version *supported-mdef-versions*)
       (raise-local 'unsupported-mdef-version mdef-version))
-    (let* ((_version (read-mdef-plugin-version plugin-version))
+    (let* ((_version (read-mdef-engine-version engine-version))
 	   (_target (target-generator (->string target)
 				      path-prefix))
 	   (itree (eval-inode-tree input))
 	   (_input (alist->hash-table
-		    (append (get-config-inodes input)
+		    (append (get-mdef-inodes input)
 			    (make-default-inode-configs))))
-	   (proto-def
-	    (make-config
+	   (proto-mdef
+	    (make-mdef
 	     id: id
-	     plugin-version: _version
+	     engine-version: _version
 	     target: _target
-	     commands: (get-config-commands commands itree path-prefix _target)
+	     commands: (get-mdef-commands commands itree path-prefix _target)
 	     itree: itree inodes: _input
 	     default-origin:
 	     (or default-origin
 		 (target-platform-default-start-address _target)))))
-      (make-config id: id plugin-version: _version target: _target
+      (make-mdef id: id engine-version: _version target: _target
 		   description: description
-		   commands: (config-commands proto-def)
+		   commands: (mdef-commands proto-mdef)
 		   itree: itree inodes: _input default-origin: default-origin
-		   compiler: (make-compiler output proto-def def-dir
+		   compiler: (make-compiler output proto-mdef mdef-dir
 					    path-prefix))))
 
-  ;;; Evaluate the given `mdef` s-expression, and return a config record.
-  (define (read-mdef mdef id def-dir path-prefix)
+  ;;; Evaluate the given `mdef` s-expression, and return a mdef record.
+  (define (read-mdef mdef id mdef-dir path-prefix)
     (unless (and (pair? mdef) (eqv? 'mdal-definition (car mdef)))
       (raise-local 'not-mdef))
-    (apply eval-mdef (append (list id def-dir path-prefix)
+    (apply eval-mdef (append (list id mdef-dir path-prefix)
 				   (cdr mdef))))
 
   ;;; Generate an mdef struct from an .mdef file.
   ;;; `parent-dir` is the file path to the parent directory of the directory
   ;;; containing the .mdef file.
-  (define (file->mdef parent-dir def-name #!optional (path-prefix ""))
-    (let* ((def-dir (string-append parent-dir def-name "/"))
-	   (filepath (string-append def-dir def-name ".mdef")))
+  (define (file->mdef parent-dir mdef-name #!optional (path-prefix ""))
+    (print "file->mdef " parent-dir " " mdef-name)
+    (let* ((mdef-dir (string-append parent-dir mdef-name "/"))
+	   (filepath (string-append mdef-dir mdef-name ".mdef")))
       (handle-exceptions
 	  exn
 	  (cond ((exn-any-of? exn '(not-mdef unsupported-mdef-version
@@ -1451,6 +1448,6 @@
 	(call-with-input-file
 	    filepath
 	  (lambda (port)
-	    (read-mdef (read port) def-name def-dir path-prefix))))))
+	    (read-mdef (read port) mdef-name mdef-dir path-prefix))))))
 
   )  ;; end module md-def

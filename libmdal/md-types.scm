@@ -38,9 +38,9 @@
   ;; ---------------------------------------------------------------------------
 
   ;;; The internal representation of an MDAL module is a pair containing
-  ;;; an MDAL `config` as the first element, and the global module node as the
-  ;;; second element, so `(config . global-node)`. libmdal provides the
-  ;;; accessors `mmod-config` and `mmod-global-node` for dealing with the
+  ;;; an MDAL `mdef` as the first element, and the global module node as the
+  ;;; second element, so `(mdef . global-node)`. libmdal provides the
+  ;;; accessors `mmod-mdef` and `mmod-global-node` for dealing with the
   ;;; elements of a module.
   ;;;
   ;;; The structure of `global-node` mirrors that of the MDAL module
@@ -57,7 +57,7 @@
   ;;;   values for each block field subnode. Unset (empty) fields are
   ;;;   represented by `null` (the empty list).
 
-  (define (mmod-config m) (car m))
+  (define (mmod-mdef m) (car m))
   (define (mmod-global-node m) (cdr m))
 
   ;;----------------------------------------------------------------------------
@@ -75,7 +75,7 @@
   ;;; will return a procedure that, when called with the global node as
   ;;; argument, will return the node CH1 in instance 0 of the PATTERN node,
   ;;; assuming that the node exists and is defined in the module's
-  ;;; configuration.
+  ;;; engine definition.
   (define (node-path p)
     (let* ((path (string-split p "/"))
 	   (path-suffix (last path))
