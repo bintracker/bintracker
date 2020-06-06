@@ -69,7 +69,7 @@ nav:
           - "mdal": 'generated/mdal.md'
           - "md-types": 'generated/md-types.md'
           - "md-helpers": 'generated/md-helpers.md'
-          - "md-config" : 'generated/md-config.md'
+          - "md-def" : 'generated/md-def.md'
           - "md-command": 'generated/md-command.md'
           - "md-parser": 'generated/md-parser.md'
           - utils:

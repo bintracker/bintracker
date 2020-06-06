@@ -9,7 +9,7 @@
   (import scheme (chicken base) (chicken io) (chicken string)
 	  (chicken condition)
 	  srfi-1 srfi-13 srfi-14 simple-exceptions typed-records
-	  md-helpers md-types md-config)
+	  md-helpers md-types md-def)
 
   ;;; Parse GROUP-CONTENTS for an assignment to the field node FIELD-ID.
   ;;; Returns a field node with a single instance with ID 0. If no assignment

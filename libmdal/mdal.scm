@@ -29,8 +29,8 @@
 	  (chicken format) (chicken string) (chicken bitwise) (chicken sort)
 	  (chicken io) srfi-1 srfi-13 srfi-69 typed-records
 	  (only list-utils list-copy* list-set!)
-	  md-config md-helpers md-types md-parser)
-  (reexport md-config md-helpers md-types md-parser)
+	  md-def md-helpers md-types md-parser)
+  (reexport md-def md-helpers md-types md-parser)
 
   (define-constant mdal-version 2)
 

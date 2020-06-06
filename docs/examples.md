@@ -62,7 +62,7 @@ Returns the source command of the field `foo` in the current MDAL engine definit
 
 `config-get-inode-source-command` is due to be renamed to `mdef-get-ifield-source-command`.
 
-Further reading: [MDEF accessors](generated/md-config.md#procedure-config-get-parent-node-id) • [md-command](generated/md-command.md)
+Further reading: [MDEF accessors](generated/md-def.md#procedure-config-get-parent-node-id) • [md-command](generated/md-command.md)
 
 
 ### Get the contents of a selection

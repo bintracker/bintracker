@@ -69,7 +69,7 @@ bt-gui-lolevel.so: $(BT_SRC)bt-gui-lolevel.scm bt-state.import.so\
 bt-gui-lolevel.import.so: bt-gui-lolevel.so
 	$(CSC) $(IMPORTFLAGS) bt-gui-lolevel.import.scm
 
-mdal.so: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-config.import.so\
+mdal.so: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-def.import.so\
  md-parser.import.so schemta.import.so
 	$(CSC) $(LIBFLAGS) $< -j mdal -o $@
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
@@ -98,14 +98,14 @@ md-command.so: $(MDAL_SRC)md-command.scm md-helpers.import.so
 md-command.import.so: md-command.so
 	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
-md-config.so: $(MDAL_SRC)md-config.scm $(BASEDEPS) md-command.import.so\
+md-def.so: $(MDAL_SRC)md-def.scm $(BASEDEPS) md-command.import.so\
  md-note-table.import.so schemta.import.so
-	$(CSC) $(LIBFLAGS) $< -j md-config -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-def -o $@
 
-md-config.import.so: md-config.so
-	$(CSC) $(IMPORTFLAGS) md-config.import.scm
+md-def.import.so: md-def.so
+	$(CSC) $(IMPORTFLAGS) md-def.import.scm
 
-md-parser.so: $(MDAL_SRC)md-parser.scm $(BASEDEPS) md-config.import.so
+md-parser.so: $(MDAL_SRC)md-parser.scm $(BASEDEPS) md-def.import.so
 	$(CSC) $(LIBFLAGS) $< -j md-parser -o $@
 
 md-parser.import.so: md-parser.so
@@ -132,7 +132,7 @@ gendoc/generated/bt-types.md: $(BT_SRC)bt-types.scm
 gendoc/generated/bt-emulation.md: $(BT_SRC)bt-emulation.scm
 gendoc/generated/bt-db.md: $(BT_SRC)bt-db.scm
 gendoc/generated/mdal.md: $(MDAL_SRC)mdal.scm
-gendoc/generated/md-config.md: $(MDAL_SRC)md-config.scm
+gendoc/generated/md-def.md: $(MDAL_SRC)md-def.scm
 gendoc/generated/md-helpers.md: $(MDAL_SRC)md-helpers.scm
 gendoc/generated/md-types.md: $(MDAL_SRC)md-types.scm
 gendoc/generated/md-parser.md: $(MDAL_SRC)md-parser.scm
@@ -150,7 +150,7 @@ docs: gendoc-dirs\
  gendoc/generated/bt-db.md\
  gendoc/generated/bt-emulation.md\
  gendoc/generated/mdal.md\
- gendoc/generated/md-config.md\
+ gendoc/generated/md-def.md\
  gendoc/generated/md-helpers.md\
  gendoc/generated/md-types.md\
  gendoc/generated/md-parser.md\
@@ -179,7 +179,7 @@ TAGS: $(BT_SRC)bt-types.scm\
  $(BT_SRC)bintracker-core.scm\
  $(MDAL_SRC)schemta.scm\
  $(MDAL_SRC)md-parser.scm\
- $(MDAL_SRC)md-config.scm\
+ $(MDAL_SRC)md-def.scm\
  $(MDAL_SRC)md-command.scm\
  $(MDAL_SRC)utils/md-note-table.scm\
  $(MDAL_SRC)md-types.scm\
@@ -187,7 +187,7 @@ TAGS: $(BT_SRC)bt-types.scm\
  $(MDAL_SRC)mdal.scm
 	cd .. && etags -r '"  (def.*? "' bt-types.scm bt-state.scm\
  bt-gui-lolevel.scm bt-gui.scm bt-db.scm bt-emulation.scm bintracker-core.scm\
- libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-config.scm\
+ libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-def.scm\
  libmdal/md-command.scm libmdal/md-types.scm libmdal/md-helpers.scm\
  libmdal/utils/md-note-table.scm libmdal/mdal.scm
 

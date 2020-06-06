@@ -3,7 +3,7 @@
 ;; See LICENSE for license details.
 
 ;;; The Interface to MDCONF configurations.
-(module md-config
+(module md-def
     (*supported-config-versions*
      *supported-mmod-versions*
      make-cpu
@@ -1453,4 +1453,4 @@
 	  (lambda (port)
 	    (read-config (read port) config-name config-dir path-prefix))))))
 
-  )  ;; end module md-config
+  )  ;; end module md-def
