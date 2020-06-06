@@ -2,7 +2,28 @@
 ;; Copyright (c) utz/irrlicht project 2018-2020
 ;; See LICENSE for license details.
 
-(module mdal *
+(module mdal
+    (mmod->file
+     mod-compile
+     mod->bin
+     mod->asm
+     mod-export-bin
+     mod-get-group-instance-blocks
+     mod-get-block-field-value
+     md-command-info
+     mod-get-row-values
+     mod-get-block-values
+     mod-get-group-instance-order
+     mod-get-order-values
+     get-ordered-group-length
+     node-set!
+     node-remove!
+     node-insert!
+     block-row-insert!
+     block-row-remove!
+     generate-new-mmod
+     derive-single-row-mmod
+     derive-single-pattern-mmod)
 
   (import scheme (chicken base) (chicken module) (chicken pretty-print)
 	  (chicken format) (chicken string) (chicken bitwise) (chicken sort)
@@ -409,22 +430,7 @@
 			 block-instance))
 		   (cdr (subnode-ref block-id parent-instance)))
 	      (cddr parent-instance)))))
-       instances)
-      ;; (for-each
-      ;;  (lambda (row)
-      ;; 	 (set! (cddr block-instance)
-      ;; 	   (let ((contents
-      ;; 		  (if (> (length (cddr block-instance))
-      ;; 			 (car row))
-      ;; 		      (append (cddr block-instance)
-      ;; 			      (make-list (- (+ 1 (car row))
-      ;; 					    (length (cddr block-instance)))
-      ;; 					 empty-row)))))
-      ;; 	     (append (take contents (car row))
-      ;; 		     (cdr row)
-      ;; 		     (drop contents (car row))))))
-      ;;  rows)
-      ))
+       instances)))
 
   ;;; Remove one or more rows from a block node instance. PARENT-INSTANCE-PATH
   ;;; must be a node path to the parent group node instance. BLOCK-ID must be

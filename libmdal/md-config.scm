@@ -3,7 +3,75 @@
 ;; See LICENSE for license details.
 
 ;;; The Interface to MDCONF configurations.
-(module md-config *
+(module md-config
+    (*supported-config-versions*
+     *supported-mmod-versions*
+     make-cpu
+     cpu-id
+     cpu-endianness
+     make-target-platform
+     target-platform-id
+     target-platform-cpu
+     target-platform-clock-speed
+     target-platform-default-start-address
+     target-platform-exports
+     make-instance-range
+     instance-range-min
+     instance-range-max
+     make-inode-config
+     inode-config-type
+     inode-config-instance-range
+     inode-config-cmd-id
+     inode-config-order-id
+     display-inode-config
+     single-instance-node?
+     validate-field-value
+     make-plugin-version
+     plugin-version-major
+     plugin-version-minor
+     plugin-versions-compatible?
+     plugin-version->real
+     make-config
+     config-id
+     config-target
+     config-plugin-version
+     config-description
+     config-commands
+     config-itree
+     config-inodes
+     config-default-origin
+     config-compiler
+     display-config
+     mmod-config-id
+     config-command-ref
+     config-inode-ref
+     config-get-target-endianness
+     config-get-parent-node-id
+     config-get-parent-node-type
+     config-get-node-ancestors-ids
+     config-get-subnode-ids
+     config-get-subnode-type-ids
+     config-get-block-field-index
+     config-get-inode-source-command
+     config-get-node-default
+     make-onode
+     onode-type
+     onode-size
+     onode-val
+     onode-fn
+     display-onode
+     eval-effective-field-val
+     eval-group-field
+     backtrace-block-fields
+     eval-block-field
+     get-parent-node-type
+     resize-blocks
+     do-compiler-pass
+     compile-otree
+     make-compiler
+     read-config-plugin-version
+     read-config
+     file->config)
 
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)

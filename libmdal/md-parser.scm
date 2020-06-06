@@ -3,7 +3,8 @@
 ;; See LICENSE for license details.
 
 ;;; The .mmod parser implementation.
-(module md-parser *
+(module md-parser
+    (file->mmod)
 
   (import scheme (chicken base) (chicken io) (chicken string)
 	  (chicken condition)
@@ -140,7 +141,7 @@
   (define (mod-get-config-version head #!rest args #!key config-version)
     (read-config-plugin-version config-version))
 
-  ;;; Construct an mmod object from a given .mdal module file
+  ;;; Construct an mmod object from a given .mmod module file
   (define (file->mmod filepath config-dir-path #!optional (path-prefix ""))
     (handle-exceptions
 	exn

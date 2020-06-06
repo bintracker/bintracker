@@ -7,7 +7,21 @@
 ;; -----------------------------------------------------------------------------
 
 ;;; MDAL Command Configuration
-(module md-command *
+(module md-command
+    (make-command
+     command-type
+     command-bits
+     command-default
+     command-reference-to
+     command-keys
+     command-flags
+     command-range
+     command-description
+     command-has-flag?
+     command-has-flags?
+     display-command
+     make-default-commands
+     eval-command)
 
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
 	  (chicken condition)
