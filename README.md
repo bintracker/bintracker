@@ -20,7 +20,7 @@ Bintracker is currently at a very early alpha stage. While the basics are implem
 
 Things you can do at this point include:
 
-- Compose music for 2 different ZX Spectrum 1-bit sound drivers
+- Compose music for 3 different 1-bit sound engines for Sinclair ZX Spectrum and Fairchild Channel F
 - Control the application through the interactive REPL shell
 - Assemble code and control external emulators
 

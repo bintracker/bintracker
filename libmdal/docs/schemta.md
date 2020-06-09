@@ -4,6 +4,7 @@
 
 Schemta is a cross-platform, multi-target assembler for classic 8-bit and 16-bit architectures. It uses embedded Scheme code as a powerful replacement for traditional assembler macros. Schemta currently supports the following architectures:
 
+* Fairchild F8 (F3850)
 * Zilog Z80
     - supports all undocumented opcodes
 	- alternate mnemonics: `exa` for `ex af,af'`, `sls` for `sll`, `res/set (ix/iy+d)->r8` for `res/set (ix/iy+d),r8`, `in (c)` for `in f,(c)`
