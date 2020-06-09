@@ -16,7 +16,7 @@ endif
 # https://lists.nongnu.org/archive/html/chicken-users/2017-08/msg00004.html
 
 bintracker: $(BT_SRC)bintracker.scm bintracker-core.import.so\
- mame-bridge/mame-startup.lua config roms plugins resources docs aux-files\
+ mame-bridge config roms plugins resources docs aux-files\
  mdal-targets
 	$(CSC) $< -d3 -O2 -compile-syntax -o $@
 
@@ -191,9 +191,12 @@ TAGS: $(BT_SRC)bt-types.scm\
  libmdal/md-command.scm libmdal/md-types.scm libmdal/md-helpers.scm\
  libmdal/utils/md-note-table.scm libmdal/mdal.scm
 
-mame-bridge/mame-startup.lua: $(BT_SRC)mame-bridge/mame-startup.lua
-	mkdir -p mame-bridge
-	cp $< mame-bridge/
+.PHONY: mame-bridge
+mame-bridge:
+	cp -r $(BT_SRC)mame-bridge ./
+# mame-bridge/mame-startup.lua: $(BT_SRC)mame-bridge/mame-startup.lua
+# 	mkdir -p mame-bridge
+# 	cp $< mame-bridge/
 
 .PHONY: config
 config:

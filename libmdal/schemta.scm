@@ -27,7 +27,8 @@
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 miscmacros
 	  comparse typed-records simple-exceptions)
 
-  (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string))
+  (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string)
+	    (chicken bitwise))
 
   (defstruct asm-target
     ((endian 'little) : symbol)
@@ -120,18 +121,26 @@
 						(->string operands))))))
 
   (define (parse-operands operands target)
+    (print "parse-operands " operands target)
+    (print "target-conditions: " (asm-target-conditions target))
     (map (lambda (op)
 	   (parse
 	    (apply any-of
-		   (append (list (a-numeric target)
-				 (set-parser 'all
-					     asm-target-registers
-					     asm-target-register-sets
-					     target)
-				 (set-parser 'all
-					     asm-target-conditions
-					     asm-target-condition-sets
-					     target))
+		   (append (if (null? (asm-target-conditions target))
+			       (list (a-numeric target)
+				     (set-parser 'all
+						 asm-target-registers
+						 asm-target-register-sets
+						 target))
+			       (list (a-numeric target)
+				     (set-parser 'all
+						 asm-target-registers
+						 asm-target-register-sets
+						 target)
+				     (set-parser 'all
+						 asm-target-conditions
+						 asm-target-condition-sets
+						 target)))
 			   (map cadr
 				(asm-target-addressing-modes target))))
 	    op))
@@ -651,7 +660,7 @@
       		(state 'current-origin (+ org len)))
 	      ;; TODO (list res)?
       	      (or (and (every identity res)
-		       (list res))
+		       res)
 		  (begin (state 'done? #f) (list node)))))
       ((dw) (let ((res (list (flatten
 			      (map (lambda (arg)
@@ -755,6 +764,7 @@
   ;;; dispatch AST-NODE to evaluator procedures
   (: assemble-node (list procedure -> list))
   (define (assemble-node ast-node state)
+    (print "assemble-node " ast-node)
     (if (number? (car ast-node))
   	(begin (and-let* ((org (state 'current-origin)))
 		 (state 'current-origin (+ org (length ast-node))))
@@ -791,9 +801,9 @@
 							(->string args)))))))))
 
   ;;; Low level interace for `make-target`.
-  (define (construct-target #!key endian registers register-sets
-			    addressing-modes conditions condition-sets
-			    extra instructions)
+  (define (construct-target #!key endian (registers '()) (register-sets '())
+			    (addressing-modes '()) (conditions '())
+			    (condition-sets '()) (extra '()) instructions)
     (fluid-let ((register
 		 (lambda (set-id)
 		   (bind (apply any-of
@@ -882,7 +892,7 @@
 
   ;;; parse the given assembly SOURCE and output the abstract source tree.
   ;;; SOURCE must be a string.
-  ;; (: parse-source (string (struct asm-target) list -> list))
+  (: parse-source (string (struct asm-target) list -> list))
   (define (parse-source source target ast)
     (receive (result remainder)
 	(parse (a-line target) source)
@@ -896,12 +906,26 @@
 		       (cons result ast)))
 	  (if (null? result)
 	      (parse-source remainder target ast)
-	      (parse-source remainder
-			    (if (and (eqv? 'directive (car result))
-				     (eqv? 'cpu (caadr result)))
-				(make-target (string->symbol (cadadr result)))
-				target)
-			    (cons result ast))))))
+	      (begin
+		(print "parse-source, result: " result)
+		(parse-source remainder
+			      (if (and (eqv? 'directive (car result))
+				       (eqv? 'cpu (cadr result)))
+				  (make-target (string->symbol (cadadr result)))
+				  target)
+			      (cons result ast)))))))
+
+  ;;; Remove comments, trailing whitespace, empty lines
+  (define (strip-source source)
+    (string-intersperse
+     (remove string-null?
+	     (map (lambda (line)
+		    (string-trim-right
+		     (list->string (take-while (lambda (c) (not (eq? c #\;)))
+					       (string->list line)))
+		     char-set:whitespace))
+		  (string-split source "\n")))
+     "\n"))
 
   ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
   ;;; Parses the assembly source code string SOURCE and returns an assembly
@@ -942,7 +966,7 @@
 	   (symbols (the list extra-symbols))
 	   (local-namespace (the symbol '000__void))
 	   (current-origin (the integer org))
-	   (ast (parse-source source target '()))
+	   (ast (parse-source (strip-source source) target '()))
 	   (pass (the integer 0))
 	   (done? (the boolean #f))
 	   (reset-state! (the (-> undefined)

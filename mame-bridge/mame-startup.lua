@@ -26,20 +26,45 @@ local print_machine_info = function ()
    -- for k,v in pairs(cpu.items) do print(k) end
    print("\nMemory layout")
    for k,v in pairs(cpu.spaces) do print(k) end
+   -- local cartslot = manager:machine().devices[":cartslot"]
+   print("\nCartridge:");
+   for k,v in pairs(cartslot.spaces) do print(k) end
+   print("\nShares all:\n")
+   for k,v in pairs(manager:machine():memory().shares) do print (k) end
+   print("\nRegions all:\n")
+   for k,v in pairs(manager:machine():memory().regions) do print (k) end
+   -- print("\nRegions maincpu")
+   -- local regions = manager:machine():memory().regions[":maincpu"]
+   -- print((tostring(regions)))
+   -- print("cartslot state")
+   -- for k,v in pairs(cartslot.state) do print(k) end
 end
 
+local pc_name = "PC"
+local loader_type = 0 -- 0 = RAM, 1 = cartridge
+local default_run_address = false
+
 local machine_set_pc = function (addr)
-   -- print "setting pc"
-   manager:machine().devices[":maincpu"].state["PC"].value = tonumber(addr)
+   manager:machine().devices[":maincpu"].state[pc_name].value = tonumber(addr)
 end
 
 local machine_load_bin = function (addr, data)
    local datatbl = {string.byte(data, 1, #data)}
-   local mem = manager:machine().devices[":maincpu"].spaces["program"]
+   local mem
+   local local_addr = addr
+   if loader_type == 0 then
+      mem = manager:machine().devices[":maincpu"].spaces["program"]
+   else
+      do
+	 mem = manager:machine():memory().regions[":cartslot:cart:rom"]
+	 local_addr = 0
+      end
+   end
    for i = 1, #datatbl do
-      mem:write_u8(addr, datatbl[i])
-      -- print(tostring(mem:read_u8(addr)))
-      addr = addr + 1
+      -- print("write at ", addr, ": ", (tostring(datatbl[i])))
+      mem:write_u8(local_addr, datatbl[i])
+      -- print("read back: ", (tostring(mem:read_u8(addr))))
+      local_addr = local_addr + 1
    end
 end
 
@@ -86,7 +111,11 @@ local machine_run_bin = function (argstr)
    -- local data = get_data_arg(argstr)
    emu.pause()
    machine_load_bin(addr, base64_decode(get_data_arg(argstr)))
-   machine_set_pc(addr)
+   if default_run_address then
+      machine_set_pc(default_run_address)
+   else
+      machine_set_pc(addr)
+   end
    emu.unpause()
 end
 
@@ -107,6 +136,9 @@ end
 local remote_commands = {
    ["b"] = machine_run_bin,
    ["i"] = print_machine_info,
+   ["d"] = function (argstr) default_run_address = tonumber(argstr) end,
+   ["l"] = function (argstr) loader_type = tonumber(argstr) end,
+   ["n"] = function (argstr) pc_name = argstr end,
    ["q"] = function () manager:machine():exit() end,
    ["p"] = emu.pause,
    ["r"] = machine_reset,
@@ -120,7 +152,7 @@ local remote_commands = {
 -- `remote_commands`. When successful, runs the function with the remainder of
 -- `cmd` as argument.
 local dispatch_remote_command = function(cmd)
-   print("got command: ", cmd)
+   -- print("got command: ", cmd)
    local exec_cmd = remote_commands[string.sub(cmd, 1, 1)]
    if exec_cmd then exec_cmd(string.sub(cmd, 2)) end
 end

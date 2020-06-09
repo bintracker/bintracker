@@ -12,7 +12,9 @@
 
   ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
   ;;; shall be a list of command line argument strings that are passed to
-  ;;; `program` on startup.
+  ;;; `program` on startup. Optionally PC-NAME provides the name of the target's
+  ;;; main program counter register (defaults to "PC"). You can check for the
+  ;;; appropriate name with the `info` command as detailed below.
   ;;;
   ;;; The returned emulator is not yet running. To run it, call
   ;;; `(EMULATOR 'start)`.
@@ -29,13 +31,15 @@
   ;;; * `'unpause` - Unpause emulation.
   ;;; * `'start` - Launch emulator program in new thread.
   ;;; * `'quit` - Exit the Emulator.
-  (define (make-emulator program program-args)
+  (define (make-emulator program program-args #!optional (pc-name "PC")
+			 (loader-type 'ram) default-run-address)
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)
 	      (emul-output-port #f)
 	      (emul-pid #f)
 	      (emul-thread #f)
 	      (emul-input-chars '())
+	      (emul-initialized #f)
 
 	      (launch-emul-process
 	       (lambda ()
@@ -59,6 +63,11 @@
 			   (cons read-result emul-input-chars)))
 		     (emul-event-loop)))))
 
+	      (send-command (lambda (cmd)
+			      (when emul-started
+				(display cmd emul-output-port)
+				(newline emul-output-port))))
+
 	      (start-emul (lambda ()
 			    (set! emul-thread
 			      (make-thread (lambda ()
@@ -68,12 +77,7 @@
 					     (launch-emul-process)
 					     (emul-event-loop))))
 			    (thread-start! emul-thread)
-			    (set! emul-started #t)))
-
-	      (send-command (lambda (cmd)
-			      (when emul-started
-				(display cmd emul-output-port)
-				(newline emul-output-port)))))
+			    (set! emul-started #t))))
       (lambda args
 	(case (car args)
 	  ((info) (send-command "i"))
@@ -90,10 +94,19 @@
 		    (set! emul-started #f)))
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
-	  ((run) (send-command
-		  (string-append "b" (number->string (cadr args))
-				 "%" (base64-encode
-				      (list->string (caddr args))))))
+	  ((run) (begin
+		   (unless emul-initialized
+		     (send-command (string-append "n" pc-name))
+		     (send-command (if (eqv? loader-type 'ram) "l0" "l1"))
+		     (when default-run-address
+		       (send-command
+			(string-append "d"
+				       (number->string default-run-address))))
+		     (set! emul-initialized #t))
+		   (send-command
+			 (string-append "b" (number->string (cadr args))
+					"%" (base64-encode
+					     (list->string (caddr args)))))))
 	  ((reset) (send-command (if (and (not (null? (cdr args)))
 					  (eqv? 'hard (cadr args)))
 				     "rh" "rs")))
@@ -116,8 +129,11 @@
 				 string=)))
 	      (unless pf (error (string-append "Unknown target system "
 					       platform)))
-	      (apply (lambda (#!key emulator (startup-args '()))
-		       `(,emulator . ,startup-args))
+	      (apply (lambda (#!key emulator (startup-args '())
+				    (pc-name "PC") (loader-type 'ram)
+				    default-run-address)
+		       `(,emulator ,startup-args ,pc-name ,loader-type
+				   ,default-run-address))
 		     pf)))
 	   (emulator-default-args
 	    (let ((emul (alist-ref (car platform-config)
@@ -130,6 +146,9 @@
 		       default-args)
 		     emul))))
       (make-emulator (car platform-config)
-		     (append emulator-default-args (cdr platform-config)))))
+		     (append emulator-default-args (cadr platform-config))
+		     (caddr platform-config)
+		     (cadddr platform-config)
+		     (fifth platform-config))))
 
   ) ;; end module bt-emulation
