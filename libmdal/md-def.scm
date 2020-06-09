@@ -777,15 +777,18 @@
 
   ;;; Generate an onode def of type `symbol`. Call this procedure by
   ;;; `apply`ing it to an onode def expression.
-  (define (make-osymbol proto-mdef mdef-dir path-prefix #!key id)
+  (define (make-osymbol proto-mdef mdef-dir path-prefix #!key id value)
     (unless id (raise-local 'missing-onode-id))
     (make-onode type: 'symbol size: 0
 		fn: (lambda (onode parent-inode mdef current-org md-symbols)
+		      (if value
+			  (list (make-onode type: 'symbol size: 0 val: #t)
+				value
+				(cons (list id value) md-symbols)))
 		      (if current-org
 			  (list (make-onode type: 'symbol size: 0 val: #t)
 				current-org
-				(cons (list id current-org)
-				      md-symbols))
+				(cons (list id current-org) md-symbols))
 			  (list onode #f md-symbols)))))
 
   ;; TODO
