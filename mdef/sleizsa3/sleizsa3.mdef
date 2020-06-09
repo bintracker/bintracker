@@ -1,0 +1,48 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.1 target: channelf
+ description: "A three-channel 1-bit music routine for the Channel F. Synthesis is based on the Squeeker algorithm developed by Zilogat0r for the ZX Spectrum beeper. 3 channels of tone, 16-bit frequencey dividers, noise mode for channel 3, 2 interrupting click drums, 6-bit tempo resolution.
+By utz 2017."
+ default-origin: #x800
+
+ commands: ((command id: TICKS bits: 5 type: uint default: 4
+		     flags: (use-last-set)
+		     description: "Ticks per row")
+	    (command id: DUTY bits: 8 type: uint default: #x10
+	    	     description: "Channel duty")
+	    (command id: NOTE bits: 8 type: ukey
+	    	     flags: (use-last-set is-note)
+	    	     keys: (make-counters 9 71 1 0)
+	    	     default: rest)
+	    (command id: NOISE bits: 1 type: uint default: 0
+	    	     flags: (use-last-set)
+	    	     description: "Noise mode: 0 = disable, 1 = enable")
+	    (command id: DRUM bits: 2 type: uint default: 0
+		     ;; keys: ((none . 0)
+		     ;; 	    (kick . 1)
+		     ;; 	    (noise . 2))
+	    	     description: "Interrupting click drum, 1 = kick, 2 = noise"))
+
+ input: ((clone 3 (field from: DUTY))
+	 (group id: PATTERNS flags: (ordered)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(block id: DRUMS nodes: ((field from: DRUM)))
+			(clone 2 (block id: CH nodes: ((field from: NOTE))))
+			(block id: CH3 nodes: ((field id: NOTE3 from: NOTE)
+					       (field from: NOISE))))))
+ output: ((asm file: "sleizsa3.asm")
+	  (field bytes: 2 compose: $pattern0)
+	  (field bytes: 1 compose: #xff)
+	  (symbol id: pattern0)
+	  (group id: PATTERNS from: PATTERNS nodes:
+	  	 ((block id: CHANS from: (TEMPO DRUMS CH1 CH2 CH3)
+	  		 nodes: ((repeat bytes: 1 compose:
+	  				 (+ ?TICKS
+	  				    (cond ((= ?DRUM 1) #x40)
+	  					  ((= ?DRUM 2) #xc0)
+	  					  (else 0))))
+	  			 (repeat bytes: 1 compose: (* 2 ?NOTE1))
+	  			 (repeat bytes: 1 compose: (* 2 ?NOTE2))
+	  			 (repeat bytes: 1 compose:
+	  				 (+ (* 2 ?NOTE3)
+	  				    (if ?NOISE 1 0)))))))
+	  (field bytes: 1 compose: 0)))

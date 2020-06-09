@@ -1,0 +1,23 @@
+(mdal-module
+  #:version
+  2
+  #:mdef
+  "sleizsa3"
+  #:engine-version
+  1.1
+  (AUTHOR "unknown")
+  (TITLE "untitled")
+  (LICENSE "All Rights Reserved")
+  (DUTY1 16)
+  (DUTY2 16)
+  (DUTY3 16)
+  (PATTERNS
+    (TEMPO 16)
+    (DRUMS (1) 6 (1) (2) 5 (1) 1)
+    (CH1 (e4) (e3) (e2) (e1) (g1) (a1) (e1) 9)
+    (CH1 #:id 1 (e4) (e3) (e2) (e1) (g1) (a1) (e1) 7 (e2) (e1))
+    (CH2 (a0) 15)
+    (CH2 #:id 1 (b0))
+    (CH2 #:id 2 (e1))
+    (CH3 16)
+    (ORDER (16 0 0 0 2 0) (16 0 0 1 2 0) (16 0 0 0 0 0) (16 0 0 0 1 0))))
