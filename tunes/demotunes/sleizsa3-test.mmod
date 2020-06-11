@@ -2,12 +2,12 @@
   #:version
   2
   #:mdef
-  "sleizsa3"
+  "SleizsaTrio"
   #:engine-version
   1.1
-  (AUTHOR "unknown")
-  (TITLE "untitled")
-  (LICENSE "All Rights Reserved")
+  (AUTHOR "utz")
+  (TITLE "SleizsaTrio Test")
+  (LICENSE "CC0")
   (DUTY1 16)
   (DUTY2 16)
   (DUTY3 16)
