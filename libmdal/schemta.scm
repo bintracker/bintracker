@@ -772,7 +772,7 @@
   ;;; dispatch AST-NODE to evaluator procedures
   (: assemble-node (list procedure -> list))
   (define (assemble-node ast-node state)
-    (print "assemble-node " ast-node)
+    ;; (print "assemble-node " ast-node)
     (if (number? (car ast-node))
   	(begin (and-let* ((org (state 'current-origin)))
 		 (state 'current-origin (+ org (length ast-node))))
@@ -915,7 +915,7 @@
 	  (if (null? result)
 	      (parse-source remainder target ast)
 	      (begin
-		(print "parse-source, result: " result)
+		;; (print "parse-source, result: " result)
 		(parse-source remainder
 			      (if (and (eqv? 'directive (car result))
 				       (eqv? 'cpu (cadr result)))
