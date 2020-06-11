@@ -775,19 +775,33 @@
 
   ;;; Generate an onode def of type `symbol`. Call this procedure by
   ;;; `apply`ing it to an onode def expression.
-  (define (make-osymbol proto-mdef mdef-dir path-prefix #!key id value)
+  (define (make-osymbol proto-mdef mdef-dir path-prefix
+			#!key id value compose)
     (unless id (raise-local 'missing-onode-id))
-    (make-onode type: 'symbol size: 0
-		fn: (lambda (onode parent-inode mdef current-org md-symbols)
-		      (if value
-			  (list (make-onode type: 'symbol size: 0 val: #t)
-				value
-				(cons (cons id value) md-symbols)))
-		      (if current-org
-			  (list (make-onode type: 'symbol size: 0 val: #t)
-				current-org
-				(cons (cons id current-org) md-symbols))
-			  (list onode #f md-symbols)))))
+    (make-onode
+     type: 'symbol size: 0
+     fn: (cond
+	  (value (lambda (onode parent-inode mdef current-org md-symbols)
+		   (list (make-onode type: 'symbol size: 0 val: #t)
+			 current-org
+			 (cons (cons id value) md-symbols))))
+	  (compose
+	   (let ((compose-proc (transform-compose-expr compose proto-mdef))
+		 (required-symbols (get-required-symbols compose)))
+	     (lambda (onode parent-inode mdef current-org md-symbols)
+	       (if (have-required-symbols required-symbols md-symbols)
+		   (list (make-onode type: 'symbol size: 0 val: #t)
+			 current-org
+			 (cons (cons id (compose-proc 0 parent-inode
+						      md-symbols mdef))
+			       md-symbols))
+		   (list onode current-org md-symbols)))))
+	  (else (lambda (onode parent-inode mdef current-org md-symbols)
+		  (if current-org
+		      (list (make-onode type: 'symbol size: 0 val: #t)
+			    current-org
+			    (cons (cons id current-org) md-symbols))
+		      (list onode #f md-symbols)))))))
 
   ;; TODO
   ;; 1. pass in current-org
