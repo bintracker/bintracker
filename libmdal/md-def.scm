@@ -803,50 +803,48 @@
 			    (cons (cons id current-org) md-symbols))
 		      (list onode #f md-symbols)))))))
 
-  ;; TODO
-  ;; 1. pass in current-org
-  ;; 2. DONE resolve source filepath
-  ;; 3. if node cannot be resolved after 3 passes, do not cache but retain
-  ;;    oasm node
-  ;; 4. store asm text somehow for retrieval on asm output generation?
-  (define (make-oasm proto-mdef mdef-dir path-prefix
-		     #!key file code no-cache)
-    (let ((cpu (cpu-id (target-platform-cpu (mdef-target proto-mdef)))))
-      (if no-cache
-	  (make-onode
-	   type: 'asm
-	   fn: (lambda (onode parent-inode mdef current-org md-symbols)
-  		 (let* ((output (asm-file->bytes
-  				 cpu
-  				 (string-append mdef-dir file)
-  				 org: current-org
-  				 extra-symbols: md-symbols))
-  			(output-length (length output)))
-  		   (list (make-onode type: 'asm size: output-length val: output)
-			 #f md-symbols))))
-	  ;; TODO we could pass in proto-mdef, at least
-	  (let* ((make-output (lambda (extra-syms)
-				(asm-file->bytes
-  				 cpu
-  				 (string-append mdef-dir file)
-  				 org: (mdef-default-origin proto-mdef)
-  				 extra-symbols: extra-syms)))
-		 (looping-version (make-output '()))
-		 (loop-length (length looping-version))
-		 (non-looping-version (make-output '((no-loop #t))))
-		 (non-loop-length (length non-looping-version)))
-	    (make-onode
-	     type: 'asm
-	     fn: (lambda (onode parent-inode mdef current-org md-symbols)
-		   (let ((no-loop? (alist-ref 'no-loop md-symbols)))
-		     (list (make-onode type: 'asm
-				       size: (if no-loop?
-						 non-loop-length
-						 loop-length)
-				       val: (if no-loop?
-						non-looping-version
-						looping-version))
-			   #f md-symbols))))))))
+  ;; TODO passing in all of md-symbols may cause namespace clashes
+  (define (make-oasm proto-mdef mdef-dir path-prefix #!key file code)
+    (let* ((cpu (cpu-id (target-platform-cpu (mdef-target proto-mdef))))
+  	   (org (mdef-default-origin proto-mdef))
+  	   (source (or code (call-with-input-file (string-append mdef-dir file)
+  			      (cute read-string #f <>))))
+  	   (looping-asm (make-assembly cpu source org))
+  	   (non-looping-asm (make-assembly cpu source org '((no-loop . #t))))
+  	   (_ (looping-asm 'assemble 3))
+  	   (_ (non-looping-asm 'assemble 3))
+  	   (looping-result (looping-asm 'result))
+  	   (non-looping-result (non-looping-asm 'result)))
+      (make-onode
+       type: 'asm
+       fn:
+       (if (and looping-result non-looping-result)
+  	   (lambda (onode parent-inode mdef current-org md-symbols)
+  	     (let ((no-loop? (alist-ref 'no-loop md-symbols)))
+  	       (list (make-onode type: 'asm
+  				 size: (if no-loop?
+  					   (length non-looping-result)
+  					   (length looping-result))
+  				 val: (if no-loop?
+  					  non-looping-result
+  					  looping-result))
+		     ;; TODO current-org???
+  		     #f md-symbols)))
+  	   (lambda (onode parent-inode mdef current-org md-symbols)
+	     (let* ((no-loop? (alist-ref 'no-loop md-symbols))
+		    (asm (if no-loop?
+			     (make-assembly cpu source org
+					    (cons '(no-loop . #t) md-symbols))
+			     (make-assembly cpu source org md-symbols)))
+		    (_ (asm 'assemble 3))
+		    (res (asm 'result)))
+	       (if res
+		   (list (make-onode type: 'asm
+  				     size: (length res)
+  				     val: res)
+			 ;; TODO current-org???
+  			 #f md-symbols)
+		   (list onode #f md-symbols))))))))
 
   ;;; Extract required md-symbols from a compose expression
   (define (get-required-symbols compose-expr)
@@ -1441,7 +1439,6 @@
   ;;; `parent-dir` is the file path to the parent directory of the directory
   ;;; containing the .mdef file.
   (define (file->mdef parent-dir mdef-name #!optional (path-prefix ""))
-    (print "file->mdef " parent-dir " " mdef-name)
     (let* ((mdef-dir (string-append parent-dir mdef-name "/"))
 	   (filepath (string-append mdef-dir mdef-name ".mdef")))
       (handle-exceptions

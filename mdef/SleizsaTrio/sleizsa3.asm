@@ -33,9 +33,9 @@
 
 prog_size	.equ 4		;program size in kilobytes (minimum 2, increase if necessary)
 
-duty1		.equ $1c		;duty cycle settings (should be <= $40)
-duty2		.equ $14
-duty3		.equ $18
+;; duty1		.equ $1c		;duty cycle settings (should be <= $40)
+;; duty2		.equ $14
+;; duty3		.equ $18
 
 	;; org $800
 

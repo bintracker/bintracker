@@ -8,8 +8,8 @@
   (AUTHOR "utz")
   (TITLE "SleizsaTrio Test")
   (LICENSE "CC0")
-  (DUTY1 16)
-  (DUTY2 16)
+  (DUTY1 28)
+  (DUTY2 20)
   (DUTY3 16)
   (PATTERNS
     (TEMPO 16)

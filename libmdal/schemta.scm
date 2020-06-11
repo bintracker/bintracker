@@ -1006,7 +1006,16 @@
 	    (case (car args)
 	      ((done?) done?)
 	      ((ast) ast)
-	      ((symbols) symbols)
+	      ((symbols) (if (= 2 (length args))
+			     (begin (for-each
+				     (lambda (sym)
+				       (set! symbols
+					 (alist-update (car sym)
+						       (cdr sym)
+						       symbols)))
+				     (cadr args))
+				    (print symbols))
+			     symbols))
 	      ((local-namespace) local-namespace)
 	      ((target) target)
 	      ((assemble)
