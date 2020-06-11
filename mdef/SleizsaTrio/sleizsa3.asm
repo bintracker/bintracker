@@ -83,7 +83,7 @@ _readseq
 
 	.(if (symbol-ref 'no-loop)
              " clr\n outs 5\n_halt\n nop\n br _halt"
-             " br .(+ 1 (symbol-ref 'main_readseq))")
+             " br .(+ 1 (symbol-ref '_readseq))")
     ;; The nop before br _halt is a work-around for a bug in MAME that prevents
     ;; setting PC correctly when executing the br command.
 

@@ -91,7 +91,10 @@
     (flatten (cond ((or (not (pair? expr)) (null? expr)) '())
 		   ((pair? (car expr)) (cons (required-symbols (car expr))
 					     (required-symbols (cdr expr))))
-		   ((eq? 'symbol-ref (car expr)) (list (eval (cadr expr))))
+		   ((eq? 'symbol-ref (car expr))
+		    (list (eval (call-with-input-string
+				    (string-downcase (->string (cadr expr)))
+				  read))))
 		   (else (required-symbols (cdr expr))))))
 
   ;;; List the symbols required to evaluate the given OPERANDS
@@ -548,8 +551,13 @@
 		    (current-origin (state 'current-origin))
 		    (symbol-ref
 		     (lambda (s)
-		       (and-let* ((v (alist-ref s (state 'symbols))))
-			 (car v)))))
+		       (and-let*
+			   ((v (alist-ref
+				(if (is-local-symbol? s)
+  				    (symbol-append (state 'local-namespace) s)
+  				    s)
+  				(state 'symbols))))
+			 (and v (car v))))))
 		 (let ((require-current-org (memv 'current-origin
 						  (flatten (last node))))
 		       (org (state 'current-origin))
@@ -744,8 +752,14 @@
 	(fluid-let ((current-origin (state 'current-origin))
 		    (symbol-ref
 		     (lambda (s)
-		       (and-let* ((v (alist-ref s (state 'symbols))))
-			 (car v)))))
+		       (and-let*
+			   ((v (alist-ref
+				(if (is-local-symbol? s)
+  				    (symbol-append
+				     (state 'local-namespace) s)
+  				    s)
+  				(state 'symbols))))
+			 (and v (car v))))))
 	  (let ((res (eval (cadr node))))
 	    (cond
 	     ((string? res) (begin (state 'done? #f)
