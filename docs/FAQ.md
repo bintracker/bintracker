@@ -30,6 +30,11 @@ Go to your Bintracker folder, and open the file `config.scm` from the `config` s
 
 ## Development
 
+### How do I enable the MAME debugger?
+
+Add the `-debug` flag to the list of mame64 command line arguments in `config/emulators.scm`.
+
+
 ### Why are there so many parenthesis?
 
 [Yes](https://xkcd.com/297/).
