@@ -753,9 +753,7 @@
 		  ,command-config
 		  ,conditional?))))
 	 ((string-prefix? "$" symbol-name)
-	  `(let ((sym-val (,alist-ref (quote ,transformed-symbol)
-				      md-symbols)))
-	     (and sym-val (,car sym-val))))
+	  `(,alist-ref (quote ,transformed-symbol) md-symbols))
 	 (else elem))))
      ((pair? elem)
       (map (cut transform-compose-expr-element <> emdef field-indices)
@@ -784,11 +782,11 @@
 		      (if value
 			  (list (make-onode type: 'symbol size: 0 val: #t)
 				value
-				(cons (list id value) md-symbols)))
+				(cons (cons id value) md-symbols)))
 		      (if current-org
 			  (list (make-onode type: 'symbol size: 0 val: #t)
 				current-org
-				(cons (list id current-org) md-symbols))
+				(cons (cons id current-org) md-symbols))
 			  (list onode #f md-symbols)))))
 
   ;; TODO
@@ -909,9 +907,9 @@
 			  (map (cute int->bytes <> element-size
 				     (mdef-get-target-endianness mdef))
 			       (transformer-proc
-				(car (alist-ref (symbol-append '_mdal_order_
-							       from)
-						md-symbols))))))
+				(alist-ref (symbol-append '_mdal_order_
+							  from)
+					   md-symbols)))))
 			(output-length (length output)))
 		   (if (alist-ref order-symbol md-symbols)
 		       (list (make-onode type: 'order size: output-length
@@ -1222,7 +1220,7 @@
 				 size: (length (flatten (car result)))
 				 val: (car result))
 		     (cadr result)
-		     (cons (list (symbol-append '_mdal_order_ id)
+		     (cons (cons (symbol-append '_mdal_order_ id)
 				 (map car order-alist))
 			   md-symbols)))))))
 
@@ -1250,9 +1248,8 @@
 		       nodes))
 	   (generate-order
 	    (lambda (syms)
-	      (list (symbol-append '_mdal_order_ id)
-		    (apply zip (map (lambda (id)
-				      (car (alist-ref id syms)))
+	      (cons (symbol-append '_mdal_order_ id)
+		    (apply zip (map (lambda (id) (alist-ref id syms))
 				    (get-oblock-order-ids nodes)))))))
       (make-onode
        type: 'group

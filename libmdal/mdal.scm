@@ -116,7 +116,7 @@
   ;;; Compile a module to an onode tree.
   (define (mod-compile mod origin #!optional (extra-symbols '()))
     ((mdef-compiler (mmod-mdef mod))
-     mod origin (cons `(mdal_current_module ,mod)
+     mod origin (cons `(mdal_current_module . ,mod)
 		      extra-symbols)))
 
   ;;; Compile a module into a list of byte values.

@@ -99,16 +99,16 @@
 
   ;;; List the symbols required to evaluate the given OPERANDS
   (define (list-required-symbols operands)
-    (flatten (remove null-list? (map (lambda (op)
-				       (if (pair? op)
-					   (case (car op)
-					     ((sexp-directive)
-					      (required-symbols (cadr op)))
-					     ((label) (list (cadr op)))
-					     ((local-label) (list (cadr op)))
-					     (else '()))
-					   '()))
-				     operands))))
+    (flatten (remove null-list?
+		     (map (lambda (op)
+			    (if (pair? op)
+				(case (car op)
+				  ((sexp-directive)
+				   (required-symbols (cadr op)))
+				  ((label local-label) (list (cadr op)))
+				  (else '()))
+				'()))
+			  operands))))
 
   ;;; Match operands against instruction parser options.
   (define (match-operands operands parser-options)
@@ -124,8 +124,8 @@
 						(->string operands))))))
 
   (define (parse-operands operands target)
-    (print "parse-operands " operands target)
-    (print "target-conditions: " (asm-target-conditions target))
+    ;; (print "parse-operands " operands target)
+    ;; (print "target-conditions: " (asm-target-conditions target))
     (map (lambda (op)
 	   (parse
 	    (apply any-of
@@ -521,11 +521,10 @@
     (if (pair? op)
   	(case (car op)
   	  ((label)
-	   (car (alist-ref (cadr op) (state 'symbols))))
+	   (alist-ref (cadr op) (state 'symbols)))
   	  ((local-label)
-	   (car (alist-ref (symbol-append (state 'local-namespace)
-					  (cadr op))
-  			   (state 'symbols))))
+	   (alist-ref (symbol-append (state 'local-namespace) (cadr op))
+  		      (state 'symbols)))
   	  ((sexp-directive)
 	   (let ((res (do-sexp-directive op state)))
 	     (if (and (pair? res) (eqv? 'sexp-directive (car (flatten res))))
@@ -551,13 +550,11 @@
 		    (current-origin (state 'current-origin))
 		    (symbol-ref
 		     (lambda (s)
-		       (and-let*
-			   ((v (alist-ref
-				(if (is-local-symbol? s)
-  				    (symbol-append (state 'local-namespace) s)
-  				    s)
-  				(state 'symbols))))
-			 (and v (car v))))))
+		       (alist-ref
+			(if (is-local-symbol? s)
+  			    (symbol-append (state 'local-namespace) s)
+  			    s)
+  			(state 'symbols)))))
 		 (let ((require-current-org (memv 'current-origin
 						  (flatten (last node))))
 		       (org (state 'current-origin))
@@ -595,7 +592,7 @@
       (if (and result (not (null? result))
 	       (not (memv 'sexp-directive (flatten (list result)))))
   	  (begin (state 'symbols
-			(cons (list
+			(cons (cons
 			       (if (eqv? 'label (caadr node))
   				   (cadadr node)
   				   (symbol-append (state 'local-namespace)
@@ -611,7 +608,7 @@
     (state 'local-namespace (cadr node))
     (let ((org (state 'current-origin)))
       (if org
-	  (begin (state 'symbols (cons (list (cadr node) org) (state 'symbols)))
+	  (begin (state 'symbols (cons (cons (cadr node) org) (state 'symbols)))
 		 (list (list 'swap-namespace (cadr node))))
           (list node))))
 
@@ -621,7 +618,7 @@
     (let ((org (state 'current-origin)))
       (if org
 	  (begin (state 'symbols
-			(cons (list (symbol-append (state 'local-namespace)
+			(cons (cons (symbol-append (state 'local-namespace)
 						   (cadr node))
 				    org)
 			      (state 'symbols)))
@@ -752,14 +749,11 @@
 	(fluid-let ((current-origin (state 'current-origin))
 		    (symbol-ref
 		     (lambda (s)
-		       (and-let*
-			   ((v (alist-ref
-				(if (is-local-symbol? s)
-  				    (symbol-append
-				     (state 'local-namespace) s)
-  				    s)
-  				(state 'symbols))))
-			 (and v (car v))))))
+		       (alist-ref
+			(if (is-local-symbol? s)
+  			    (symbol-append (state 'local-namespace) s)
+  			    s)
+  			(state 'symbols)))))
 	  (let ((res (eval (cadr node))))
 	    (cond
 	     ((string? res) (begin (state 'done? #f)
