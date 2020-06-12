@@ -4,10 +4,10 @@
 	srfi-1 simple-exceptions
 	mdal test simple-md5 srfi-13 srfi-69)
 
-(define my-config-path "mdef/")
-(define my-cfg (file->config my-config-path "Huby"))
+(define my-mdef-path "mdef/")
+(define my-cfg (file->mdef my-mdef-path "Huby"))
 (define my-mod (file->mmod "tunes/demotunes/huby-test.mmod"
-			    my-config-path))
+			    my-mdef-path))
 (define my-group-node '("CH1(0)={" "NOTE1=a-1" "." "}" "CH1(1)={" "NOTE1=a-2"
 			"}" "CH2(0)={" "NOTE2=a-3" "}"))
 (define my-block-node '("NOTE1=a-3" "." "NOTE1=a-4"))
@@ -75,81 +75,81 @@
 
 
 (test-group
- "MD-Config/Master Config"
+ "MD-Def/Main Definition"
 
- (test "parsing plugin version"
+ (test "parsing engine version"
        '(1 0)
-       (list (plugin-version-major (config-plugin-version my-cfg))
-	     (plugin-version-minor (config-plugin-version my-cfg))))
+       (list (engine-version-major (mdef-engine-version my-cfg))
+	     (engine-version-minor (mdef-engine-version my-cfg))))
 
- (test "plugin version compatibility check"
+ (test "engine version compatibility check"
        '(#t #t #f #f)
-       (let ((available-version (make-plugin-version major: 1 minor: 4)))
-	 (list (plugin-versions-compatible?
-		available-version (make-plugin-version major: 1 minor: 4))
-	       (plugin-versions-compatible?
-		available-version (make-plugin-version major: 1 minor: 2))
-	       (plugin-versions-compatible?
-		available-version (make-plugin-version major: 1 minor: 6))
-	       (plugin-versions-compatible?
-		available-version (make-plugin-version major: 2 minor: 4)))))
+       (let ((available-version (make-engine-version major: 1 minor: 4)))
+	 (list (engine-versions-compatible?
+		available-version (make-engine-version major: 1 minor: 4))
+	       (engine-versions-compatible?
+		available-version (make-engine-version major: 1 minor: 2))
+	       (engine-versions-compatible?
+		available-version (make-engine-version major: 1 minor: 6))
+	       (engine-versions-compatible?
+		available-version (make-engine-version major: 2 minor: 4)))))
 
  (test "creating system target" "spectrum48"
-       (target-platform-id (config-target my-cfg)))
+       (target-platform-id (mdef-target my-cfg)))
 
  (test "parsing description" "f224aa0c3de07810142a50825ad6a523"
-       (string->md5sum (config-description my-cfg)))
+       (string->md5sum (mdef-description my-cfg)))
 
  (test-assert "default commands created"
-   (and (hash-table-exists? (config-commands my-cfg) 'AUTHOR)
-	(hash-table-exists? (config-commands my-cfg) 'TITLE)
-	(hash-table-exists? (config-commands my-cfg) 'LICENSE)))
+   (and (hash-table-exists? (mdef-commands my-cfg) 'AUTHOR)
+	(hash-table-exists? (mdef-commands my-cfg) 'TITLE)
+	(hash-table-exists? (mdef-commands my-cfg) 'LICENSE)))
 
  (test-assert "order commands created"
-   (and (hash-table-exists? (config-commands my-cfg) 'PATTERNS_LENGTH)
-	(hash-table-exists? (config-commands my-cfg) 'R_DRUMS)
-	(hash-table-exists? (config-commands my-cfg) 'R_CH1)
-	(hash-table-exists? (config-commands my-cfg) 'R_CH2)))
+   (and (hash-table-exists? (mdef-commands my-cfg) 'PATTERNS_LENGTH)
+	(hash-table-exists? (mdef-commands my-cfg) 'R_DRUMS)
+	(hash-table-exists? (mdef-commands my-cfg) 'R_CH1)
+	(hash-table-exists? (mdef-commands my-cfg) 'R_CH2)))
 
  (test "all commands created" 10
-       (hash-table-size (config-commands my-cfg))))
+       (hash-table-size (mdef-commands my-cfg))))
 
 
 (test-group
- "MD-Config/Auxilliary Accessors"
+ "MD-Mdef/Auxilliary Accessors"
 
- (define my-itree (config-itree my-cfg))
+ (define my-itree (mdef-itree my-cfg))
 
- (test "config-command-ref"
-       (list (hash-table-ref (config-commands my-cfg) 'AUTHOR)
+ (test "mdef-command-ref"
+       (list (hash-table-ref (mdef-commands my-cfg) 'AUTHOR)
 	     #f)
-       (list (config-command-ref 'AUTHOR my-cfg)
-	     (config-command-ref 'INVALID my-cfg)))
+       (list (mdef-command-ref 'AUTHOR my-cfg)
+	     (mdef-command-ref 'INVALID my-cfg)))
 
- (test "config-inode-ref"
-       (list (hash-table-ref (config-inodes my-cfg) 'AUTHOR)
+ (test "mdef-inode-ref"
+       (list (hash-table-ref (mdef-inodes my-cfg) 'AUTHOR)
 	     #f)
-       (list (config-inode-ref 'AUTHOR my-cfg)
-	     (config-inode-ref 'INVALID my-cfg)))
+       (list (mdef-inode-ref 'AUTHOR my-cfg)
+	     (mdef-inode-ref 'INVALID my-cfg)))
 
- (test "config-get-parent-node-id" 'CH2
-       (config-get-parent-node-id 'NOTE2 my-itree))
+ (test "mdef-get-parent-node-id" 'CH2
+       (mdef-get-parent-node-id 'NOTE2 my-itree))
 
- (test "config-get-node-ancestors-ids" '(CH1 PATTERNS GLOBAL)
-       (config-get-node-ancestors-ids 'NOTE1 my-itree))
+ (test "mdef-get-node-ancestors-ids" '(CH1 PATTERNS GLOBAL)
+       (mdef-get-node-ancestors-ids 'NOTE1 my-itree))
 
- (test "config-get-subnode-ids" '(DRUMS CH1 CH2 PATTERNS_ORDER)
-       (config-get-subnode-ids 'PATTERNS my-itree))
+ (test "mdef-get-subnode-ids" '(DRUMS CH1 CH2 PATTERNS_ORDER)
+       (mdef-get-subnode-ids 'PATTERNS my-itree))
 
- (test "md-config-get-subnode-type-ids" '(AUTHOR TITLE LICENSE BPM)
-       (config-get-subnode-type-ids 'GLOBAL my-cfg 'field))
+ (test "mdef-get-subnode-type-ids" '(AUTHOR TITLE LICENSE BPM)
+       (mdef-get-subnode-type-ids 'GLOBAL my-cfg 'field))
 
- (test "config-get-inode-source-command"
-       (hash-table-ref (config-commands my-cfg) 'DRUM)
-       (config-get-inode-source-command 'DRUM my-cfg))
+ (test "mdef-get-inode-source-command"
+       (hash-table-ref (mdef-commands my-cfg) 'DRUM)
+       (mdef-get-inode-source-command 'DRUM my-cfg))
 
- (test "config-get-node-default" #f
-       (config-get-node-default 'DRUM my-cfg)))
+ (test "mdef-get-node-default" #f
+       (mdef-get-node-default 'DRUM my-cfg)))
 
 (test-group
  "MD-Module/Parser"
@@ -159,116 +159,116 @@
 
  (define my-global-node-contents (remove-keyword-args
 				  (cdr my-mod-expr)
-				  '(version: config: config-version:)))
+				  '(version: mdef: engine-version:)))
 
- (test-group
-  "MMOD integrity checks"
+ ;; (test-group
+ ;;  "MMOD integrity checks"
 
-  (test "not an MDAL module"
-	"Not an MDAL module"
-	(with-exn-handler (lambda (e) (message e))
-			  (lambda ()
-			    (apply check-mmod-version
-				   '(mdal-modul version: 4)))))
+ ;;  (test "not an MDAL module"
+ ;; 	"Not an MDAL module"
+ ;; 	(with-exn-handler (lambda (e) (message e))
+ ;; 			  (lambda ()
+ ;; 			    (apply check-mmod-version
+ ;; 				   '(mdal-modul version: 4)))))
 
-  (test "valid mmod version"
-	2 (apply check-mmod-version my-mod-expr))
+ ;;  (test "valid mmod version"
+ ;; 	2 (apply check-mmod-version my-mod-expr))
 
-  (test "invalid mmod version"
-	"Unsupported MDAL version: 4"
-	(with-exn-handler (lambda (e) (message e))
-			  (lambda ()
-			    (apply check-mmod-version
-				   '(mdal-module version: 4)))))
+ ;;  (test "invalid mmod version"
+ ;; 	"Unsupported MDAL version: 4"
+ ;; 	(with-exn-handler (lambda (e) (message e))
+ ;; 			  (lambda ()
+ ;; 			    (apply check-mmod-version
+ ;; 				   '(mdal-module version: 4)))))
 
-  (test "mod-get-config-name"
-	"Huby"
-	(apply mod-get-config-name my-mod-expr)))
+ ;;  (test "mod-get-mdef-name"
+ ;; 	"Huby"
+ ;; 	(apply mod-get-mdef-name my-mod-expr)))
 
 
- (test "parsing group fields"
-       '((AUTHOR (0 #f . "utz"))
-	 (BPM (0 #f . 120)))
-       `(,(mod-parse-group-field 'AUTHOR my-cfg my-global-node-contents)
-	 ,(mod-parse-group-field 'BPM my-cfg my-global-node-contents)))
+ ;; (test "parsing group fields"
+ ;;       '((AUTHOR (0 #f . "utz"))
+ ;; 	 (BPM (0 #f . 120)))
+ ;;       `(,(mod-parse-group-field 'AUTHOR my-cfg my-global-node-contents)
+ ;; 	 ,(mod-parse-group-field 'BPM my-cfg my-global-node-contents)))
 
- (test-group
-  "parsing blocks"
+ ;; (test-group
+ ;;  "parsing blocks"
 
-  (test "replacing empty block rows"
-	'((0 1 2 3)
-	  (() () () ())
-	  (foo)
-	  (() () () ())
-	  (() () () ()))
-	(mod-replace-empty-block-rows 4 '((0 1 2 3) 1 (foo) 2)))
+ ;;  (test "replacing empty block rows"
+ ;; 	'((0 1 2 3)
+ ;; 	  (() () () ())
+ ;; 	  (foo)
+ ;; 	  (() () () ())
+ ;; 	  (() () () ()))
+ ;; 	(mod-replace-empty-block-rows 4 '((0 1 2 3) 1 (foo) 2)))
 
-  (test "detect mixed shorthand/full syntax"
-	"In block node XYZ, ID 0: row \"(1 2 (BAZ 3))\" does not match specification"
-	(with-exn-handler (lambda (e) (message e))
-			  (lambda ()
-			    (mod-parse-block-row '(1 2 (BAZ 3))
-						 '(FOO BAR BAZ)
-						 'XYZ 0))))
+ ;;  (test "detect mixed shorthand/full syntax"
+ ;; 	"In block node XYZ, ID 0: row \"(1 2 (BAZ 3))\" does not match specification"
+ ;; 	(with-exn-handler (lambda (e) (message e))
+ ;; 			  (lambda ()
+ ;; 			    (mod-parse-block-row '(1 2 (BAZ 3))
+ ;; 						 '(FOO BAR BAZ)
+ ;; 						 'XYZ 0))))
 
-  (test "detect unrecognized node"
-	"Unknown node ZAP"
-	(with-exn-handler (lambda (e) (message e))
-			  (lambda ()
-			    (mod-parse-block-row '((ZAP 1))
-						 '(FOO BAR BAZ)
-						 'XYZ 0))))
+ ;;  (test "detect unrecognized node"
+ ;; 	"Unknown node ZAP"
+ ;; 	(with-exn-handler (lambda (e) (message e))
+ ;; 			  (lambda ()
+ ;; 			    (mod-parse-block-row '((ZAP 1))
+ ;; 						 '(FOO BAR BAZ)
+ ;; 						 'XYZ 0))))
 
-  (test "detect invalid row length"
-	"In block node XYZ, ID 0: row \"(1 2)\" does not match specification"
-	(with-exn-handler (lambda (e) (message e))
-			  (lambda ()
-			    (mod-parse-block-row '(1 2)
-						 '(FOO BAR BAZ)
-						 'XYZ 0))))
+ ;;  (test "detect invalid row length"
+ ;; 	"In block node XYZ, ID 0: row \"(1 2)\" does not match specification"
+ ;; 	(with-exn-handler (lambda (e) (message e))
+ ;; 			  (lambda ()
+ ;; 			    (mod-parse-block-row '(1 2)
+ ;; 						 '(FOO BAR BAZ)
+ ;; 						 'XYZ 0))))
 
-  (test "parsing valid block rows"
-	'((1 2 3 )
-	  (1 () 3))
-	`(,(mod-parse-block-row '(1 2 3)
-				'(FOO BAR BAZ)
-				'X 0)
-	  ,(mod-parse-block-row '((FOO 1) (BAZ 3))
-				'(FOO BAR BAZ)
-				'X 0)))
+ ;;  (test "parsing valid block rows"
+ ;; 	'((1 2 3 )
+ ;; 	  (1 () 3))
+ ;; 	`(,(mod-parse-block-row '(1 2 3)
+ ;; 				'(FOO BAR BAZ)
+ ;; 				'X 0)
+ ;; 	  ,(mod-parse-block-row '((FOO 1) (BAZ 3))
+ ;; 				'(FOO BAR BAZ)
+ ;; 				'X 0)))
 
-  (test "parsing block instance"
-	'(0 #f
-	    (#x10 #x00 #x00 #x00)
-	    (() () () #x01))
-	(apply mod-parse-block-instance `(,my-cfg PATTERNS_ORDER
-						  (#x10 #x00 #x00 #x00)
-						  ((R_CH2 #x01))))))
+ ;;  (test "parsing block instance"
+ ;; 	'(0 #f
+ ;; 	    (#x10 #x00 #x00 #x00)
+ ;; 	    (() () () #x01))
+ ;; 	(apply mod-parse-block-instance `(,my-cfg PATTERNS_ORDER
+ ;; 						  (#x10 #x00 #x00 #x00)
+ ;; 						  ((R_CH2 #x01))))))
 
- (test "parsing groups"
-       `(0 #f
-	   (AUTHOR (0 #f . "utz"))
-	   (TITLE (0 #f . "Huby Test"))
-	   (LICENSE (0 #f . "Creative Commons CC0"))
-	   (BPM (0 #f . 120))
-	   (PATTERNS (0 #f
-			(DRUMS ,(append (list 0 "beat0")
-					(concatenate
-					 (make-list 3 `((#t) (()) (()) (()))))
-					'((#t))))
-			(CH1 (0 #f
-				(a3) (()) (rest) (()) (c4) (()) (rest) (())
-				(e4) (()) (rest) (()) (g4) (()) (rest)))
-			(CH2 (0 #f (a2))
-			     (1 #f (e2)))
-			(PATTERNS_ORDER (0 #f
-					   (#x10 #x00 #x00 #x00)
-					   (() () () #x01))))))
-       (apply mod-parse-group-instance
-	      (append `(,my-cfg GLOBAL)
-		      (remove-keyword-args
-		       (cdr my-mod-expr)
-		       '(version: config: config-version:)))))
+ ;; (test "parsing groups"
+ ;;       `(0 #f
+ ;; 	   (AUTHOR (0 #f . "utz"))
+ ;; 	   (TITLE (0 #f . "Huby Test"))
+ ;; 	   (LICENSE (0 #f . "Creative Commons CC0"))
+ ;; 	   (BPM (0 #f . 120))
+ ;; 	   (PATTERNS (0 #f
+ ;; 			(DRUMS ,(append (list 0 "beat0")
+ ;; 					(concatenate
+ ;; 					 (make-list 3 `((#t) (()) (()) (()))))
+ ;; 					'((#t))))
+ ;; 			(CH1 (0 #f
+ ;; 				(a3) (()) (rest) (()) (c4) (()) (rest) (())
+ ;; 				(e4) (()) (rest) (()) (g4) (()) (rest)))
+ ;; 			(CH2 (0 #f (a2))
+ ;; 			     (1 #f (e2)))
+ ;; 			(PATTERNS_ORDER (0 #f
+ ;; 					   (#x10 #x00 #x00 #x00)
+ ;; 					   (() () () #x01))))))
+ ;;       (apply mod-parse-group-instance
+ ;; 	      (append `(,my-cfg GLOBAL)
+ ;; 		      (remove-keyword-args
+ ;; 		       (cdr my-mod-expr)
+ ;; 		       '(version: mdef: engine-version:)))))
 
  )
 
@@ -404,66 +404,66 @@
 	120
 	(eval-group-field
 	 (subnode-ref 'BPM (inode-instance-ref 0 (mmod-global-node my-mod)))
-	 0 (config-get-inode-source-command 'BPM my-cfg)))
+	 0 (mdef-get-inode-source-command 'BPM my-cfg)))
 
  (test "eval-block-field"
-       (hash-table-ref (command-keys (config-get-inode-source-command
+       (hash-table-ref (command-keys (mdef-get-inode-source-command
 				      'NOTE2 my-cfg))
 		       'a2)
        (eval-block-field ((node-path "0/PATTERNS/0/CH2/0")
 			  (mmod-global-node my-mod))
-			 0 10 (config-command-ref 'NOTE my-cfg)))
+			 0 10 (mdef-command-ref 'NOTE my-cfg)))
 
- (test "get-required-symbols"
-       '((foo)
-	 (foo bar baz)
-	 ())
-       (list (get-required-symbols '$foo)
-	     (get-required-symbols '($foo ($bar (0 ($baz boo)))))
-	     (get-required-symbols '(foo bar (baz ())))))
+ ;; (test "get-required-symbols"
+ ;;       '((foo)
+ ;; 	 (foo bar baz)
+ ;; 	 ())
+ ;;       (list (get-required-symbols '$foo)
+ ;; 	     (get-required-symbols '($foo ($bar (0 ($baz boo)))))
+ ;; 	     (get-required-symbols '(foo bar (baz ())))))
 
- (test "transform-compose-expr"
-       (quotient 1779661 120)
-       ((transform-compose-expr '(quotient 1779661 ?BPM) my-cfg)
- 	0 my-parent-node '() my-cfg))
+ ;; (test "transform-compose-expr"
+ ;;       (quotient 1779661 120)
+ ;;       ((transform-compose-expr '(quotient 1779661 ?BPM) my-cfg)
+ ;; 	0 my-parent-node '() my-cfg))
 
- (test "make-order-transformer"
-       '(1 5 2 6 3 7 4 8)
-       ((make-order-transformer 'shared-numeric-matrix 1)
- 	'((0 0) (1 1) (2 2) (3 3))))
+ ;; (test "make-order-transformer"
+ ;;       '(1 5 2 6 3 7 4 8)
+ ;;       ((make-order-transformer 'shared-numeric-matrix 1)
+ ;; 	'((0 0) (1 1) (2 2) (3 3))))
 
- (test "block-repeat-last-set"
-       '((() 2 3)
-	 (() () ()))
-       (block-repeat-last-set
-	'((() () ())
-	  (() () ()))
-	'((() 2 ())
-	  (() () 3))
-	'(#f #t #t)))
+ ;; (test "block-repeat-last-set"
+ ;;       '((() 2 3)
+ ;; 	 (() () ()))
+ ;;       (block-repeat-last-set
+ ;; 	'((() () ())
+ ;; 	  (() () ()))
+ ;; 	'((() 2 ())
+ ;; 	  (() () 3))
+ ;; 	'(#f #t #t)))
 
- (test "split-block-instance-contents"
-       '((0 #f (a2) (rest) (()) (())))
-       (split-block-instance-contents
-	4 'CH2 my-cfg
-	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mmod-global-node my-mod)))))
+ ;; (test "split-block-instance-contents"
+ ;;       '((0 #f (a2) (rest) (()) (())))
+ ;;       (split-block-instance-contents
+ ;; 	4 'CH2 my-cfg
+ ;; 	(cddr ((node-path "0/PATTERNS/0/CH2/0") (mmod-global-node my-mod)))))
 
- (test "resize-block-instances"
-       '((CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
-	      (1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
-	      (2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
-	      (3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
-	 (CH2 (0 #f (a2) (rest) (()) (()))))
-       `(,(resize-block-instances
-	   ((node-path "0/PATTERNS/0/CH2") (mmod-global-node my-mod))
-	   8
-	   ((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mmod-global-node my-mod))
-	   my-cfg)
-	 ,(resize-block-instances
-	   '(CH2 (0 #f (a2)))
-	   4
-	   '(PATTERNS_ORDER (0 #f (1 0 0 0)))
-	   my-cfg)))
+ ;; (test "resize-block-instances"
+ ;;       '((CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+ ;; 	      (1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
+ ;; 	      (2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
+ ;; 	      (3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
+ ;; 	 (CH2 (0 #f (a2) (rest) (()) (()))))
+ ;;       `(,(resize-block-instances
+ ;; 	   ((node-path "0/PATTERNS/0/CH2") (mmod-global-node my-mod))
+ ;; 	   8
+ ;; 	   ((node-path "0/PATTERNS/0/PATTERNS_ORDER") (mmod-global-node my-mod))
+ ;; 	   my-cfg)
+ ;; 	 ,(resize-block-instances
+ ;; 	   '(CH2 (0 #f (a2)))
+ ;; 	   4
+ ;; 	   '(PATTERNS_ORDER (0 #f (1 0 0 0)))
+ ;; 	   my-cfg)))
 
  (test "resize-blocks"
        '(0 #f
@@ -488,45 +488,45 @@
 	((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
 	'PATTERNS 8 my-cfg))
 
- (test "make-order-alist"
-       '((0 (0 0)) (1 (1 1)) (2 (2 2)) (3 (3 3)))
-       (make-order-alist
-	(subnode-ref 'PATTERNS_ORDER
-		     (resize-blocks
-		      ((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
-		      'PATTERNS 8 my-cfg))
-	'(CH1 CH2)
-	my-cfg))
+ ;; (test "make-order-alist"
+ ;;       '((0 (0 0)) (1 (1 1)) (2 (2 2)) (3 (3 3)))
+ ;;       (make-order-alist
+ ;; 	(subnode-ref 'PATTERNS_ORDER
+ ;; 		     (resize-blocks
+ ;; 		      ((node-path "0/PATTERNS/0") (mmod-global-node my-mod))
+ ;; 		      'PATTERNS 8 my-cfg))
+ ;; 	'(CH1 CH2)
+ ;; 	my-cfg))
 
- (test "make-ofield"
-       `(,(int->bytes (quotient 1779661 120) 2 'little-endian)
-	 (#\null #\null))
-       (let ((my-onode1 (make-ofield my-cfg "" "" bytes: 2
- 				     compose: '(quotient 1779661 ?BPM)))
- 	     (my-onode2 (make-ofield my-cfg "" "" bytes: 2
- 				     compose: '(- $my-sym 8))))
- 	 (list (onode-val (car ((onode-fn my-onode1) my-onode1
- 				my-parent-node my-cfg 0 '())))
- 	       (onode-val (car ((onode-fn my-onode2) my-onode2
- 	       			my-parent-node my-cfg 0 '((my-sym 8))))))))
+ ;; (test "make-ofield"
+ ;;       `(,(int->bytes (quotient 1779661 120) 2 'little-endian)
+ ;; 	 (#\null #\null))
+ ;;       (let ((my-onode1 (make-ofield my-cfg "" "" bytes: 2
+ ;; 				     compose: '(quotient 1779661 ?BPM)))
+ ;; 	     (my-onode2 (make-ofield my-cfg "" "" bytes: 2
+ ;; 				     compose: '(- $my-sym 8))))
+ ;; 	 (list (onode-val (car ((onode-fn my-onode1) my-onode1
+ ;; 				my-parent-node my-cfg 0 '())))
+ ;; 	       (onode-val (car ((onode-fn my-onode2) my-onode2
+ ;; 	       			my-parent-node my-cfg 0 '((my-sym 8))))))))
 
- (test "make-osymbol"
-       8
-       (let ((my-onode (make-osymbol my-cfg "" "" id: 'my-sym)))
- 	 (car (alist-ref 'my-sym
- 			 (third ((onode-fn my-onode) my-onode my-parent-node
- 				 my-cfg 8 '()))))))
+ ;; (test "make-osymbol"
+ ;;       8
+ ;;       (let ((my-onode (make-osymbol my-cfg "" "" id: 'my-sym)))
+ ;; 	 (car (alist-ref 'my-sym
+ ;; 			 (third ((onode-fn my-onode) my-onode my-parent-node
+ ;; 				 my-cfg 8 '()))))))
 
- (test "order-oblock-sources"
-       '(DRUMS CH1)
-       (order-oblock-sources '(CH1 DRUMS) 'PATTERNS my-cfg))
+ ;; (test "order-oblock-sources"
+ ;;       '(DRUMS CH1)
+ ;;       (order-oblock-sources '(CH1 DRUMS) 'PATTERNS my-cfg))
  )
 
 (test-group
  "Export & Compilation"
 
  (test "mmod->file"
-       "013ed7fbb6d1602bc267afe2d16788b2"
+       "c26d2f6e4ece6686eb45ef899d07d9c0"
        (begin
 	 (mmod->file my-mod "test.mmod")
 	 (file-md5sum "test.mmod")))
