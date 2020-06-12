@@ -456,8 +456,7 @@
   ;;; Convert the `row`, `char` arguments into a Tk Text index string.
   ;;; `row` is adjusted from 0-based indexing to 1-based indexing.
   (define (textgrid-position->tk-index row char)
-    (string-append (number->string (add1 row))
-  		   "." (number->string char)))
+    (string-append (->string (add1 row)) "." (->string char)))
 
   ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
   ;;; widget with class bindings removed.
