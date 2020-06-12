@@ -101,7 +101,6 @@
   	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdef-name)
-    (print "create-new-module " mdef-name)
     (close-file)
     (after-load-file-hooks
      'execute
@@ -139,14 +138,12 @@
   	     (initial-item-list (get-item-list)))
   	(d 'add 'finalizer
   	   (lambda a
-	     (print "doing finalizer " a)
   	     (and-let*
   		 ((item-list (get-item-list))
   		  (_ (not (null? item-list)))
   		  (selected-def ((d 'ref 'mdef-selector)
   				 'item ((d 'ref 'mdef-selector) 'focus)
   				 text:)))
-	       (print "selected: " selected-def)
   	       (create-new-module (if (string-null? selected-def)
   				      ((d 'ref 'mdef-selector)
   				       'item (car item-list)
@@ -459,8 +456,8 @@
   ;;; Convert the `row`, `char` arguments into a Tk Text index string.
   ;;; `row` is adjusted from 0-based indexing to 1-based indexing.
   (define (textgrid-position->tk-index row char)
-    (string-append (->string (add1 row))
-  		   "." (->string char)))
+    (string-append (number->string (add1 row))
+  		   "." (number->string char)))
 
   ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
   ;;; widget with class bindings removed.
@@ -2051,16 +2048,21 @@
   ;;; Set the cursor to the given coordinates.
   (define-method (ui-blockview-set-cursor primary: (buf <ui-basic-block-view>)
   					  row char)
-    (let ((grid (slot-value buf 'block-content))
-  	  (active-zone (ui-blockview-get-active-zone buf)))
+    (let* ((current-length (length (concatenate (slot-value buf 'item-cache))))
+	   (actual-row (if (>= row current-length)
+			   (sub1 current-length)
+			   row))
+	   (grid (slot-value buf 'block-content))
+  	   (active-zone (ui-blockview-get-active-zone buf)))
       (ui-blockview-remove-cursor buf)
-      (grid 'mark 'set 'insert (textgrid-position->tk-index row char))
-      (when (or (< row (car active-zone))
-  		(> row (cadr active-zone)))
+      (grid 'mark 'set 'insert (textgrid-position->tk-index actual-row char))
+      (when (or (< actual-row (car active-zone))
+  		(> actual-row (cadr active-zone)))
   	(ui-blockview-tag-active-zone buf))
       (ui-blockview-show-cursor buf)
       (grid 'see 'insert)
-      ((slot-value buf 'rownums) 'see (textgrid-position->tk-index row 0))))
+      ((slot-value buf 'rownums) 'see
+       (textgrid-position->tk-index actual-row 0))))
 
   ;;; Move the blockview's cursor in DIRECTION.
   (define-method (ui-blockview-move-cursor-common
@@ -2934,12 +2936,18 @@
   			  (length (slot-value buf 'item-cache))))
   		  (not (equal? (map length new-item-list)
   			       (map length (slot-value buf 'item-cache)))))
-  	      (begin
+  	      (let* ((cursor-pos (ui-blockview-get-cursor-position buf))
+		     (cursor-row (car cursor-pos))
+		     (cursor-char (cadr cursor-pos)))
   		(set! (slot-value buf 'item-cache) new-item-list)
   		(ui-blockview-update-content-grid buf)
   		(ui-blockview-update-row-numbers buf)
-  		((slot-value buf 'block-content)
-  		 'mark 'set 'insert current-mark-pos)
+  		((slot-value buf 'block-content) 'mark 'set 'insert
+		 (if (< cursor-row (length new-item-list))
+		     current-mark-pos
+		     (string-append (number->string
+				     (length (concatenate new-item-list)))
+				    "." (number->string cursor-char))))
   		(ui-blockview-tag-active-zone buf)
   		(ui-blockview-update-row-highlights buf))
   	      (begin
