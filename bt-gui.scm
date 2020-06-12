@@ -1428,12 +1428,10 @@
   		 (mmod-global-node (ui-metastate buf 'mmod))))
     	       node-id
   	       (ui-metastate buf 'mdef)))))
-      ;; (print "got node-id " node-id " and color " color)
       (set! (slot-value buf 'label)
   	((ui-box buf) 'create-widget 'label
   	 foreground: color text: (symbol->string node-id)
   	 width: 12))
-      ;; (print "made label")
       (set! (slot-value buf 'entry)
   	((ui-box buf) 'create-widget 'entry
   	 bg: (colors 'row-highlight-minor) fg: color
@@ -1441,37 +1439,13 @@
   	 font: (list family: (settings 'font-mono)
   		     size: (settings 'font-size)
   		     weight: 'bold)))
-      ;; (print "made entry")
       (tk/pack (slot-value buf 'label)
   	       (slot-value buf 'entry)
   	       side: 'left padx: 4 pady: 4)
-      ;; (print "packed")
       ((slot-value buf 'entry) 'insert 'end (get-normalized-current-val))
       (tk/bind (slot-value buf 'entry) '<Return>
 	       (lambda ()
-		 (let* ((new-val (begin (tk/update 'idletasks)
-					((slot-value buf 'entry) 'get)))
-			(validated-new-val
-			 (validate-field-value
-			  (ui-metastate buf 'mdef)
-			  node-id
-			  (case (command-type
-				 (mdef-get-inode-source-command
-				  node-id (ui-metastate buf 'mdef)))
-			    ((int uint) (string->number
-					 new-val (settings 'number-base)))
-			    ((string) new-val)
-			    ((trigger) #t)
-			    ((key ukey) (string->symbol new-val))
-			    (else #f))
-			  #t)))
-		   (if validated-new-val
-		       (edit buf 'set validated-new-val)
-		       (begin ((slot-value buf 'entry) 'delete 0 'end)
-			      ((slot-value buf 'entry) 'insert 'end
-			       (get-normalized-current-val)))))))
-      ;; (print "done initialize-instance/group-field")
-      ))
+		 (ui-group-field-update-value buf)))))
 
   (define-method (ui-group-field-perform-edit primary: (buf <ui-group-field>)
 					      action)
@@ -1479,6 +1453,44 @@
   		  (make-reverse-action action (ui-metastate buf 'mmod)))
     (ui-metastate buf 'apply-edit action)
     (ui-metastate buf 'modified #t))
+
+  (define-method (ui-group-field-update-value primary: (buf <ui-group-field>))
+    (let* ((node-id (slot-value buf 'node-id))
+	   (get-current-val
+	    (lambda ()
+	      (cddr ((node-path
+    		      (string-append (slot-value buf 'parent-instance-path)
+    				     (symbol->string node-id)
+    				     "/0/"))
+  		     (mmod-global-node (ui-metastate buf 'mmod))))))
+	   (get-normalized-current-val
+	    (lambda ()
+	      (normalize-field-value (get-current-val)
+				     node-id
+  				     (ui-metastate buf 'mdef))))
+	   (new-val (begin (tk/update 'idletasks)
+			   ((slot-value buf 'entry) 'get)))
+	   (cmd-type (command-type (mdef-get-inode-source-command
+				    node-id
+				    (ui-metastate buf 'mdef))))
+	   (validated-new-val
+	    (validate-field-value
+	     (ui-metastate buf 'mdef)
+	     node-id
+	     (case cmd-type
+	       ((int uint) (string->number new-val (settings 'number-base)))
+	       ((string) new-val)
+	       ((trigger) #t)
+	       ((key ukey) (string->symbol new-val))
+	       (else #f))
+	     #t)))
+      (if (and validated-new-val (not ((if (eqv? cmd-type 'string)
+					   string= equal?)
+				       validated-new-val (get-current-val))))
+	  (edit buf 'set validated-new-val)
+	  (begin ((slot-value buf 'entry) 'delete 0 'end)
+		 ((slot-value buf 'entry) 'insert 'end
+		  (get-normalized-current-val))))))
 
   (define-method (edit primary: (buf <ui-group-field>)
 		       what #!optional val)
@@ -1503,6 +1515,7 @@
       (tk/focus entry)))
 
   (define-method (ui-unfocus primary: (buf <ui-group-field>))
+    (ui-group-field-update-value buf)
     ((slot-value buf 'entry)
      'configure bg: (colors 'row-highlight-minor)))
 
@@ -1549,8 +1562,8 @@
   		     	       (slot-value buf 'metastate-accessor))))
 		 (tk/bind (slot-value widget 'entry) '<Tab>
 		 	  (lambda ()
-		 	    (ui-unfocus
-		 	     (cdr (list-ref (ui-children buf)
+			    (ui-unfocus
+			     (cdr (list-ref (ui-children buf)
 		 			    (slot-value buf 'active-index))))
 		 	    (set! (slot-value buf 'active-index)
 		 	      (if (>= (+ 1 (slot-value buf 'active-index))
@@ -1558,8 +1571,9 @@
 		 		  0
 		 		  (+ 1 (slot-value buf 'active-index))))
 		 	    (ui-focus
-		 	     (cdr (list-ref (ui-children buf)
-		 			    (slot-value buf 'active-index))))))
+		 	     (cdr (list-ref
+				   (ui-children buf)
+		 		   (slot-value buf 'active-index))))))
 		 (tk/bind (slot-value widget 'entry) '<Button-1>
 			  (lambda ()
 			    (ui-unfocus buf)
