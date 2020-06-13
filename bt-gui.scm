@@ -275,10 +275,10 @@
   		    (/ (log (expt 2 (command-bits command-config)))
   		       (log (settings 'number-base))))))
       ((key ukey) (if (memq 'is-note (command-flags command-config))
-  		      3 (apply max
-  			       (map (o string-length car)
-  				    (hash-table-keys
-  				     (command-keys command-config))))))
+  		      3
+		      (apply max (map (o string-length symbol->string)
+  				      (hash-table-keys
+				       (command-keys command-config))))))
       ((reference) (if (>= 16 (settings 'number-base))
   		       2 3))
       ((trigger) 1)
