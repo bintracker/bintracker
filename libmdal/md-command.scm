@@ -123,29 +123,34 @@
 				      (if id (->string id) "???")))))
 	      (else (abort exn)))
       (check-command-spec id type bits default reference-to keys range)
-      (cons id (make-command
-		type: type
-		bits: (case type
-			((string) 0)
-			((trigger) 1)
-			(else bits))
-		default: default
-		reference-to: reference-to
-		keys: (eval `(let ((make-dividers
-				    (lambda (cycles bits rest
-						    #!optional (shift 1))
-				      (make-dividers ,cpu-speed cycles bits
-						     rest shift)))
-				   (make-inverse-dividers
-				    (lambda (cycles bits rest
-						    #!optional (shift 1))
-				      (make-inverse-dividers
-				       ,cpu-speed cycles bits rest shift))))
-			       ,keys))
-		flags: flags
-		range: (or range
-			   (and (memv type '(int uint))
-				(bits->range bits (eqv? type 'int))))
-		description: description))))
+      (cons id
+	    (make-command
+	     type: type
+	     bits: (case type
+		     ((string) 0)
+		     ((trigger) 1)
+		     (else bits))
+	     default: default
+	     reference-to: reference-to
+	     keys: (and keys
+			(if (pair? (car keys))
+			    (alist->hash-table keys)
+			    (eval `(let ((make-dividers
+					  (lambda (cycles bits rest
+							  #!optional (shift 1))
+					    (make-dividers ,cpu-speed cycles
+							   bits rest shift)))
+					 (make-inverse-dividers
+					  (lambda (cycles bits rest
+							  #!optional (shift 1))
+					    (make-inverse-dividers
+					     ,cpu-speed cycles bits rest
+					     shift))))
+				     ,keys))))
+	     flags: flags
+	     range: (or range
+			(and (memv type '(int uint))
+			     (bits->range bits (eqv? type 'int))))
+	     description: description))))
 
   )  ;; end module md-command
