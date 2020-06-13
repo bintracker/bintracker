@@ -1,0 +1,36 @@
+(mdal-module
+  #:version
+  2
+  #:mdef
+  "PhaserX"
+  #:engine-version
+  1.1
+  (AUTHOR "utz")
+  (TITLE "PhaserX Test")
+  (LICENSE "CC0")
+  (BORDER 0)
+  (PATTERNS
+    (TEMPO 16)
+    (DRUMS 16)
+    (MIXING 16)
+    (CH1 ((NOTE1 d3) (DUTY1 64) (DMOD1 16) (SWEEP 1))
+         3
+         ((NOISE 1))
+         ((NOISE 0))
+         6
+         ((NOISE 1))
+         ((NOISE 0))
+         2)
+    (CH1 #:id
+         1
+         ((NOTE1 d3) (DUTY1 64) (DMOD1 16) (SWEEP 1))
+         3
+         ((NOISE 1))
+         ((NOISE 0))
+         6
+         ((NOISE 1))
+         ((NOISE 0))
+         ((NOISE 1))
+         ((NOISE 0)))
+    (CH2 16)
+    (ORDER (16 0 0 0 0 0) (16 0 0 0 0 0) (16 0 0 0 0 0) (16 0 0 0 1 0))))

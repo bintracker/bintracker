@@ -1,0 +1,104 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.1 target: spectrum48
+;;  description: "PhaserX is an experimental 2-channel beeper engine for the ZX Spectrum. It uses
+;; a new type of effect called Duty Modulation. As the name suggests, this effect
+;; modulates the duty cycle setting over time. Its operating speed is synced to the
+;; affected tone generator, so despite the similarities with the tone generation in
+;; engines like Earth Shaker, it does not affect pitch.
+
+;; Each of the two tone channels has a different set of effects. Channel 1 produces
+;; a simple square wave. In addition to the aforementioned duty modulation, it
+;; features a SID-like duty cycle sweep effect, and can generate pseudo-white noise
+;; instead of square waves.
+
+;; Channel 2 uses two oscillators to produce Phaser-style sound. Each of the
+;; oscillators can have it's own duty modulation settings. This allows for very
+;; complex timbres. Oscillator frequencies can of course be configured
+;; independantly, and can run at different phases. The channel mixer supports XOR
+;; (Phaser1 standard), OR, and AND mixing methods. When using the OR method, the
+;; oscillators can be decoupled and used as 2 independant channels, Squeeker style.
+
+;; Credits go to Shiru for inventing the original Phaser effect.
+
+;; Note that the engine does not check for Kempston interface presence.
+;; "
+ default-origin: #x8000
+
+ commands: ((command id: BORDER bits: 3 type: uint default: 0
+		     description: "Border color for drums")
+	    (command id: TICKS bits: 8 type: uint default: 6
+		     flags: (use-last-set)
+		     description: "Ticks per row")
+	    (command id: DRUM bits: 2 type: ukey default: none
+		     keys: ((bd . 1)
+			    (hh . #x80)
+			    (none . 0))
+		     description: "Interrupting click drum")
+	    (command id: MIX bits: 8 type: ukey default: xor
+		     flags: (use-last-set)
+		     keys: ((xor . #xac)
+			    (or . #xb4)
+			    (and . #xa4))
+		     description: "Mixing method (xor/or/and)")
+	    (command id: SWEEP bits: 1 type: uint default: 0
+		     flags: (use-last-set)
+		     description: "Enable/disable PWM sweep")
+	    (command id: NOISE bits: 1 type: uint default: 0
+		     flags: (use-last-set)
+		     description: "Enable/disable noise mode")
+	    (command id: NOTE bits: 16 type: ukey default: rest
+		     flags: (use-last-set is-note enable-modifiers)
+		     keys: (make-dividers 224 16 0))
+	    (command id: DMOD bits: 8 type: uint default: 0
+		     flags: (use-last-set)
+		     description:
+		     "Duty modulation strength (0 = no modulation)")
+	    (command id: DUTY bits: 8 type: uint default: #x80
+		     flags: (use-last-set))
+	    (command id: PHASE bits: 16 type: uint default: 0
+		     description: "Phase offset"
+		     flags: (use-last-set)))
+
+ input: ((field from: BORDER)
+	 (group id: PATTERNS flags: (ordered)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(block id: DRUMS nodes: ((field from: DRUM)))
+			(block id: MIXING nodes: ((field from: MIX)))
+			(block id: CH1 nodes: ((field id: NOTE1 from: NOTE)
+					       (field id: DUTY1 from: DUTY)
+					       (field id: DMOD1 from: DMOD)
+					       (field from: SWEEP)
+					       (field from: NOISE)))
+			(block id: CH2 nodes: ((field id: NOTE2A from: NOTE)
+					       (field id: DUTY2A from: DUTY)
+					       (field id: DMOD2A from: DMOD)
+					       (field id: NOTE2B from: NOTE)
+					       (field id: DUTY2B from: DUTY)
+					       (field id: DMOD2B from: DUTY)
+					       (field from: PHASE))))))
+
+ output: ((symbol id: border compose: (+ #x10 ?BORDER))
+	  (asm file: "phaserx.asm")
+	  (field bytes: 2 compose: $pattern0)
+	  (field bytes: 2 compose: 0)
+	  (symbol id: pattern0)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS
+			 from: (TEMPO DRUMS MIXING CH1 CH2)
+			 nodes: ((repeat bytes: 1 compose: ?DRUM)
+			       	 (repeat bytes: 1 compose: ?TICKS)
+			       	 (repeat bytes: 1
+			       		 compose: (+ (* 4 ?SWEEP)
+			       			     (* #x80 ?NOISE)))
+			       	 (repeat bytes: 1 compose: ?MIX)
+			       	 (repeat bytes: 1 compose: ?DUTY1)
+			       	 (repeat bytes: 1 compose: ?DMOD1)
+			       	 (repeat bytes: 2 compose: ?NOTE1)
+			       	 (repeat bytes: 1 compose: ?DMOD2B)
+			       	 (repeat bytes: 1 compose: ?DMOD2A)
+			       	 (repeat bytes: 1 compose: ?DUTY2A)
+			       	 (repeat bytes: 1 compose: ?DUTY2B)
+			       	 (repeat bytes: 2 compose: ?NOTE2A)
+			       	 (repeat bytes: 2 compose: ?NOTE2B)
+			       	 (repeat bytes: 2 compose: ?PHASE)))))
+	  (field bytes: 1 compose: #x40)))
