@@ -520,22 +520,29 @@
 						      0))))
 			  `(,(car subnode)
 			    (0 #f
-			       ,(let ((rows (repeat-block-row-values
-					     (cddr (inode-instance-ref
-						    (list-ref
-						     order-pos
-						     (+ 1 (list-index
-							   (cute eqv? <>
-								 (car subnode))
-							   block-ids)))
-						    subnode)))))
+			       ,(let* ((raw-contents
+					(cddr (inode-instance-ref
+					       (list-ref
+						order-pos
+						(+ 1 (list-index
+						      (cute eqv? <>
+							    (car subnode))
+						      block-ids)))
+					       subnode)))
+				       (empty-row (make-list
+						   (length
+						    (mdef-get-subnode-ids
+						     (car subnode)
+						     (mdef-itree mdef)))
+						   '()))
+				       (contents (if (null? raw-contents)
+						     empty-row
+						     raw-contents))
+				       (rows (repeat-block-row-values
+					      contents)))
 				  (if (> (length rows) row)
 				      (list-ref rows row)
-				      (make-list (length
-						  (mdef-get-subnode-ids
-						   (car subnode)
-						   (mdef-itree mdef)))
-						 '())))))))
+				      empty-row))))))
 		    (cddr node-instance))))))
 	 (extract-nodes
 	  (lambda (root)
