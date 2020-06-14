@@ -11,8 +11,10 @@
   (BORDER 0)
   (PATTERNS
     (TEMPO 16)
-    (DRUMS 16)
-    (MIXING 16)
+    (DRUMS (bd) 3 (hh) 5 (bd) 1 (hh) 1 (bd) 1)
+    (DRUMS #:id 1 (bd) 3 (hh) 5 (bd) 1 (hh))
+    (MIXING (and) 15)
+    (MIXING #:id 1 (xor))
     (CH1 ((NOTE1 d3) (DUTY1 64) (DMOD1 16) (SWEEP 1))
          3
          ((NOISE 1))
@@ -27,10 +29,23 @@
          3
          ((NOISE 1))
          ((NOISE 0))
-         6
-         ((NOISE 1))
+         2
+         ((NOTE1 f4))
+         3
+         ((NOTE1 g4) (NOISE 1))
          ((NOISE 0))
          ((NOISE 1))
          ((NOISE 0)))
-    (CH2 16)
-    (ORDER (16 0 0 0 0 0) (16 0 0 0 0 0) (16 0 0 0 0 0) (16 0 0 0 1 0))))
+    (CH1 #:id
+         2
+         ((NOTE1 d3) (DUTY1 64) (DMOD1 16) (SWEEP 1))
+         3
+         ((NOISE 1))
+         ((NOISE 0))
+         6
+         ((NOISE 1))
+         ((NOISE 0))
+         2)
+    (CH2 ((NOTE2A d2) (NOTE2B d3) (DUTY2B 16) (DMOD2B 16) (PHASE 16384)) 15)
+    (CH2 #:id 1 ((NOTE2A d1) (NOTE2B rest)) 7 ((NOTE2A f3)) 3 ((NOTE2A g3)))
+    (ORDER (16 0 0 0 0 0) (16 0 0 0 0 0) (16 0 0 0 2 0) (16 0 1 1 1 1))))

@@ -1,6 +1,6 @@
 (mdal-definition
  mdef-version: 2 engine-version: 1.1 target: spectrum48
- ;; description:
+;; description:
 ;;  "PhaserX is an experimental 2-channel beeper engine for the ZX Spectrum. It uses
 ;; a new type of effect called Duty Modulation. As the name suggests, this effect
 ;; modulates the duty cycle setting over time. Its operating speed is synced to the
@@ -41,7 +41,7 @@
 		     keys: ((xor . #xac)
 			    (or . #xb4)
 			    (and . #xa4))
-		     description: "Mixing method (xor/or/and)")
+		     description: "Mixing method")
 	    (command id: SWEEP bits: 1 type: uint default: 0
 		     flags: (use-last-set)
 		     description: "Enable/disable PWM sweep")

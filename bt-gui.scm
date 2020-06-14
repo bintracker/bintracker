@@ -2324,8 +2324,15 @@
   ;;; field that represents a key/ukey command.
   (define-method (ui-blockview-enter-key primary: (buf <ui-basic-block-view>)
   					 keysym)
-    (display "key entry")
-    (newline))
+    (and-let* ((lut (map (lambda (key)
+			   `(,(string->symbol (string-take (symbol->string key)
+							   1))
+			     . ,key))
+			 (hash-table-keys
+			  (command-keys
+			   (ui-blockview-get-current-field-command buf)))))
+	       (key (alist-ref keysym lut)))
+      (ui-blockview-edit-cell buf key)))
 
   (define-method (ui-blockview-repeat-last-set
 		  primary: (buf <ui-basic-block-view>))

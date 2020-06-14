@@ -168,14 +168,24 @@
     (let ((command (mdef-get-inode-source-command field-id mdef)))
       (string-append
        (symbol->string field-id) ": "
-       (if (command-has-flag? command 'is-note)
-	   (string-append
-	    (normalize-note-name (lowest-note (command-keys command)))
-	    " - "
-	    (normalize-note-name (highest-note (command-keys command)))
-	    " ")
-	   "")
-       (command-description command))))
+       (command-description command)
+       (cond
+	((command-has-flag? command 'is-note)
+	 (string-append
+	  (normalize-note-name (lowest-note (command-keys command)))
+	  " - "
+	  (normalize-note-name (highest-note (command-keys command)))
+	  " "))
+	((memv (command-type command) '(key ukey))
+	 (string-append
+	  " - "
+	  (string-intersperse
+	   (map (lambda (key)
+		  (string-append "[" (string-take key 1) "]"
+				 (string-drop key 1)))
+		(map symbol->string (hash-table-keys (command-keys command))))
+	   ", ")))
+	(else "")))))
 
   ;;; Returns the values of all field node instances of the given ROW of the
   ;;; given non-order block-instances in the given GROUP-INSTANCE as a
