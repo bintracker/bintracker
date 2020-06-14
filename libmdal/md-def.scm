@@ -700,35 +700,16 @@
      (mdef-inode-ref (mdef-get-parent-node-id node-id (mdef-itree mdef))
 		       mdef)))
 
-  ;;; Transform a conditional special form in an onode compose expression into
-  ;;; a resolver procedure call. EXPR must be a list containing the form
-  ;;; symbol in car, and an inode name in cadr.
-  (define (transform-compose-expr-conditional expr mdef field-indices)
-    (let* ((node-id (string->symbol (string-drop (symbol->string (cadr expr))
-						 1)))
-	   (parent-type (get-parent-node-type node-id mdef)))
-      (case (car expr)
-	((is-set?)
-	 (if (eqv? parent-type 'group)
-	     `(,(complement null?)
-	       (,list-ref (,list-ref (,cddr (,inode-instance-ref
-					     instance-id
-					     (subnode-ref node-id parent-node)))
-				     row)
-			  ,(list-index (cute eqv? <> node-id)
-				       field-indices)))
-	     `(,(complement null?)
-	       (,list-ref (,list-ref (,cddr parent-node)
-				     instance-id)
-			  ,(list-index (cute eqv? <> node-id)
-			  	       field-indices)))))
-	(else (error "Unsupported conditional in onode compose expr")))))
-
   ;;; Helper for `transform-compose-expr`. Transforms an output field def
   ;;; expresssion element into a resolver procedure call.
   (define (transform-compose-expr-element elem emdef
 					  #!optional field-indices)
     (cond
+     ((eqv? 'pattern-start? elem)
+      `(,= 0 instance-id))
+     ;; TODO
+     ;; ((eqv? 'song-start? elem)
+     ;;  ())
      ((symbol? elem)
       (let* ((symbol-name (symbol->string elem))
 	     (conditional? (string-prefix? "??" symbol-name))
@@ -739,19 +720,34 @@
 	 ((string-prefix? "?" symbol-name)
 	  (let* ((command-config
 		  `(,mdef-get-inode-source-command (quote ,transformed-symbol)
-						     mdef)))
+						   mdef)))
 	    (if (eqv? 'group (get-parent-node-type transformed-symbol
 						   emdef))
-		`(,eval-group-field
-		  (,subnode-ref (quote ,transformed-symbol) parent-node)
-		  instance-id ,command-config)
-		`(,eval-block-field
-		  parent-node
-		  ,(list-index (cute eqv? <> transformed-symbol)
-			       field-indices)
-		  instance-id ;; row
-		  ,command-config
-		  ,conditional?))))
+		(if conditional?
+		    `(,(complement null?)
+		      (,list-ref
+		       (,list-ref (,cddr (,inode-instance-ref
+  					  instance-id
+  					  (subnode-ref transformed-symbol
+						       parent-node)))
+  				  row)
+  		       ,(list-index (cute eqv? <> transformed-symbol)
+  				    field-indices)))
+		    `(,eval-group-field
+		      (,subnode-ref (quote ,transformed-symbol) parent-node)
+		      instance-id ,command-config))
+		(if conditional?
+		    `(,(complement null?)
+  		      (,list-ref (,list-ref (,cddr parent-node) instance-id)
+  				 ,(list-index (cute eqv? <> transformed-symbol)
+  			  		      field-indices)))
+		    `(,eval-block-field
+		      parent-node
+		      ,(list-index (cute eqv? <> transformed-symbol)
+				   field-indices)
+		      instance-id ;; row
+		      ,command-config
+		      ,conditional?)))))
 	 ((string-prefix? "$" symbol-name)
 	  `(,alist-ref (quote ,transformed-symbol) md-symbols))
 	 (else elem))))
@@ -1082,24 +1078,25 @@
   ;; TODO in theory we do not need to emit md-symbols (see resolve-oblock)
   ;;; Helper function for `make-oblock`.
   (define (make-oblock-rowfield proto-mdef parent-block-ids
-				#!key bytes compose)
-    (let ((compose-proc (transform-compose-expr
-			 compose proto-mdef
-			 (concatenate
-			  (map (cute mdef-get-subnode-ids
-				 <> (mdef-itree proto-mdef))
-			       parent-block-ids))))
-	  (endianness (mdef-get-target-endianness proto-mdef)))
+				#!key bytes (condition #t) compose)
+    (let* ((subnode-ids (concatenate (map (cute mdef-get-subnode-ids
+					    <> (mdef-itree proto-mdef))
+					  parent-block-ids)))
+	   (compose-proc (transform-compose-expr
+			  compose proto-mdef subnode-ids))
+	   (cond-proc (transform-compose-expr
+		       condition proto-mdef subnode-ids))
+	   (endianness (mdef-get-target-endianness proto-mdef)))
       (make-onode
        type: 'field size: bytes fn:
        (lambda (onode parent-inode instance-id mdef current-org md-symbols)
-	 (list (make-onode
-		type: 'field size: bytes
-		val: (int->bytes (compose-proc instance-id parent-inode
-					       md-symbols mdef)
-				 bytes endianness))
-	       (and current-org (+ current-org bytes))
-	       md-symbols)))))
+	 (if (cond-proc instance-id parent-inode md-symbols mdef)
+	     (list (int->bytes (compose-proc instance-id parent-inode
+					     md-symbols mdef)
+			       bytes endianness)
+		   (and current-org (+ current-org bytes))
+		   md-symbols)
+	     (list '() current-org md-symbols))))))
 
   ;;; Helper function for `make-oblock`.
   ;;; Generate an alist where the keys represent the oblock's output order, and
@@ -1164,15 +1161,15 @@
 	     (lambda (block-instance)
 	       (map-in-order
 		(lambda (row-pos)
-		  (map-in-order
-		   (lambda (field-prototype)
-		     (let ((result ((onode-fn field-prototype)
-				    field-prototype
-				    block-instance row-pos
-				    mdef origin md-symbols)))
-		       (set! origin (cadr result))
-		       (onode-val (car result))))
-		   field-prototypes))
+		  (remove null? (map-in-order
+				 (lambda (field-prototype)
+				   (let ((result ((onode-fn field-prototype)
+						  field-prototype
+						  block-instance row-pos
+						  mdef origin md-symbols)))
+				     (set! origin (cadr result))
+				     (car result)))
+				 field-prototypes)))
 		(iota (length (cddr block-instance)))))
 	     iblock-instances)))
       (list final-result origin)))
