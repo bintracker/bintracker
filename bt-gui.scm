@@ -1679,7 +1679,12 @@
   	(textgrid-create (slot-value buf 'block-frame)))
       (set! (slot-value buf 'xscroll)
   	(content-box 'create-widget 'scrollbar orient: 'horizontal
-  		     command: `(,(slot-value buf 'block-content) xview)))
+  		     command: ;; `(,(slot-value buf 'block-content) xview)
+		     (lambda args
+  		       (apply (slot-value buf 'block-content)
+			      (cons 'xview args))
+  		       (apply (slot-value buf 'block-header)
+			      (cons 'xview args)))))
       (set! (slot-value buf 'yscroll)
   	((slot-value buf 'content-frame)
   	 'create-widget 'scrollbar orient: 'vertical
@@ -1709,6 +1714,8 @@
   		 expand: 1 fill: 'y padx: '(4 0) side: 'top)
   	(tk/pack (slot-value buf 'block-frame) fill: 'both side: 'right)
   	(tk/pack (slot-value buf 'block-header) fill: 'x side: 'top)
+	((slot-value buf 'block-header) 'configure
+	 xscrollcommand: `(,xscroll set))
   	(ui-init-content-header buf)
   	(tk/pack block-content expand: 1 fill: 'both side: 'top)
   	(block-content 'configure xscrollcommand: `(,xscroll set)
