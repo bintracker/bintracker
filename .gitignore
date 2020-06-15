@@ -8,6 +8,7 @@ tclkit/
 cfg/
 roms/a2600
 roms/channelf
+roms/mz700
 roms/spectrum/spectrum.rom
 build/*
 !build/Makefile
