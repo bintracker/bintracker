@@ -1,0 +1,50 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.2 target: spectrum48
+ description: "Classic four channel beeper engine, with a custom mixing algorithm. By Zilogat0r 2000."
+
+ default-origin: #x8000
+
+ commands: ((command id: DUTY bits: 7 type: uint default: #x10
+		     description: "Global duty setting")
+	    (command id: TICKS bits: 5 type: uint default: 6
+		     flags: (use-last-set)
+		     description: "Ticks per row")
+	    (command id: NOTE bits: 16 type: ukey default: rest
+		     keys: (make-dividers 499 16 0)
+		     flags: (use-last-set is-note enable-modifiers)))
+
+ input: ((field from: DUTY)
+	 (group id: PATTERNS flags: (ordered)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(clone 4 (block id: CH
+					nodes: ((field from: NOTE)))))))
+
+ output: ((asm file: "squeeker.asm")
+	  (field bytes: 2 compose: $pattern0)
+	  (field bytes: 2 compose: 0)
+	  (symbol id: pattern0)
+	  (field bytes: 1 compose: ?DUTY)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS
+			 from: (TEMPO CH1 CH2 CH3 CH4)
+			 nodes:
+			 ((repeat bytes: 1 compose:
+				   (cond
+				    (??NOTE4 #x40)
+				    (??NOTE3 1)
+				    (??NOTE2 4)
+				    (??NOTE1 #x80)
+				    (else 0)))
+			  (repeat bytes: 1 compose: ?TICKS)
+			  (repeat bytes: 2 condition: ??NOTE4
+				  compose: ?NOTE4)
+			  (repeat bytes: 2
+				  condition: (or ??NOTE3 ??NOTE4)
+				  compose: ?NOTE3)
+			  (repeat bytes: 2
+				  condition: (or ??NOTE2 ??NOTE3 ??NOTE4)
+				  compose: ?NOTE2)
+			  (repeat bytes: 2
+				  condition: (or ??NOTE1 ??NOTE2 ??NOTE3 ??NOTE4)
+				  compose: ?NOTE1)))))
+	  (field bytes: 2 compose: 0)))

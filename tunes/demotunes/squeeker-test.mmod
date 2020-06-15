@@ -1,0 +1,66 @@
+(mdal-module
+  #:version
+  2
+  #:mdef
+  "Squeeker"
+  #:engine-version
+  1.2
+  (AUTHOR "utz")
+  (TITLE "Squeeker Test")
+  (LICENSE "CC0")
+  (DUTY 16)
+  (PATTERNS
+    (TEMPO (4) 15)
+    (CH1 (e4)
+         (rest)
+         (e3)
+         (rest)
+         (e5)
+         (rest)
+         (d5)
+         (rest)
+         (b4)
+         (rest)
+         (e3)
+         (rest)
+         (a4)
+         1
+         (g4)
+         1)
+    (CH1 #:id
+         1
+         (a4)
+         (rest)
+         (a3)
+         (rest)
+         (a5)
+         (rest)
+         (g5)
+         (rest)
+         (e5)
+         (rest)
+         (a3)
+         (rest)
+         (c5)
+         1
+         (b4)
+         1)
+    (CH2 (rest) 15)
+    (CH2 #:id 1 (e2))
+    (CH2 #:id 2 (a2))
+    (CH2 #:id 3 (g2))
+    (CH3 (rest) 15)
+    (CH3 #:id 1 (e4))
+    (CH3 #:id 3 (b4))
+    (CH3 #:id 2 (c5))
+    (CH4 (rest) 15)
+    (CH4 #:id 1 (a4))
+    (CH4 #:id 2 (d4))
+    (ORDER (16 0 0 0 0 0)
+           (16 0 0 0 0 0)
+           (16 0 1 0 0 0)
+           (16 0 1 0 0 0)
+           (16 0 0 1 1 0)
+           (16 0 0 1 1 0)
+           (16 0 1 2 2 1)
+           (16 0 1 3 3 2))))
