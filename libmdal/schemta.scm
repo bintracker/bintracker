@@ -535,6 +535,7 @@
   	(if (number? op) op `(quote ,op))))
 
   (define (do-instruction node state)
+    ;; (print "do-instruction " node)
     (or (and (have-all-symbols? (fourth node) state)
 	     (let ((target (state 'target)))
 	       (fluid-let
@@ -772,7 +773,7 @@
   ;;; dispatch AST-NODE to evaluator procedures
   (: assemble-node (list procedure -> list))
   (define (assemble-node ast-node state)
-    ;; (print "assemble-node " ast-node)
+    ;; (print "assemble-node " ast-node " " (state 'current-origin))
     (if (number? (car ast-node))
   	(begin (and-let* ((org (state 'current-origin)))
 		 (state 'current-origin (+ org (length ast-node))))
@@ -1013,8 +1014,7 @@
 					 (alist-update (car sym)
 						       (cdr sym)
 						       symbols)))
-				     (cadr args))
-				    (print symbols))
+				     (cadr args)))
 			     symbols))
 	      ((local-namespace) local-namespace)
 	      ((target) target)
