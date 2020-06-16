@@ -39,21 +39,17 @@
 (import bintracker-core)
 (eval '(import bintracker-core))
 
+(handle-exceptions
+    exn
+    (begin (tk-end)
+	   (raise exn))
+  (begin
+    (on-startup-hooks 'execute)
 
-(on-startup-hooks 'execute)
+    ;; Start up the GUI thread and pass control to it.
+    (let ((gui-thread (make-thread tk-event-loop)))
+      (thread-start! gui-thread)
+      (thread-join! gui-thread))))
 
-;; ---------------------------------------------------------------------------
-;; ## Main Loop
-;; ---------------------------------------------------------------------------
-
-;; Start up the GUI thread and pass control to it.
-(let ((gui-thread (make-thread (lambda () (handle-exceptions
-					      exn
-					      (begin (tk-end)
-						     (raise exn))
-					    (tk-event-loop))))))
-  (thread-start! gui-thread)
-  (thread-join! gui-thread))
-
-;; Safeguard to ensure termination of the tk process if initialization fails.
-(tk-end)
+;; ;; Safeguard to ensure termination of the tk process if initialization fails.
+;; (tk-end)
