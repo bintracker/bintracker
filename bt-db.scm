@@ -29,7 +29,7 @@
 (module bt-db
     *
 
-  (import scheme (chicken base) (only (chicken file) directory)
+  (import scheme (chicken base) (chicken sort) (only (chicken file) directory)
 	  (only (chicken file posix) directory?)
 	  srfi-1 srfi-13 sqlite3 simple-md5 mdal)
 
@@ -71,14 +71,15 @@
   ;;; Returns the list of available MDAL definitions. The returned list has
   ;;; the form `(MDEF-ID, ENGINE-VERSION, TARGET-PLATFORM, DESCRIPTION)`.
   (define (btdb-list-mdefs #!optional (platform 'any))
-    (map-row (lambda args args) btdb
-	      (string-append
-	       "SELECT id, version, platform, description FROM mdefs"
-	       (if (eqv? platform 'any)
-		   ""
-		   (string-append " WHERE platform='" (->string platform)
-				  "'"))
-	       ";")))
+    (sort (map-row (lambda args args) btdb
+		   (string-append
+		    "SELECT id, version, platform, description FROM mdefs"
+		    (if (eqv? platform 'any)
+			""
+			(string-append " WHERE platform='" (->string platform)
+				       "'"))
+		    ";"))
+	  (lambda (s1 s2) (string-ci< (car s1) (car s2)))))
 
   (define (btdb-list-platforms)
     (map-row identity btdb "SELECT DISTINCT platform FROM mdefs"))
