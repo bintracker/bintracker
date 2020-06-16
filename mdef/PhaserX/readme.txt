@@ -14,16 +14,16 @@ affected tone generator, so despite the similarities with the tone generation in
 engines like Earth Shaker, it does not affect pitch.
 
 Each of the two tone channels has a different set of effects. Channel 1 produces
-a simple square wave. In addition to the aforementioned duty modulation, it
+a simple pulse wave. In addition to the aforementioned duty modulation, it
 features a SID-like duty cycle sweep effect, and can generate pseudo-white noise
-instead of square waves.
+instead of pulse waves.
 
 Channel 2 uses two oscillators to produce Phaser-style sound. Each of the
-oscillators can have it's own duty modulation settings. This allows for very
-complex timbres. Oscillator frequencies can of course be configured
+oscillators can have its own duty modulation settings. This allows for very
+complex timbres. Oscillator frequencies can of be configured
 independently, and can run at different phases. The channel mixer supports XOR
 (Phaser1 standard), OR, and AND mixing methods. When using the OR method, the
-oscillators can be decoupled and used as 2 independant channels, Squeeker style.
+oscillators can be decoupled and used as 2 independent channels, Squeeker style.
 
 Credits go to Shiru for inventing the original Phaser effect.
 
