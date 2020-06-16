@@ -91,7 +91,9 @@
   ;;; Prompt the user to load an MDAL module file.
   (define (load-file)
     (close-file)
-    (let ((filename (tk/get-open-file*
+    ;; TODO not sure if not using tk/safe-dialogue is a good idea here, keep
+    ;; an eye on it
+    (let ((filename (tk/get-open-file
   		     filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}})))
       (unless (string-null? filename)
   	(handle-exceptions
@@ -858,29 +860,25 @@
   	   (when button
   	     (button 'configure command: (lambda ()
   					   (focus 'suspend)
-  					   ((cadr cb))
+					   (tk/update 'idletasks)
+  					   (tk-with-lock (cadr cb))
   					   (focus 'resume)))
   	     (when (and modeline segment-id)
-  	       (tk/bind* button '<Enter>
-  			 (lambda ()
-  			   (ui-modeline-set
-  			    modeline
-  			    segment-id
-  			    (string-append
-  			     (or (car (alist-ref (car cb)
-  						 (ui-setup buf)))
-  				 "")
-  			     " " (key-binding->info 'global (car cb))))))
-  	       (tk/bind* button '<Leave>
-  			 (lambda ()
-  			   (ui-modeline-set modeline segment-id ""))))
-
-  	     ;; (bind-info-status
-  	     ;;  button
-  	     ;;  (string-append (car (alist-ref (car cb)
-  	     ;; 				      (ui-setup buf)))
-  	     ;; 	" " (key-binding->info 'global (car cb))))
-  	     )))
+  	       (tk/bind button '<Enter>
+  			(lambda ()
+			  (tk/update 'idletasks)
+  			  (ui-modeline-set
+  			   modeline
+  			   segment-id
+  			   (string-append
+  			    (or (car (alist-ref (car cb)
+  						(ui-setup buf)))
+  				"")
+  			    " " (key-binding->info 'global (car cb))))))
+  	       (tk/bind button '<Leave>
+  			(lambda ()
+			  (tk/update 'idletasks)
+  			  (ui-modeline-set modeline segment-id "")))))))
        callbacks)))
 
 
