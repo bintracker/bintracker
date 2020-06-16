@@ -164,8 +164,8 @@
 		 ;; TODO this fails when selection was set automatically.
 		 ;; This is a bug in Tk, have not found a work-around yet.
 		 (lambda ()
-		   (tk/update)
-		   (tk/update 'idletasks)
+		   ;; (tk/update)
+		   ;; (tk/update 'idletasks)
 		   (let* ((selected-engine
 			   (string->symbol
 			    ((d 'ref 'mdef-selector)
