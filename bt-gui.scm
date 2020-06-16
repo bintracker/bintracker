@@ -117,6 +117,7 @@
     (let ((d (make-dialogue))
   	  (platforms (btdb-list-platforms)))
       (d 'show)
+      (d 'add 'widget 'lbl1 '(label text: "Platform:"))
       (d 'add 'widget 'platform-selector
   	 `(combobox state: readonly values: ,(cons "any" platforms)))
       ((d 'ref 'platform-selector) 'set "any")
@@ -138,6 +139,20 @@
   				(->string ((d 'ref 'mdef-selector)
   					   'children '{}))))))
   	     (initial-item-list (get-item-list)))
+	(tk/bind* (d 'ref 'platform-selector)
+		  '<<ComboboxSelected>>
+		  (lambda ()
+		    (let ((selected-platform
+			   (string->symbol ((d 'ref 'platform-selector) 'get))))
+		      ((d 'ref 'mdef-selector) 'delete (get-item-list))
+		      (for-each (lambda (mdef)
+  				  ((d 'ref 'mdef-selector) 'insert '{} 'end
+  				   text: (car mdef)
+  				   values: (list (cadr mdef) (third mdef))))
+  				(btdb-list-mdefs selected-platform))
+		      ((d 'ref 'mdef-selector) 'focus (car (get-item-list)))
+		      ((d 'ref 'mdef-selector) 'selection 'set
+  		       (list (car (get-item-list)))))))
   	(d 'add 'finalizer
   	   (lambda a
   	     (and-let*
