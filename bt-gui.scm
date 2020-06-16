@@ -131,6 +131,12 @@
   		   values: (list (cadr mdef) (third mdef))))
   		;; TODO btdb-list-mdefs should always return a list!
   		(btdb-list-mdefs))
+      (d 'add 'widget 'description
+	 `(text takefocus: 0 state: disabled bd: 0 highlightthickness: 0
+		bg: ,(colors 'background) fg: ,(colors 'text) wrap: word
+  		font: ,(list family: (settings 'font-mono)
+  			     size: (settings 'font-size))
+		height: 10))
       (tk/focus (d 'ref 'mdef-selector))
       (let* ((get-item-list (lambda ()
   			      (string-split
@@ -139,20 +145,39 @@
   				(->string ((d 'ref 'mdef-selector)
   					   'children '{}))))))
   	     (initial-item-list (get-item-list)))
-	(tk/bind* (d 'ref 'platform-selector)
-		  '<<ComboboxSelected>>
-		  (lambda ()
-		    (let ((selected-platform
-			   (string->symbol ((d 'ref 'platform-selector) 'get))))
-		      ((d 'ref 'mdef-selector) 'delete (get-item-list))
-		      (for-each (lambda (mdef)
-  				  ((d 'ref 'mdef-selector) 'insert '{} 'end
-  				   text: (car mdef)
-  				   values: (list (cadr mdef) (third mdef))))
-  				(btdb-list-mdefs selected-platform))
-		      ((d 'ref 'mdef-selector) 'focus (car (get-item-list)))
-		      ((d 'ref 'mdef-selector) 'selection 'set
-  		       (list (car (get-item-list)))))))
+	(tk/bind (d 'ref 'platform-selector)
+		 '<<ComboboxSelected>>
+		 (lambda ()
+		   (let ((selected-platform
+			  (string->symbol ((d 'ref 'platform-selector) 'get))))
+		     ((d 'ref 'mdef-selector) 'delete (get-item-list))
+		     (for-each (lambda (mdef)
+  				 ((d 'ref 'mdef-selector) 'insert '{} 'end
+  				  text: (car mdef)
+  				  values: (list (cadr mdef) (third mdef))))
+  			       (btdb-list-mdefs selected-platform))
+		     ((d 'ref 'mdef-selector) 'focus (car (get-item-list)))
+		     ((d 'ref 'mdef-selector) 'selection 'set
+  		      (list (car (get-item-list)))))))
+	(tk/bind (d 'ref 'mdef-selector)
+		 '<<TreeviewSelect>>
+		 ;; TODO this fails when selection was set automatically.
+		 ;; This is a bug in Tk, have not found a work-around yet.
+		 (lambda ()
+		   (tk/update)
+		   (tk/update 'idletasks)
+		   (let* ((selected-engine
+			   (string->symbol
+			    ((d 'ref 'mdef-selector)
+  			     'item ((d 'ref 'mdef-selector) 'selection)
+  			     text:)))
+			  (description (->string (btdb-get-mdef-description
+						  selected-engine)))
+			  (description-widget (d 'ref 'description)))
+		     (description-widget 'configure state: 'normal)
+		     (description-widget 'delete "0.0" 'end)
+		     (description-widget 'insert 'end description)
+		     (description-widget 'configure state: 'disabled))))
   	(d 'add 'finalizer
   	   (lambda a
   	     (and-let*

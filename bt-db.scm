@@ -60,6 +60,14 @@
   ;; (define (bt-db-get-mdef-info mdef-id)
   ;;   '())
 
+  (define (btdb-get-mdef-description mdef-id)
+    (let ((res (map-row identity btdb
+			(string-append
+			 "SELECT description FROM mdefs WHERE id='"
+			 (symbol->string mdef-id)
+			 "'"))))
+      (if (null? res) "" (car res))))
+
   ;;; Returns the list of available MDAL definitions. The returned list has
   ;;; the form `(MDEF-ID, ENGINE-VERSION, TARGET-PLATFORM, DESCRIPTION)`.
   (define (btdb-list-mdefs #!optional (platform 'any))
