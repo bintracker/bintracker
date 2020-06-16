@@ -233,8 +233,12 @@
   ;;; Values are normalized, ie. empty positions are replaced with repeated
   ;;; values from an earlier row.
   (define (mod-get-order-values group-id group-instance)
-    (repeat-block-row-values (cddr (mod-get-group-instance-order group-instance
-								 group-id))))
+    (let ((order-contents (cddr (mod-get-group-instance-order group-instance
+							      group-id))))
+      (repeat-block-row-values (cons (map (lambda (field)
+					    (if (null? field) 0 field))
+					  (car order-contents))
+				     (cdr order-contents)))))
 
   ;; TODO swap argument order
   ;;; Returns the total number of all block rows in the given group node
@@ -315,24 +319,31 @@
     (when (> (- (length block-instance) 2)
 	     row)
       (let* ((columns (transpose (cddr block-instance)))
-	     (block-id (mdef-get-parent-node-id
-			field-id (mdef-itree mdef)))
-	     (field-index (mdef-get-block-field-index
-			   block-id field-id mdef)))
-	(transpose (map (lambda (column index)
-			  (if (= index field-index)
-			      (append (take column row)
-				      (if (> (length column) 1)
-				          (append (drop column (+ 1 row)) '(()))
-					  '()))
-			      column))
-			columns (iota (length columns)))))))
+	     (block-id (mdef-get-parent-node-id field-id (mdef-itree mdef)))
+	     (is-order? (symbol-contains block-id "_ORDER"))
+	     (field-index (mdef-get-block-field-index block-id field-id mdef)))
+	(transpose
+	 (map (lambda (column index)
+		(if (= index field-index)
+		    (append (take column row)
+			    (if (> (length column) 1)
+				(let ((column-head (drop column (+ 1 row))))
+				  (append column-head
+					  (if is-order?
+					      (list (if (null? column-head)
+							0
+							(last column-head)))
+					      '(()))))
+				(if is-order? '(0) '(()))))
+		    column))
+	      columns (iota (length columns)))))))
 
   ;;; Insert an instance of the block field FIELD-ID into the block node
   ;;; instance BLOCK-INSTANCE, inserting at ROW and setting VALUE. Returns a
   ;;; fresh block node instance.
   (define (insert-block-field block-instance field-id row value mdef)
     (let* ((block-id (mdef-get-parent-node-id field-id (mdef-itree mdef)))
+	   (is-order? (symbol-contains block-id "_ORDER"))
 	   (columns
 	    (transpose
 	     (if (> (length block-instance) (+ 2 row))
@@ -343,15 +354,21 @@
 							block-id
 							(mdef-itree mdef)))
 					       '()))))))
-	   (field-index
-	    (mdef-get-block-field-index block-id field-id mdef)))
-      (transpose (map (lambda (column index)
-			(if (= index field-index)
-			    (append (take column row)
-				    (list value)
-				    (drop column row))
-			    (append column '(()))))
-		      columns (iota (length columns))))))
+	   (field-index (mdef-get-block-field-index block-id field-id mdef)))
+      (let ((res (transpose
+		  (map (lambda (column index)
+			 (if (= index field-index)
+			     (let ((column-head (take column row)))
+			       (append column-head
+				       (list (if (and is-order? (null? value))
+						 (if (null? column-head)
+						     0
+						     (last column-head))
+						 value))
+				       (drop column row)))
+			     (append column '(()))))
+		       columns (iota (length columns))))))
+	(if is-order? (drop-right res 1) res))))
 
   ;;; Delete one or more INSTANCES from the node with NODE-ID.
   (define (node-remove! parent-instance-path node-id instances mod)

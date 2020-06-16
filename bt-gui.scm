@@ -2166,19 +2166,6 @@
     (when (slot-value buf 'modeline)
       (ui-modeline-set (slot-value buf 'modeline) 'active-field "")))
 
-  ;; TODO this should be a hook-set.
-  ;;; The low level interface to blockview editing. ACTION shall be an edit
-  ;;; action specifier as described in the `ui-metastate` documentation.
-  (define-method (ui-blockview-perform-edit
-  		  primary: (buf <ui-basic-block-view>) action)
-    (ui-metastate buf 'push-undo
-  		  (make-reverse-action action (ui-metastate buf 'mmod)))
-    (ui-metastate buf 'apply-edit action)
-    (ui-update buf)
-    (ui-metastate buf 'modified #t)
-    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
-      (ui-blockview-show-cursor buf)))
-
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
   (define-method (ui-blockview-cut-current-cell primary:
@@ -2727,6 +2714,19 @@
   		   "/" (->string
   			(ui-blockview-get-current-block-instance buf))))
 
+  ;; TODO this should be a hook-set.
+  ;;; The low level interface to blockview editing. ACTION shall be an edit
+  ;;; action specifier as described in the `ui-metastate` documentation.
+  (define-method (ui-blockview-perform-edit
+  		  primary: (buf <ui-block-view>) action)
+    (ui-metastate buf 'push-undo
+  		  (make-reverse-action action (ui-metastate buf 'mmod)))
+    (ui-metastate buf 'apply-edit action)
+    (ui-update buf)
+    (ui-metastate buf 'modified #t)
+    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
+      (ui-blockview-show-cursor buf)))
+
   (define-method (ui-blockview-insert-row primary: (buf <ui-block-view>))
     (let* ((current-row (ui-blockview-get-current-field-instance buf))
   	   (parent-instance-path (slot-value buf 'parent-instance-path))
@@ -3176,6 +3176,20 @@
   		   (symbol->string (ui-blockview-get-current-block-id buf))
   		   "/0"))
 
+  ;; TODO this should be a hook-set.
+  ;;; The low level interface to blockview editing. ACTION shall be an edit
+  ;;; action specifier as described in the `ui-metastate` documentation.
+  (define-method (ui-blockview-perform-edit
+  		  primary: (buf <ui-order-view>) action)
+    (ui-metastate buf 'push-undo
+  		  (make-reverse-action action (ui-metastate buf 'mmod)))
+    (ui-metastate buf 'apply-edit action)
+    (ui-update buf)
+    (ui-update (current 'blockview))
+    (ui-metastate buf 'modified #t)
+    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
+      (ui-blockview-show-cursor buf)))
+
   ;;; **deprecated**
   ;;; Set the field node instance that corresponds to the current cursor
   ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
@@ -3270,7 +3284,6 @@
   ;;; This updates the journal and the display.
   (define-method (ui-blockview-blockedit primary: (buf <ui-order-view>)
 					 contents start end action-type)
-    ;; (print "ui-blockview-blockset/order " start " " end)
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
   	   		     (mmod-global-node (ui-metastate buf 'mmod))))
