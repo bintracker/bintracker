@@ -2286,8 +2286,10 @@
 		pre-normalized-start))
 	   (normalized-end
 	    (and pre-normalized-end
-		 (cons (max (car pre-normalized-start)
-			    (car pre-normalized-end))
+		 (cons (min (sub1 (length (concatenate
+					   (slot-value buf 'item-cache))))
+			    (max (car pre-normalized-start)
+				 (car pre-normalized-end)))
 		       (list-ref
 			field-ids
 			(max (field-index (cdr pre-normalized-start))
