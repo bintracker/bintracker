@@ -219,12 +219,27 @@
 	     ((binding) (apply tk/bind (cons tl (cddr args))))
 	     ((finalizer) (set! extra-finalizers
 			    (cons (caddr args) extra-finalizers)))
-	     ((widget) (let ((user-widget (apply (get-ref 'content)
-						 (cons 'create-widget
-						       (cadddr args)))))
-			 (set! widgets (cons (list (caddr args) user-widget)
-					     widgets))
-			 (tk/pack user-widget side: 'top)))
+	     ((widget)
+	      (case (car (cadddr args))
+		((text treeview)
+		 (let* ((frame ((get-ref 'content) 'create-widget 'frame))
+			(user-widget (apply frame (cons 'create-widget
+							(cadddr args))))
+			(scrollbar (frame 'create-widget 'scrollbar
+					  orient: 'vertical
+					  command: `(,user-widget yview))))
+		   (set! widgets (cons (list (caddr args) user-widget)
+				       widgets))
+		   (tk/pack scrollbar side: 'right fill: 'y)
+		   (tk/pack user-widget side: 'right)
+		   (user-widget 'configure 'yscrollcommand: `(,scrollbar set))
+		   (tk/pack frame side: 'top)))
+		(else (let ((user-widget (apply (get-ref 'content)
+						(cons 'create-widget
+						      (cadddr args)))))
+			(set! widgets (cons (list (caddr args) user-widget)
+					    widgets))
+			(tk/pack user-widget side: 'top)))))
 	     ((procedure)
 	      (set! procedures (cons (caddr args) procedures)))))
 	  ((ref) (get-ref (cadr args)))
