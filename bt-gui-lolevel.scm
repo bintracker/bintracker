@@ -311,9 +311,19 @@
 		   "-lightcolor $colors(-text)"
 		   "-selectborderwidth 0"
 		   "-font BTFont.bold"))
+	    ;; stylings for file selector dialogs
 	    "" ,(string-intersperse
-		 '("    ttk::style configure TSizegrip"
-		   "-background $colors(-background)"))
+		 '("    ttk::style configure TEntry"
+		   "-foreground $colors(-text)"
+		   "-fieldbackground $colors(-highlight-minor)"
+		   "-font BTFont"))
+	    "" ,(string-intersperse
+		 '("    ttk::style map TEntry"
+		   "-selectbackground [list focus $colors(-background)]"
+		   "-selectforeground [list focus $colors(-text)]"))
+	    "" ,(string-intersperse
+	    	 '("    ttk::style configure TSizegrip"
+	    	   "-background $colors(-background)"))
 	    "" ,(string-intersperse
 	      	 '("    ttk::style configure BT.TFrame"
 	      	   "-background $colors(-background)"))
@@ -321,95 +331,95 @@
 	      	 '("    ttk::style configure Separator.BT.TFrame"
 	      	   "-background $colors(-text-inactive)"))
 	    "" ,(string-intersperse
-		 '("    ttk::style configure TPanedwindow"
-		   "-background $colors(-text-inactive)"))
+	    	 '("    ttk::style configure TPanedwindow"
+	    	   "-background $colors(-text-inactive)"))
 	    ;; "" ,(string-intersperse
 	    ;; 	   '("    ttk::style configure TPanedwindow.Sash"
 	    ;; 	     "-background $colors(-text)"
 	    ;; 	     "-gripcount 7 -handelsize 10 -sashrelief flat"
 	    ;; 	     "-sashthickness 4"))
 	    "" ,(string-intersperse
-		 '("    ttk::style configure TButton"
-		   "-padding 4 -relief flat -shiftrelief 2"))
+	    	 '("    ttk::style configure TButton"
+	    	   "-padding 4 -relief flat -shiftrelief 2"))
 	    "" ,(string-intersperse
-		 '("    ttk::style map TButton"
-		   "-background [list disabled $colors(-background)"
-		   "active $colors(-highlight-major)"
-		   "!active $colors(-highlight-minor)]"
-		   "-relief [list disabled flat pressed sunken]"))
+	    	 '("    ttk::style map TButton"
+	    	   "-background [list disabled $colors(-background)"
+	    	   "active $colors(-highlight-major)"
+	    	   "!active $colors(-highlight-minor)]"
+	    	   "-relief [list disabled flat pressed sunken]"))
 	    "" ,(string-intersperse
 	    	 '("    ttk::style configure Treeview"
 	    	   "-fieldbackground $colors(-background)"))
 	    "" ,(string-intersperse
-		 '("    ttk::style map Treeview"
-		   "-background [list selected $colors(-text)"
-		   "!selected $colors(-background)]"
-		   "-foreground [list selected $colors(-background)"
-		   "!selected $colors(-text)]"))
+	    	 '("    ttk::style map Treeview"
+	    	   "-background [list selected $colors(-text)"
+	    	   "!selected $colors(-background)]"
+	    	   "-foreground [list selected $colors(-background)"
+	    	   "!selected $colors(-text)]"))
 	    "" ,(string-intersperse
-		 '("    ttk::style configure TSpinbox"
-		   "-arrowcolor $colors(-text)"
-		   "-bordercolor $colors(-background)"
-		   "-background $colors(-highlight-major)"
-		   "-lightcolor $colors(-background)"
-		   "-darkcolor $colors(-background)"
-		   "-foreground $colors(-text)"
-		   "-fieldbackground $colors(-highlight-minor)"
-		   "-padding 0"))
+	    	 '("    ttk::style configure TSpinbox"
+	    	   "-arrowcolor $colors(-text)"
+	    	   "-bordercolor $colors(-background)"
+	    	   "-background $colors(-highlight-major)"
+	    	   "-lightcolor $colors(-background)"
+	    	   "-darkcolor $colors(-background)"
+	    	   "-foreground $colors(-text)"
+	    	   "-fieldbackground $colors(-highlight-minor)"
+	    	   "-padding 0"))
 	    "" ,(string-intersperse
-		 '("    ttk::style configure TNotebook.Tab"
-		   "-background $colors(-highlight-minor)"
-		   "-bordercolor $colors(-text)"
-		   "-padding 4"))
+	    	 '("    ttk::style configure TNotebook.Tab"
+	    	   "-background $colors(-highlight-minor)"
+	    	   "-bordercolor $colors(-text)"
+	    	   "-padding 4"))
 	    ;; "" ,(string-intersperse
 	    ;; 	   '("    ttk::style map TNotebook"
 	    ;; 	     "-background [list selected $colors(-highlight-minor)"
 	    ;; 	     "active $colors(-highlight-minor)]"))
 	    "" "    ttk::style configure Modeline.TLabel -font BTFont"
 	    ,@(map (lambda (color-idx)
-		     (string-append
-		      "\n    ttk::style configure Text" color-idx
-		      ".Modeline.TLabel -foreground $colors(-text-"
-		      color-idx ")"))
-		   (map number->string (iota 7 1)))
+	    	     (string-append
+	    	      "\n    ttk::style configure Text" color-idx
+	    	      ".Modeline.TLabel -foreground $colors(-text-"
+	    	      color-idx ")"))
+	    	   (map number->string (iota 7 1)))
 	    "" ,(string-intersperse
-		 '("   ttk::style configure TScrollbar"
-		   "-arrowcolor $colors(-text)"
-		   "-troughcolor $colors(-background)"))
+	    	 '("   ttk::style configure TScrollbar"
+	    	   "-arrowcolor $colors(-text)"
+	    	   "-troughcolor $colors(-background)"))
 	    "" ,(string-intersperse
-		 '("   ttk::style map TScrollbar"
-		   "-background [list active $colors(-highlight-minor)"
-		   "!active $colors(-background)]"
-		   "-foreground [list disabled $colors(-highlight-minor)"
-		   "!disabled $colors(-text)]"))
+	    	 '("   ttk::style map TScrollbar"
+	    	   "-background [list active $colors(-highlight-minor)"
+	    	   "!active $colors(-background)]"
+	    	   "-foreground [list disabled $colors(-highlight-minor)"
+	    	   "!disabled $colors(-text)]"))
 	    "" ,(string-intersperse
-		 '("   ttk::style configure TCombobox"
-		   "-arrowcolor $colors(-text)"
-		   "-background $colors(-highlight-minor)"
-		   "-foreground $colors(-text)"
-		   "-selectbackground $colors(-text)"
-		   "-selectforeground $colors(-highlight-minor)"
-		   "-font BTFont.bold"
-		   "-focusfill $colors(-highlight-minor)"))
+	    	 '("   ttk::style configure TCombobox"
+	    	   "-arrowcolor $colors(-text)"
+	    	   "-background $colors(-highlight-minor)"
+	    	   "-foreground $colors(-text)"
+	    	   "-selectbackground $colors(-text)"
+	    	   "-selectforeground $colors(-highlight-minor)"
+	    	   "-font BTFont.bold"
+	    	   "-focusfill $colors(-highlight-minor)"))
 	    "" ,(string-intersperse
-		 '("   ttk::style map TCombobox"
-		   "-background [list readonly $colors(-highlight-minor)]"
-		   "-foreground [list readonly $colors(-text)]"
-		   "-fieldbackground [list readonly $colors(-background)]"))
+	    	 '("   ttk::style map TCombobox"
+	    	   "-background [list readonly $colors(-highlight-minor)]"
+	    	   "-foreground [list readonly $colors(-text)]"
+	    	   "-fieldbackground [list readonly $colors(-background)]"))
 	    "" ,(string-append "    option add *TCombobox.font"
-			       " BTFont.bold")
+	    		       " BTFont.bold")
 	    "" ,(string-append "    option add *TCombobox*Listbox.font"
-			       " BTFont.bold")
+	    		       " BTFont.bold")
 	    "" ,(string-append "    option add *TCombobox*Listbox.background"
-			       " $colors(-background)")
+	    		       " $colors(-background)")
 	    "" ,(string-append "    option add *TCombobox*Listbox.foreground"
-			       " $colors(-text)")
+	    		       " $colors(-text)")
 	    "" ,(string-append "    option add"
-			       " *TCombobox*Listbox.selectBackground"
-			       " $colors(-text)")
+	    		       " *TCombobox*Listbox.selectBackground"
+	    		       " $colors(-text)")
 	    "" ,(string-append "    option add"
-			       " *TCombobox*Listbox.selectForeground"
-			       " $colors(-background)")
+	    		       " *TCombobox*Listbox.selectForeground"
+	    		       " $colors(-background)")
 	    "  }"
 	    "}"
 	    "")
