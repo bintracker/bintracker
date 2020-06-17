@@ -1529,12 +1529,14 @@
   (define-method (edit primary: (buf <ui-group-field>)
 		       what #!optional val)
     (case what
-      ((set) (ui-group-field-perform-edit
-	      buf
-	      (list 'set
-		    (slot-value buf 'parent-instance-path)
-		    (slot-value buf 'node-id)
-		    `((0 #f . ,val)))))
+      ((set)
+       (ui-group-field-perform-edit
+	buf
+	(list 'set
+	      (slot-value buf 'parent-instance-path)
+	      (slot-value buf 'node-id)
+	      `((0 #f . ,val))))
+       (ui-metastate buf 'clear-redo))
       (else (error '|edit group-field|
 		   (string-append "Invalid action " (->string what))))))
 
@@ -2339,7 +2341,8 @@
       	     ((cut) ui-blockview-blockcut)
       	     (else (error 'edit (string-append "Invalid action "
 					       (->string what)))))
-	   (cons buf (normalize-edit-parameters buf where what contents))))
+	   (cons buf (normalize-edit-parameters buf where what contents)))
+    (ui-metastate buf 'clear-redo))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a note command.
@@ -2376,7 +2379,8 @@
 			  (map (cute list-ref <> field-idx)
 			       (take (concatenate (slot-value buf 'item-cache))
 				     (ui-blockview-get-current-row buf))))))
-      (ui-blockview-edit-cell buf val)))
+      (ui-blockview-edit-cell buf val)
+      (ui-metastate buf 'clear-redo)))
 
   ;;; Helper method for `ui-blockview-enter-numeric`. Constructs a new block
   ;;; field value from the Tk key symbol KEYSYM, assuming that the cursor is
@@ -2416,6 +2420,7 @@
   		  primary: (buf <ui-basic-block-view>) keysym)
     (unless (null? (ui-blockview-get-current-field-value buf))
       (let ((cmd (ui-blockview-get-current-field-command buf)))
+	(ui-metastate buf 'clear-redo)
   	(if (command-has-flag? cmd 'is-note)
   	    (ui-blockview-enter-note buf keysym)
   	    (case (command-type cmd)
@@ -2566,10 +2571,18 @@
 	     		    (ui-blockview-get-current-field-value buf)))
 	     (edit buf 'current 'clear)))
 	 (<<DeleteCurrent>> . ,(lambda () (edit buf 'current 'clear)))
-  	 (<<CutStep>> . ,(lambda () (ui-blockview-cut-current-cell buf)))
-  	 (<<CutRow>> . ,(lambda () (ui-blockview-cut-row buf)))
-  	 (<<InsertRow>> . ,(lambda () (ui-blockview-insert-row buf)))
-  	 (<<InsertStep>> . ,(lambda () (ui-blockview-insert-cell buf)))
+  	 (<<CutStep>> . ,(lambda ()
+			   (ui-blockview-cut-current-cell buf)
+			   (ui-metastate buf 'clear-redo)))
+  	 (<<CutRow>> . ,(lambda ()
+			  (ui-blockview-cut-row buf)
+			  (ui-metastate buf 'clear-redo)))
+  	 (<<InsertRow>> . ,(lambda ()
+			     (ui-blockview-insert-row buf)
+			     (ui-metastate buf 'clear-redo)))
+  	 (<<InsertStep>> . ,(lambda ()
+			      (ui-blockview-insert-cell buf)
+			      (ui-metastate buf 'clear-redo)))
 	 (<<InsertFromClipboard>>
 	  .
 	  ,(lambda ()
@@ -3677,8 +3690,8 @@
       (and (not (zero? stack-depth))
   	   (let ((action (stack-pop! (app-journal-undo-stack journal))))
   	     (app-journal-undo-stack-depth-set! journal (sub1 stack-depth))
-  	     (module-view-push-redo buf
-  				    (make-reverse-action action (slot-value buf 'mmod)))
+  	     (module-view-push-redo
+	      buf (make-reverse-action action (slot-value buf 'mmod)))
   	     action))))
 
   (define-method (module-view-push-redo primary: (buf <ui-module-view>)
@@ -3690,9 +3703,16 @@
     (let ((redo-stack (app-journal-redo-stack (slot-value buf 'journal))))
       (and (not (stack-empty? redo-stack))
   	   (let ((action (stack-pop! redo-stack)))
-  	     (module-view-push-undo buf
-  				    (make-reverse-action action (slot-value buf 'mmod)))
+  	     (module-view-push-undo
+	      buf (make-reverse-action action (slot-value buf 'mmod)))
   	     action))))
+
+  (define-method (module-view-clear-redo primary: (buf <ui-module-view>))
+    (let ((toolbar (slot-value buf 'toolbar)))
+      (stack-empty! (app-journal-redo-stack (slot-value buf 'journal)))
+      (when toolbar
+	(ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+  		      'disabled 'redo))))
 
   (define-method (module-view-undo primary: (buf <ui-module-view>))
     (let ((action (module-view-pop-undo buf))
@@ -3783,8 +3803,10 @@
   		(slot-value buf 'mmod)))))
   	((push-undo)
   	 (module-view-push-undo buf (cadr args))
-  	 (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
-  		       'enabled 'undo))
+	 (when (slot-value buf 'toolbar)
+  	   (ui-set-state (ui-ref (slot-value buf 'toolbar) 'journal)
+  			 'enabled 'undo)))
+	((clear-redo) (module-view-clear-redo buf))
   	((undo) (module-view-undo buf))
   	((redo) (module-view-redo buf))
   	((filename) (if (null? (cdr args))
