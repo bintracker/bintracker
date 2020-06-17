@@ -26,7 +26,7 @@ local print_machine_info = function ()
    -- for k,v in pairs(cpu.items) do print(k) end
    print("\nMemory layout")
    for k,v in pairs(cpu.spaces) do print(k) end
-   -- local cartslot = manager:machine().devices[":cartslot"]
+   local cartslot = manager:machine().devices[":cartslot"]
    print("\nCartridge:");
    for k,v in pairs(cartslot.spaces) do print(k) end
    print("\nShares all:\n")
