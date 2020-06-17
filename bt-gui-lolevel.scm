@@ -196,8 +196,10 @@
 	   (unless tl
 	     (set! tl (tk 'create-widget 'toplevel
 			  background: (colors 'background)))
-	     ;; TODO appears to have no effect
-	     ;; (tk/wm 'attributes tl type: 'dialog)
+	     ;; Configure this to be a popup
+	     ;; TODO On xmonad, this works exactly once after a fresh compile.
+	     (tk/wm 'transient tl tk)
+	     (tk/wm 'attributes tl topmost: 1 type: 'dialog)
 	     (set! widgets `((content ,(tl 'create-widget 'frame))
 			     (footer ,(tl 'create-widget 'frame))))
 	     (set! widgets
