@@ -41,7 +41,8 @@
 
 (handle-exceptions
     exn
-    (begin (tk-end)
+    (begin (when (current 'emulator) ((current 'emulator) 'quit))
+	   (tk-end)
 	   (raise exn))
   (begin
     (on-startup-hooks 'execute)
