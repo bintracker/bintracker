@@ -119,7 +119,7 @@
      group-lst))
 
   ;;; Create a new key binding, or replace an existing one. KEY-GROUP must
-  ;;; be one of `'global`, `'console`, `'edit`, `'note-keys`, or `'plug-ins`.
+  ;;; be one of `'global`, `'console`, `'edit`, `'note-keys`, or `'plugins`.
   ;;; KEY-SPEC shall be a key key binding specifier, using Tk's
   ;;; [angular bracket syntax](https://www.tcl.tk/man/tcl8.6/TkCmd/bind.htm).
   ;;; ACTION shall be the name of a procedure or quoted lambda definition,
@@ -130,7 +130,9 @@
      key-group
      (if (eq? key-group 'note-entry)
 	 '()
-	 (alist-update key-spec action (get-keybinding-group key-group)))))
+	 (alist-update key-spec
+		       (list action)
+		       (get-keybinding-group key-group)))))
 
   ;;; Look up a key binding in the keymap table. Returns `#f` if KEY-SPEC` is
   ;;; not bound in KEY-GROUP.

@@ -113,7 +113,7 @@
 
   ;; TODO this should be an alist
   (defstruct app-keys
-    global console edit note-entry plugins)
+    (global '()) (console '()) (edit '()) (note-entry '()) (plugins '()))
 
   ;;; The global application settings registry. Use as follows:
   ;;;
