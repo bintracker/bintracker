@@ -1,9 +1,10 @@
 (module mml
 
-    (mml::read)
+    (mml::read mml::dialog)
 
   (import scheme (chicken base) (chicken string)
-	  srfi-1 srfi-13 srfi-14 comparse bt-state simple-exceptions)
+	  srfi-1 srfi-13 srfi-14 pstk comparse
+	  bt-state bt-types bt-gui simple-exceptions)
 
   ;; Define PEG parser rules to parse MML strings using comparse
 
@@ -55,7 +56,7 @@
 
   ;; The main tokenizer procedure
   (define (tokenize-mml str)
-    (print "tokenize-mml " str)
+    ;; (print "tokenize-mml " str)
     (handle-exceptions
 	exn
 	(begin (print-call-chain)
@@ -178,4 +179,36 @@
       (if (and (positive? quantize-to) (< quantize-to 128))
 	  (requantize ticks (round (/ 512 (* 4 quantize-to))))
 	  (error 'mml::read "Invalid quatization unit"))))
-)
+
+  (define (mml::dialog)
+    (and-let* ((current-blockview (current 'blockview))
+	       (d (make-dialogue)))
+      (d 'show)
+      (d 'add 'widget 'lbl1 `(label text: "Quantization unit (1-127):"))
+      (d 'add 'widget 'qnt
+	 `(entry bg: ,(colors 'row-highlight-minor) fg: ,(colors 'text)
+  		 bd: 0 highlightthickness: 0 insertborderwidth: 1
+  		 font: ,(list family: (settings 'font-mono)
+  			      size: (settings 'font-size)
+  			      weight: 'bold)))
+      (d 'add 'widget 'tbox
+      	 `(text bd: 1 highlightthickness: 0 blockcursor: yes
+      		bg: ,(colors 'background) fg: ,(colors 'text)
+		insertbackground: ,(colors 'text)
+      		font: ,(list family: (settings 'font-mono)
+      			     size: (settings 'font-size))
+      		height: 10))
+      (d 'add 'finalizer
+      	 (lambda a
+      	   (handle-exceptions
+	       exn
+	       (tk/message-box* title: "MML Error"
+				detail:
+				(string-append "An error occured in MML:\n"
+					       (->string exn))
+				type: 'ok)
+      	     (edit current-blockview 'current 'set
+      		   (mml::read ((d 'ref 'tbox) 'get "0.0" 'end))))))
+      (tk/focus (d 'ref 'tbox))))
+
+  )

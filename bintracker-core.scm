@@ -220,12 +220,12 @@
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks
     (make-hooks
+     `(init-main-menu . ,init-main-menu)
      `(load-config . ,load-config)
      `(init-db . ,btdb-init!)
      `(update-style . ,update-ttk-style)
      `(update-global-key-bindings . ,update-global-key-bindings!)
      `(update-window-title . ,update-window-title!)
-     `(init-main-menu . ,init-main-menu)
      `(maybe-show-menu
        . ,(lambda ()
 	    (when (settings 'show-menu)
