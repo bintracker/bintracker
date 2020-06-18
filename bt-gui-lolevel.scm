@@ -193,57 +193,61 @@
       (lambda args
 	(case (car args)
 	  ((show)
-	   (unless tl
-	     (set! tl (tk 'create-widget 'toplevel
-			  background: (colors 'background)))
-	     ;; Configure this to be a popup
-	     ;; TODO On xmonad, this works exactly once after a fresh compile.
-	     (tk/wm 'transient tl tk)
-	     (tk/wm 'attributes tl topmost: 1 type: 'dialog)
-	     (set! widgets `((content ,(tl 'create-widget 'frame))
-			     (footer ,(tl 'create-widget 'frame))))
-	     (set! widgets
-	       (append widgets
-		       `((confirm ,((get-ref 'footer) 'create-widget
-				    'button text: "Confirm"
-				    command: (lambda () (finalize #t))))
-			 (cancel ,((get-ref 'footer) 'create-widget
-				   'button text: "Cancel"
-				   command: (lambda () (finalize #f)))))))
-	     (tk/bind tl '<Escape> (lambda () (finalize #f)))
-	     (tk/bind tl '<Return> (lambda () (finalize #t)))
-	     (tk/pack (get-ref 'confirm) side: 'right padx: 2)
-	     (tk/pack (get-ref 'cancel) side: 'right padx: 2)
-	     (tk/pack (get-ref 'content) side: 'top padx: 2)
-	     (tk/pack (get-ref 'footer) side: 'top padx: 2)))
+	   (tk-with-lock
+	    (lambda ()
+	      (unless tl
+		(set! tl (tk 'create-widget 'toplevel
+			     background: (colors 'background)))
+		;; Configure this to be a popup
+		;; TODO On xmonad, this works exactly once after a fresh compile.
+		(tk/wm 'transient tl tk)
+		(tk/wm 'attributes tl topmost: 1 type: 'dialog)
+		(set! widgets `((content ,(tl 'create-widget 'frame))
+				(footer ,(tl 'create-widget 'frame))))
+		(set! widgets
+		  (append widgets
+			  `((confirm ,((get-ref 'footer) 'create-widget
+				       'button text: "Confirm"
+				       command: (lambda () (finalize #t))))
+			    (cancel ,((get-ref 'footer) 'create-widget
+				      'button text: "Cancel"
+				      command: (lambda () (finalize #f)))))))
+		(tk/bind tl '<Escape> (lambda () (finalize #f)))
+		(tk/bind tl '<Return> (lambda () (finalize #t)))
+		(tk/pack (get-ref 'confirm) side: 'right padx: 2)
+		(tk/pack (get-ref 'cancel) side: 'right padx: 2)
+		(tk/pack (get-ref 'content) side: 'top padx: 2)
+		(tk/pack (get-ref 'footer) side: 'top padx: 2)))))
 	  ((add)
-	   (case (cadr args)
-	     ((binding) (apply tk/bind (cons tl (cddr args))))
-	     ((finalizer) (set! extra-finalizers
-			    (cons (caddr args) extra-finalizers)))
-	     ((widget)
-	      (case (car (cadddr args))
-		((text treeview)
-		 (let* ((frame ((get-ref 'content) 'create-widget 'frame))
-			(user-widget (apply frame (cons 'create-widget
-							(cadddr args))))
-			(scrollbar (frame 'create-widget 'scrollbar
-					  orient: 'vertical
-					  command: `(,user-widget yview))))
-		   (set! widgets (cons (list (caddr args) user-widget)
-				       widgets))
-		   (tk/pack scrollbar side: 'right fill: 'y)
-		   (tk/pack user-widget side: 'right)
-		   (user-widget 'configure 'yscrollcommand: `(,scrollbar set))
-		   (tk/pack frame side: 'top padx: 2 pady: 2)))
-		(else (let ((user-widget (apply (get-ref 'content)
-						(cons 'create-widget
-						      (cadddr args)))))
-			(set! widgets (cons (list (caddr args) user-widget)
-					    widgets))
-			(tk/pack user-widget side: 'top padx: 2 pady: 2)))))
-	     ((procedure)
-	      (set! procedures (cons (caddr args) procedures)))))
+	   (tk-with-lock
+	    (lambda ()
+	      (case (cadr args)
+		((binding) (apply tk/bind (cons tl (cddr args))))
+		((finalizer) (set! extra-finalizers
+			       (cons (caddr args) extra-finalizers)))
+		((widget)
+		 (case (car (cadddr args))
+		   ((text treeview)
+		    (let* ((frame ((get-ref 'content) 'create-widget 'frame))
+			   (user-widget (apply frame (cons 'create-widget
+							   (cadddr args))))
+			   (scrollbar (frame 'create-widget 'scrollbar
+					     orient: 'vertical
+					     command: `(,user-widget yview))))
+		      (set! widgets (cons (list (caddr args) user-widget)
+					  widgets))
+		      (tk/pack scrollbar side: 'right fill: 'y)
+		      (tk/pack user-widget side: 'right)
+		      (user-widget 'configure 'yscrollcommand: `(,scrollbar set))
+		      (tk/pack frame side: 'top padx: 2 pady: 2)))
+		   (else (let ((user-widget (apply (get-ref 'content)
+						   (cons 'create-widget
+							 (cadddr args)))))
+			   (set! widgets (cons (list (caddr args) user-widget)
+					       widgets))
+			   (tk/pack user-widget side: 'top padx: 2 pady: 2)))))
+		((procedure)
+		 (set! procedures (cons (caddr args) procedures)))))))
 	  ((ref) (get-ref (cadr args)))
 	  ((destroy)
 	   (when tl
@@ -464,8 +468,7 @@
     ;; TODO add at position (insert)
     (let ((append-to-item-list!
 	   (lambda (id item)
-	     (menu-items-set! menu (append (menu-items menu)
-					   (list id item))))))
+	     (menu-items-set! menu (alist-update id item (menu-items menu))))))
       (case (car item-spec)
 	((command)
 	 (append-to-item-list! (second item-spec) #f)
