@@ -26,6 +26,10 @@ Not yet. We may support mobile devices some day but not in the near future.
 
 Go to your Bintracker folder, and open the file `config.scm` from the `config` subfolder in a text editor. Find the line that says `;; (load-keymap "en")`, remove the two semicolons, and change the `"en"` part to `"fr"`, `"de"`, or whatever layout you use. See the `keymap` subfolder of the `config` folder for a list of available keymaps. If no suitable keymap exists, you can derive your own by copying one of the existing keymaps and editing it.
 
+### Sound is choppy and/or lags. What to do about this?
+
+Try adding `"-nofilter" "-nomax"` to the list of MAME default-args in `config/emulators.scm`. If that doesn't help, another one to try is  `"-autoframeskip"`. If that still doesn't help, add `"-video" "none"` instead. Newer versions of MAME will complain about this, but it nevertheless fixes most cases of bad audio.
+
 
 
 ## Development

@@ -65,6 +65,9 @@ For most target systems you want to emulate, you will also need to obtain ROM fi
 
 Once you've completed these steps, you can run the `bintracker` executable in the `build` directory.
 
+If you notice sound being choppy, you can try adding `"-nofilter" "-nomax"` and/or `"-autoframeskip"` to the list of MAME default-args in `config/emulators.scm`. Especially hard cases may be fixed with `"-video" "none"`. Newer versions of MAME will complain about the latter, but it nevertheless fixes most cases of bad audio.
+
+
 
 ### MacOS, BSD, Windows
 
