@@ -61,8 +61,7 @@ You can do a parallel build (`make -jX`), however time savings will be minimal. 
 
 If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame64` is in your search path. If your MAME executable is not named "mame64", edit the file `config/emulators.scm` accordingly.
 
-For most target systems you want to emulate, you will also need to obtain ROM files. Copy ROM files to `roms/MACHINE`, where MACHINE is MAME's target system identifier string. Bintracker itself does not ship ROM files except for a handful of open source replacement ROMs.
-
+For most target systems you want to emulate, you will also need to obtain ROM files. Bintracker itself does not ship ROM files except for a handful of open source replacement ROMs. Copy ROM files to `roms/MACHINE/`, where MACHINE is MAME's target system identifier string. MAME is very peculiar about the names of ROM files. The [Arcade Database](http://adb.arcadeitalia.net/) is a good source of information regarding this.
 
 Once you've completed these steps, you can run the `bintracker` executable in the `build` directory.
 
