@@ -16,7 +16,7 @@ endif
 # https://lists.nongnu.org/archive/html/chicken-users/2017-08/msg00004.html
 
 bintracker: $(BT_SRC)bintracker.scm bintracker-core.import.so\
- mame-bridge config roms plugins resources docs aux-files\
+ mame-bridge config roms plugins resources aux-files\
  mdal-targets
 	$(CSC) $< -d3 -O2 -compile-syntax -o $@
 

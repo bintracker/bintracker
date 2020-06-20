@@ -13,6 +13,9 @@ The following dependencies are required to build Bintracker:
 
 - sqlite3
 - Chicken Scheme >=5.0 + extensions
+
+To build the Bintracker documentation, the following additonal dependencies are required:
+
 - Mkdocs + Mkdocs-material + Mkdocs-localsearch
 - scm2wiki
 
@@ -27,7 +30,7 @@ Next,install [Chicken Scheme](https://call-cc.org), version 5.0 or newer. Chicke
 After installing Chicken itself, you need to install the extensions required by Bintracker.
 
 ```sh
-$ chicken-install base64 comparse coops git imlib2 list-utils matchable pstk scm2wiki simple-exceptions simple-md5 sqlite3 srfi-1 srfi-4 srfi-13 srfi-14 srfi-18 srfi-69 stack test typed-records web-colors
+$ chicken-install base64 comparse coops git imlib2 list-utils matchable pstk simple-exceptions simple-md5 sqlite3 srfi-1 srfi-4 srfi-13 srfi-14 srfi-18 srfi-69 stack test typed-records web-colors
 ```
 
 Note that in order to build the sqlite3 extension, you need an [sqlite3](https://sqlite.org) installation. Your system most likely will have one installed already, but if not, install it through your distro's package manager.
