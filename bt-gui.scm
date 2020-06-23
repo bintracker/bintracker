@@ -137,7 +137,7 @@
   		font: ,(list family: (settings 'font-mono)
   			     size: (settings 'font-size))
 		height: 10))
-      (tk/focus (d 'ref 'mdef-selector))
+      ;; (tk/focus (d 'ref 'mdef-selector))
       (let* ((get-item-list (lambda ()
   			      (string-split
   			       (string-delete
@@ -161,23 +161,26 @@
   		      (list (car (get-item-list)))))))
 	(tk/bind (d 'ref 'mdef-selector)
 		 '<<TreeviewSelect>>
-		 ;; TODO this fails when selection was set automatically.
-		 ;; This is a bug in Tk, have not found a work-around yet.
+		 ;; TODO this fails when selection was set automatically,
+		 ;; because Tk delays execution of the selection too long.
+		 ;; Calling tk/update or tk/update 'idletasks hangs the app.
+		 ;; For now, use tk/after 100 as a (very brittle) work-around.
 		 (lambda ()
-		   ;; (tk/update)
-		   ;; (tk/update 'idletasks)
-		   (let* ((selected-engine
-			   (string->symbol
-			    ((d 'ref 'mdef-selector)
-  			     'item ((d 'ref 'mdef-selector) 'selection)
-  			     text:)))
-			  (description (->string (btdb-get-mdef-description
-						  selected-engine)))
-			  (description-widget (d 'ref 'description)))
-		     (description-widget 'configure state: 'normal)
-		     (description-widget 'delete "0.0" 'end)
-		     (description-widget 'insert 'end description)
-		     (description-widget 'configure state: 'disabled))))
+		   (tk/after
+		    100
+		    (lambda ()
+		      (let* ((selected-engine
+			      (string->symbol
+			       ((d 'ref 'mdef-selector)
+  				'item ((d 'ref 'mdef-selector) 'selection)
+  				text:)))
+			     (description (->string (btdb-get-mdef-description
+						     selected-engine)))
+			     (description-widget (d 'ref 'description)))
+			(description-widget 'configure state: 'normal)
+			(description-widget 'delete "0.0" 'end)
+			(description-widget 'insert 'end description)
+			(description-widget 'configure state: 'disabled))))))
   	(d 'add 'finalizer
   	   (lambda a
   	     (and-let*
@@ -192,6 +195,7 @@
   				       text:)
   				      selected-def)))))
   	(unless (null? initial-item-list)
+	  (tk/focus (d 'ref 'mdef-selector))
   	  ((d 'ref 'mdef-selector) 'focus (car initial-item-list))
   	  ((d 'ref 'mdef-selector) 'selection 'set
   	   (list (car initial-item-list)))))))
