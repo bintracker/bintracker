@@ -114,6 +114,7 @@
   ;;; Opens a dialog for users to chose an MDAL definition. Based on the
   ;;; user's choice, a new MDAL module is created and displayed.
   (define (new-file)
+    (close-file)
     (let ((d (make-dialogue))
   	  (platforms (btdb-list-platforms)))
       (d 'show)
