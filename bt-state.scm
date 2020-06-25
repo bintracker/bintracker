@@ -153,9 +153,24 @@
   ;;; Construct an info string for the key binding of the given ACTION in the
   ;;; given KEY-GROUP.
   (define (key-binding->info key-group action)
-    (let ((binding (inverse-key-binding key-group action)))
+    (let ((binding (inverse-key-binding key-group action))
+	  (uppercase (string->list "ABCDEFGHIJKLMNOPQRSTUVWXYZ")))
+      (print "key-binding->info " key-group " " action " " binding)
       (if binding
-	  (string-upcase (string-translate (->string binding) "<>" "()"))
+	  (string-titlecase
+	   (string-intersperse
+	    (remove (lambda (s)
+		      (or (string-ci= "key" s)))
+		    (map (lambda (s)
+			   (if (and (= 1 (string-length s))
+				    (memq (car (string->list s)) uppercase))
+			       (string-append "Shift-" s)
+			       (if (string-ci= s "control") "Ctrl" s)))
+			 (string-split (string-drop-right
+					(string-drop (->string binding) 1)
+					1)
+				       "-")))
+	    "-"))
 	  "")))
 
   ;;; Load a keymap. NAME shall be the name of the keymap file to load,
