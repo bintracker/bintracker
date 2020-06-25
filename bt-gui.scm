@@ -2210,6 +2210,99 @@
   ;; 		    (ui-blockview-get-current-order-pos buf)
   ;; 		    (ui-blockview-get-current-field-instance buf))))
 
+  ;;; Do-what-I-mean adjust normalized edit buffer values (as provided by
+  ;;; `normalize-edit-parameters` so they better match the target fields.
+  ;;; If the target field uses a key/ukey MDAL command, then incoming numeric
+  ;;; values are converted to the closest matching key. If the target field uses
+  ;;; a numeric command, then incoming key values are converted to the numeric
+  ;;; equivalents, and incoming numeric values are adjusted so their range does
+  ;;; not exceed that of the target command.
+  (define-method (dwim-adjust-edit-contents primary: (buf <ui-basic-block-view>)
+					    contents start end)
+    (let* ((mdef (ui-metastate buf 'mdef))
+	   (field-ids (slot-value buf 'field-ids))
+	   (field-index (lambda (id)
+			  (list-index (cute eqv? <> id) field-ids)))
+	   (scale (lambda (rmin rmax vals)
+		    (if (every null? vals)
+			vals
+			(let ((minval (apply min (remove null? vals)))
+			      (maxval (apply max (remove null? vals))))
+			  (map (lambda (x)
+				 (if (null? x)
+				     '()
+				     (if (= minval maxval)
+					 (cond
+					  ((< x rmin) minval)
+					  ((> x rmax) maxval)
+					  (else x))
+					 (inexact->exact
+					  (round (+ (/ (* (- rmax rmin)
+							  (- x minval))
+						       (- maxval minval))
+						    rmin))))))
+			       vals)))))
+	   (guess-source-command
+	    (lambda (vals)
+	      (find (lambda (cmd)
+		      (and (memv (command-type cmd) '(key ukey))
+			   (let ((keys (hash-table-keys (command-keys cmd))))
+			     (any (cute memv <> keys)
+				  vals))))
+		    (hash-table-values (mdef-commands mdef))))))
+      (map
+       (lambda (column command)
+	 (case (command-type command)
+	   ((key ukey)
+	    (if (every (lambda (x) (or (null? x) (integer? x)))
+		       column)
+		(let ((kv-alist (hash-table->alist (command-keys command))))
+		  (map (lambda (x)
+			 (caar (sort (map (lambda (kv)
+					    `(,(car kv)
+					      . ,(abs (- (cdr kv) x))))
+					  kv-alist)
+				     (lambda (x y)
+				       (< (cdr x) (cdr y))))))
+		       (scale (apply min (map cdr kv-alist))
+			      (apply max (map cdr kv-alist))
+			      column)))
+		column))
+	   ((int uint)
+	    (cond
+	     ((every null? column)
+	      column)
+	     ((every (lambda (x) (or (null? x) (integer? x)))
+		     column)
+	      (let ((range (or (command-range command)
+			       `(bits->range (command-bits command)))))
+		(if (every (lambda (x)
+			     (or (null? x)
+				 (in-range? x range)))
+			   column)
+		    column
+		    (scale (range-min range) (range-max range) column))))
+	     ((every (lambda (x) (or (null? x) (symbol? x)))
+		     column)
+	      (or (and-let* ((range (or (command-range command)
+					(bits->range (command-bits command))))
+			     (source-command (guess-source-command column))
+			     (cmd-keys (command-keys source-command)))
+		    (scale (range-min range)
+			   (range-max range)
+			   (map (lambda (x)
+				  (if (null? x)
+				      x
+				      (hash-table-ref/default cmd-keys x '())))
+				column)))
+		  column))
+	     (else column)))
+	   (else column)))
+       contents
+       (map (cute mdef-get-inode-source-command <> mdef)
+	    (drop (take field-ids (+ 1 (field-index (cdr end))))
+		  (field-index (cdr start)))))))
+
   ;;; Helper for `edit`.
   (define-method (normalize-edit-parameters primary: (buf <ui-basic-block-view>)
 					    where what contents)
@@ -2310,7 +2403,12 @@
 				 (+ 1 (- (field-index (cdr normalized-end))
 					 (field-index
 					  (cdr normalized-start)))))))))))
-      (list normalized-contents normalized-start normalized-end)))
+      (list (if (settings 'dwim-module-edit)
+		(dwim-adjust-edit-contents buf normalized-contents
+					   normalized-start normalized-end)
+		normalized-contents)
+	    normalized-start
+	    normalized-end)))
 
   ;;; Low-level interface for `edit`. See ui-blockview-blockedit for details.
   (define-method (ui-blockview-blockset primary: (buf <ui-basic-block-view>)

@@ -81,6 +81,19 @@
 ;; (settings 'default-major-row-highlight 2)
 ;; (settings 'default-minor-row-highlight 4)
 
+;; Enable or disable do-what-i-mean editing. When this setting is enabled
+;; (default), pasting or inserting into a block (pattern, table, etc) will
+;; attempt to adjust values that do not satisfy the constraints of the target
+;; field. If the target field uses a key or ukey command (eg. notes), and the
+;; source values are integers, then the source values are scaled to the range of
+;; the target's key values and then converted to the closest matching key. If
+;; the target uses an int or uint command (eg. most parameters), source integer
+;; values are scaled to match the target's range, unless all source values fall
+;; within the target's range. If the target uses an int or uint command and the
+;; the source values are keys, then the source keys are converted to their
+;; respective values and scaled to match the target's range.
+;; (settings 'dwim-module-edit #t)
+
 ;; Sets the size of the undo buffer, that is the number of undo steps that
 ;; Bintracker will remember in a buffer that supports undo operations.
 ;; (settings 'journal-limit 100)
