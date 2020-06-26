@@ -154,22 +154,29 @@
   ;;; given KEY-GROUP.
   (define (key-binding->info key-group action)
     (let ((binding (inverse-key-binding key-group action))
-	  (uppercase (string->list "ABCDEFGHIJKLMNOPQRSTUVWXYZ")))
-      (print "key-binding->info " key-group " " action " " binding)
+	  (uppercase (string->list "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+	  (replace-list '((ISO_Left_Tab . "Shift-Tab")
+			  (question . "?")
+			  (period . ".")
+			  (comma . ","))))
       (if binding
 	  (string-titlecase
 	   (string-intersperse
-	    (remove (lambda (s)
-		      (or (string-ci= "key" s)))
-		    (map (lambda (s)
-			   (if (and (= 1 (string-length s))
-				    (memq (car (string->list s)) uppercase))
-			       (string-append "Shift-" s)
-			       (if (string-ci= s "control") "Ctrl" s)))
-			 (string-split (string-drop-right
-					(string-drop (->string binding) 1)
-					1)
-				       "-")))
+	    (map (lambda (s)
+		   (or (alist-ref (string->symbol s) replace-list)
+		       s))
+		 (remove (lambda (s)
+			   (or (string-ci= "key" s)))
+			 (map (lambda (s)
+				(if (and (= 1 (string-length s))
+					 (memq (car (string->list s))
+					       uppercase))
+				    (string-append "Shift-" s)
+				    (if (string-ci= s "control") "Ctrl" s)))
+			      (string-split (string-drop-right
+					     (string-drop (->string binding) 1)
+					     1)
+					    "-"))))
 	    "-"))
 	  "")))
 
