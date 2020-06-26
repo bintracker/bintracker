@@ -16,7 +16,7 @@
 	     (add-menu-item!
 	      (alist-ref 'generate (menu-items (state 'menu)))
 	      `(command mml
-			"mml"
+			"MML"
 			0
 			,(and kb (key-binding->info 'plugins 'mml))
 			,mml::dialog)))))))
