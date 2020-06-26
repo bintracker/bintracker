@@ -539,6 +539,7 @@
 	      (inverse-key-binding 'edit 'insert-from-clipboard))
     (tk/event 'add '<<CutSelection>>
 	      (inverse-key-binding 'edit 'cut-selection))
+    (tk/event 'add '<<SwapSelection>> (inverse-key-binding 'edit 'swap))
     (tk/event 'add '<<RepeatLastSet>>
 	      (inverse-key-binding 'edit 'repeat-last-set)))
 

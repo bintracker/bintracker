@@ -2642,6 +2642,15 @@
       (edit buf 'current 'set contents)
       (ui-cancel-selection buf)))
 
+  (define-method (ui-swap primary: (buf <ui-basic-block-view>)
+			  #!optional (contents (clipboard)))
+    (and-let* ((_ contents)
+	       (selection (slot-value buf 'selection))
+	       (selected-contents (ui-selected-contents buf)))
+      (edit buf 'current 'set contents)
+      (clipboard 'put selected-contents)
+      (ui-cancel-selection buf)))
+
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
     (let ((grid (slot-value buf 'block-content)))
@@ -3745,7 +3754,7 @@
   				     "porous-paste-over.png")
   		  (porous-paste-under "Porous paste under current data"
   				      "porous-paste-under.png")
-      		  (swap "Swap Selection with Clipboard" "swap.png"))
+      		  (swap "Swap Selection with Clipboard" "swap.png" enabled))
   	    (play (stop-playback "Stop Playback" "stop.png" enabled)
       		  (play-from-start "Play Track from Start"
   				   "play-from-start.png" enabled)
@@ -3982,7 +3991,11 @@
 			  (and-let*
 			      ((contents (clipboard))
 			       (current-zone (ui-module-view-current-zone buf)))
-			    (edit current-zone 'current 'insert contents)))))
+			    (edit current-zone 'current 'insert contents))))
+	       (swap ,(lambda ()
+			(and-let*
+			    ((current-zone (ui-module-view-current-zone buf)))
+			  (ui-swap current-zone)))))
   	 (play (play-from-start ,play-from-start)
   	       (play-pattern ,play-pattern)
   	       (stop-playback ,stop-playback))
