@@ -74,25 +74,114 @@
      'menu (construct-menu
 	    (map (lambda (item) (cons 'submenu item))
 		 `((file "File" 0
-			 ((command new "New..." 0 "Ctrl+N" ,new-file)
-			  (command open "Open..." 0 "Ctrl+O"
+			 ((command new "New..." 0
+				   ,(key-binding->info 'global 'new-file)
+				   ,new-file)
+			  (command open "Open..." 0
+				   ,(key-binding->info 'global 'load-file)
 				   ,load-file)
-			  (command save "Save" 0 "Ctrl+S" ,save-file)
+			  (command save "Save" 0
+				   ,(key-binding->info 'global 'save-file)
+				   ,save-file)
 			  (command save-as "Save as..." 5
-				   "Ctrl+Shift+S" ,save-file-as)
+				   ,(key-binding->info 'global 'save-file-as)
+				   ,save-file-as)
 			  (submenu export "Export" 0
 				   ((command bin ".bin" 0 "Alt+E b"
 					     ,export-bin)))
-			  (command close "Close" 0 "Ctrl+W"
+			  (command close "Close" 0
+				   ,(key-binding->info 'global 'close-file)
 				   ,close-file)
 			  (separator)
-			  (command exit "Exit" 1 "Ctrl+Q"
+			  (command exit "Exit" 1
+				   ,(key-binding->info 'global 'exit-bintracker)
 				   ,exit-bintracker)))
-		   (edit "Edit" 0 ((command undo "Undo" 0 "Ctrl+Z" ,undo)
-				   (command redo "Redo" 0 "Ctrl+Y" ,redo)))
-		   (generate "Generate" 0 ())
-		   (transform "Transform" 0 ())
-		   (help "Help" 0 ((command launch-help "Help" 0 "F1"
+		   (edit "Edit" 0 ((command undo "Undo" 0
+					    ,(key-binding->info 'global 'undo)
+					    ,undo)
+				   (command redo "Redo" 0
+					    ,(key-binding->info 'global 'redo)
+					    ,redo)))
+		   (generate "Generate" 0
+			     ((command randomize "Randomize" 0
+				       ,(key-binding->info 'edit
+							   'randomize-current)
+				       ,randomize-current)))
+		   (transform "Transform" 0
+			      ((submenu
+				interpolate
+				"Interpolate..."
+				0
+				((command 'interp-linear "Linear" 0
+					  ,(key-binding->info
+					    'edit 'interpolate-linear)
+					  ,interpolate-linear)
+				 (command 'interp-linear "Cosine" 0
+					  ,(key-binding->info
+					    'edit 'interpolate-cosine)
+					  ,interpolate-cosine)
+				 ;; (command 'interp-linear "Polynomial" 0
+				 ;; 	  ,(key-binding->info
+				 ;; 	    'edit 'interpolate-cubic)
+				 ;; 	  ,interpolate-cubic)
+				 ;; (command 'interp-linear "Bezier" 0
+				 ;; 	  ,(key-binding->info
+				 ;; 	    'edit 'interpolate-bezier)
+				 ;; 	  ,interpolate-bezier)
+				 ))
+			       (command invert "Invert" 2
+					,(key-binding->info 'edit
+							    'invert-current)
+					,invert-current)
+			       (command reverse "Reverse" 0
+					,(key-binding->info 'edit
+							    'reverse-current)
+					,reverse-current)
+			       (command scale "Scale..." 0
+					,(key-binding->info 'edit
+							    'scale-current)
+					,scale-current)
+			       (submenu
+				shift
+				"Shift..."
+				1
+				((command raise1 "+1" 0
+					  ,(key-binding->info 'edit 'raise1)
+					  ,raise-current)
+				 (command raisex "+unit" 1
+					  ,(key-binding->info
+					    'edit 'raise-unit)
+					  ,raise-by-unit-current)
+				 (command lower1 "-1" 0
+					  ,(key-binding->info 'edit 'lower1)
+					  ,lower-current)
+				 (command lowerx "-unit" 2
+					  ,(key-binding->info
+					    'edit 'lower-unit)
+					  ,lower-by-unit-current)))
+			       (submenu
+				transpose
+				"Transpose..."
+				0
+				((command note-up "Note up" 6
+					  ,(key-binding->info
+					    'edit 'transpose-note-up)
+					  ,transpose-note-up)
+				 (command note-down "Note down" 6
+					  ,(key-binding->info
+					    'edit 'transpose-note-down)
+					  ,transpose-note-down)
+				 (command octave-up "Octave up" 0
+					  ,(key-binding->info
+					    'edit 'transpose-octave-up)
+					  ,transpose-octave-up)
+				 (command octave-down "Octave down" 1
+					  ,(key-binding->info
+					    'edit 'transpose-octave-down)
+					  ,transpose-octave-down)))))
+		   (help "Help" 0 ((command launch-help "Help" 0
+					    ,(key-binding->info 'global
+								'launch-help)
 					    ,launch-help)
 				   (command about "About" 0 #f
 					    ,about-message))))))))

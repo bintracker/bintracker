@@ -31,6 +31,14 @@ Key              | Function
 `F7`             | Play pattern
 `F8`             | Stop playback
 
+### Selection
+
+Key                        | Function
+---------------------------|----------------------------------------
+`Shift up/down/left/right` | Select contents
+`Ctrl a`                   | Select all of current blocks
+`Ctrl Shift a`             | Select all blocks of current group
+
 ### Copy, Paste, Insert, Cut
 
 Key                 | Function
@@ -46,6 +54,31 @@ Key                 | Function
 `Ctrl Shift x`      | Cut selection (with shift)
 `Ctrl v`            | Paste from clipboard (no shift, fills selection if any)
 `Ctrl Shift v`      | Insert from clipboard (with shift, respects selection if any)
+                    |
+`Ctrl Alt v`        | Swap selection with clipboard contents
+
+### Transformations
+
+Key                 | Function
+--------------------|----------------------------------------
+`Ctrl u`            | Transpose note up
+`Ctrl d`            | Transpose note down
+`Ctrl Shift u`      | Transpose octave up
+`Ctrl Shift d`      | Transpose octave down
+                    |
+`Ctrl Alt u`        | Raise values by 1
+`Ctrl Alt d`        | Lower values by 1
+`Ctrl Alt Shift u`  | Raise values by logical unit (octave or 2^(bits/2))
+`Ctrl Alt Shift u`  | Lower values by logical unit
+                    |
+`Ctrl i`            | Linear Interpolation
+`Ctrl Shift i`      | Cosine Interpolation
+                    |
+`Ctrl l`            | Scale values
+`Ctrl t`            | Invert values (min + max - x)
+`Ctrl ?`            | Randomize selection
+`Ctrl r`            | Reverse selection
+
 
 ### Note Entry
 
@@ -59,6 +92,10 @@ In the following image, a number in the top right corner of a key represents the
 
 
 ### Other
+
+Key                 | Function
+--------------------|----------------------------------------
+`.`                 | repeat last set value
 
 Numeric columns accept any number that is valid for the given command, using the radix (number base) set in `(settings 'number-base)`. Trigger commands accept any of the piano keys.
 

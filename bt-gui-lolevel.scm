@@ -527,6 +527,10 @@
     (tk/event 'add '<<BlockSelect>>
 	      '<Shift-Up> '<Shift-Down> '<Shift-Left>
 	      '<Shift-Right> '<Shift-Home> '<Shift-End>)
+    (tk/event 'add '<<SelectCurrentBlocks>>
+	      (inverse-key-binding 'edit 'select-current-blocks))
+    (tk/event 'add '<<SelectAllBlocks>>
+	      (inverse-key-binding 'edit 'select-all-blocks))
     (tk/event 'add '<<BVCopy>> (inverse-key-binding 'edit 'copy))
     (tk/event 'add '<<BVPaste>> (inverse-key-binding 'edit 'paste))
     (tk/event 'add '<<ClearCurrent>> (inverse-key-binding 'edit 'clear))
@@ -541,7 +545,35 @@
 	      (inverse-key-binding 'edit 'cut-selection))
     (tk/event 'add '<<SwapSelection>> (inverse-key-binding 'edit 'swap))
     (tk/event 'add '<<RepeatLastSet>>
-	      (inverse-key-binding 'edit 'repeat-last-set)))
+	      (inverse-key-binding 'edit 'repeat-last-set))
+    (tk/event 'add '<<InterpolateLinear>>
+	      (inverse-key-binding 'edit 'interpolate-linear))
+    (tk/event 'add '<<InterpolateCosine>>
+	      (inverse-key-binding 'edit 'interpolate-cosine))
+    (tk/event 'add '<<InvertCurrent>>
+	      (inverse-key-binding 'edit 'invert-current))
+    (tk/event 'add '<<RandomizeCurrent>>
+	      (inverse-key-binding 'edit 'randomize-current))
+    (tk/event 'add '<<ReverseCurrent>>
+	      (inverse-key-binding 'edit 'reverse-current))
+    (tk/event 'add '<<ScaleCurrent>>
+	      (inverse-key-binding 'edit 'scale-current))
+    (tk/event 'add '<<Raise1>>
+	      (inverse-key-binding 'edit 'raise1))
+    (tk/event 'add '<<Lower1>>
+	      (inverse-key-binding 'edit 'lower1))
+    (tk/event 'add '<<RaiseUnit>>
+	      (inverse-key-binding 'edit 'raise-unit))
+    (tk/event 'add '<<LowerUnit>>
+	      (inverse-key-binding 'edit 'lower-unit))
+    (tk/event 'add '<<TransposeNoteUp>>
+	      (inverse-key-binding 'edit 'transpose-note-up))
+    (tk/event 'add '<<TransposeNoteDown>>
+	      (inverse-key-binding 'edit 'transpose-note-down))
+    (tk/event 'add '<<TransposeOctaveUp>>
+	      (inverse-key-binding 'edit 'transpose-octave-up))
+    (tk/event 'add '<<TransposeOctaveDown>>
+	      (inverse-key-binding 'edit 'transpose-octave-down)))
 
   ;;; Reverse the evaluation order for tk bindings, so that global bindings are
   ;;; evaluated before the local bindings of WIDGET. This is necessary to

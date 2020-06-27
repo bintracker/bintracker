@@ -23,7 +23,9 @@
      block-row-remove!
      generate-new-mmod
      derive-single-row-mmod
-     derive-single-pattern-mmod)
+     derive-single-pattern-mmod
+     transpose-notes
+     scale-values)
 
   (import scheme (chicken base) (chicken module) (chicken pretty-print)
 	  (chicken format) (chicken string) (chicken bitwise) (chicken sort)
@@ -612,5 +614,47 @@
 		       (cdr root))))))
       (cons (mmod-mdef mod)
 	    (extract-nodes (mmod-global-node mod)))))
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; Utility Procedures
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Transpose notes in the list of field values by OFFSET.
+  (define (transpose-notes field-values command offset)
+    (let ((notes (sort (hash-table->alist (command-keys command))
+		       (lambda (x y) (< (cdr x) (cdr y))))))
+      (map (lambda (field)
+	     (if (or (null? field) (eqv? 'rest field))
+		 field
+		 (let ((current-idx
+			(list-index (cute eqv? <> field)
+				    (map car notes))))
+		   (if (or (>= (+ current-idx offset) (length notes))
+			   (< (+ current-idx offset) 0))
+		       'rest
+		       (car (list-ref notes (+ current-idx offset)))))))
+	   field-values)))
+
+  (define (scale-values field-values amin amax)
+    (let ((rmin (min amin amax))
+	  (rmax (max amin amax)))
+      (if (every null? field-values)
+	  field-values
+	  (let ((minval (apply min (remove null? field-values)))
+		(maxval (apply max (remove null? field-values))))
+	    (map (lambda (x)
+		   (if (null? x)
+		       '()
+		       (if (= minval maxval)
+			   (cond
+			    ((< x rmin) minval)
+			    ((> x rmax) maxval)
+			    (else x))
+			   (inexact->exact (round (+ (/ (* (- rmax rmin)
+							   (- x minval))
+							(- maxval minval))
+						     rmin))))))
+		 field-values)))))
 
   ) ;; end module mdal

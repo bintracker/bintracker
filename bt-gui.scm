@@ -9,6 +9,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  (chicken sort) (chicken module) (chicken process)
+	  (chicken random)
 	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
 	  matchable
@@ -916,10 +917,15 @@
   			   modeline
   			   segment-id
   			   (string-append
-  			    (or (car (alist-ref (car cb)
-  						(ui-setup buf)))
+  			    (or (car (alist-ref (car cb) (ui-setup buf)))
   				"")
-  			    " " (key-binding->info 'global (car cb))))))
+			    (if (string-null?
+				 (key-binding->info 'global (car cb)))
+				""
+				(string-append
+  				 " ("
+				 (key-binding->info 'global (car cb))
+				 ")"))))))
   	       (tk/bind button '<Leave>
   			(lambda ()
 			  (tk/update 'idletasks)
@@ -2223,25 +2229,6 @@
 	   (field-ids (slot-value buf 'field-ids))
 	   (field-index (lambda (id)
 			  (list-index (cute eqv? <> id) field-ids)))
-	   (scale (lambda (rmin rmax vals)
-		    (if (every null? vals)
-			vals
-			(let ((minval (apply min (remove null? vals)))
-			      (maxval (apply max (remove null? vals))))
-			  (map (lambda (x)
-				 (if (null? x)
-				     '()
-				     (if (= minval maxval)
-					 (cond
-					  ((< x rmin) minval)
-					  ((> x rmax) maxval)
-					  (else x))
-					 (inexact->exact
-					  (round (+ (/ (* (- rmax rmin)
-							  (- x minval))
-						       (- maxval minval))
-						    rmin))))))
-			       vals)))))
 	   (guess-source-command
 	    (lambda (vals)
 	      (find (lambda (cmd)
@@ -2264,9 +2251,9 @@
 					  kv-alist)
 				     (lambda (x y)
 				       (< (cdr x) (cdr y))))))
-		       (scale (apply min (map cdr kv-alist))
-			      (apply max (map cdr kv-alist))
-			      column)))
+		       (scale-values (apply min (map cdr kv-alist))
+				     (apply max (map cdr kv-alist))
+				     column)))
 		column))
 	   ((int uint)
 	    (cond
@@ -2275,26 +2262,31 @@
 	     ((every (lambda (x) (or (null? x) (integer? x)))
 		     column)
 	      (let ((range (or (command-range command)
-			       `(bits->range (command-bits command)))))
+			       `(bits->range
+				 (command-bits command)
+				 (eqv? 'int (command-type command))))))
 		(if (every (lambda (x)
 			     (or (null? x)
 				 (in-range? x range)))
 			   column)
 		    column
-		    (scale (range-min range) (range-max range) column))))
+		    (scale-values (range-min range) (range-max range) column))))
 	     ((every (lambda (x) (or (null? x) (symbol? x)))
 		     column)
 	      (or (and-let* ((range (or (command-range command)
-					(bits->range (command-bits command))))
+					(bits->range
+					 (command-bits command)
+					 (eqv? 'int (command-type command)))))
 			     (source-command (guess-source-command column))
 			     (cmd-keys (command-keys source-command)))
-		    (scale (range-min range)
-			   (range-max range)
-			   (map (lambda (x)
-				  (if (null? x)
-				      x
-				      (hash-table-ref/default cmd-keys x '())))
-				column)))
+		    (scale-values (range-min range)
+				  (range-max range)
+				  (map (lambda (x)
+					 (if (null? x)
+					     x
+					     (hash-table-ref/default
+					      cmd-keys x '())))
+				       column)))
 		  column))
 	     (else column)))
 	   (else column)))
@@ -2642,6 +2634,7 @@
       (edit buf 'current 'set contents)
       (ui-cancel-selection buf)))
 
+  ;;; Swap the current selection with the clipboard contents
   (define-method (ui-swap primary: (buf <ui-basic-block-view>)
 			  #!optional (contents (clipboard)))
     (and-let* ((_ contents)
@@ -2651,6 +2644,281 @@
       (clipboard 'put selected-contents)
       (ui-cancel-selection buf)))
 
+  ;;; Return the current selection normalized, so that start-row <= end-row and
+  ;;; start-field <= end-field.
+  (define-method (ui-normalized-selection primary: (buf <ui-basic-block-view>))
+    (and-let* ((selection (slot-value buf 'selection))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids)))
+	       (fi1 (field-index (cadr selection)))
+	       (fi2 (field-index (cadddr selection))))
+      (list (min (car selection) (caddr selection))
+	    (list-ref field-ids (min fi1 fi2))
+	    (max (car selection) (caddr selection))
+	    (list-ref field-ids (max fi1 fi2)))))
+
+  ;;; Randomize selected fields
+  (define-method (ui-randomize primary: (buf <ui-basic-block-view>))
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids))))
+      (edit buf 'current 'set
+	    (map (lambda (column command)
+		   (case (command-type command)
+		     ((key ukey)
+		      (let ((keys (hash-table-keys (command-keys command))))
+			(map (lambda (field)
+			       (list-ref keys
+					 (pseudo-random-integer (length keys))))
+			     column)))
+		     ((int uint)
+		      (let ((range (or (command-range command)
+				       (bits->range
+					(command-bits command)
+					(eqv? 'int (command-type command))))))
+			(map (lambda (field)
+			       (+ (pseudo-random-integer (- (range-max range)
+							    (range-min range)))
+				  (range-min range)
+				  1))
+			     column)))
+		     ((trigger)
+		      (map (lambda (field)
+			     (if (zero? (pseudo-random-integer 2)) '() #t))
+			   column))
+		     (else column)))
+		 selected-contents
+		 (map (cute mdef-get-inode-source-command
+			<> (ui-metastate buf 'mdef))
+		      (drop (take field-ids
+				  (+ 1 (field-index (cadddr selection))))
+			    (field-index (cadr selection))))))
+      (ui-blockview-tag-selection buf)))
+
+  ;;; Transpose selected notes.
+  (define-method (ui-transpose primary: (buf <ui-basic-block-view>)
+			       #!optional (offset 1))
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids))))
+      (edit buf 'current 'set
+	    (map (lambda (column command)
+		   (if (memv 'is-note (command-flags command))
+		       (transpose-notes column command offset)
+		       column))
+		 selected-contents
+		 (map (cute mdef-get-inode-source-command
+			<> (ui-metastate buf 'mdef))
+		      (drop (take field-ids
+				  (+ 1 (field-index (cadddr selection))))
+			    (field-index (cadr selection))))))
+      (ui-blockview-tag-selection buf)))
+
+  (define-method (ui-shift primary: (buf <ui-basic-block-view>)
+			   #!optional (direction 'up) (by 1))
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids))))
+      (edit buf 'current 'set
+	    (map (lambda (column command)
+		   (if (memv 'is-note (command-flags command))
+		       (let ((amount (if (eqv? by 'unit) 12 by)))
+			 (transpose-notes column
+					  command
+					  (if (eqv? direction 'up)
+					      amount
+					      (- amount))))
+		       (if (memv (command-type command) '(int uint))
+			   (let ((amount (if (eqv? by 'unit)
+					     (inexact->exact
+					      (round
+					       (expt 2 (/ (command-bits command)
+							  2))))
+					     by)))
+			     (map (lambda (field)
+				    (if (null? field)
+					'()
+					(+ field (if (eqv? direction 'up)
+						     amount
+						     (- amount)))))
+				  column))
+			   column)))
+		 selected-contents
+		 (map (cute mdef-get-inode-source-command
+			<> (ui-metastate buf 'mdef))
+		      (drop (take field-ids
+				  (+ 1 (field-index (cadddr selection))))
+			    (field-index (cadr selection))))))
+      (ui-blockview-tag-selection buf)))
+
+  ;;; Reverse the current selection.
+  (define-method (ui-reverse primary: (buf <ui-basic-block-view>))
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf)))
+      (edit buf 'current 'set (map reverse selected-contents))
+      (ui-blockview-tag-selection buf)))
+
+  ;;; Interpolate selected block field values.
+  (define-method (ui-interpolate primary: (buf <ui-basic-block-view>)
+				 #!optional (interpolation-type 'linear))
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids))))
+      (letrec ((interpolate-values
+		(lambda (vals)
+		  (cond
+		   ((< (length (remove null? vals)) 2) vals)
+		   ((null? (car vals))
+		    (append (take-while null? vals)
+			    (interpolate-values (drop-while null? vals))))
+		   (else
+		    (case interpolation-type
+		      ((linear)
+		       (let ((start-val (car vals))
+			     (end-val (car (drop-while null? (cdr vals))))
+			     (len (+ 1 (length (take-while null? (cdr vals))))))
+			 (if (< len 2)
+			     (cons start-val (interpolate-values (cdr vals)))
+			     (append
+			      (cons start-val
+				    (map (o inexact->exact round)
+					 (iota (sub1 len)
+					       (+ start-val
+						  (/ (- end-val start-val) len))
+					       (/ (- end-val start-val) len))))
+			      (interpolate-values (drop vals len))))))
+		      ((cosine)
+		       (let* ((start-val (car vals))
+			      (end-val (car (drop-while null? (cdr vals))))
+			      (len (+ 1 (length (take-while null? (cdr vals)))))
+			      (cosine-interpolate
+			       (lambda (mu)
+				 (let ((mu2 (/ (- 1 (cos (* mu 3.1415926535)))
+					       2)))
+				   (inexact->exact
+				    (round (+ (* start-val (- 1 mu2))
+					      (* end-val mu2))))))))
+			 (if (< len 2)
+			     (cons start-val (interpolate-values (cdr vals)))
+			     (append
+			      (cons start-val
+				    (map cosine-interpolate
+					 (iota (sub1 len) 0 (/ 1 len))))
+			      (interpolate-values (drop vals len))))))
+		      ;; spline, trigonometric
+		      ((polynominal) vals)
+		      (else (error 'ui-interpolate
+				   (string-append
+				    "Unknown interpolation type "
+				    (->string interpolation-type))))))))))
+	(edit buf 'current 'set
+	      (map (lambda (column command)
+		     (case (command-type command)
+		       ((key ukey)
+			(let* ((keys (command-keys command))
+			       (kv-alist (hash-table->alist keys)))
+			  (map (lambda (x)
+				 (if (null? x)
+				     '()
+				     (caar
+				      (sort (map (lambda (kv)
+						   `(,(car kv)
+						     . ,(abs (- (cdr kv) x))))
+						 kv-alist)
+					    (lambda (x y)
+					      (< (cdr x) (cdr y)))))))
+			       (interpolate-values
+				(map (lambda (field)
+				       (if (null? field)
+					   '()
+					   (hash-table-ref keys field)))
+				     column)))))
+		       ((int uint)
+			(interpolate-values column))
+		       (else column)))
+		   selected-contents
+		   (map (cute mdef-get-inode-source-command
+			  <> (ui-metastate buf 'mdef))
+			(drop (take field-ids
+				    (+ 1 (field-index (cadddr selection))))
+			      (field-index (cadr selection)))))))
+      (ui-blockview-tag-selection buf)))
+
+  ;;; Invert selected numeric values
+  (define-method (ui-invert primary: (buf <ui-basic-block-view>))
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids))))
+      (edit buf 'current 'set
+	    (map (lambda (column command)
+		   (if (memv (command-type command) '(int uint))
+		       (let ((range (or (command-range command)
+					(bits->range
+					 (command-bits command)
+					 (eqv? 'int (command-type command))))))
+			 (map (lambda (field)
+				(if (null? field)
+				    '()
+				    (+ (- (range-max range) field)
+				       (range-min range))))
+			      column))
+		       column))
+		 selected-contents
+		 (map (cute mdef-get-inode-source-command
+			<> (ui-metastate buf 'mdef))
+		      (drop (take field-ids
+				  (+ 1 (field-index (cadddr selection))))
+			    (field-index (cadr selection))))))
+      (ui-blockview-tag-selection buf)))
+
+  (define-method (ui-scale primary: (buf <ui-basic-block-view>)
+			   rmin rmax)
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids))))
+      (edit buf 'current 'set
+	    (map (lambda (column command)
+		   (if (memv (command-type command) '(int uint))
+		       (scale-values column rmin rmax)
+		       column))
+		 selected-contents
+		 (map (cute mdef-get-inode-source-command
+			<> (ui-metastate buf 'mdef))
+		      (drop (take field-ids
+				  (+ 1 (field-index (cadddr selection))))
+			    (field-index (cadr selection))))))
+      (ui-blockview-tag-selection buf)))
+
+  (define-method (ui-make-scaling-dialog primary: (buf <ui-basic-block-view>))
+    (let ((d (make-dialogue)))
+      (d 'show)
+      (d 'add 'widget 'lbl1 '(label text: "min:"))
+      (d 'add 'widget 'minsel '(entry))
+      (d 'add 'widget 'lbl2 '(label text: "max:"))
+      (d 'add 'widget 'maxsel '(entry))
+      ((d 'ref 'minsel) 'insert 'end "0")
+      ((d 'ref 'maxsel) 'insert 'end "0")
+      (d 'add 'finalizer
+	 (lambda a
+	   (let ((mmin (string->number ((d 'ref 'minsel) 'get)))
+		 (mmax (string->number ((d 'ref 'maxsel) 'get))))
+	     (and (integer? mmin)
+		  (integer? mmax)
+		  (ui-scale buf mmin mmax)))))))
+
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
     (let ((grid (slot-value buf 'block-content)))
@@ -2659,8 +2927,9 @@
   	 (tk/bind grid (car event-spec)
   		  (if (pair? (cdr event-spec))
   		      `(,(lambda (keysym)
-  			   (tk-with-lock (lambda ()
-  					   ((cadr event-spec) keysym))))
+			   (tk-eval "tk busy .")
+			   ((cadr event-spec) keysym)
+			   (tk-eval "tk busy forget ."))
   			,(caddr event-spec))
   		      (lambda () (tk-with-lock (cdr event-spec))))))
        `((<<BlockMotion>> ,(lambda (keysym)
@@ -2671,6 +2940,25 @@
   	 (<<BlockSelect>> ,(lambda (keysym)
   			     (ui-select buf keysym))
   			  %K)
+	 (<<SelectCurrentBlocks>>
+	  .
+	  ,(lambda ()
+	     (let ((range (ui-blockview-get-active-zone buf)))
+	       (set! (ui-selection buf)
+		 (list (car range)
+		       (car (slot-value buf 'field-ids))
+		       (cadr range)
+		       (last (slot-value buf 'field-ids))))
+	       (ui-blockview-tag-selection buf))))
+	 (<<SelectAllBlocks>>
+	  .
+	  ,(lambda ()
+	     (set! (ui-selection buf)
+	       (list 0
+		     (car (slot-value buf 'field-ids))
+		     (sub1 (ui-blockview-get-total-length buf))
+		     (last (slot-value buf 'field-ids))))
+	     (ui-blockview-tag-selection buf)))
   	 (<<BVCopy>> . ,(lambda () (ui-copy buf)))
   	 (<<BVPaste>> . ,(lambda () (ui-paste buf)))
   	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
@@ -2701,11 +2989,26 @@
 	     (when (clipboard)
 	       (edit buf 'current 'insert (clipboard)))))
 	 (<<CutSelection>> . ,(lambda () (edit buf 'current 'cut)))
+	 (<<SwapSelection>> . ,(lambda () (ui-swap buf)))
   	 (<<BlockEntry>> ,(lambda (keysym)
   			    (ui-blockview-dispatch-entry-event buf keysym))
   			 %K)
 	 (<<RepeatLastSet>> . ,(lambda ()
-				 (ui-blockview-repeat-last-set buf)))))))
+				 (ui-blockview-repeat-last-set buf)))
+	 (<<InterpolateLinear>> . ,(lambda () (ui-interpolate buf)))
+	 (<<InterpolateCosine>> . ,(lambda () (ui-interpolate buf 'cosine)))
+	 (<<InvertCurrent>> . ,(lambda () (ui-invert buf)))
+	 (<<RandomizeCurrent>> . ,(lambda () (ui-randomize buf)))
+	 (<<ReverseCurrent>> . ,(lambda () (ui-reverse buf)))
+	 (<<TransposeNoteUp>> . ,(lambda () (ui-transpose buf 1)))
+	 (<<TransposeNoteDown>> . ,(lambda () (ui-transpose buf -1)))
+	 (<<TransposeOctaveUp>> . ,(lambda () (ui-transpose buf 12)))
+	 (<<TransposeOctaveDown>> . ,(lambda () (ui-transpose buf -12)))
+	 (<<Raise1>> . ,(lambda () (ui-shift buf 'up 1)))
+	 (<<Lower1>> . ,(lambda () (ui-shift buf 'down 1)))
+	 (<<RaiseUnit>> . ,(lambda () (ui-shift buf 'up 'unit)))
+	 (<<LowerUnit>> . ,(lambda () (ui-shift buf 'down 'unit)))
+	 (<<ScaleCurrent>> . ,(lambda () (ui-make-scaling-dialog buf)))))))
 
   ;;; A class representing the display of an MDAL group node's blocks, minus the
   ;;; order block. Pattern display is implemented using this class.
@@ -4207,6 +4510,80 @@
 	(else (error 'current
 		     (string-append "Unknown element " (->string what)))))))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Utility procedures
+  ;; ---------------------------------------------------------------------------
+
+  (define (do-current what . args)
+    (and-let* ((mv (current 'module-view))
+	       (buf (ui-module-view-current-zone mv))
+	       (_ (or (symbol-contains (slot-value buf 'ui-zone)
+				       "block-view")
+		      (symbol-contains (slot-value buf 'ui-zone)
+				       "order-view"))))
+      (apply what (cons buf args))))
+
+  (define (shift-current direction by)
+    (do-current ui-shift direction by))
+
+  (define (transpose-current offset)
+    (do-current ui-transpose offset))
+
+  (define (transpose-note-up)
+    (transpose-current +1))
+
+  (define (transpose-note-down)
+    (transpose-current -1))
+
+  (define (transpose-octave-up)
+    (transpose-current 12))
+
+  (define (transpose-octave-down)
+    (transpose-current -12))
+
+  (define (raise-current)
+    (shift-current 'up 1))
+
+  (define (raise-by-unit-current)
+    (shift-current 'up 'unit))
+
+  (define (lower-current)
+    (shift-current 'down 1))
+
+  (define (lower-by-unit-current)
+    (shift-current 'down 'unit))
+
+  (define (randomize-current)
+    (do-current ui-randomize))
+
+  (define (invert-current)
+    (do-current ui-invert))
+
+  (define (reverse-current)
+    (do-current ui-reverse))
+
+  (define (interpolate-linear)
+    (do-current ui-interpolate 'linear))
+
+  (define (interpolate-cosine)
+    (do-current ui-interpolate 'cosine))
+
+  (define (scale-current)
+    (do-current ui-make-scaling-dialog))
+
+  ;; (define (interpolate-polynomial)
+  ;;   '())
+
+  ;; ;; TODO this is maybe too complex, move to a plugin?
+  ;; ;; No, take start and end points and use rest as reference points
+  ;; ;; x dim = time, y dim = val
+  ;; ;; https://www.desmos.com/calculator/xlpbe9bgll ??
+  ;; ;; https://pomax.github.io/bezierinfo/
+  ;; ;; "nth-order bezier curve"
+  ;; ;; Correct spelling is bézier
+  ;; (define (interpolate-bezier)
+  ;;   '())
 
   ;; ---------------------------------------------------------------------------
   ;;; Screen Reader/Text-to-Speech API
