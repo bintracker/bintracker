@@ -521,7 +521,9 @@
 			    '(<Key-1> <Key-2> <Key-3> <Key-4> <Key-5>
 				      <Key-6> <Key-7> <Key-8> <Key-9>
 				      <Key-0> <Key-a> <Key-b> <Key-c>
-				      <Key-d> <Key-e> <Key-f>)))
+				      <Key-d> <Key-e> <Key-f>
+				      <plus> <minus> <asterisk>
+				      <slash> <percent> <ampersand>)))
     (tk/event 'add '<<BlockMotion>>
 	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
     (tk/event 'add '<<BlockSelect>>

@@ -120,11 +120,12 @@
 		   (make-command
 		    type: 'modifier
 		    bits: (command-bits source-command)
-		    default: '+0
+		    default: '0+
 		    reference-to: source-id
-		    flags: (filter (cute eqv? <> 'repeat-last-set)
+		    flags: (filter (cute eqv? <> 'use-last-set)
 				   (command-flags source-command))
-		    range: (command-range source-command)
+		    range: (or (command-range source-command)
+			       (bits->range (command-bits source-command) #f))
 		    description: (string-append "Modifier for "
 						(symbol->string source-id))))))
 	 (filter (lambda (x)

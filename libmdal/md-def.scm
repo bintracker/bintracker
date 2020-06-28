@@ -191,12 +191,21 @@
 		((trigger (and field-value (boolean? field-value))))
 		((modifier)
 		 (and (symbol? field-value)
-		      (memq (car (string->list (symbol->string field-value)))
-			    '(+ - * / % ^ & v))
-		      (integer? (string->number
-				 (string-drop (symbol->string field-value) 1)))
-		      (in-range? (string->number
-				  (string-drop (symbol->string field-value) 1))
+		      (memq (last (string->list (symbol->string field-value)))
+			    '(#\+ #\- #\* #\/ #\% #\x #\& #\v))
+		      (integer? (string->number (string-drop-right
+						 (symbol->string field-value)
+						 1)))
+		      (not (and (memq (last (string->list
+					    (symbol->string field-value)))
+				      '(#\/ #\%))
+				(zero? (string->number
+					(string-drop-right
+					 (symbol->string field-value)
+					 1)))))
+		      (in-range? (string->number (string-drop-right
+						  (symbol->string field-value)
+						  1))
 				 (command-range command-config))))
 		((reference) (and (integer? field-value)
 				  (not (negative? field-value))))

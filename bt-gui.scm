@@ -350,12 +350,51 @@
   				(string-pad valstr (+ 1 digit-idx) #\0)
   				valstr))))
   		 (new-digit-char (string-ref (->string keysym) 0)))
-  	     (string->number (list->string
-  			      (reverse (append (take orig-digits digit-idx)
-  					       (cons new-digit-char
-  						     (drop orig-digits
-  							   (+ 1 digit-idx))))))
+  	     (string->number ((o list->string reverse)
+  			      (append (take orig-digits digit-idx)
+  				      (cons new-digit-char
+  					    (drop orig-digits
+						  (+ 1 digit-idx)))))
   			     radix)))))
+
+  ;;; Takes the Tk keypress symbol KEYSYM and interprets it as a digit taking
+  ;;; the *nth* postion in the modifier command value VAL, using a radix
+  ;;; corresponding to the result of `(settings 'number-base)` for the integer
+  ;;; part. DIGIT-IDX is the digit position index (right to left) or -1 for
+  ;;; the prefix part.
+  (define (replace-modifier-digit val digit-idx keysym)
+    (if (= -1 digit-idx)
+	(and-let* ((replacement (alist-ref keysym '((plus . "+")
+						    (minus . "-")
+						    (asterisk . "*")
+						    (slash . "/")
+						    (percent . "%")
+						    (x . "x")
+						    (ampersand . "&")
+						    (v . "v")))))
+	  (string->symbol (string-append (string-drop-right (symbol->string val)
+							    1)
+					 replacement)))
+	(let* ((radix (settings 'number-base))
+	       (valstr (string-drop-right (symbol->string val) 1)))
+	  (and (string->number (->string keysym) radix)
+  	       (let ((orig-digits
+  		      ((o reverse string->list)
+		       (if (< (string-length valstr) (+ 1 digit-idx))
+  			   (string-pad valstr (+ 1 digit-idx) #\0)
+  			   valstr)))
+  		     (new-digit-char (string-ref (->string keysym) 0)))
+		 (string->symbol
+		  (string-append
+		   (number->string
+  		    (string->number
+		     ((o list->string reverse)
+  		      (append (take orig-digits digit-idx)
+  			      (cons new-digit-char
+  				    (drop orig-digits (+ 1 digit-idx)))))
+  		     radix)
+		    radix)
+		   (string-take-right (symbol->string val) 1))))))))
 
   ;;; Transform an ifield value from MDAL format to tracker display format.
   ;;; Replaces empty values with dots, changes numbers depending on number
@@ -368,7 +407,14 @@
   	    (else (case (command-type command-config)
   		    ((int uint reference)
   		     (string-pad (number->string val (settings 'number-base))
-  				 display-size #\0))
+  				 display-size
+				 #\0))
+		    ((modifier)
+		     (let ((symstr (symbol->string val)))
+		       (string-append (string-take-right symstr 1)
+				      (string-pad (string-drop-right symstr 1)
+						  (sub1 display-size)
+						  #\0))))
   		    ((key ukey) (if (memq 'is-note
   					  (command-flags command-config))
   				    (normalize-note-name val)
@@ -2485,15 +2531,27 @@
   ;;; field value from the Tk key symbol KEYSYM, assuming that the cursor is
   ;;; currently positioned on the field digit being edited.
   (define-method (ui-blockview-keysym->field-value
-  		  primary: (buf <ui-basic-block-view>) keysym)
-    (let* ((field-id (ui-blockview-get-current-field-id buf))
-  	   (field-size (field-id->cursor-digits field-id
-  						(ui-metastate buf 'mdef)))
-  	   (current-digit-idx (ui-blockview-get-current-digit-index buf))
-  	   (current-val (or (ui-blockview-get-current-field-value buf)
-			    (command-default
-			     (ui-blockview-get-current-field-command buf))))
-  	   (new-val (replace-digit current-val current-digit-idx keysym)))
+  		  primary: (buf <ui-basic-block-view>) keysym is-modifier)
+    (and-let* ((field-id (ui-blockview-get-current-field-id buf))
+  	       (field-size
+		(field-id->cursor-digits field-id (ui-metastate buf 'mdef)))
+  	       (current-digit-idx (ui-blockview-get-current-digit-index buf))
+	       (field-command (ui-blockview-get-current-field-command buf))
+	       (field-idx (ui-blockview-get-current-field-index buf))
+  	       (current-val
+		(or (ui-blockview-get-current-field-value buf)
+		    (find (lambda (v) (and v (not (null? v))))
+			  (map (cute list-ref <> field-idx)
+			       (take (concatenate (slot-value buf 'item-cache))
+				     (ui-blockview-get-current-row buf))))
+		    (command-default field-command)))
+  	       (new-val
+		((if is-modifier replace-modifier-digit replace-digit)
+		 current-val
+		 (if (and is-modifier (= field-size (+ 1 current-digit-idx)))
+		     -1
+		     current-digit-idx)
+		 keysym)))
       (or (and new-val (validate-field-value
   			(ui-metastate buf 'mdef) field-id new-val #t))
   	  (begin (warning "invalid field value")
@@ -2503,8 +2561,15 @@
   ;;; field that represents a numeric (int/uint/reference) command.
   (define-method (ui-blockview-enter-numeric
   		  primary: (buf <ui-basic-block-view>) keysym)
-    (let ((new-val (ui-blockview-keysym->field-value buf keysym)))
-      (when new-val (ui-blockview-edit-cell buf new-val))))
+    (and-let* ((new-val (ui-blockview-keysym->field-value buf keysym #f)))
+      (ui-blockview-edit-cell buf new-val)))
+
+  ;;; Perform an edit action at cursor, assuming that the cursor points to a
+  ;;; field that represents a modifier command.
+  (define-method (ui-blockview-enter-modifier
+		  primary: (buf <ui-basic-block-view>) keysym)
+    (and-let* ((new-val (ui-blockview-keysym->field-value buf keysym #t)))
+      (ui-blockview-edit-cell buf new-val)))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
   ;;; field that represents a string command.
@@ -2526,7 +2591,8 @@
   	      ((trigger) (ui-blockview-enter-trigger buf))
   	      ((int uint reference) (ui-blockview-enter-numeric buf keysym))
   	      ((key ukey) (ui-blockview-enter-key buf keysym))
-  	      ((string) (ui-blockview-enter-string buf keysym)))))))
+  	      ((string) (ui-blockview-enter-string buf keysym))
+	      ((modifier) (ui-blockview-enter-modifier buf keysym)))))))
 
   ;;; Update content tags so current selection is highlighted.
   (define-method (ui-blockview-tag-selection
