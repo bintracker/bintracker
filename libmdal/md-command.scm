@@ -21,6 +21,7 @@
      command-has-flags?
      display-command
      make-default-commands
+     make-modifier-commands
      eval-command)
 
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
@@ -79,7 +80,7 @@
           (filter (lambda (x) (string-contains x "="))
                   (call-with-input-file filepath read-lines)))))
 
-  ;;; construct an alist containing the default commands AUTHOR, TITLE, and
+  ;;; Construct an alist containing the default commands AUTHOR, TITLE, and
   ;;; LICENSE
   (define (make-default-commands)
     `((AUTHOR . ,(make-command type: 'string default: "unknown"))
@@ -90,19 +91,45 @@
   (define (check-command-spec id type bits default reference-to keys range)
     (unless (and id type (or default (eqv? type 'trigger)))
       (raise-local 'missing-command-specifier))
-    (when (and (memv type '(int uint key ukey reference))
+    (when (and (memv type '(int uint key ukey reference modifier))
 	       (not bits))
       (raise-local 'missing-command-bits))
-    (unless (memv type '(int uint key ukey reference trigger string))
+    (unless (memv type '(int uint key ukey reference trigger string modifier))
       (raise-local 'unknown-command-type type))
     (when (and (memv type '(key ukey))
 	       (not keys))
       (raise-local 'missing-command-keys))
-    (when (and (eqv? type 'reference)
+    (when (and (memv type '(reference modifier))
 	       (not reference-to))
       (raise-local 'missing-command-reference-to))
-    (when (and range (not (memv type '(int uint))))
+    (when (and range (not (memv type '(int uint modifier))))
       (raise-local 'nonnumeric-command-range)))
+
+  ;;; Construct  modifier commands for the alist of id, command pairs, as
+  ;;; required by the `'enable-modifiers` flag.
+  (define (make-modifier-commands base-commands)
+    (map (lambda (cmd-spec)
+	   (let ((source-id (car cmd-spec))
+		 (source-command (cdr cmd-spec)))
+	     (unless (memv (command-type source-command) '(key ukey))
+	       (error 'make-modifier-command
+		      (string-append
+		       "Cannot create modifer for command of type "
+		       (symbol->string (command-type source-command)))))
+	     (cons (symbol-append 'MOD_ source-id)
+		   (make-command
+		    type: 'modifier
+		    bits: (command-bits source-command)
+		    default: '+0
+		    reference-to: source-id
+		    flags: (filter (cute eqv? <> 'repeat-last-set)
+				   (command-flags source-command))
+		    range: (command-range source-command)
+		    description: (string-append "Modifier for "
+						(symbol->string source-id))))))
+	 (filter (lambda (x)
+		   (command-has-flag? (cdr x) 'enable-modifiers))
+		 base-commands)))
 
   ;;; Evaluate a MDCONF command definition expression. Returns a `command`
   ;;; object.

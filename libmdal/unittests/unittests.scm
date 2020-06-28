@@ -111,7 +111,7 @@
 	(hash-table-exists? (mdef-commands my-cfg) 'R_CH1)
 	(hash-table-exists? (mdef-commands my-cfg) 'R_CH2)))
 
- (test "all commands created" 10
+ (test "all commands created" 11
        (hash-table-size (mdef-commands my-cfg))))
 
 
@@ -294,12 +294,12 @@
  "MD-Module/Accessors"
 
  (test "node-path to inode instance"
-       '(1 #f (e2))
+       '(1 #f (e2 ()))
        ((node-path "0/PATTERNS/0/CH2/1") (mmod-global-node my-mod)))
 
  (test "node-path to subnode"
-       '(CH2 (0 #f (a2))
-	     (1 #f (e2)))
+       '(CH2 (0 #f (a2 ()))
+	     (1 #f (e2 ())))
        ((node-path "0/PATTERNS/0/CH2") (mmod-global-node my-mod)))
 
  ;; TODO move into subgroup "high level accessors"
@@ -331,7 +331,7 @@
  				  (mmod-global-node my-mod))))
 
   (test "mod-get-row-values"
-        '(#t c4 #f)
+        '(#t c4 #f #f #f)
         (mod-get-row-values ((node-path "0/PATTERNS/0")
  			     (mmod-global-node my-mod))
  			    '(0 0 0)
@@ -339,22 +339,22 @@
 			    my-cfg))
 
   (test "mod-get-block-values"
-        '((#t a3 a2)
-  	 (#f #f #f)
-  	 (#f rest #f)
-  	 (#f #f #f)
-  	 (#t c4 #f)
-  	 (#f #f #f)
-  	 (#f rest #f)
-  	 (#f #f #f)
-  	 (#t e4 #f)
-  	 (#f #f #f)
-  	 (#f rest #f)
-  	 (#f #f #f)
-  	 (#t g4 #f)
-  	 (#f #f #f)
-  	 (#f rest #f)
-  	 (#f #f #f))
+        '((#t a3 #f a2 #f)
+  	 (#f #f #f #f #f)
+  	 (#f rest #f #f #f)
+  	 (#f #f #f #f #f)
+  	 (#t c4 #f #f #f)
+  	 (#f #f #f #f #f)
+  	 (#f rest #f #f #f)
+  	 (#f #f #f #f #f)
+  	 (#t e4 #f #f #f)
+  	 (#f #f #f #f #f)
+  	 (#f rest #f #f #f)
+  	 (#f #f #f #f #f)
+  	 (#t g4 #f #f #f)
+  	 (#f #f #f #f #f)
+  	 (#f rest #f #f #f)
+  	 (#f #f #f #f #f))
         (mod-get-block-values ((node-path "0/PATTERNS/0")
   			       (mmod-global-node my-mod))
   			      '(16 0 0 0)
@@ -374,8 +374,8 @@
 			 (PATTERNS
 			  (0 #f
 			     (DRUMS ,(append '(0 #f) (make-list 16 '(()))))
-			     (CH1 ,(append '(0 #f) (make-list 16 '(()))))
-			     (CH2 ,(append '(0 #f) (make-list 16 '(()))))
+			     (CH1 ,(append '(0 #f) (make-list 16 '(() ()))))
+			     (CH2 ,(append '(0 #f) (make-list 16 '(() ()))))
 			     (PATTERNS_ORDER (0 #f (16 0 0 0))))))))
        (generate-new-mmod my-cfg 16))
 
@@ -387,8 +387,8 @@
 		   (BPM (0 #f . 120))
 		   (PATTERNS (0 #f
 				(DRUMS (0 #f (#t)))
-				(CH1 (0 #f (a3)))
-				(CH2 (0 #f (a2)))
+				(CH1 (0 #f (a3 ())))
+				(CH2 (0 #f (a2 ())))
 				(PATTERNS_ORDER (0 #f (1 0 0 0)))))))
        (mmod-global-node (derive-single-row-mmod my-mod 'PATTERNS 0 0)))
  )
@@ -471,14 +471,30 @@
 		     (1 #f (#t) (()) (()) (()) (#t) (()) (()) (()))
 		     (2 #f (#t) (()) (()) (()) (#t) (()) (()) (()))
 		     (3 #f (#t) (()) (()) (()) (#t) (()) (()) (())))
-	   (CH1 (0 #f (a3) (()) (rest) (()) (c4) (()) (rest) (()))
-		(1 #f (e4) (()) (rest) (()) (g4) (()) (rest) (()))
-		(2 #f (a3) (()) (rest) (()) (c4) (()) (rest) (()))
-		(3 #f (e4) (()) (rest) (()) (g4) (()) (rest) (())))
-	   (CH2 (0 #f (a2) (()) (()) (()) (()) (()) (()) (()))
-		(1 #f (a2) (()) (()) (()) (()) (()) (()) (()))
-		(2 #f (e2) (()) (()) (()) (()) (()) (()) (()))
-		(3 #f (e2) (()) (()) (()) (()) (()) (()) (())))
+	   (CH1 (0 #f
+		   (a3 ()) (() ()) (rest ()) (() ())
+		   (c4 ()) (() ()) (rest ()) (() ()))
+		(1 #f
+		   (e4 ()) (() ()) (rest ()) (() ())
+		   (g4 ()) (() ()) (rest ()) (() ()))
+		(2 #f
+		   (a3 ()) (() ()) (rest ()) (() ())
+		   (c4 ()) (() ()) (rest ()) (() ()))
+		(3 #f
+		   (e4 ()) (() ()) (rest ()) (() ())
+		   (g4 ()) (() ()) (rest ()) (() ())))
+	   (CH2 (0 #f
+		   (a2 ()) (() ()) (() ()) (() ())
+		   (() ()) (() ()) (() ()) (() ()))
+		(1 #f
+		   (a2 ()) (() ()) (() ()) (() ())
+		   (() ()) (() ()) (() ()) (() ()))
+		(2 #f
+		   (e2 ()) (() ()) (() ()) (() ())
+		   (() ()) (() ()) (() ()) (() ()))
+		(3 #f
+		   (e2 ()) (() ()) (() ()) (() ())
+		   (() ()) (() ()) (() ()) (() ())))
 	   (PATTERNS_ORDER (0 #f
 			      (8 0 0 0)
 			      (8 1 1 1)
@@ -526,7 +542,7 @@
  "Export & Compilation"
 
  (test "mmod->file"
-       "c26d2f6e4ece6686eb45ef899d07d9c0"
+       "8891c1df08cc3d6b02b57a4cde1174f4"
        (begin
 	 (mmod->file my-mod "test.mmod")
 	 (file-md5sum "test.mmod")))

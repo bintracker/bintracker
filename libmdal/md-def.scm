@@ -190,9 +190,13 @@
 		       field-value #f)))
 		((trigger (and field-value (boolean? field-value))))
 		((modifier)
-		 (and (pair? field-value)
-		      (memv (car field-value) '(+ - * / % ^ & v))
-		      (in-range? field-value
+		 (and (symbol? field-value)
+		      (memq (car (string->list (symbol->string field-value)))
+			    '(+ - * / % ^ & v))
+		      (integer? (string->number
+				 (string-drop (symbol->string field-value) 1)))
+		      (in-range? (string->number
+				  (string-drop (symbol->string field-value) 1))
 				 (command-range command-config))))
 		((reference) (and (integer? field-value)
 				  (not (negative? field-value))))
@@ -439,25 +443,41 @@
 		(append '((AUTHOR) (TITLE) (LICENSE))
 			(get-subnodes-itree global-nodes)))))
 
+  ;;; Insert required modifier node ids into ITREE, based on the list of
+  ;;; MODIFIER-NODE-IDS.
+  (define (itree-add-modifier-nodes itree modifier-node-ids)
+    (cond
+     ((null? itree) '())
+     ((symbol? (car itree))
+      (cons (car itree)
+	    (itree-add-modifier-nodes (cdr itree) modifier-node-ids)))
+     ((and (= 1 (length (car itree))) (symbol? (caar itree)))
+      (if (memv (caar itree) modifier-node-ids)
+	  (append (list (car itree)
+			(list (symbol-append 'MOD_ (caar itree))))
+		  (itree-add-modifier-nodes (cdr itree) modifier-node-ids))
+	  (cons (car itree)
+		(itree-add-modifier-nodes (cdr itree) modifier-node-ids))))
+     (else (cons (itree-add-modifier-nodes (car itree) modifier-node-ids)
+		 (itree-add-modifier-nodes (cdr itree) modifier-node-ids)))))
+
   ;;; Evaluate the list of command configuration expressions. The resulting
-  ;;; hash table of commands also contains the required auto-generated order
-  ;;; and default commands. An itree (nested list of inode IDs) must be passed
-  ;;; in for this purpose.
-  (define (get-mdef-commands commands itree path-prefix target)
-    (hash-table-merge
-     (alist->hash-table
+  ;;; alit of commands does contain the required default commands, but not
+  ;;; the auto-generated order commands.
+  (define (get-mdef-base-commands commands path-prefix target)
+    (let ((base-commands
+	   (map (lambda (cmd)
+		  (if (and (pair? cmd) (eqv? 'command (car cmd)))
+		      (apply eval-command
+			     (append (list path-prefix
+					   (target-platform-clock-speed
+					    target))
+				     (cdr cmd)))
+		      (raise-local 'not-command cmd)))
+		commands)))
       (append (make-default-commands)
-	      (map (lambda (cmd)
-		     (if (and (pair? cmd)
-			      (eqv? 'command (car cmd)))
-			 (apply eval-command
-				(append (list path-prefix
-					      (target-platform-clock-speed
-					       target))
-					(cdr cmd)))
-			 (raise-local 'not-command cmd)))
-		   commands)))
-     (create-order-commands itree)))
+	      base-commands
+	      (make-modifier-commands base-commands))))
 
   ;;; Generate the input order node configurations for the given GROUP-ID
   ;;; and the list of subnode configurations.
@@ -515,30 +535,42 @@
   ;;; Evaluate an input node config expression. PARENT-TYPE is the type of
   ;;; the parent node. Returns an alist of the resulting inode config and its
   ;;; subnode configs.
-  (define (eval-inode-config node-expr parent-type)
+  (define (eval-inode-config node-expr commands parent-type)
     (let ((eval-node
 	   (lambda (type #!key id from min-instances max-instances
 			 instances flags nodes)
 	     (check-inode-spec type id from nodes parent-type)
-	     (let* ((subnodes (if nodes (get-mdef-inodes nodes type) '()))
-		    (order-nodes (if (and (pair? flags) (memq 'ordered flags))
-				     (make-order-config-nodes id subnodes)
-				     '())))
-	       (cons (cons (if id id from)
+	     (let* ((subnodes
+		     (if nodes (get-mdef-inodes nodes commands type) '()))
+		    (order-nodes
+		     (if (and (list? flags) (memq 'ordered flags))
+			 (make-order-config-nodes id subnodes)
+			 '()))
+		    (modifier-node
+		     (and-let* ((_ (eqv? 'field type))
+				(command (alist-ref from commands))
+				(_ (command-has-flag? command
+						      'enable-modifiers)))
+		       `((,(symbol-append 'MOD_ (or id from))
+			  .
+			  ,(make-inode-config
+			    type: 'field
+			    cmd-id: (symbol-append 'MOD_ from)))))))
+	       (cons (cons (or id from)
 			   (make-inode-config
 			    type: type
 			    instance-range: (get-inode-range
 					     type min-instances max-instances
 					     instances parent-type)
 			    cmd-id: from))
-		     (append subnodes order-nodes))))))
+		     (or modifier-node (append subnodes order-nodes)))))))
       (apply eval-node node-expr)))
 
   ;;; Evaluate an input "clone" config expression. Returns an alist of all
   ;;; cloned inode configs and their subnode configs.
-  (define (clone-inode-config clone-expr parent-type)
+  (define (clone-inode-config clone-expr commands parent-type)
     (let ((amount (second clone-expr))
-	  (nodes (eval-inode-config (third clone-expr) parent-type)))
+	  (nodes (eval-inode-config (third clone-expr) commands parent-type)))
       (concatenate (map (lambda (node)
 			  (map (lambda (clone instance)
 				 (cons (symbol-append (car clone)
@@ -552,15 +584,17 @@
   ;;; Evaluate the input node configuration expressions. Returns an alist of
   ;;; input nodes. The caller will probably want to convert the result into a
   ;;; hash table.
-  (define (get-mdef-inodes inode-configs #!optional parent-type)
+  (define (get-mdef-inodes inode-configs commands #!optional parent-type)
     (if (null? inode-configs)
 	'()
 	(append (if (eqv? 'clone (caar inode-configs))
 		    (clone-inode-config (car inode-configs)
+					commands
 					parent-type)
 		    (eval-inode-config (car inode-configs)
+				       commands
 				       parent-type))
-		(get-mdef-inodes (cdr inode-configs)))))
+		(get-mdef-inodes (cdr inode-configs) commands))))
 
   ;;; Generate an alist of configurations for the default input nodes GLOBAL,
   ;;; AUTHOR, TITLE, and LICENSE.
@@ -1404,26 +1438,41 @@
     (let* ((_version (read-mdef-engine-version engine-version))
 	   (_target (target-generator (->string target)
 				      path-prefix))
-	   (itree (eval-inode-tree input))
-	   (_input (alist->hash-table
-		    (append (get-mdef-inodes input)
-			    (make-default-inode-configs))))
+	   (base-commands (get-mdef-base-commands commands path-prefix _target))
+	   (_input (append (get-mdef-inodes input base-commands)
+			   (make-default-inode-configs)))
+	   (proto-itree (eval-inode-tree input))
+	   (all-commands (hash-table-merge (alist->hash-table base-commands)
+					   (create-order-commands proto-itree)))
+	   (modifier-node-ids
+	    (filter-map
+	     (lambda (node)
+	       (and (eqv? 'field (inode-config-type (cdr node)))
+		    (memv 'enable-modifiers
+			  (command-flags
+			   (hash-table-ref all-commands
+					   (inode-config-cmd-id (cdr node)))))
+		    (car node)))
+	     _input))
+	   (input-ht (alist->hash-table _input))
+	   (itree (itree-add-modifier-nodes proto-itree modifier-node-ids))
 	   (proto-mdef
 	    (make-mdef
 	     id: id
 	     engine-version: _version
 	     target: _target
-	     commands: (get-mdef-commands commands itree path-prefix _target)
-	     itree: itree inodes: _input
+	     commands: all-commands
+	     itree: itree
+	     inodes: input-ht
 	     default-origin:
 	     (or default-origin
 		 (target-platform-default-start-address _target)))))
-      (make-mdef id: id engine-version: _version target: _target
-		   description: description
-		   commands: (mdef-commands proto-mdef)
-		   itree: itree inodes: _input default-origin: default-origin
-		   compiler: (make-compiler output proto-mdef mdef-dir
-					    path-prefix))))
+       (make-mdef id: id engine-version: _version target: _target
+		 description: description
+		 commands: (mdef-commands proto-mdef)
+		 itree: itree inodes: input-ht default-origin: default-origin
+		 compiler: (make-compiler output proto-mdef mdef-dir
+					  path-prefix))))
 
   ;;; Evaluate the given `mdef` s-expression, and return a mdef record.
   (define (read-mdef mdef id mdef-dir path-prefix)

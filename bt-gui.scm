@@ -327,6 +327,10 @@
 		      (apply max (map (o string-length symbol->string)
   				      (hash-table-keys
 				       (command-keys command-config))))))
+      ((modifier) (+ 1 (inexact->exact
+  			(ceiling
+  			 (/ (log (expt 2 (command-bits command-config)))
+  			    (log (settings 'number-base)))))))
       ((reference) (if (>= 16 (settings 'number-base))
   		       2 3))
       ((trigger) 1)
