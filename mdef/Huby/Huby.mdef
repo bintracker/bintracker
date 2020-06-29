@@ -30,5 +30,9 @@
 		 ((block id: CH1 from: (CH1 DRUMS) resize: 8
 		  	 nodes: ((repeat bytes: 1
 					 compose: (if ??DRUM #x2c ?NOTE1))))
-		  (block id: CH2 from: (CH2) resize: 8
-			 nodes: ((repeat bytes: 1 compose: ?NOTE2)))))))
+		  (block id: CH2 from: (CH1 DRUMS CH2) resize: 8
+			 nodes: ((repeat bytes: 1
+					 compose: (if (and (= ?NOTE1 ?NOTE2)
+							   (not ??DRUM))
+						      0
+						      ?NOTE2))))))))
