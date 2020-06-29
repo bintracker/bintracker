@@ -690,13 +690,35 @@
   ;;; address (if it can be deduced, otherwise #f), and the updated list of
   ;;; symbols.
 
+  (define (eval-modifier raw-val modifier-val)
+    (if (null? modifier-val)
+	raw-val
+	(let* ((modstr (symbol->string modifier-val))
+	       (op (last (string->list modstr)))
+	       (num (string->number (string-drop-right modstr 1))))
+	  ((alist-ref op `((#\+ . ,+)
+			   (#\- . ,-)
+			   (#\* . ,*)
+			   (#\/ . ,quotient)
+			   (#\% . ,modulo)
+			   (#\& . ,bitwise-and)
+			   (#\v . ,bitwise-ior)
+			   (#\x . ,bitwise-xor)))
+	   raw-val num))))
+
   ;;; Transform the field node instance value CURRENT-VAL according to
   ;;; the given MDAL COMMAND-CONFIG.
-  (define (eval-effective-field-val current-val command-config)
+  (define (eval-effective-field-val current-val command-config
+				    #!optional modifier-val)
     (case (command-type command-config)
       ((int uint reference string trigger) current-val)
-      ((key ukey) (hash-table-ref (command-keys command-config)
-				  current-val))
+      ((key ukey) (if modifier-val
+		      (eval-modifier
+		       (hash-table-ref (command-keys command-config)
+				       current-val)
+		       modifier-val)
+		      (hash-table-ref (command-keys command-config)
+				      current-val)))
       (else (error "cmd type not implemented"))))
 
   ;;; Evaluate a group field node instance, resolving `key` and `ukey` values as
@@ -719,29 +741,64 @@
 			    (take (cddr block-instance)
 				  start-row))))))
 
+  ;; TODO no-backtrace doesn't do what it's supposed to.
   ;;; Evaluate the field in position FIELD-INDEX in ROW of the given
   ;;; BLOCK-INSTANCE. Evaluation will backtrace if the field node
-  ;;; COMMAND-CONFIG has the `use-last-set` flag.
+  ;;; COMMAND-CONFIG has the `use-last-set` flag. Backtracing can be disabled
+  ;;; by passing NO-BACKTRACE as `#t`. This is useful for determining whether
+  ;;; a specific field instance is set.
   (define (eval-block-field block-instance field-index row command-config
 			    #!optional no-backtrace)
-    (let ((raw-val (block-field-ref block-instance row field-index)))
-      (if no-backtrace
-	  (and (not (null? raw-val))
-	       raw-val)
-	  (eval-effective-field-val
-	   (if (null? raw-val)
-	       (if (command-has-flag? command-config 'use-last-set)
-		   (or (backtrace-block-fields block-instance row field-index)
+    ;; TODO this should be resolved during mdef evaluation
+    (if (command-has-flag? command-config 'enable-modifiers)
+	(let ((raw-field-val (block-field-ref block-instance row field-index))
+	      (raw-mod-val (block-field-ref block-instance
+					    row
+					    (+ 1 field-index))))
+	  (if no-backtrace
+	      (and (not (null? raw-field-val))
+		   raw-field-val)
+	      (let ((actual-field-val
+		     (if (null? raw-field-val)
+			 (if (command-has-flag? command-config 'use-last-set)
+			     (or (backtrace-block-fields block-instance
+							 row
+							 field-index)
+				 (command-default command-config))
+			     (command-default command-config))
+			 raw-field-val))
+		    (actual-mod-val
+		     (if (null? raw-mod-val)
+			 (if (command-has-flag? command-config 'use-last-set)
+			     (or (backtrace-block-fields block-instance
+							 row
+							 (+ 1 field-index))
+				 '0+)
+			     '0+)
+					raw-mod-val)))
+		(eval-effective-field-val actual-field-val
+					  command-config
+					  actual-mod-val))))
+	(let ((raw-val (block-field-ref block-instance row field-index)))
+	  (if no-backtrace
+	      (and (not (null? raw-val))
+		   raw-val)
+	      (eval-effective-field-val
+	       (if (null? raw-val)
+		   (if (command-has-flag? command-config 'use-last-set)
+		       (or (backtrace-block-fields block-instance
+						   row
+						   field-index)
+			   (command-default command-config))
 		       (command-default command-config))
-		   (command-default command-config))
-	       raw-val)
-	   command-config))))
+		   raw-val)
+	       command-config)))))
 
   ;;; Get the inode type of the parent of node NODE-ID.
   (define (get-parent-node-type node-id mdef)
     (inode-config-type
      (mdef-inode-ref (mdef-get-parent-node-id node-id (mdef-itree mdef))
-		       mdef)))
+		     mdef)))
 
   ;;; Helper for `transform-compose-expr`. Transforms an output field def
   ;;; expresssion element into a resolver procedure call.
@@ -757,15 +814,17 @@
       (let* ((symbol-name (symbol->string elem))
 	     (conditional? (string-prefix? "??" symbol-name))
 	     (transformed-symbol
-	      (string->symbol (string-drop symbol-name
-					   (if conditional? 2 1)))))
+	      (string->symbol (string-drop symbol-name (if conditional? 2 1)))))
 	(cond
 	 ((string-prefix? "?" symbol-name)
 	  (let* ((command-config
 		  `(,mdef-get-inode-source-command (quote ,transformed-symbol)
-						   mdef)))
-	    (if (eqv? 'group (get-parent-node-type transformed-symbol
-						   emdef))
+						   mdef))
+		 (uses-modifier (command-has-flag?
+				 (mdef-get-inode-source-command
+				  transformed-symbol emdef)
+				 'enable-modifiers)))
+	    (if (eqv? 'group (get-parent-node-type transformed-symbol emdef))
 		(if conditional?
 		    `(,(complement null?)
 		      (,list-ref
@@ -780,10 +839,23 @@
 		      (,subnode-ref (quote ,transformed-symbol) parent-node)
 		      instance-id ,command-config))
 		(if conditional?
-		    `(,(complement null?)
-  		      (,list-ref (,list-ref (,cddr parent-node) instance-id)
-  				 ,(list-index (cute eqv? <> transformed-symbol)
-  			  		      field-indices)))
+		    (if uses-modifier
+			`(or (,(complement null?)
+  			      (,list-ref
+			       (,list-ref (,cddr parent-node) instance-id)
+  			       ,(list-index (cute eqv? <> transformed-symbol)
+  			  		    field-indices)))
+			     (,(complement null?)
+  			      (,list-ref
+			       (,list-ref (,cddr parent-node) instance-id)
+  			       ,(+ 1 (list-index (cute eqv? <> transformed-symbol)
+  			  			 field-indices)))))
+			`(,(complement null?)
+  			  (,list-ref
+			   (,list-ref (,cddr parent-node) instance-id)
+  			   ,(list-index (cute eqv? <> transformed-symbol)
+  			  		field-indices))))
+		    ;; TODO ??? why not just pass in conditional like this?
 		    `(,eval-block-field
 		      parent-node
 		      ,(list-index (cute eqv? <> transformed-symbol)
