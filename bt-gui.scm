@@ -2445,7 +2445,8 @@
 				 (+ 1 (- (field-index (cdr normalized-end))
 					 (field-index
 					  (cdr normalized-start)))))))))))
-      (list (if (settings 'dwim-module-edit)
+      (list (if (and (settings 'dwim-module-edit)
+		     (not (memv what '(cut clear))))
 		(dwim-adjust-edit-contents buf normalized-contents
 					   normalized-start normalized-end)
 		normalized-contents)
