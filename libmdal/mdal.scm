@@ -565,7 +565,7 @@
 						     (mdef-itree mdef)))
 						   '()))
 				       (contents (if (null? raw-contents)
-						     empty-row
+						     (list empty-row)
 						     raw-contents))
 				       (rows (repeat-block-row-values
 					      contents)))

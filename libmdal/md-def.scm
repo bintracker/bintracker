@@ -775,7 +775,7 @@
 							 (+ 1 field-index))
 				 '0+)
 			     '0+)
-					raw-mod-val)))
+			 raw-mod-val)))
 		(eval-effective-field-val actual-field-val
 					  command-config
 					  actual-mod-val))))
