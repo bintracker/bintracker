@@ -10,6 +10,7 @@ roms/a2600
 roms/channelf
 roms/mz700
 roms/spectrum/spectrum.rom
+roms/sorcerer
 build/*
 !build/Makefile
 resources/icons/*.png.*.png
