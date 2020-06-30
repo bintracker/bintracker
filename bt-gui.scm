@@ -3714,6 +3714,7 @@
       (ui-update buf)
       ;; TODO should use a safer method for determining associated block-view
       (ui-update (current 'blockview))
+      (ui-metastate buf 'modified #t)
       (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))))
 
