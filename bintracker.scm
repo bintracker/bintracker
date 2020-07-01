@@ -24,6 +24,7 @@
 
 ;; disable "tearoff" style menus
 (tk-eval "option add *tearOff 0")
+(tk-eval "interp recursionlimit \"\" 20000")
 
 ;; automatically map the following tk widgets to their ttk equivalent
 (ttk-map-widgets '(button checkbutton radiobutton menubutton label frame
