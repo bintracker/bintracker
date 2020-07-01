@@ -1274,17 +1274,18 @@
      collapse-button
      (collapse-proc #f)
      (expand-proc #f)
-     content-box))
+     content-box
+     (collapsible #t)))
 
   (define-method (initialize-instance after: (buf <ui-buffer>))
     (set! (slot-value buf 'expand-button)
       (make <ui-button-group> 'parent (ui-box buf)
   	    'setup '((expand "Expand buffer" "expand.png" 'enabled))
-  	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
+  	    'orient 'vertical 'packing-args '(expand: 0 side: left fill: y)))
     (set! (slot-value buf 'collapse-button)
       (make <ui-button-group> 'parent (ui-box buf)
   	    'setup '((collapse "Collapse buffer" "collapse.png" 'enabled))
-  	    'orient 'vertical 'packing-args '(expand: 0 side: right fill: y)))
+  	    'orient 'vertical 'packing-args '(expand: 0 side: left fill: y)))
     (set! (slot-value buf 'content-box)
       ((ui-box buf) 'create-widget 'frame))
     (when (slot-value buf 'modeline)
@@ -1292,36 +1293,43 @@
   	(make <ui-modeline>
   	  'parent (slot-value buf 'content-box)
   	  'setup (slot-value buf 'modeline))))
-    (unless (slot-value buf 'collapse-proc)
-      (set! (slot-value buf 'collapse-proc)
-  	(lambda (x)
-  	  (ui-hide (slot-value x 'collapse-button))
-  	  (ui-show (slot-value x 'expand-button)))))
-    (unless (slot-value buf 'expand-proc)
-      (set! (slot-value buf 'expand-proc)
-  	(lambda (x)
-  	  (ui-hide (slot-value x 'expand-button))
-  	  (ui-show (slot-value x 'collapse-button))))))
+    (when (slot-value buf 'collapsible)
+      (unless (slot-value buf 'collapse-proc)
+	(set! (slot-value buf 'collapse-proc)
+  	  (lambda (x) #t
+  	    ;; (ui-hide (slot-value x 'collapse-button))
+  	    ;; (ui-show (slot-value x 'expand-button))
+	    )))
+      (unless (slot-value buf 'expand-proc)
+	(set! (slot-value buf 'expand-proc)
+  	  (lambda (x) #t
+  	    ;; (ui-hide (slot-value x 'expand-button))
+  	    ;; (ui-show (slot-value x 'collapse-button))
+	    )))))
 
   (define-method (ui-show after: (buf <ui-buffer>))
     ;; (print "ui-show/buffer, children: " (ui-children buf))
-    (ui-set-callbacks (slot-value buf 'expand-button)
-  		      `((expand ,(lambda () (ui-expand buf)))))
-    (ui-set-callbacks (slot-value buf 'collapse-button)
-  		      `((collapse ,(lambda () (ui-collapse buf)))))
+    (when (slot-value buf 'collapsible)
+      (ui-set-callbacks (slot-value buf 'expand-button)
+  			`((expand ,(lambda () (ui-expand buf)))))
+      (ui-set-callbacks (slot-value buf 'collapse-button)
+  			`((collapse ,(lambda () (ui-collapse buf))))))
     (ui-show-decorations buf (ui-box buf))
-    (tk/pack (slot-value buf 'content-box) side: 'right expand: 1 fill: 'both)
-    (ui-show (slot-value buf
-  			 (if (eqv? 'expanded (slot-value buf 'default-state))
-  			     'collapse-button
-  			     'expand-button))))
+    (when (slot-value buf 'collapsible)
+      (ui-show (slot-value buf
+  			   (if (eqv? 'expanded (slot-value buf 'default-state))
+  			       'collapse-button
+  			       'expand-button))))
+    (tk/pack (slot-value buf 'content-box) side: 'left expand: 1 fill: 'both))
 
   ;; TODO these two should call (slot-value buf 'collapse/expand-proc)
   (define-method (ui-collapse primary: (buf <ui-buffer>))
-    ((slot-value buf 'collapse-proc) buf))
+    (when (slot-value buf 'collapsible)
+      ((slot-value buf 'collapse-proc) buf)))
 
   (define-method (ui-expand primary: (buf <ui-buffer>))
-    ((slot-value buf 'expand-proc) buf))
+    (when (slot-value buf 'collapsible)
+      ((slot-value buf 'expand-proc) buf)))
 
   ;; TODO: Allow adding buttons.
   ;;; A welcome screen with two buttons for creating and opening an MDAL module,
@@ -1363,8 +1371,7 @@
        'create-widget 'scrollbar orient: 'vertical
        'command: `(,(slot-value buf 'repl) yview))))
 
-  ;; TODO this becomes a before: method once things are sorted out
-  (define-method (ui-show primary: (buf <ui-repl>))
+  (define-method (ui-show before: (buf <ui-repl>))
     (let ((repl (slot-value buf 'repl))
   	  (yscroll (slot-value buf 'yscroll))
   	  (focus-controller (slot-value buf 'focus-controller)))
@@ -1377,7 +1384,6 @@
   			  size: (settings 'font-size)))
   	(tk/pack yscroll side: 'right fill: 'y)
   	(tk/pack repl expand: 1 fill: 'both side: 'right)
-  	(tk/pack (slot-value buf 'content-box) side: 'right fill: 'both)
   	(repl 'configure 'yscrollcommand: `(,yscroll set))
   	(repl-insert buf (ui-setup buf))
   	(repl-insert-prompt buf)
@@ -1760,6 +1766,7 @@
      xscroll
      yscroll
      (item-cache '())
+     (collapsible #f)
      (packing-args '(expand: 0 fill: both))))
 
   (define-method (initialize-instance after: (buf <ui-basic-block-view>))
