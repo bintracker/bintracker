@@ -1817,8 +1817,6 @@
   		 expand: 1 fill: 'y padx: '(4 0) side: 'top)
   	(tk/pack (slot-value buf 'block-frame) fill: 'both side: 'right)
   	(tk/pack (slot-value buf 'block-header) fill: 'x side: 'top)
-	((slot-value buf 'block-header) 'configure
-	 xscrollcommand: `(,xscroll set))
   	(ui-init-content-header buf)
   	(tk/pack block-content expand: 1 fill: 'both side: 'top)
   	(block-content 'configure xscrollcommand: `(,xscroll set)
