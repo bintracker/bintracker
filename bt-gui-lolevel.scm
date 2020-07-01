@@ -535,6 +535,10 @@
 	      (inverse-key-binding 'edit 'select-all-blocks))
     (tk/event 'add '<<BVCopy>> (inverse-key-binding 'edit 'copy))
     (tk/event 'add '<<BVPaste>> (inverse-key-binding 'edit 'paste))
+    (tk/event 'add '<<BVPorousPasteUnder>>
+	      (inverse-key-binding 'edit 'porous-paste-under))
+    (tk/event 'add '<<BVPorousPasteOver>>
+	      (inverse-key-binding 'edit 'porous-paste-over))
     (tk/event 'add '<<ClearCurrent>> (inverse-key-binding 'edit 'clear))
     (tk/event 'add '<<DeleteCurrent>> (inverse-key-binding 'edit 'delete))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))

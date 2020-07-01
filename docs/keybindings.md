@@ -54,6 +54,8 @@ Key                 | Function
 `Ctrl Shift x`      | Cut selection (with shift)
 `Ctrl v`            | Paste from clipboard (no shift, fills selection if any)
 `Ctrl Shift v`      | Insert from clipboard (with shift, respects selection if any)
+`Ctrl p`            | Porous paste under current data
+`Ctrl Shift p`      | Porous paste over current data
                     |
 `Ctrl Alt v`        | Swap selection with clipboard contents
 

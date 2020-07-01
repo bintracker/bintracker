@@ -30,6 +30,8 @@
 	(<Control-V> insert-from-clipboard)
 	(<Control-X> cut-selection)
 	(<Control-v> paste)
+	(<Control-p> porous-paste-under)
+	(<Control-P> porous-paste-over)
 	(<Control-Alt-v> swap)
 	(<Key-period> repeat-last-set)
 	(<Control-u> transpose-note-up)

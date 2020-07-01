@@ -2706,6 +2706,48 @@
       (edit buf 'current 'set contents)
       (ui-cancel-selection buf)))
 
+  (define-method (ui-porous-paste primary: (buf <ui-basic-block-view>)
+  				  #!optional (stack-order 'under)
+				  (contents (clipboard)))
+    (and-let* ((_ contents)
+	       (params (normalize-edit-parameters buf 'current 'set contents))
+	       (normalized-contents (car params))
+	       (start (cadr params))
+	       (end (caddr params))
+	       (field-ids (slot-value buf 'field-ids))
+	       (field-index (lambda (id)
+			      (list-index (cute eqv? <> id) field-ids)))
+	       (current-contents
+		(map (lambda (col)
+		       (drop (take col (+ 1 (car end)))
+			     (car start)))
+		     (drop (take (transpose
+				  (concatenate (slot-value buf 'item-cache)))
+				 (+ 1 (field-index (cdr end))))
+			   (field-index (cdr start)))))
+	       (merged-contents
+		(map (lambda (col1 col2)
+		       (map (lambda (row1 row2)
+			      (if (or (not row1) (null? row1)) row2 row1))
+			    col1
+			    col2))
+		     (if (eqv? stack-order 'under)
+			 current-contents
+			 normalized-contents)
+		     (if (eqv? stack-order 'under)
+			 normalized-contents
+			 current-contents))))
+      (edit buf 'current 'set merged-contents)
+      (ui-cancel-selection buf)))
+
+  (define-method (ui-porous-paste-under primary: (buf <ui-basic-block-view>)
+					#!optional (contents (clipboard)))
+    (ui-porous-paste buf 'under contents))
+
+  (define-method (ui-porous-paste-over primary: (buf <ui-basic-block-view>)
+				       #!optional (contents (clipboard)))
+    (ui-porous-paste buf 'over contents))
+
   ;;; Swap the current selection with the clipboard contents
   (define-method (ui-swap primary: (buf <ui-basic-block-view>)
 			  #!optional (contents (clipboard)))
@@ -3036,6 +3078,8 @@
 	     (ui-blockview-tag-selection buf)))
   	 (<<BVCopy>> . ,(lambda () (ui-copy buf)))
   	 (<<BVPaste>> . ,(lambda () (ui-paste buf)))
+	 (<<BVPorousPasteUnder>> . ,(lambda () (ui-porous-paste-under buf)))
+	 (<<BVPorousPasteOver>> . ,(lambda () (ui-porous-paste-over buf)))
   	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
   	 (<<ClearCurrent>>
 	  .
@@ -3044,7 +3088,9 @@
 	     		(if (slot-value buf 'selection)
 	     		    (ui-selected-contents buf)
 	     		    (ui-blockview-get-current-field-value buf)))
-	     (edit buf 'current 'clear)))
+	     (edit buf 'current 'clear)
+	     (when (slot-value buf 'selection)
+	       (ui-blockview-tag-selection buf))))
 	 (<<DeleteCurrent>> . ,(lambda () (edit buf 'current 'clear)))
   	 (<<CutStep>> . ,(lambda ()
 			   (ui-blockview-cut-current-cell buf)
@@ -4129,10 +4175,10 @@
       		  (insert "Insert from Clipbard (with shift)" "insert.png"
   			  enabled)
       		  (paste "Paste from Clipboard (no shift)" "paste.png" enabled)
-  		  (porous-paste-over "Porous paste over current data"
-  				     "porous-paste-over.png")
   		  (porous-paste-under "Porous paste under current data"
-  				      "porous-paste-under.png")
+  				      "porous-paste-under.png" enabled)
+  		  (porous-paste-over "Porous paste over current data"
+  				     "porous-paste-over.png" enabled)
       		  (swap "Swap Selection with Clipboard" "swap.png" enabled))
   	    (play (stop-playback "Stop Playback" "stop.png" enabled)
       		  (play-from-start "Play Track from Start"
@@ -4355,7 +4401,8 @@
 	     			(ui-selected-contents current-zone)
 	     			(ui-blockview-get-current-field-value
 				 current-zone)))
-			   (edit current-zone 'current 'clear))))
+			   (edit current-zone 'current 'clear)
+			   (ui-blockview-tag-selection current-zone))))
 	       (cut-selection
 		,(lambda ()
 		   (and-let*
@@ -4366,6 +4413,26 @@
 			 (and-let*
 			     ((current-zone (ui-module-view-current-zone buf)))
 			   (ui-paste current-zone))))
+	       (porous-paste-under
+		,(lambda ()
+		   (and-let* ((current-zone (ui-module-view-current-zone buf))
+			      (_ (or (symbol-contains
+				      (slot-value current-zone 'ui-zone)
+				      "block-view")
+				     (symbol-contains
+				      (slot-value current-zone 'ui-zone)
+				      "order-view"))))
+		     (ui-porous-paste-under current-zone))))
+	       (porous-paste-over
+		,(lambda ()
+		   (and-let* ((current-zone (ui-module-view-current-zone buf))
+			      (_ (or (symbol-contains
+				      (slot-value current-zone 'ui-zone)
+				      "block-view")
+				     (symbol-contains
+				      (slot-value current-zone 'ui-zone)
+				      "order-view"))))
+		     (ui-porous-paste-over current-zone))))
 	       (insert ,(lambda ()
 			  (and-let*
 			      ((contents (clipboard))
@@ -4373,7 +4440,13 @@
 			    (edit current-zone 'current 'insert contents))))
 	       (swap ,(lambda ()
 			(and-let*
-			    ((current-zone (ui-module-view-current-zone buf)))
+			    ((current-zone (ui-module-view-current-zone buf))
+			     (_ (or (symbol-contains
+				     (slot-value current-zone 'ui-zone)
+				     "block-view")
+				    (symbol-contains
+				     (slot-value current-zone 'ui-zone)
+				     "order-view"))))
 			  (ui-swap current-zone)))))
   	 (play (play-from-start ,play-from-start)
   	       (play-pattern ,play-pattern)
