@@ -492,7 +492,15 @@
 				    "\""))))))
 
   (define (construct-menu items)
-    (let* ((my-menu (make-menu widget: (tk 'create-widget 'menu))))
+    (let* ((my-menu (make-menu widget:
+			       (tk 'create-widget 'menu
+				   fg: (colors 'text)
+				   bg: (colors 'row-highlight-minor)
+				   activeforeground: (colors 'background)
+				   activebackground: (colors 'text)
+				   font: (list family: (settings 'font-mono)
+  					       size: (settings 'font-size))
+				   relief: 'flat))))
       (for-each (lambda (item)
 		  (add-menu-item! my-menu item))
 		items)
