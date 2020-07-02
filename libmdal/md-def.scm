@@ -943,10 +943,7 @@
   		     #f md-symbols)))
   	   (lambda (onode parent-inode mdef current-org md-symbols)
 	     (let* ((no-loop? (alist-ref 'no-loop md-symbols))
-		    (asm (if no-loop?
-			     (make-assembly cpu source org
-					    (cons '(no-loop . #t) md-symbols))
-			     (make-assembly cpu source org md-symbols)))
+		    (asm (if no-loop? non-looping-asm looping-asm))
 		    (_ (asm 'assemble 3))
 		    (res (asm 'result)))
 	       (if res
