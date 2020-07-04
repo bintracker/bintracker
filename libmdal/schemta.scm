@@ -711,8 +711,7 @@
       ((include) (if (file-exists? (third node))
 		     (parse-source (call-with-input-file (third node)
 				     (cute read-string #f <>))
-				   (state 'target)
-				   '())
+				   (state 'target))
       		     (error 'schemta#do-directive
 			    (string-append "included file " (third node)
       					   " not found"))))
@@ -759,7 +758,7 @@
 	    (cond
 	     ((string? res) (begin (state 'done? #f)
 				   (state 'current-origin #f)
-				   (parse-source res (state 'target) '())))
+				   (parse-source res (state 'target))))
 	     ((number? res) res)
 	     (else '()))))))
 
@@ -899,32 +898,8 @@
 		(error (string-append "target configuration " config-filename
 				      " not found")))))))
 
-  ;;; parse the given assembly SOURCE and output the abstract source tree.
-  ;;; SOURCE must be a string.
-  (: parse-source (string (struct asm-target) list -> list))
-  (define (parse-source source target ast)
-    (receive (result remainder)
-	(parse (a-line target) source)
-      (unless result
-	(error 'schemta#parse-source
-	       (string-append "Failed to parse source, stopped at: "
-			      (->string remainder))))
-      (if (parse end-of-input remainder)
-	  (reverse (if (null? result)
-		       ast
-		       (cons result ast)))
-	  (if (null? result)
-	      (parse-source remainder target ast)
-	      (begin
-		;; (print "parse-source, result: " result)
-		(parse-source remainder
-			      (if (and (eqv? 'directive (car result))
-				       (eqv? 'cpu (cadr result)))
-				  (make-target (string->symbol (cadadr result)))
-				  target)
-			      (cons result ast)))))))
-
   ;;; Remove comments, trailing whitespace, empty lines
+  (: strip-source (string -> string))
   (define (strip-source source)
     (string-intersperse
      (remove string-null?
@@ -935,6 +910,79 @@
 		     char-set:whitespace))
 		  (string-split source "\n")))
      "\n"))
+
+  ;; Throw an exception for a syntax error.
+  (define (throw-syntax-error source remainder)
+    (letrec* ((rem (list->string (parse (zero-or-more item) remainder)))
+	      (src-lines (string-split source "\n"))
+	      (enumerated-src (map (lambda (line i) `(,i . ,line))
+				   src-lines
+				   (iota (length src-lines) 1)))
+	      (filtered-src
+	       (remove (lambda (x) (string-null? (cdr x)))
+		       (map (lambda (line)
+			      `(,(car line)
+				.
+				,(string-trim-right
+				  (list->string
+				   (take-while (lambda (c) (not (eq? c #\;)))
+					       (string->list (cdr line))))
+				  char-set:whitespace)))
+			    enumerated-src)))
+	      (offending-line (car (string-split rem "\n")))
+	      (offending-rest (string-intersperse (cdr (string-split rem "\n"))
+						  "\n"))
+	      (get-err-line (lambda (src-lines last-line)
+			      (if (null? src-lines)
+				  last-line
+				  (if (string= offending-rest
+					       (string-intersperse
+						(map cdr src-lines)
+						"\n"))
+				      last-line
+				      (get-err-line (cdr src-lines)
+						    (caar src-lines))))))
+	      (err-line (get-err-line filtered-src 0)))
+      (error 'schemta#parse-source
+	     (string-append "Syntax error at line "
+			    (number->string err-line)
+			    "\n   -> "
+			    (alist-ref err-line filtered-src)
+			    "\n"
+			    (list->string
+			     (make-list (string-length
+					 (string-drop-right
+					  (alist-ref err-line filtered-src)
+					  (string-length offending-line)))
+					#\space))
+			    "       ^"))))
+
+  ;;; parse the given assembly SOURCE and output the abstract source tree.
+  ;;; SOURCE must be a string.
+  (: parse-source (string (struct asm-target) -> list))
+  (define (parse-source source target)
+    (letrec ((parse-it (lambda (src trgt ast)
+			 (receive (result remainder)
+			     (parse (a-line trgt) src)
+			   (unless result
+			     (throw-syntax-error source remainder))
+			   (if (parse end-of-input remainder)
+			       (reverse (if (null? result)
+					    ast
+					    (cons result ast)))
+			       (if (null? result)
+				   (parse-it remainder trgt ast)
+				   (begin
+				     ;; (print "parse-it, result: " result)
+				     (parse-it
+				      remainder
+				      (if (and (eqv? 'directive (car result))
+					       (eqv? 'cpu (cadr result)))
+					  (make-target
+					   (string->symbol (cadadr result)))
+					  trgt)
+				      (cons result ast)))))))))
+      (parse-it (strip-source source) target '())))
 
   ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
   ;;; Parses the assembly source code string SOURCE and returns an assembly
@@ -975,7 +1023,7 @@
 	   (symbols (the list extra-symbols))
 	   (local-namespace (the symbol '000__void))
 	   (current-origin (the integer org))
-	   (ast (parse-source (strip-source source) target '()))
+	   (ast (parse-source source target))
 	   (pass (the integer 0))
 	   (done? (the boolean #f))
 	   (reset-state! (the (-> undefined)
