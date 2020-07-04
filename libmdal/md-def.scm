@@ -944,12 +944,11 @@
   	   (lambda (onode parent-inode mdef current-org md-symbols)
 	     (let* ((no-loop? (alist-ref 'no-loop md-symbols))
 		    (asm (if no-loop? non-looping-asm looping-asm))
-		    (_ (asm 'assemble 3))
-		    (res (asm 'result)))
+		    (res (begin (asm 'symbols md-symbols)
+				(asm 'assemble 3)
+				(asm 'result))))
 	       (if res
-		   (list (make-onode type: 'asm
-  				     size: (length res)
-  				     val: res)
+		   (list (make-onode type: 'asm size: (length res) val: res)
 			 ;; TODO current-org???
   			 #f md-symbols)
 		   (list onode #f md-symbols))))))))
