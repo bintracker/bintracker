@@ -9,7 +9,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  (chicken sort) (chicken module) (chicken process)
-	  (chicken random)
+	  (chicken random) (chicken condition) (chicken port)
 	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
 	  coops typed-records simple-exceptions pstk stack comparse
 	  matchable
@@ -684,11 +684,25 @@
   (define-method (repl-eval primary: (buf <ui-repl>))
     (handle-exceptions
   	exn
-  	(begin (repl-insert buf (string-append "\nError: " (->string exn)
-  					       (->string (arguments exn))))
+  	(let* ((call-chain (get-call-chain))
+	       (formatted-call-chain
+		(string-intersperse (map (lambda (x)
+					   (let ((callx (vector->list x)))
+					     (->string (if (cadr callx)
+							   (take callx 2)
+							   (car callx)))))
+					 (drop-right call-chain 3))
+				    "\n"))
+	       (error-msg (with-output-to-string
+			    (lambda () (print-error-message exn)))))
+	  (repl-insert buf (string-append "\n"
+					  (->string exn)
+					  error-msg
+					  "\n"
+					  formatted-call-chain
+					  "\n"))
   	       (when (settings 'text-to-speech)
-  		 (say 'sanitize (string-append "Error " (->string exn) " "
-  					       (->string (arguments exn)))))
+  		 (say 'sanitize (string-append (->string exn) error-msg)))
   	       (repl-insert-prompt buf)
   	       ((slot-value buf 'repl) 'see 'end))
       (let ((input-str (repl-get buf "prompt" "end-1c"))
