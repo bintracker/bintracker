@@ -117,6 +117,10 @@ schemta.so: $(MDAL_SRC)schemta.scm
 schemta.import.so: schemta.so
 	$(CSC) $(IMPORTFLAGS) schemta.import.scm
 
+# Schemta standalone executable
+schemta-exe: $(MDAL_SRC)schemta-exe.scm schemta.import.so
+	$(CSC) $< -b -O3 -compile-syntax -o $@
+
 # generate documentation
 gendoc/generated/%.md: $(BT_SRC)%.scm
 	$(DOCGEN) -i $< -o $@ -m
@@ -241,5 +245,5 @@ run-tests: mdal.so
 
 .PHONY: clean
 clean:
-	-rm *.so *.import.scm bintracker bt.db
+	-rm *.so *.import.scm bintracker schemta-exe bt.db
 	-rm -rf docs plugins resources mame-bridge config roms mdef tunes mdal-targets gendoc documentation

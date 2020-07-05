@@ -33,21 +33,21 @@ MDAL uses Schemta as the assembler backend. When libmdal runs a Schemta assembly
 Schemta can also be compiled as a stand-alone application. The resulting executable can be invoked as follows:
 
 ```
-$ schemta [options] -i infile.asm
+$ schemta-exe [options]
 ```
+
+With no arguments, schemta-exe will read from stdin and output to stdout.
 
 The following options are available:
 
 |option                     |effect                                         |
 |---------------------------|-----------------------------------------------|
-|`-e`, `--equate=ALIST`     | Additional symbol definitions to be passed in. ALIST is an associative list of key- value pairs using Scheme syntax, eg. `((foo . 1) (bar . 2))`.|
+|`-i`, `--infile=FILENAME`  | Compile the assembly source file `FILENAME`.  |
+|`-o`, `--outfile=FILENAME` | Output to FILENAME. Defaults to `{infile}.bin` or stdout if reading from stdin. |
+|`--org=ADDRESS`            | Specify the initial origin (compile address). |
+|`--cpu=CPU`                | Specify the target CPU.                       |
+|`--equ=ALIST`              | Additional symbol definitions to be passed in. ALIST is an associative list of key- value pairs wrapped in a string, eg. `"((foo . 1) (bar . 2))"`.        |
 |`-h`, `--help`             | Print command line help and exit.             |
-|`-l`, `--listing=FILENAME` | Write the listing to file.                    |
-|`-o`, `--outfile=FILENAME` | Specify a name for the output file.           |
-|`-r`, `--org=ADDRESS`      | Specify the initial origin (compile address). |
-|`-s`, `--symbols=FILENAME` | Write the symbol table to file.               |
-|`-t`, `--target=CPU`       | Specify the target CPU.                       |
-|`-v`, `--version`          | Print Schemta version and exit.               |
 
 All arguments listed for long options are required for short options as well.
 
