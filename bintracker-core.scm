@@ -41,12 +41,16 @@
 
   (define (info . args)
     (if (null? args)
-	(string-append
-	 "(info 'mdef NAME)\n"
-	 "Describe the MDAL definition NAME\n\n"
-	 "(info 'keybinding [KEY-SPEC])\n"
-	 "(info 'kb [KEY-SPEC])\n"
-	 "List known key bindings, or look up binding for KEY-SPEC.\n\n")
+	(string-intersperse
+	 '("\n(info 'keybinding [KEY-SPEC])"
+	   "(info 'kb [KEY-SPEC])"
+	   "List known key bindings, or look up binding for KEY-SPEC.\n"
+	   "(info 'mdef NAME)"
+	   "Describe the MDAL definition NAME\n"
+	   "(info 'procedure PROCEDURE)"
+	   "(info 'proc PROCEDURE)"
+	   "Describe the procedure PROCEDURE\n")
+	 "\n")
 	(case (car args)
 	  ((kb keybinding)
 	   (let ((keybindings (settings 'keymap)))
@@ -61,6 +65,10 @@
 				"repl         "
 				"edit         "
 				"note-entry   ")))))
+	  ((mdef) (btdb-get-mdef-description (cadr args)))
+	  ((proc procedure) (procedure-information (if (procedure? (cadr args))
+						       (cadr args)
+						       (eval (cadr args)))))
 	  (else (string-append "Unknown command " (->string args))))))
 
 
