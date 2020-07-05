@@ -5,7 +5,5 @@
  license: "MIT"
  description: "A collection of pseudo-random number generators."
 
- body:
- ((define (prng::hello-world)
-    (print "hello"))
-  ))
+ body: ((load "plugins/prng/prng-impl.scm")
+	(import prng)))
