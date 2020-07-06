@@ -26,7 +26,8 @@
      prng::blum-blum-shub
      prng::pcg
      prng::xorshift64
-     prng::el-cheapo-zx)
+     prng::el-cheapo-zx
+     prng::sid-noise)
 
   (import scheme (chicken base) (chicken bitwise) (chicken random)
 	  srfi-1 srfi-13 (only mdal scale-values))
@@ -216,5 +217,30 @@
 		      (cons (quotient next-state #x100)
 			    (make-values (sub1 amount) next-state)))))))
       (scale-values (make-values amount state) 0 (sub1 (expt 2 bits)))))
+
+  ;;; The PRNG used to generate the noise waveform on the MOS 6581/8580 Sound
+  ;;; Interface Device, which is a Fibonacci LSFR using a feedback polynomial
+  ;;; x^22 + x^17 + 1. See http://www.sidmusic.org/sid/sidtech5.html. For added
+  ;;; authenticity, initialize SEED to #x7ffff8.
+  (define (prng::sid-noise amount bits #!optional (seed (rand 23)))
+    (letrec ((make-values
+	      (lambda (amount lsfr)
+		(if (zero? amount)
+		    '()
+		    (let ((next-lsfr
+			   (bitwise-and
+			    #x7fffff
+			    (bitwise-ior
+			     (arithmetic-shift lsfr -1)
+			     (arithmetic-shift
+			      (bitwise-xor (arithmetic-shift lsfr -1)
+					   (arithmetic-shift lsfr -6))
+			      22)))))
+		      (cons next-lsfr
+			    (make-values (sub1 amount) next-lsfr)))))))
+      (scale-values (make-values amount
+				 (bitwise-and #x7fffff (bitwise-ior seed 1)))
+		    0
+		    (sub1 (expt 2 bits)))))
 
   ) ;; end module prng
