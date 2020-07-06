@@ -27,7 +27,9 @@
      prng::pcg
      prng::xorshift64
      prng::el-cheapo-zx
-     prng::sid-noise)
+     prng::sid-noise
+     prng::tia-noise
+     prng::info)
 
   (import scheme (chicken base) (chicken bitwise) (chicken random)
 	  srfi-1 srfi-13 (only mdal scale-values))
@@ -188,7 +190,7 @@
 					  state))))))))
       (cdr (gen-next (+ 1 amount) seed))))
 
-  ;;; Classic Non-scrambled 64-bit Xorshift generator, as developed by George
+  ;;; Classic non-scrambled 64-bit Xorshift generator, as developed by George
   ;;; Marsaglia. See https://en.wikipedia.org/wiki/Xorshift
   (define (prng::xorshift64 amount bits #!optional (state (rand 64)))
     (if (zero? amount)
@@ -206,7 +208,7 @@
   ;;; Very fast but extremely poor 8-bit PRNG used to generate noise in various
   ;;; ZX Spectrum beeper engines.
   (define (prng::el-cheapo-zx amount bits #!optional (state 0) (seed #x2175))
-    (letrec ((make-values
+    (letrec* ((make-values
 	      (lambda (amount state)
 		(if (zero? amount)
 		    '()
@@ -215,32 +217,115 @@
 						   8)
 					       (bitwise-and next-accu #xff))))
 		      (cons (quotient next-state #x100)
-			    (make-values (sub1 amount) next-state)))))))
-      (scale-values (make-values amount state) 0 (sub1 (expt 2 bits)))))
+			    (make-values (sub1 amount) next-state))))))
+	      (res (make-values amount state)))
+      (scale-values res (apply min res) (sub1 (expt 2 bits)))))
 
-  ;;; The PRNG used to generate the noise waveform on the MOS 6581/8580 Sound
-  ;;; Interface Device, which is a Fibonacci LSFR using a feedback polynomial
+  ;;; A PRNG based on the noise waveform on the MOS 6581/8580 Sound Interface
+  ;;; Device, which is a Fibonacci LSFR using the feedback polynomial
   ;;; x^22 + x^17 + 1. See http://www.sidmusic.org/sid/sidtech5.html. For added
   ;;; authenticity, initialize SEED to #x7ffff8.
   (define (prng::sid-noise amount bits #!optional (seed (rand 23)))
-    (letrec ((make-values
-	      (lambda (amount lsfr)
-		(if (zero? amount)
-		    '()
-		    (let ((next-lsfr
-			   (bitwise-and
-			    #x7fffff
-			    (bitwise-ior
-			     (arithmetic-shift lsfr -1)
-			     (arithmetic-shift
-			      (bitwise-xor (arithmetic-shift lsfr -1)
-					   (arithmetic-shift lsfr -6))
-			      22)))))
-		      (cons next-lsfr
-			    (make-values (sub1 amount) next-lsfr)))))))
-      (scale-values (make-values amount
-				 (bitwise-and #x7fffff (bitwise-ior seed 1)))
-		    0
-		    (sub1 (expt 2 bits)))))
+    (letrec* ((make-values
+	       (lambda (amount lsfr)
+		 (if (zero? amount)
+		     '()
+		     (let ((next-lsfr
+			    (bitwise-and
+			     #x7fffff
+			     (bitwise-ior
+			      (arithmetic-shift lsfr -1)
+			      (arithmetic-shift
+			       (bitwise-xor (arithmetic-shift lsfr -1)
+					    (arithmetic-shift lsfr -6))
+			       22)))))
+		       (cons next-lsfr
+			     (make-values (sub1 amount) next-lsfr))))))
+	      (res (make-values amount (bitwise-and #x7fffff
+						    (bitwise-ior seed 1)))))
+      (scale-values res (apply min res) (sub1 (expt 2 bits)))))
+
+  ;;; A PRNG based on the noise waveform (AUDCx = 8) on the Atari VCS/2600,
+  ;;; which is a 9-bit LSFR with a tap at bit 4, resulting in a period of 511.
+  (define (prng::tia-noise amount bits #!optional (seed #x1ff))
+    (letrec* ((make-values
+	       (lambda (amount lsfr)
+		 (if (zero? amount)
+		     '()
+		     (let ((next-lsfr
+			    (bitwise-and
+			     #x1ff
+			     (bitwise-ior
+			      (arithmetic-shift lsfr -1)
+			      (arithmetic-shift
+			       (bitwise-and 1 (bitwise-xor
+					       lsfr
+					       (arithmetic-shift lsfr -4)))
+			       8)))))
+		       (cons next-lsfr
+			     (make-values (sub1 amount) next-lsfr))))))
+	      (res (make-values amount (bitwise-and #x1ff seed))))
+      (scale-values res (apply min res) (sub1 (expt 2 bits)))))
+
+  ;;; Retrieve information on the pseudo-random number generators available in
+  ;;; this package. Call with no arguments to retrieve the complete list. Call
+  ;;; with a symbol naming a procedure in this package to retrieve the
+  ;;; documentation for that procedure.
+  (define (prng::info . args)
+    (let ((prngs
+	   `((prng::middle-square
+	      .
+	      ,(string-append
+		"A generator based on the Middle-Square Method, as devised by"
+		" John von Neumann in 1946. It is statistically very poor and"
+		" may break with unsuitable seeds. This implementation deviates"
+		" from von Neumann's design by considering only the lower half"
+		" of the 8 digits extracted from the 16-digit square. This is"
+		" done to mitigate the effects of the convergence towards lower"
+		" number sequences that is a common trait of the Middle Square"
+		" method."))
+	     (prng::middle-square-weyl-seq
+	      .
+	      ,(string-append
+		"A variation of von Neumann's Middle Square Method that applies"
+		" a Weyl sequence to the Middle Square generator, developed by"
+		" Bernard Widynski. Very good statistical quality."
+		" See https://arxiv.org/abs/1704.00358v4"))
+	     (prng::blum-blum-shub
+	      .
+	      ,(string-append
+		"The original 1986 design by Lenore Blum, Manuel Blum and"
+		" Michael Shub."
+		" See https://en.wikipedia.org/wiki/Blum_blum_shub"))
+	     (prng::pcg
+	      .
+	      ,(string-append "Permuted Congruential Generator."
+			      " See https://www.pcg-random.org/"))
+	     (prng::xorshift64
+	      .
+	      ,(string-append
+		"Classic non-scrambled 64-bit Xorshift generator, as developed"
+		" by George Marsaglia. See"
+		" https://en.wikipedia.org/wiki/Xorshift"))
+	     (prng::el-cheapo-zx
+	      .
+	      ,(string-append
+		"Very fast but extremely poor 8-bit PRNG used to generate noise"
+		" in various ZX Spectrum beeper engines."))
+	     (prng::sid-noise
+	      .
+	      ,(string-append
+		"A PRNG based on the noise waveform on the MOS"
+		" 6581/8580 Sound Interface Device, which is a Fibonacci LSFR"
+		" using the feedback polynomial x^22 + x^17 + 1. See"
+		" http://www.sidmusic.org/sid/sidtech5.html. For added"
+		" authenticity, initialize SEED to #x7ffff8."))
+	     (prng::tia-noise
+	      .
+	      ,(string-append
+		"A PRNG based on the noise waveform (AUDCx = 8) on"
+		" the Atari VCS/2600, which is a 9-bit LSFR with a tap at bit"
+		" 4, resulting in a period of 511.")))))
+      (if (null? args) prngs (alist-ref (car args) prngs))))
 
   ) ;; end module prng
