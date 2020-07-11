@@ -6,11 +6,9 @@ libmdal/unittests/test_builds/
 libmdal/docs/generated
 tclkit/
 cfg/
-roms/a2600
-roms/channelf
-roms/mz700
+roms/*
+!roms/spectrum
 roms/spectrum/spectrum.rom
-roms/sorcerer
 build/*
 !build/Makefile
 resources/icons/*.png.*.png
