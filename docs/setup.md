@@ -54,7 +54,7 @@ $ cd build/
 $ make
 ```
 
-You can do a parallel build (`make -jX`), however time savings will be minimal. You can `make run-tests` to run unit tests on libmdal. If you are using Emacs and are planning on writing code for Bintracker, you can run make with an additional `ETAGS=1` argument to generate a suitable TAGS file in the main directory.
+You can do a parallel build (`make -jX`), however time savings will be minimal. You can `make tests` to run unit tests on libmdal and Schemta. If you are using Emacs and are planning on writing code for Bintracker, you can run make with an additional `ETAGS=1` argument to generate a suitable TAGS file in the main directory.
 
 
 #### Step 3 - Emulator Setup

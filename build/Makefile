@@ -238,10 +238,18 @@ mdal-targets:
 	cp -r $(MDAL_SRC)mdal-targets .
 
 # run unit tests
-.PHONY: run-tests
-run-tests: mdal.so
+.PHONY: tests
+tests: mdal-tests schemta-tests
+
+.PHONY: mdal-tests
+mdal-tests: mdal.so
 	cp -t ./ $(MDAL_SRC)unittests/unittests.scm && csi unittests.scm -e
 	-rm unittests.scm test.mmod
+
+.PHONY: schemta-tests
+schemta-tests: schemta-exe
+	cp -t ./ $(MDAL_SRC)schemta-tests/m6809.tests.scm && csi m6809.tests.scm -e
+	-rm m6809.tests.scm
 
 .PHONY: clean
 clean:
