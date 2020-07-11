@@ -28,7 +28,8 @@
 	schemta
 	args)
 
-(eval '(import schemta srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string) (chicken bitwise)))
+(eval '(import schemta srfi-1 srfi-13 srfi-14 srfi-69 comparse
+	       (chicken string) (chicken bitwise)))
 
 ;; todo must also eval-import
 

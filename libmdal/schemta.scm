@@ -112,6 +112,7 @@
 
   ;;; Match operands against instruction parser options.
   (define (match-operands operands parser-options)
+    ;; (print "match-operands " operands " " parser-options)
     (let ((m (find (lambda (po)
 		     (parse (followed-by (car po) end-of-input)
 			    (car operands)))
@@ -124,7 +125,7 @@
 						(->string operands))))))
 
   (define (parse-operands operands target)
-    ;; (print "parse-operands " operands target)
+    ;; (print "parse-operands " operands " " target)
     ;; (print "target-conditions: " (asm-target-conditions target))
     (map (lambda (op)
 	   (parse
@@ -164,6 +165,7 @@
   ;;; Returns either an asm-instruction structure, or a list of bytes if the
   ;;; instruction can be resolved immediately.
   (define (resolve-instruction opcode operands target)
+    ;; (print "resolve-instruction " opcode " " operands)
     (let ((options (hash-table-ref (asm-target-instructions target)
 				   opcode)))
       (if options
@@ -192,9 +194,24 @@
 			 (is #\"))))
 
   (define (in-parens parser)
-    (sequence* ((_ (is #\())
-		(r parser)
-		(_ (is #\))))
+    (enclosed-by (is #\() parser (is #\))))
+
+  (define (in-brackets parser)
+    (enclosed-by (is #\[) parser (is #\])))
+
+  ;;; Like comparse#preceded-by, but takes only one preceding parser. Provided
+  ;;; to enable simple sequences using generated parsers (register, address)
+  ;;; usable from instruction set definitions.
+  (define (preceded-by* parser preceding-parser)
+    (sequence* ((_ preceding-parser)
+		(r parser))
+	       (result r)))
+
+  ;;; Like comparse#followed-by, but takes only one follow-up parser and
+  ;;; consumes its input.
+  (define (followed-by* parser follow-up-parser)
+    (sequence* ((r parser)
+		(_ follow-up-parser))
 	       (result r)))
 
   (define a-decimal
@@ -315,7 +332,9 @@
 				    (char-set-union char-set:graphic
 						    (string->char-set " "))
 				    (string->char-set ";,"))))))
-		   (lambda (r) (result (string-downcase r)))))
+		   (lambda (r)
+		     ;; (print "parsed " r)
+		     (result (string-downcase r)))))
      (maybe (is #\,))))
 
   (define (an-instruction target)
@@ -376,7 +395,7 @@
   (define (a-numeric target)
     (any-of a-number (a-symbol target) a-sexp-directive))
 
-    (define (a-directive-using-string-operand id)
+  (define (a-directive-using-string-operand id)
     (sequence* ((_ (char-seq (symbol->string id)))
 		(_ (one-or-more (in horizontal-whitespace)))
 		(arg a-quoted-string))
@@ -518,6 +537,7 @@
   	   required-symbols))
 
   (define (eval-operand op state)
+    ;; (print "eval-operand " op)
     (if (pair? op)
   	(case (car op)
   	  ((label)
@@ -962,6 +982,7 @@
   (: parse-source (string (struct asm-target) -> list))
   (define (parse-source source target)
     (letrec ((parse-it (lambda (src trgt ast)
+			 ;; (print "parse-it " src " " ast)
 			 (receive (result remainder)
 			     (parse (a-line trgt) src)
 			   (unless result
@@ -972,16 +993,14 @@
 					    (cons result ast)))
 			       (if (null? result)
 				   (parse-it remainder trgt ast)
-				   (begin
-				     ;; (print "parse-it, result: " result)
-				     (parse-it
-				      remainder
-				      (if (and (eqv? 'directive (car result))
-					       (eqv? 'cpu (cadr result)))
-					  (make-target
-					   (string->symbol (cadadr result)))
-					  trgt)
-				      (cons result ast)))))))))
+				   (parse-it
+				    remainder
+				    (if (and (eqv? 'directive (car result))
+					     (eqv? 'cpu (cadr result)))
+					(make-target
+					 (string->symbol (cadadr result)))
+					trgt)
+				    (cons result ast))))))))
       (parse-it (strip-source source) target '())))
 
   ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
@@ -1018,6 +1037,7 @@
   ;;; list of integer values. Otherwise, returns #f.
   (define (make-assembly target-cpu source
 			 #!optional (org 0) (extra-symbols '()))
+    ;; (print "make-assembly, source: " source)
     (let* ((initial-target (the (struct asm-target) (make-target target-cpu)))
 	   (target (the (struct asm-target) initial-target))
 	   (symbols (the list extra-symbols))
