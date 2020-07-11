@@ -16,7 +16,7 @@
  (test "indexed-autodec1" '(#xa9 #xa2) (run-src " adca ,-y"))
  (test "indexed-autoinc2-indirect" '(#xa9 #xb1) (run-src " adca [,y++]"))
  (test "indexed-autodec2-indirect" '(#xa9 #xb3) (run-src " adca [,--y]"))
- (test "indexed-constant-null-offset-from-r" '(#xa9 #xa8) (run-src " adca ,y"))
+ (test "indexed-constant-null-offset-from-r" '(#xa9 #xa4) (run-src " adca ,y"))
  (test "indexed-constant-null-offset-from-r-indirect"
        '(#xa9 #xb8)
        (run-src " adca [,y]"))
