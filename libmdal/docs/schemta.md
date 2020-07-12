@@ -6,6 +6,8 @@ Schemta is a cross-platform, multi-target assembler for classic 8-bit and 16-bit
 
 * Fairchild F8 (F3850)
     - register/addressing aliases: `pc0` for `p`/`p0`, `(is)`, `(is+)`, `(is-)` for `s`, `i`, `d`
+* Motorola 6809
+    - supports undocumented opcodes `hcf`, `ncc` (`neg` + carry bit), `page`, and `reset`, as well as immediate addressing for `stx`/`stu`.
 * Zilog Z80
     - supports all undocumented opcodes
 	- alternate mnemonics: `exa` for `ex af,af'`, `sls` for `sll`, `res/set (ix/iy+d)->r8` for `res/set (ix/iy+d),r8`, `in (c)` for `in f,(c)`
