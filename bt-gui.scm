@@ -3572,7 +3572,7 @@
   		   origin
   		   (mod->bin (apply derive-single-row-mmod
   				    (cons mmod (cddr args)))
-  			     origin '((no-loop #t)))))))))
+  			     origin '((no-loop . #t)))))))))
   	((modified)
   	 (if (null? (cdr args))
   	     (slot-value buf 'modified)
