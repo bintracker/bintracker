@@ -939,8 +939,11 @@
   				 val: (if no-loop?
   					  non-looping-result
   					  looping-result))
-		     ;; TODO current-org???
-  		     #f md-symbols)))
+		     (and current-org
+			  (+ current-org (if no-loop?
+  					     (length non-looping-result)
+  					     (length looping-result))))
+		     md-symbols)))
   	   (lambda (onode parent-inode mdef current-org md-symbols)
 	     (let* ((no-loop? (alist-ref 'no-loop md-symbols))
 		    (asm (if no-loop? non-looping-asm looping-asm))
@@ -949,9 +952,11 @@
 				(asm 'result))))
 	       (if res
 		   (list (make-onode type: 'asm size: (length res) val: res)
-			 ;; TODO current-org???
-  			 #f md-symbols)
-		   (list onode #f md-symbols))))))))
+			 (and current-org (+ current-org (length res)))
+			 md-symbols)
+		   (list onode
+			 (asm 'current-origin)
+			 md-symbols))))))))
 
   ;;; Extract required md-symbols from a compose expression
   (define (get-required-symbols compose-expr)

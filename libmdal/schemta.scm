@@ -1042,7 +1042,7 @@
 	   (target (the (struct asm-target) initial-target))
 	   (symbols (the list extra-symbols))
 	   (local-namespace (the symbol '000__void))
-	   (current-origin (the integer org))
+	   (current-origin (the (or boolean integer) org))
 	   (ast (parse-source source target))
 	   (pass (the integer 0))
 	   (done? (the boolean #f))
@@ -1096,6 +1096,7 @@
 					 ast)))
 			(set! pass (+ 1 pass)))
 		 done?))
+	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
 	      (else (error 'assembly (string-append "Invalid command "
 						    (->string args)))))))))
