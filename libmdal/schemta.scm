@@ -1003,6 +1003,77 @@
 				    (cons result ast))))))))
       (parse-it (strip-source source) target '())))
 
+  ;;; Internal helper function. Do not use this directly unless you know what
+  ;;; you're doing.
+  (define (make-assembly-copy _init-target _target _symbols _local-namespace
+			      _current-origin _ast _pass _done?
+			      initial-org)
+    (let* ((initial-target (the (struct asm-target) _init-target))
+	   (target (the (struct asm-target) _target))
+	   (symbols (the list _symbols))
+	   (local-namespace (the symbol _local-namespace))
+	   (current-origin (the (or boolean integer) _current-origin))
+	   (ast (the list _ast))
+	   (pass (the integer _pass))
+	   (done? (the boolean _done?))
+	   (reset-state! (the (-> undefined)
+			      (lambda ()
+				(set! current-origin initial-org)
+				(set! target initial-target)
+				(set! local-namespace '000__void)
+				(set! done? #t))))
+	   (accessor (the procedure
+			  (lambda args
+			    (if (= 1 (length args))
+				(case (car args)
+				  ((target) target)
+				  ((symbols) symbols)
+				  ((current-origin) current-origin)
+				  ((local-namespace) local-namespace)
+				  ((done?) done?))
+				(case (car args)
+				  ((target) (set! target (cadr args)))
+				  ((symbols) (set! symbols (cadr args)))
+				  ((current-origin) (set! current-origin
+						      (cadr args)))
+				  ((local-namespace) (set! local-namespace
+						       (cadr args)))
+				  ((done?) (set! done? (cadr args)))))))))
+      (lambda args
+	(if (null? args)
+	    (error 'assembly "Missing command arguments")
+	    (case (car args)
+	      ((done?) done?)
+	      ((ast) ast)
+	      ((symbols) (if (= 2 (length args))
+			     (begin (for-each
+				     (lambda (sym)
+				       (set! symbols
+					 (alist-update (car sym)
+						       (cdr sym)
+						       symbols)))
+				     (cadr args)))
+			     symbols))
+	      ((local-namespace) local-namespace)
+	      ((target) target)
+	      ((assemble)
+	       (let ((initial-pass pass))
+		 (until (or done? (= pass (+ initial-pass (cadr args))))
+			(reset-state!)
+			(set! ast
+			  (concatenate
+			   (map-in-order (cute assemble-node <> accessor)
+					 ast)))
+			(set! pass (+ 1 pass)))
+		 done?))
+	      ((current-origin) current-origin)
+	      ((result) (and done? (ast->bytes ast)))
+	      ((copy) (make-assembly-copy initial-target target symbols
+					  local-namespace current-origin
+					  ast pass done? initial-org))
+	      (else (error 'assembly (string-append "Invalid command "
+						    (->string args)))))))))
+
   ;; (: make-assembly (string string * -> (procedure symbol * -> *)))
   ;;; Parses the assembly source code string SOURCE and returns an assembly
   ;;; object. TARGET-CPU must be a symbol identifying the initial target CPU
@@ -1031,10 +1102,20 @@
   ;;;
   ;;; Assemble the source, using a maximum of MAX-PASSES passes.
   ;;;
+  ;;; `(ASM 'current-origin)
+  ;;;
+  ;;; Returns the current origin. This will be equal the initial origin if no
+  ;;; assembler passes were performed yet. Otherwise it will be the address of
+  ;;; the first byte after the assembled output if known, or `#f` in any other
+  ;;; case.
+  ;;;
   ;;; `(ASM 'result)`
   ;;;
   ;;; If no more passes are required, returns the assembled machine code as a
   ;;; list of integer values. Otherwise, returns #f.
+  ;;;
+  ;;; `(ASM 'copy)`
+  ;;; Create a fresh copy of the assembly object in its current state.
   (define (make-assembly target-cpu source
 			 #!optional (org 0) (extra-symbols '()))
     ;; (print "make-assembly, source: " source)
@@ -1098,6 +1179,9 @@
 		 done?))
 	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
+	      ((copy) (make-assembly-copy initial-target target symbols
+					  local-namespace current-origin
+					  ast pass done? org))
 	      (else (error 'assembly (string-append "Invalid command "
 						    (->string args)))))))))
 

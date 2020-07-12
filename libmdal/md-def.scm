@@ -946,7 +946,9 @@
 		     md-symbols)))
   	   (lambda (onode parent-inode mdef current-org md-symbols)
 	     (let* ((no-loop? (alist-ref 'no-loop md-symbols))
-		    (asm (if no-loop? non-looping-asm looping-asm))
+		    (asm (if no-loop?
+			     (non-looping-asm 'copy)
+			     (looping-asm 'copy)))
 		    (res (begin (asm 'symbols md-symbols)
 				(asm 'assemble 3)
 				(asm 'result))))
