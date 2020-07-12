@@ -1,0 +1,28 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.0 target: dragon32
+ description: "A fast 4-voice saw wave player for 6-bit DAC. Compatible with Dragon 32, Dragon 64, and Tandy Color Computer. By The Invisible Man 2016."
+ default-origin: #xe00
+
+ commands: ((command id: NOTE bits: 8 type: ukey
+	    	     flags: (use-last-set is-note)
+	    	     keys: (make-counters 1 107 1 0)
+	    	     default: rest))
+
+ input: ((group id: PATTERNS flags: (ordered)
+		nodes: ((clone 4 (block id: CH nodes: ((field from: NOTE)))))))
+
+ output: ((asm file: "buzzplayer.asm")
+	  ;; (symbol id: PATLOOP)
+	  (field bytes: 2 compose: $pattern0)
+	  (symbol id: sequence-end)
+	  (field bytes: 2 compose: 0)
+	  (symbol id: pattern0)
+	  (group id: PATTERNS from: PATTERNS nodes:
+	  	 ((block id: CHANS from: (CH1 CH2 CH3 CH4)
+	  		 nodes: ((repeat bytes: 1 compose: ?NOTE1)
+	  			 (repeat bytes: 1 compose: ?NOTE2)
+				 (repeat bytes: 1 compose: ?NOTE3)
+				 (repeat bytes: 1 compose: ?NOTE4)))))
+	  (symbol id: nopat)
+	  (field bytes: 2 compose: #x8000)
+	  (field bytes: 2 compose: 0)))
