@@ -247,9 +247,17 @@ mdal-tests: mdal.so
 	-rm unittests.scm test.mmod
 
 .PHONY: schemta-tests
-schemta-tests: schemta-exe
+schemta-tests: m6502-tests m6809-tests
+
+.PHONY: m6809-tests
+m6809-tests: schemta-exe mdal-targets
 	cp -t ./ $(MDAL_SRC)schemta-tests/m6809.tests.scm && csi m6809.tests.scm -e
 	-rm m6809.tests.scm
+
+.PHONY: m6502-tests
+m6502-tests: schemta-exe mdal-targets
+	cp -t ./ $(MDAL_SRC)schemta-tests/m6502.tests.scm && csi m6502.tests.scm -e
+	-rm m6502.tests.scm
 
 .PHONY: clean
 clean:
