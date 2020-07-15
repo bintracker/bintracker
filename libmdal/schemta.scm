@@ -680,13 +680,12 @@
       				   (if (string? op)
       				       (string->bytes op)
       				       (eval-operand op state)))
-      				 (list (third node)))
+      				 (third node))
       			    (string->bytes (third node)))))
 	      (and-let* ((org (state 'current-origin)))
       		(state 'current-origin (+ org len)))
-	      ;; TODO (list res)?
       	      (or (and (every identity res)
-		       res)
+		       (list (map lsb res)))
 		  (begin (state 'done? #f) (list node)))))
       ((dw) (let ((res (list (flatten
 			      (map (lambda (arg)
@@ -1170,12 +1169,12 @@
 	      ((assemble)
 	       (let ((initial-pass pass))
 		 (until (or done? (= pass (+ initial-pass (cadr args))))
-			(reset-state!)
-			(set! ast
-			  (concatenate
-			   (map-in-order (cute assemble-node <> accessor)
-					 ast)))
-			(set! pass (+ 1 pass)))
+		 	(reset-state!)
+		 	(set! ast
+		 	  (concatenate
+		 	   (map-in-order (cute assemble-node <> accessor)
+		 			 ast)))
+		 	(set! pass (+ 1 pass)))
 		 done?))
 	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
