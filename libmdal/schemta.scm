@@ -25,7 +25,7 @@
   (import scheme (chicken base) (chicken string) (chicken bitwise) (chicken io)
 	  (chicken port) (chicken module) (chicken file) (chicken type)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 miscmacros
-	  comparse typed-records simple-exceptions)
+	  comparse typed-records)
 
   (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string)
 	    (chicken bitwise))
@@ -35,8 +35,8 @@
     ((registers '()) : (list-of (list symbol fixnum)))
     ((register-sets '()) : (list-of (list symbol (list-of symbol))))
     ((addressing-modes '()) : (list-of (list symbol procedure)))
-    ((conditions '()) : (list-of (list symbol fixnum)))
-    ((condition-sets '()) : (list-of (list symbol (list-of symbol))))
+    ((flags '()) : (list-of (list symbol fixnum)))
+    ((flag-sets '()) : (list-of (list symbol (list-of symbol))))
     ((extra '()) : (list-of (list symbol *)))
     ((instructions (make-hash-table)) : hash-table))
 
@@ -49,9 +49,9 @@
   ;; These are bound dynamically during parsing/assembling.
   (define register #f)
   (define address #f)
-  (define condition #f)
+  (define flag #f)
   (define extras #f)
-  (define condition-value #f)
+  (define flag-value #f)
   (define register-value #f)
   (define numeric #f)
   (define current-origin #f)
@@ -126,11 +126,11 @@
 
   (define (parse-operands operands target)
     ;; (print "parse-operands " operands " " target)
-    ;; (print "target-conditions: " (asm-target-conditions target))
+    ;; (print "target-flags: " (asm-target-flags target))
     (map (lambda (op)
 	   (parse
 	    (apply any-of
-		   (append (if (null? (asm-target-conditions target))
+		   (append (if (null? (asm-target-flags target))
 			       (list (a-numeric target)
 				     (set-parser 'all
 						 asm-target-registers
@@ -142,8 +142,8 @@
 						 asm-target-register-sets
 						 target)
 				     (set-parser 'all
-						 asm-target-conditions
-						 asm-target-condition-sets
+						 asm-target-flags
+						 asm-target-flag-sets
 						 target)))
 			   (map cadr
 				(asm-target-addressing-modes target))))
@@ -281,7 +281,7 @@
 	       (let ((lbl (string->symbol
 			   (string-downcase (string-append head remainder)))))
 		 (if (or (alist-ref lbl (asm-target-registers target))
-			 (alist-ref lbl (asm-target-conditions target)))
+			 (alist-ref lbl (asm-target-flags target)))
 		     fail
 		     (result (list 'label lbl))))))
 
@@ -559,9 +559,9 @@
     (or (and (have-all-symbols? (fourth node) state)
 	     (let ((target (state 'target)))
 	       (fluid-let
-		   ((condition-value
+		   ((flag-value
 		     (lambda (c)
-		       (car (alist-ref c (asm-target-conditions target)))))
+		       (car (alist-ref c (asm-target-flags target)))))
 		    (register-value
 		     (lambda (r)
 		       (car (alist-ref r (asm-target-registers target)))))
@@ -829,8 +829,8 @@
 
   ;;; Low level interace for `make-target`.
   (define (construct-target #!key endian (registers '()) (register-sets '())
-			    (addressing-modes '()) (conditions '())
-			    (condition-sets '()) (extra '()) instructions)
+			    (addressing-modes '()) (flags '())
+			    (flag-sets '()) (extra '()) instructions)
     (fluid-let ((register
 		 (lambda (set-id)
 		   (bind (apply any-of
@@ -840,29 +840,29 @@
 					 (car (alist-ref set-id
 							 register-sets)))))
 			 (lambda (r) (result (string->symbol r))))))
-		(condition
+		(flag
 		 (lambda (set-id)
 		   (bind (apply any-of
 				(map (o char-seq symbol->string)
 				     (if (eq? 'all set-id)
-					 (map car conditions)
+					 (map car flags)
 					 (car (alist-ref set-id
-							 condition-sets)))))
+							 flag-sets)))))
 			 (lambda (r) (result (string->symbol r))))))
 		(numeric
 		 (a-numeric (make-asm-target registers: registers
-					     conditions:  conditions)))
+					     flags:  flags)))
 		(symbol
 		 (a-symbol (make-asm-target registers: registers
-					    conditions: conditions))))
+					    flags: flags))))
       (let* ((eval-fn-mapping (lambda (x) (list (car x) (eval (cadr x)))))
 	     (_addressing-modes (map eval-fn-mapping addressing-modes))
 	     (_extra (map eval-fn-mapping extra)))
 	(fluid-let ((address (lambda (type)
 			       (car (alist-ref type _addressing-modes))))
 		    (extras (lambda (id) (car (alist-ref id _extra))))
-		    (condition-value (lambda (c)
-				       (car (alist-ref c conditions))))
+		    (flag-value (lambda (c)
+				       (car (alist-ref c flags))))
 		    (register-value (lambda (r)
 				      (car (alist-ref r registers)))))
 	  (letrec ((eval-operand-options
@@ -878,8 +878,8 @@
 	     endian: endian
 	     registers: registers
 	     register-sets: register-sets
-	     conditions: conditions
-	     condition-sets: condition-sets
+	     flags: flags
+	     flag-sets: flag-sets
 	     addressing-modes: _addressing-modes
 	     extra: _extra
 	     instructions:

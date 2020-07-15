@@ -8,18 +8,18 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
-	  (chicken file) (chicken random)
+	  (chicken file) (chicken random) (chicken condition)
 	  srfi-1 srfi-13 srfi-14 srfi-18 srfi-69
-	  pstk typed-records matchable list-utils
-	  comparse coops sqlite3 simple-exceptions
+	  pstk typed-records matchable list-utils comparse coops sqlite3
 	  mdal bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
-	    (chicken base) (chicken string) (chicken module)
-  	    (chicken bitwise) (chicken file) (chicken platform) (chicken random)
+	    (chicken base) (chicken string) (chicken module) (chicken bitwise)
+	    (chicken file) (chicken platform) (chicken random)
+	    (chicken condition)
   	    srfi-1 srfi-13 srfi-14 srfi-18 srfi-69 coops list-utils
-	    simple-exceptions comparse
+	    comparse
 	    (only sqlite3 execute))
 
 
@@ -32,9 +32,8 @@
     (if (file-exists? "config/config.scm")
 	(handle-exceptions
 	    exn
-	    (begin
-	      (tk-end)
-	      (raise exn))
+	    (begin (tk-end)
+		   (abort exn))
 	  (load "config/config.scm"))
 	(warning "Configuration file \"config/config.scm\" not found."))
     (unless (settings 'keymap) (load-keymap "en")))

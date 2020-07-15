@@ -76,8 +76,7 @@
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
 	  (chicken condition) (chicken sort)
-	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69
-	  simple-exceptions typed-records
+	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 typed-records
 	  md-helpers md-types md-command md-note-table schemta)
   (reexport md-command md-note-table schemta)
 
@@ -213,7 +212,11 @@
 		((label) (symbol? field-value))))
 	  field-value
 	  (begin
-	    (unless no-exn (raise-local 'illegal-value field-value field-id))
+	    (unless no-exn
+		    (mdal-abort (string-append "Illegal value "
+					       (->string field-value)
+					       " for field "
+					       (->string field-id))))
 	    #f))))
 
 
@@ -443,7 +446,8 @@
 				(if (and flags (memv 'ordered flags))
 				    (list (generate-order-tree id nodes))
 				    '()))))
-      (else (raise-local 'unknown-inode-type node-type))))
+      (else (mdal-abort (string-append "unknown inode type "
+				       (->string node-type))))))
 
   ;;; Generate the global itree (nested list of inode IDs) from the list of
   ;;; input node config expressions.
@@ -482,7 +486,9 @@
 					   (target-platform-clock-speed
 					    target))
 				     (cdr cmd)))
-		      (raise-local 'not-command cmd)))
+		      (mdal-abort (string-append
+				   "not an MDEF command specification: "
+				   (->string cmd)))))
 		commands)))
       (append (make-default-commands)
 	      base-commands
@@ -513,19 +519,23 @@
 
   ;;; Preliminary error checks for inode config specifications.
   (define (check-inode-spec type id from nodes parent-type)
-    (unless type (raise-local 'missing-inode-type))
+    (unless type (mdal-abort "missing type" "inode-definition"))
     (unless (memq type '(field block group))
-      (raise-local 'unknown-inode-type type))
+      (mdal-abort (string-append "unknown type " (->string type))
+		  "inode-definition"))
     (when (and (eq? type 'field)
 	       (not from))
-      (raise-local 'missing-ifield-source))
+      (mdal-abort "missing source command id specifier" "inode-definition"))
     (unless (or id (eq? type 'field))
-      (raise-local 'missing-inode-id))
+      (mdal-abort "missing id" "inode-definition"))
     (unless (or nodes (eq? type 'field))
-      (raise-local 'missing-inode-subnodes))
+      (mdal-abort "missing subnodes" "inode-definition"))
     (when (and (eq? parent-type 'block)
 	       (not (eq? type 'field)))
-      (raise-local 'illegal-block-child type)))
+      (mdal-abort (string-append "inode of type "
+				 (->string type)
+				 " may not be a child of a block inode")
+		  "inode-definition")))
 
   ;;; Determine the instance range of an inode config.
   (define (get-inode-range type min max instances parent-type)
@@ -888,7 +898,7 @@
   ;;; `apply`ing it to an onode def expression.
   (define (make-osymbol proto-mdef mdef-dir path-prefix
 			#!key id value compose)
-    (unless id (raise-local 'missing-onode-id))
+    (unless id (mdal-abort "missing id" "onode-definition"))
     (make-onode
      type: 'symbol size: 0
      fn: (cond
@@ -1453,7 +1463,8 @@
     (letrec
 	((run-compiler
 	  (lambda (current-otree current-symbols passes)
-	    (when (> passes 2) (raise-local 'compiler-failed))
+	    (when (> passes 2)
+	      (error 'compile-otree "Failed to compile module"))
 	    (let ((tree-result
 		   (do-compiler-pass current-otree parent-inode mdef
 				     origin current-symbols)))
@@ -1504,7 +1515,7 @@
     (unless (and (number? version-arg)
 		 (= 2 (length (string-split (number->string version-arg)
 					    "."))))
-      (raise-local 'missing-mdef-engine-version))
+      (mdal-abort "missing or incorrect MDEF version specification"))
     (let ((major/minor (map string->number
 			    (string-split (number->string version-arg)
 					  "."))))
@@ -1516,9 +1527,10 @@
 		     #!key mdef-version engine-version target commands
 		     input output default-origin (description ""))
     (unless (and mdef-version engine-version target commands input output)
-      (raise-local 'incomplete-mdef))
+      (mdal-abort "incomplete MDEF specification"))
     (unless (in-range? mdef-version *supported-mdef-versions*)
-      (raise-local 'unsupported-mdef-version mdef-version))
+      (mdal-abort (string-append "unsupported MDEF version "
+				 (->string mdef-version))))
     (let* ((_version (read-mdef-engine-version engine-version))
 	   (_target (target-generator (->string target)
 				      path-prefix))
@@ -1561,7 +1573,20 @@
   ;;; Evaluate the given `mdef` s-expression, and return a mdef record.
   (define (read-mdef mdef id mdef-dir path-prefix)
     (unless (and (pair? mdef) (eqv? 'mdal-definition (car mdef)))
-      (raise-local 'not-mdef))
+      (mdal-abort "not an MDEF specification"))
+    (handle-exceptions
+	exn
+	(if ((condition-predicate 'mdal) exn)
+	    (mdal-abort (string-append
+			 "Invalid MDEF specification "
+			 mdef-dir
+			 (->string id)
+			 "\n"
+			 ((condition-property-accessor 'mdal 'message) exn))
+			(string-append
+			 "mdef#"
+			 ((condition-property-accessor 'mdal 'where) exn)))
+	    (abort exn)))
     (apply eval-mdef (append (list id mdef-dir path-prefix)
 				   (cdr mdef))))
 
@@ -1571,24 +1596,9 @@
   (define (file->mdef parent-dir mdef-name #!optional (path-prefix ""))
     (let* ((mdef-dir (string-append parent-dir mdef-name "/"))
 	   (filepath (string-append mdef-dir mdef-name ".mdef")))
-      (handle-exceptions
-	  exn
-	  (cond ((exn-any-of? exn '(not-mdef unsupported-mdef-version
-					     incomplete-mdef
-					     invalid-command))
-		 (let ((exn-loc (string-append
-				 "In " filepath
-				 (if (string-null? (location exn))
-				     "" (string-append ", " (location exn))))))
-		   (raise ((amend-exn exn
-				      (string-append
-				       exn-loc "\nInvalid MDAL definition: ")
-			    'invalid-mdef)
-			   exn-loc))))
-		(else (abort exn)))
-	(call-with-input-file
-	    filepath
-	  (lambda (port)
-	    (read-mdef (read port) mdef-name mdef-dir path-prefix))))))
+      (call-with-input-file
+	  filepath
+	(lambda (port)
+	  (read-mdef (read port) mdef-name mdef-dir path-prefix)))))
 
   )  ;; end module md-def

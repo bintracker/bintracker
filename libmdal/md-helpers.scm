@@ -8,7 +8,7 @@
 
   (import scheme (chicken base) (chicken condition) (chicken string)
 	  (only (chicken bitwise) bitwise-and)
-	  srfi-1 srfi-13 srfi-69 simple-exceptions
+	  srfi-1 srfi-13 srfi-69
 	  typed-records)
 
   ;; ---------------------------------------------------------------------------
@@ -96,80 +96,9 @@
   (define (symbol-contains sym str)
     (string-contains (symbol->string sym) str))
 
-  ;;; Create a new exception from the given EXN, prefixing exn message
-  ;;; with MSG-PREFIX and adding KIND-KEY to the existing kind-keys.
-  (define (amend-exn exn msg-prefix kind-key)
-    (make-exn (string-append msg-prefix (message exn))
-	      kind-key (apply values (map car
-					  (remove (lambda (co)
-						    (eq? 'exn (car co)))
-						  (condition->list exn))))))
-
-  ;;; Check if any of the given error keys match the key of the given exception.
-  (define (exn-any-of? exn exn-keys)
-    (any (lambda (exn-key)
-	   ((exn-of? exn-key) exn))
-	 exn-keys))
-
-  ;; TODO noexport
-  ;; simplified exception generator for common libmdal errors
-  (define (raise-local exn-type . args)
-    (raise ((make-exn
-	     (case exn-type
-	       ((missing-command-specifier)
-		"missing id, type, and/or default specifier")
-	       ((missing-command-bits) "missing bits specifier")
-	       ((unknown-command-type)
-		(string-append "unknown command type "
-			       (->string (car args))))
-	       ((missing-command-keys) "missing keys specifier")
-	       ((missing-command-reference-to)
-		"missing reference-to specifier")
-	       ((nonnumeric-command-range)
-		"range used on command not of type int/uint")
-	       ((incomplete-mdef)
-		"incomplete mdef specification")
-	       ((missing-mdef-engine-version
-		 "missing or incorrect mdef engine version specification"))
-	       ((unsupported-mdef-version)
-		(string-append "unsupported MDEF version "
-			       (->string (car args))))
-	       ((not-mdef) "Not an MDEF specification.")
-	       ((not-command)
-		(string-append "Not an MDAL command specification."
-			       (->string (car args))))
-	       ((missing-inode-type) "missing inode config type")
-	       ((unknown-inode-type)
-		(string-append "unknown inode config type "
-			       (->string (car args))))
-	       ((missing-ifield-source) "missing source command id specifier")
-	       ((missing-inode-id) "missing id specifier")
-	       ((missing-inode-subnodes) "inode contains no subnodes")
-	       ((illegal-block-child)
-		(string-append "inode of type " (->string (car args))
-			       " may not be a child of a block inode"))
-	       ((missing-onode-id) "missing id specifier")
-	       ((no-mdef) "No MDEF specified")
-	       ((incompatible-mdef-version)
-		"installed MDAL definition version incompatible with module")
-	       ((not-mmod) "Not an MDAL module")
-	       ((no-mdal-version) "No MDAL version specified")
-	       ((unsupported-mdal-version)
-		(string-append "Unsupported MDAL version: "
-			       (->string (car args))))
-	       ((illegal-value (string-append "Illegal value "
-					      (->string (car args))
-					      " for field "
-					      (->string (cadr args)))))
-	       ((unknown-node) (string-append "Unknown node "
-					      (->string (car args))))
-	       ((row-spec-unmatched)
-		(string-append "In block node " (->string (car args))
-			       ", ID " (->string (cadr args))
-			       ": row \"" (->string (caddr args))
-			       "\" does not match specification"))
-	       ((compiler-failed) "Failed to compile module."))
-	     exn-type)
-	    "")))
+  ;;; Abort with an exception of kind `mdal`. WHERE is a string specifying
+  ;;; a libmdal component, and MESSAGE is the error message to display.
+  (define (mdal-abort message #!optional (where ""))
+    (abort (condition `(mdal where ,where message ,message))))
 
   ) ;; end module md-helpers

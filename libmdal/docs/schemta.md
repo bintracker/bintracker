@@ -262,10 +262,10 @@ A target specification file should contain a single top-level s-expression which
                        ;; and values are lists of register names.
  addressing-modes: ()  ;; an alist where the keys are arbitrary unique symbols,
                        ;; and values are parser definitions (see below).
- conditions: ()        ;; as registers, but for specifying conditions
-                       ;; only useful for instruction sets that use conditions
+ flags: ()             ;; as registers, but for specifying condition flags
+                       ;; only useful for instruction sets that use flags
 					   ;; as arguments, rather than extensions to command names
- condition-sets: ()    ;; as register sets, but for conditions
+ flag-sets: ()         ;; as register sets, but for flags
  extra: ()             ;; alist of additional functions/constants, usable from
                        ;; output generators
  instructions: ()      ;; an alist specifying the instruction set. See below.
@@ -298,9 +298,9 @@ An assembly level symbol. Returns `(symbol SYM).
 
 An address parser, defined in target-addressing-modes.
 
-**`(condition CONDITION-SET)`**
+**`(flag CONDITION-SET)`**
 
-A condition in CONDITION-SET. CONDITION-SET may be `all` for any condition in target-conditions.
+A flag in FLAG-SET. FLAG-SET may be `all` for any flag in target-flags.
 
 **`(register REGISTER-SET)`**
 
@@ -311,7 +311,7 @@ A register in REGISTER-SET. REGISTER-SET may be `all` for any register in target
 
 The instructions alist uses instruction names (as unquoted symbols) as keys. The values are in turn alists, where the keys are the possible number of arguments for the given command. For key 0, the value is a list  representing the machine code that shall be output for that instruction. Otherwise, the value is an alist where the keys are parsers covering the first operand. The value is again either a list of machine code output, or an alist covering the second operand, and so forth.
 
-Schemta internally converts all symbols, register and condition names to lowercase. This must be taken into account when writing instruction sets.
+Schemta internally converts all symbols, register and flag names to lowercase. This must be taken into account when writing instruction sets.
 
 The elements of the output expression list must be byte values, or expressions evaluating to such a value. Within expressions, you may refer to the operands as `%op1`, `%op2`, etc. The following procedures are provided:
 

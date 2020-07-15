@@ -26,8 +26,7 @@
 
   (import scheme (chicken base) (chicken string) (chicken io) (chicken format)
 	  (chicken condition)
-	  srfi-1 srfi-13 srfi-14 srfi-69 typed-records
-	  simple-exceptions md-helpers)
+	  srfi-1 srfi-13 srfi-14 srfi-69 typed-records md-helpers)
 
 
   ;;; command config record type
@@ -88,22 +87,28 @@
       (LICENSE . ,(make-command type: 'string default: "All Rights Reserved"))))
 
   ;;; basic error checks for mdalconfig command specification
-  (define (check-command-spec id type bits default reference-to keys range)
+  (define (check-command-spec id type bits default reference-to
+			      keys range flags)
     (unless (and id type (or default (eqv? type 'trigger)))
-      (raise-local 'missing-command-specifier))
+      (mdal-abort "missing id, type, and/or default specifier"))
     (when (and (memv type '(int uint key ukey reference modifier))
 	       (not bits))
-      (raise-local 'missing-command-bits))
+      (mdal-abort "missing bits specifier"))
     (unless (memv type '(int uint key ukey reference trigger string modifier))
-      (raise-local 'unknown-command-type type))
+      (mdal-abort (string-append "unknown command type " (->string type))))
     (when (and (memv type '(key ukey))
 	       (not keys))
-      (raise-local 'missing-command-keys))
+      (mdal-abort "missing keys specifier"))
     (when (and (memv type '(reference modifier))
 	       (not reference-to))
-      (raise-local 'missing-command-reference-to))
+      (mdal-abort "missing reference-to specifier"))
     (when (and range (not (memv type '(int uint modifier))))
-      (raise-local 'nonnumeric-command-range)))
+      (mdal-abort "range used on command not of type int, uint or modifier"))
+    (when (and (not (memv type '(key ukey)))
+	       (memv 'enable-modifiers flags))
+      (mdal-abort (string-append
+		   "Cannot create modifer for command of type "
+		   (symbol->string type)))))
 
   ;;; Construct  modifier commands for the alist of id, command pairs, as
   ;;; required by the `'enable-modifiers` flag.
@@ -111,11 +116,6 @@
     (map (lambda (cmd-spec)
 	   (let ((source-id (car cmd-spec))
 		 (source-command (cdr cmd-spec)))
-	     (unless (memv (command-type source-command) '(key ukey))
-	       (error 'make-modifier-command
-		      (string-append
-		       "Cannot create modifer for command of type "
-		       (symbol->string (command-type source-command)))))
 	     (cons (symbol-append 'MOD_ source-id)
 		   (make-command
 		    type: 'modifier
@@ -138,19 +138,14 @@
 			reference-to keys (flags '()) range (description ""))
     (handle-exceptions
 	exn
-	(cond ((exn-any-of? exn '(missing-command-specifier
-				  missing-command-bits
-				  unknown-command-type
-				  missing-command-keys
-				  missing-command-reference-to
-				  nonnumeric-command-range))
-	       (raise ((amend-exn
-			exn "Invalid command specification: "
-			'invalid-command)
-		       (string-append "command "
-				      (if id (->string id) "???")))))
-	      (else (abort exn)))
-      (check-command-spec id type bits default reference-to keys range)
+	(if ((condition-predicate 'mdal) exn)
+	    (mdal-abort (string-append
+			 "Invalid command specification\n"
+			 ((condition-property-accessor 'mdal 'message) exn))
+			(string-append "command:"
+				       (if id (->string id) "???")))
+	    (abort exn))
+      (check-command-spec id type bits default reference-to keys range flags)
       (cons id
 	    (make-command
 	     type: type

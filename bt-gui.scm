@@ -11,8 +11,7 @@
 	  (chicken sort) (chicken module) (chicken process)
 	  (chicken random) (chicken condition) (chicken port)
 	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
-	  coops typed-records simple-exceptions pstk stack comparse
-	  matchable
+	  coops typed-records pstk stack comparse matchable
 	  bt-gui-lolevel bt-state bt-types bt-emulation bt-db mdal)
 
   (reexport bt-gui-lolevel)
@@ -99,8 +98,19 @@
       (unless (string-null? filename)
   	(handle-exceptions
   	    exn
-  	    (repl-insert (repl) (string-append "\nError: " (->string exn)
-  		   			       "\n" (message exn) "\n"))
+	    (begin
+	      ;; TODO display error dialog instead if repl deactivated
+  	      (repl-insert
+	       (repl)
+	       (string-append
+		"\nError: "
+		(->string exn)
+  		"\n"
+		(if ((condition-predicate 'mdal) exn)
+		    ((condition-property-accessor 'mdal 'message) exn)
+		    ((condition-property-accessor 'exn 'message) exn))
+		"\n"))
+	      (repl-insert-prompt (repl)))
   	  (after-load-file-hooks 'execute #f filename)))))
 
   (define (create-new-module mdef-name)

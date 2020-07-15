@@ -8,7 +8,7 @@
 
   (import scheme (chicken base) (chicken io) (chicken string)
 	  (chicken condition)
-	  srfi-1 srfi-13 srfi-14 simple-exceptions typed-records
+	  srfi-1 srfi-13 srfi-14 typed-records
 	  md-helpers md-types md-def)
 
   ;;; Parse GROUP-CONTENTS for an assignment to the field node FIELD-ID.
@@ -41,14 +41,19 @@
     (if (any pair? row)
 	(begin
 	  (when (any atom? row)
-	    (raise-local 'row-spec-unmatched block-id instance-id row))
+	    (mdal-abort
+	     (string-append "In block node " (->string block-id)
+			    ", ID " (->string instance-id)
+			    ": row \"" (->string row)
+			    "\" does not match specification")))
 	  (when (any (lambda (x)
 		       (not (memv (car x) field-ids)))
 		     row)
-	    (raise-local 'unknown-node
-			 (car (find (lambda (x)
-				      (not (memv (car x) field-ids)))
-				    row))))
+	    (mdal-abort (string-append
+			 "Unknown node "
+			 (->string (car (find (lambda (x)
+						(not (memv (car x) field-ids)))
+					      row))))))
 	  (map (lambda (field-id)
 		 (let ((val (alist-ref field-id row)))
 		   (if val
@@ -57,7 +62,11 @@
 	       field-ids))
 	(begin
 	  (unless (= (length row) (length field-ids))
-	    (raise-local 'row-spec-unmatched block-id instance-id row))
+	    (mdal-abort
+	     (string-append "In block node " (->string block-id)
+			    ", ID " (->string instance-id)
+			    ": row \"" (->string row)
+			    "\" does not match specification")))
 	  row)))
 
   ;;; Parse the contents of a block node instance into the internal
@@ -125,16 +134,16 @@
   ;;; This procedure should be applied to a mod-sexp.
   (define (check-mmod-version head #!rest args #!key version)
     (unless (eqv? head 'mdal-module)
-      (raise-local 'not-mmod))
-    (unless version (raise-local 'no-mdal-version))
+      (mdal-abort "not an MDAL module"))
+    (unless version (mdal-abort "no MDAL version specified"))
     (unless (in-range? version *supported-mmod-versions*)
-      (raise-local 'unsupported-mdal-version version))
+      (mdal-abort "unsupported MDAL version " (->string version)))
     version)
 
   ;;; Get the name of the mdef used by the module
   ;;; This procedure should be applied to a mod-sexp.
   (define (mod-get-mdef-name head #!rest args #!key mdef)
-    (unless mdef (raise-local 'no-mdef))
+    (unless mdef (mdal-abort "missing MDEF specification"))
     mdef)
 
   ;;; Read the mdef-version keyword argument. Returns a engine-version struct.
@@ -145,12 +154,16 @@
   (define (file->mmod filepath mdef-dir-path #!optional (path-prefix ""))
     (handle-exceptions
 	exn
-	(cond ((exn-any-of? exn '(unsupported-mdal-version
-				  no-mdef syntax-error
-				  no-mdal-version))
-	       (raise ((amend-exn exn "Invalid module: " 'parse-fail)
-		       (string-append "In " filepath " "))))
-	      (else (abort exn)))
+	(if ((condition-predicate 'mdal) exn)
+	    (mdal-abort (string-append
+			 "Invalid MDAL module "
+			 filepath
+			 "\n"
+			 ((condition-property-accessor 'mdal 'message) exn))
+			(string-append
+			 "mdal-parser#"
+			 ((condition-property-accessor 'mdal 'where) exn)))
+	    (abort exn))
       (let ((mod-sexp (read (open-input-file filepath text:))))
         (apply check-mmod-version mod-sexp)
 	(let* ((cfg-name (apply mod-get-mdef-name mod-sexp))
@@ -158,7 +171,7 @@
 	       (def (file->mdef mdef-dir-path cfg-name path-prefix)))
 	  (unless (engine-versions-compatible? engine-version
 					       (mdef-engine-version def))
-	    (raise-local 'incompatible-mdef-version))
+	    (mdal-abort "installed MDEF version incompatible with module"))
 	  (cons def
 		(list 'GLOBAL
 		      (apply mod-parse-group-instance
