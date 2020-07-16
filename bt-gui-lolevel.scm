@@ -86,11 +86,9 @@
   ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
 
-  ;;; This section provides abstractions over Tk dialogues and pop-ups. This
-  ;;; includes both native Tk widgets and Bintracker-specific metawidgets.
-  ;;; `tk/safe-dialogue` and `custom-dialog` are potentially the most useful
-  ;;; entry points for creating native resp. custom dialogues from user code,
-  ;;; eg. when calling from a plugin.
+  ;;; This section provides abstractions over Tk dialogues and pop-ups.
+  ;;; `tk/safe-dialogue` is potentially the most useful entry points for
+  ;;; creating native dialogues from user code.
 
   ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
   ;;; tk/get-save-file that block the main application window  while the pop-up
@@ -136,126 +134,6 @@
 					     "Save before " exit-or-closing
 					     "?")
 		     type: 'yesnocancel))
-
-  ;; TODO instead of destroying, should we maybe just tk/forget?
-  ;;; Create a custom dialogue user dialogue popup. The dialogue widget sets up
-  ;;; a default widget layout with `Cancel` and `Confirm` buttons and
-  ;;; corresponding key handlers for `<Escape>` and `<Return>`.
-  ;;;
-  ;;; Returns a procedure *P*, which can be called as follows:
-  ;;;
-  ;;; `(P 'show)`
-  ;;;
-  ;;; Display the dialogue widget. Call this procedure **before** you add any
-  ;;; user-defined widgets, bindings, procedures, and finalizers.
-  ;;;
-  ;;; `(P 'add 'widget ID WIDGET-SPECIFICATION)`
-  ;;;
-  ;;; Add a widget named ID, where WIDGET-SPECIFICATION is the list of
-  ;;; widget arguments that will be passed to Tk as the remaining arguments of
-  ;;; a call to `(parent 'create-widget ...)`.
-  ;;;
-  ;;; `(P 'add 'binding EVENT PROC)`
-  ;;;
-  ;;; Bind PROC to the Tk event sequence specifier EVENT.
-  ;;;
-  ;;; `(P 'add 'procedure ID PROC)`
-  ;;;
-  ;;; Add a custom procedure ;; TODO redundant?
-  ;;;
-  ;;; `(P 'add 'finalizer PROC)`
-  ;;;
-  ;;; Add PROC to the list of finalizers that will run on a successful exit from
-  ;;; the dialogue.
-  ;;;
-  ;;; `(P 'ref ID)`
-  ;;; Returns the user-defined widget or procedure named ID. Use this to
-  ;;; cross-reference elements created with `(c 'add [widget|procedure])` within
-  ;;; user code.
-  ;;;
-  ;;; `(P 'destroy)`
-  ;;;
-  ;;; Executes any user defined finalizers, then destroys the dialogue window.
-  ;;; You normally do not need to call this explicitly unless you are handling
-  ;;; exceptions.
-  (define (make-dialogue)
-    (let* ((tl #f)
-	   (widgets '())
-	   (procedures '())
-	   (get-ref (lambda (id)
-		      (let ((ref (alist-ref id (append widgets procedures))))
-			(and ref (car ref)))))
-	   (extra-finalizers '())
-	   (finalize (lambda (success)
-		       (when success
-			 (for-each (lambda (x) (x)) extra-finalizers))
-		       (tk/destroy tl))))
-      (lambda args
-	(case (car args)
-	  ((show)
-	   (tk-with-lock
-	    (lambda ()
-	      (unless tl
-		(set! tl (tk 'create-widget 'toplevel
-			     background: (colors 'background)))
-		;; Configure this to be a popup
-		;; TODO On xmonad, this works exactly once after a fresh compile.
-		(tk/wm 'transient tl tk)
-		(tk/wm 'attributes tl topmost: 1 type: 'dialog)
-		(set! widgets `((content ,(tl 'create-widget 'frame))
-				(footer ,(tl 'create-widget 'frame))))
-		(set! widgets
-		  (append widgets
-			  `((confirm ,((get-ref 'footer) 'create-widget
-				       'button text: "Confirm"
-				       command: (lambda () (finalize #t))))
-			    (cancel ,((get-ref 'footer) 'create-widget
-				      'button text: "Cancel"
-				      command: (lambda () (finalize #f)))))))
-		(tk/bind tl '<Escape> (lambda () (finalize #f)))
-		(tk/bind tl '<Return> (lambda () (finalize #t)))
-		(tk/pack (get-ref 'confirm) side: 'right padx: 2)
-		(tk/pack (get-ref 'cancel) side: 'right padx: 2)
-		(tk/pack (get-ref 'content) side: 'top padx: 2)
-		(tk/pack (get-ref 'footer) side: 'top padx: 2)))))
-	  ((add)
-	   (tk-with-lock
-	    (lambda ()
-	      (case (cadr args)
-		((binding) (apply tk/bind (cons tl (cddr args))))
-		((finalizer) (set! extra-finalizers
-			       (cons (caddr args) extra-finalizers)))
-		((widget)
-		 (case (car (cadddr args))
-		   ((text treeview)
-		    (let* ((frame ((get-ref 'content) 'create-widget 'frame))
-			   (user-widget (apply frame (cons 'create-widget
-							   (cadddr args))))
-			   (scrollbar (frame 'create-widget 'scrollbar
-					     orient: 'vertical
-					     command: `(,user-widget yview))))
-		      (set! widgets (cons (list (caddr args) user-widget)
-					  widgets))
-		      (tk/pack scrollbar side: 'right fill: 'y)
-		      (tk/pack user-widget side: 'right)
-		      (user-widget 'configure 'yscrollcommand: `(,scrollbar set))
-		      (tk/pack frame side: 'top padx: 2 pady: 2)))
-		   (else (let ((user-widget (apply (get-ref 'content)
-						   (cons 'create-widget
-							 (cadddr args)))))
-			   (set! widgets (cons (list (caddr args) user-widget)
-					       widgets))
-			   (tk/pack user-widget side: 'top padx: 2 pady: 2)))))
-		((procedure)
-		 (set! procedures (cons (caddr args) procedures)))))))
-	  ((ref) (get-ref (cadr args)))
-	  ((destroy)
-	   (when tl
-	     (finalize #f)
-	     (set! tl #f)))
-	  (else (warning (string-append "Error: Unsupported dialog action"
-					(->string args))))))))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ## Widget Style
@@ -772,9 +650,81 @@
     (let ((children (ui-children elem)))
       (and (ui-children elem)
   	   (or (alist-ref child-element children)
-  	       (find (lambda (child)
-  		       (ui-ref (cdr child) child-element))
-  		     children)))))
+	       (and-let* ((ce (find (lambda (child)
+  				      (ui-ref (cdr child) child-element))
+  				    children)))
+		 (ui-ref (cdr ce) child-element))))))
+
+  ;;; Class-based container for one or more Tk widgets. This is essentially an
+  ;;; adapter for using raw Tk widgets from within Bintracker's class-based UI
+  ;;; system. Create instances as follows:
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-wrapper>
+  ;;;       'setup ((ID1 WIDGET-TYPE1 [ARGS...]) ...)
+  ;;;       ['orient ORIENT]
+  ;;;       ['yscroll YS])
+  ;;; ```
+  ;;;
+  ;;; where ID1 is a unique child element identifier, WIDGET-TYPE1 is the name
+  ;;; of a Tk widget element, and ARGS... are the arguments passed to the
+  ;;; widget's consructor. ORIENT specifies the orientation in which the widgets
+  ;;; will be packed. It must be either `'horizontal` or `'vertical`, defaults
+  ;;; to `'horizontal`. YS may be a boolean. If `#t`, setup may contain only a
+  ;;; single child element, and ORIENT must be `'horizontal`. A vertical
+  ;;; scrollbar will be added for the child element.
+  (define-class <ui-wrapper> (<ui-element>)
+    ((yscroll #f)
+     (orient 'horizontal)
+     (packing-args '(padx: 4 pady: 4 side: top fill: x))))
+
+  (define-method (initialize-instance after: (elem <ui-wrapper>))
+    ;; (print "initialize-instance/ui-wrapper")
+    (when (slot-value elem 'yscroll)
+      (when (eqv? (slot-value elem 'orient) 'vertical)
+	(error '|make <ui-wrapper>|
+	       "Cannot create vertical scrollbar with vertical orientation"))
+      (when (null? (ui-setup elem))
+	(error '|make <ui-wrapper>|
+	       (string-append "Cannot create vertical scrollbar without at"
+			      " least one child element"))))
+    (set! (ui-children elem)
+      (map (lambda (spec)
+	     (cons (car spec)
+		   (apply (ui-box elem) (cons 'create-widget (cdr spec)))))
+	   (ui-setup elem)))
+    (when (slot-value elem 'yscroll)
+      (set! (slot-value elem 'yscroll)
+	((ui-box elem) 'create-widget 'scrollbar
+	 orient: 'vertical command: `(,(cdar (ui-children elem)) yview)))
+      ((cdar (ui-children elem)) 'configure
+       yscrollcommand: `(,(slot-value elem 'yscroll) set))))
+
+  (define-method (ui-show primary: (elem <ui-wrapper>))
+    ;; (print "ui-show/ui-wrapper")
+    (unless (slot-value elem 'initialized)
+      (when (slot-value elem 'yscroll)
+	(tk/pack (slot-value elem 'yscroll) expand: 0 fill: 'y side: 'right))
+      (if (eqv? 'horizontal (slot-value elem 'orient))
+	  (if (slot-value elem 'yscroll)
+	      (for-each (lambda (child-elem)
+			  (tk/pack (cdr child-elem) padx: 4 pady: 4
+				   expand: 1 fill: 'x side: 'right))
+			(reverse (ui-children elem)))
+	      (for-each (lambda (child-elem)
+			  (tk/pack (cdr child-elem) padx: 4 pady: 4
+				   side: 'left))
+			(ui-children elem)))
+	  (for-each (lambda (elem)
+		      (tk/pack (cdr elem) padx: 4 pady: 4 side: 'top))
+		    (ui-children elem)))
+      (set! (slot-value elem 'initialized) #t))
+    (apply tk/pack (cons (ui-box elem) (slot-value elem 'packing-args))))
+
+  (define-method (ui-ref primary: (elem <ui-wrapper>) child-element)
+    (let ((children (ui-children elem)))
+      (and (ui-children elem)
+  	   (alist-ref child-element children))))
 
   (define-class <ui-modeline> (<ui-element>)
     ((packing-args '(expand: 0 fill: x side: bottom))
@@ -1358,5 +1308,127 @@
   (define-method (ui-expand primary: (buf <ui-buffer>))
     (when (slot-value buf 'collapsible)
       ((slot-value buf 'expand-proc) buf)))
+
+  ;;; A class representing a popup dialog. Dialogs are automatically constructed
+  ;;; with two buttons labelled "Confirm" and "Cancel", and `<Escape>` and
+  ;;; `<Return>` keypress events are always bound. Construct instances with:
+  ;;;
+  ;;; ```Scheme
+  ;;; (make <ui-dialog>
+  ;;;       ['title TITLE]
+  ;;;       ['children CHILD-SPECS]
+  ;;;       ['initializers INIT-HOOKS]
+  ;;;       ['finalizers FINAL-HOOKS]
+  ;;;       ['parent PARENT])
+  ;;; ```
+  ;;;
+  ;;; TITLE may be a string that will be displayed as the dialog window name.
+  ;;;
+  ;;; CHILDREN may be an associative list of named child elements, which must be
+  ;;; `<ui-element>`s.
+  ;;;
+  ;;; Widgets in a dialog are not created until the dialog is shown. This means
+  ;;; you cannot bind events or apply procedures to child elements of the
+  ;;; dialog directly after initialization. To apply bindings and/or procedures,
+  ;;; provide a [hook set](bt-types.md#hooks) as INIT-HOOKS.
+  ;;;
+  ;;; FINALIZERS may be a [hook set](bt-types.md#hooks) that will be executed
+  ;;; when the user clicks the "Confirm" button or hits the Return key.
+  ;;; Procedures in the hook set must be stubs, ie. they may not take any
+  ;;; arguments.
+  ;;;
+  ;;; PARENT may be a Tk toplevel window. The dialog window acts as a transient
+  ;;; on the PARENT. PARENT defaults to the root window `tk`. You normally do
+  ;;; not need to set this explicitly, except when creating dialogs acting on
+  ;;; behalf of other dialogs.
+  ;;;
+  ;;; As long as the dialog is not destroyed (by calling `ui-destroy` on it or
+  ;;; manually destroying its `ui-box`), it preserves state between invocations.
+  ;;;
+  ;;; Note that `<ui-dialog>` is not a descendant of `<ui-element>`. In practice
+  ;;; this hardly matters, as `<ui-dialog>` supports all of the basic methods
+  ;;; defined on `<ui-element>`. However, note the caveat regarding applying
+  ;;; bindings and procedures to sub-widgets above.
+  (define-class <ui-dialog> ()
+    ((initialized #f)
+     (visible #f)
+     (parent initform: tk accessor: ui-parent)
+     (packing-args '())
+     (box accessor: ui-box)
+     (title "")
+     (initializers (make-hooks))
+     (finalizers (make-hooks))
+     footer
+     cancel-button
+     confirm-button
+     (children initform: '() accessor: ui-children)))
+
+  (define-method (ui-show primary: (d <ui-dialog>) #!key initializer-args)
+    ;; TODO busy the actual parent
+    (tk-eval "tk busy .")
+    (if (slot-value d 'initialized)
+	(unless (slot-value d 'visible)
+	  (tk/wm 'deiconify (ui-box d))
+	  (set! (slot-value d 'visible) #t))
+	(let ((finalize (lambda (success)
+			  (when success ((slot-value d 'finalizers) 'execute))
+			  (ui-hide d)))
+	      (tl ((ui-parent d) 'create-widget 'toplevel
+		   background: (colors 'background))))
+	  (tk/wm 'transient tl)
+	  (tk/wm 'attributes tl topmost: 1 type: 'dialog)
+	  (tk/wait 'visibility tl)
+	  (tk/wm 'withdraw tl)
+	  (tk/wm 'deiconify tl)
+	  (set! (ui-box d) tl)
+	  (tk/wait 'visibility tl)
+	  (tk/wm 'title tl (slot-value d 'title))
+	  (set! (slot-value d 'footer) (tl 'create-widget 'frame))
+	  (set! (slot-value d 'confirm-button)
+	    ((slot-value d 'footer) 'create-widget 'button
+	     text: "Confirm" command: (lambda () (finalize #t))))
+	  (set! (slot-value d 'cancel-button)
+	    ((slot-value d 'footer) 'create-widget 'button
+	     text: "Cancel" command: (lambda () (finalize #f))))
+	  (tk/bind tl '<Escape> (lambda () (finalize #f)))
+	  (tk/bind tl '<Return> (lambda () (finalize #t)))
+	  (set! (ui-children d)
+	    (map (lambda (child-spec)
+		   `(,(car child-spec)
+		     .
+		     ,(apply make
+			     (cons (cadr child-spec)
+				   (append `(parent ,tl) (cddr child-spec))))))
+		 (ui-children d)))
+	  (tk/pack (slot-value d 'confirm-button) side: 'right padx: 2)
+	  (tk/pack (slot-value d 'cancel-button) side: 'right padx: 2)
+	  (for-each (lambda (child) (ui-show (cdr child)))
+		    (ui-children d))
+	  (if initializer-args
+	      ((slot-value d 'initializers) 'execute initializer-args)
+	      ((slot-value d 'initializers) 'execute))
+	  (tk/pack (slot-value d 'footer) side: 'top fill: 'x padx: 2)
+	  (set! (slot-value d 'initialized) #t)
+	  (set! (slot-value d 'visible) #t)))
+    (tk-eval "tk busy forget ."))
+
+  (define-method (ui-hide primary: (d <ui-dialog>))
+    (when (and (slot-value d 'initialized)
+	       (slot-value d 'visible))
+      (tk/wm 'withdraw (ui-box d))
+      (set! (slot-value d 'visible) #f)))
+
+  (define-method (ui-destroy primary: (d <ui-dialog>))
+    (when (slot-value d 'initialized)
+      (tk/destroy (ui-box d))))
+
+  (define-method (ui-ref primary: (elem <ui-dialog>) child-element)
+    (let ((children (ui-children elem)))
+      (and (ui-children elem)
+  	   (or (alist-ref child-element children)
+	       (and-let* ((ce (find (lambda (child)
+  				      (ui-ref (cdr child) child-element))
+  				    children)))
+		 (ui-ref (cdr ce) child-element))))))
 
   ) ;; end module bt-gui-lolevel

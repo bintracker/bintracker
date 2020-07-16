@@ -121,96 +121,131 @@
   			(settings 'default-block-length))
      #f))
 
+  (define new-file-dialog
+    (make <ui-dialog>
+      'title "Select Engine"
+      'children
+      `((header ,<ui-wrapper> setup
+		((lbl1 label text: "Platform")
+		 (platform-selector combobox state: readonly)))
+	(sf ,<ui-wrapper> setup
+	    ((mdef-selector treeview columns: (Name Version Platform)
+  			    show: tree selectmode: browse))
+	    yscroll #t)
+	(df ,<ui-wrapper> setup
+	    ((description text takefocus: 0 state: disabled bd: 0
+			  highlightthickness: 0 height: 10 wrap: word))
+	    yscroll #t))
+      'initializers
+      (make-hooks
+       `(configure-text-style
+	 .
+	 ,(lambda ()
+	    ((ui-ref new-file-dialog 'description) 'configure
+	     bg: (colors 'background) fg: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+  			  size: (settings 'font-size)))))
+       `(list-platforms
+	 .
+	 ,(lambda ()
+	    (let ((selected-pf (tk-var "selectedplatform")))
+	      ((ui-ref new-file-dialog 'platform-selector)
+	       'configure values: (cons "any" (btdb-list-platforms))
+	       textvariable: selected-pf)
+	      (tk-set-var! "selectedplatform" "any"))))
+       `(list-mdefs
+	 .
+	 ,(lambda ()
+	    (for-each (lambda (mdef)
+  			((ui-ref new-file-dialog 'mdef-selector)
+			 'insert '{} 'end text: (car mdef)
+  			 values: (list (cadr mdef) (third mdef))))
+  		      ;; TODO btdb-list-mdefs should always return a list!
+  		      (btdb-list-mdefs))))
+       `(do-bindings
+	 .
+	 ,(lambda ()
+	    (let* ((platform-selector (ui-ref new-file-dialog
+					      'platform-selector))
+		   (mdef-selector (ui-ref new-file-dialog 'mdef-selector))
+		   (description-widget (ui-ref new-file-dialog 'description))
+		   (get-item-list (lambda ()
+  				    (string-split
+  				     (string-delete
+  				      (string->char-set "{}")
+  				      (->string
+				       (mdef-selector 'children '{})))))))
+	      (tk/bind
+	       platform-selector
+	       '<<ComboboxSelected>>
+	       (lambda ()
+		 (let ((selected-platform
+			(string->symbol (tk-get-var "selectedplatform"))))
+		   (mdef-selector 'delete (get-item-list))
+		   (for-each (lambda (mdef)
+  			       (mdef-selector 'insert '{} 'end
+  					      text: (car mdef)
+  					      values: (list (cadr mdef)
+							    (third mdef))))
+  			     (btdb-list-mdefs selected-platform))
+		   (mdef-selector 'focus (car (get-item-list)))
+		   (mdef-selector 'selection 'set
+  				  (list (car (get-item-list)))))))
+	      (tk/bind
+	       mdef-selector
+	       '<<TreeviewSelect>>
+	       ;; TODO this fails when selection was set automatically,
+	       ;; because Tk delays execution of the selection too long.
+	       ;; Calling tk/update or tk/update 'idletasks hangs the app.
+	       ;; For now, use tk/after 100 as a (very brittle) work-around.
+	       (lambda ()
+		 (tk/after
+		  100
+		  (lambda ()
+		    (let* ((selected-engine
+			    (string->symbol
+			     (mdef-selector
+  			      'item (mdef-selector 'selection) text:)))
+			   (description (->string (btdb-get-mdef-description
+						   selected-engine))))
+		      (description-widget 'configure state: 'normal)
+		      (description-widget 'delete "0.0" 'end)
+		      (description-widget 'insert 'end description)
+		      (description-widget 'configure state: 'disabled))))))))))
+      'finalizers
+      (make-hooks
+       `(ex
+	 .
+	 ,(lambda a
+  	    (and-let*
+  		((mdef-selector (ui-ref new-file-dialog 'mdef-selector))
+  		 (item-list (string-split
+  			     (string-delete
+  			      (string->char-set "{}")
+  			      (->string (mdef-selector 'children '{})))))
+		 (_ (not (null? item-list)))
+  		 (selected-def (mdef-selector 'item (mdef-selector 'focus)
+  					      text:)))
+  	      (create-new-module (if (string-null? selected-def)
+  				     (mdef-selector 'item (car item-list)
+  						    text:)
+  				     selected-def))))))))
+
   ;; TODO abort when user aborts closing of current workfile
-  ;;; Opens a dialog for users to chose an MDAL definition. Based on the
-  ;;; user's choice, a new MDAL module is created and displayed.
+  ;; Opens a dialog for users to chose an MDAL definition. Based on the
+  ;; user's choice, a new MDAL module is created and displayed.
   (define (new-file)
     (close-file)
-    (let ((d (make-dialogue))
-  	  (platforms (btdb-list-platforms)))
-      (d 'show)
-      (d 'add 'widget 'lbl1 '(label text: "Platform:"))
-      (d 'add 'widget 'platform-selector
-  	 `(combobox state: readonly values: ,(cons "any" platforms)))
-      ((d 'ref 'platform-selector) 'set "any")
-      (d 'add 'widget 'mdef-selector
-  	 '(treeview columns: (Name Version Platform)
-  		    show: tree
-  		    selectmode: browse))
-      (for-each (lambda (mdef)
-  		  ((d 'ref 'mdef-selector) 'insert '{} 'end
-  		   text: (car mdef)
-  		   values: (list (cadr mdef) (third mdef))))
-  		;; TODO btdb-list-mdefs should always return a list!
-  		(btdb-list-mdefs))
-      (d 'add 'widget 'description
-	 `(text takefocus: 0 state: disabled bd: 0 highlightthickness: 0
-		bg: ,(colors 'background) fg: ,(colors 'text) wrap: word
-  		font: ,(list family: (settings 'font-mono)
-  			     size: (settings 'font-size))
-		height: 10))
-      ;; (tk/focus (d 'ref 'mdef-selector))
-      (let* ((get-item-list (lambda ()
-  			      (string-split
-  			       (string-delete
-  				(string->char-set "{}")
-  				(->string ((d 'ref 'mdef-selector)
-  					   'children '{}))))))
-  	     (initial-item-list (get-item-list)))
-	(tk/bind (d 'ref 'platform-selector)
-		 '<<ComboboxSelected>>
-		 (lambda ()
-		   (let ((selected-platform
-			  (string->symbol ((d 'ref 'platform-selector) 'get))))
-		     ((d 'ref 'mdef-selector) 'delete (get-item-list))
-		     (for-each (lambda (mdef)
-  				 ((d 'ref 'mdef-selector) 'insert '{} 'end
-  				  text: (car mdef)
-  				  values: (list (cadr mdef) (third mdef))))
-  			       (btdb-list-mdefs selected-platform))
-		     ((d 'ref 'mdef-selector) 'focus (car (get-item-list)))
-		     ((d 'ref 'mdef-selector) 'selection 'set
-  		      (list (car (get-item-list)))))))
-	(tk/bind (d 'ref 'mdef-selector)
-		 '<<TreeviewSelect>>
-		 ;; TODO this fails when selection was set automatically,
-		 ;; because Tk delays execution of the selection too long.
-		 ;; Calling tk/update or tk/update 'idletasks hangs the app.
-		 ;; For now, use tk/after 100 as a (very brittle) work-around.
-		 (lambda ()
-		   (tk/after
-		    100
-		    (lambda ()
-		      (let* ((selected-engine
-			      (string->symbol
-			       ((d 'ref 'mdef-selector)
-  				'item ((d 'ref 'mdef-selector) 'selection)
-  				text:)))
-			     (description (->string (btdb-get-mdef-description
-						     selected-engine)))
-			     (description-widget (d 'ref 'description)))
-			(description-widget 'configure state: 'normal)
-			(description-widget 'delete "0.0" 'end)
-			(description-widget 'insert 'end description)
-			(description-widget 'configure state: 'disabled))))))
-  	(d 'add 'finalizer
-  	   (lambda a
-  	     (and-let*
-  		 ((item-list (get-item-list))
-  		  (_ (not (null? item-list)))
-  		  (selected-def ((d 'ref 'mdef-selector)
-  				 'item ((d 'ref 'mdef-selector) 'focus)
-  				 text:)))
-  	       (create-new-module (if (string-null? selected-def)
-  				      ((d 'ref 'mdef-selector)
-  				       'item (car item-list)
-  				       text:)
-  				      selected-def)))))
-  	(unless (null? initial-item-list)
-	  (tk/focus (d 'ref 'mdef-selector))
-  	  ((d 'ref 'mdef-selector) 'focus (car initial-item-list))
-  	  ((d 'ref 'mdef-selector) 'selection 'set
-  	   (list (car initial-item-list)))))))
+    (ui-show new-file-dialog)
+    (let* ((mdef-selector (ui-ref new-file-dialog 'mdef-selector))
+	   (item-list (string-split
+  		       (string-delete
+  			(string->char-set "{}")
+  			(->string (mdef-selector 'children '{}))))))
+      (unless (null? item-list)
+	(tk/focus mdef-selector)
+	(mdef-selector 'focus (car item-list))
+	(mdef-selector 'selection 'set (list (car item-list))))))
 
   (define on-save-file-hooks
     (make-hooks
@@ -2293,21 +2328,38 @@
       (ui-blockview-tag-selection buf)))
 
   (define-method (ui-make-scaling-dialog primary: (buf <ui-basic-block-view>))
-    (let ((d (make-dialogue)))
-      (d 'show)
-      (d 'add 'widget 'lbl1 '(label text: "min:"))
-      (d 'add 'widget 'minsel '(entry))
-      (d 'add 'widget 'lbl2 '(label text: "max:"))
-      (d 'add 'widget 'maxsel '(entry))
-      ((d 'ref 'minsel) 'insert 'end "0")
-      ((d 'ref 'maxsel) 'insert 'end "0")
-      (d 'add 'finalizer
-	 (lambda a
-	   (let ((mmin (string->number ((d 'ref 'minsel) 'get)))
-		 (mmax (string->number ((d 'ref 'maxsel) 'get))))
-	     (and (integer? mmin)
-		  (integer? mmax)
-		  (ui-scale buf mmin mmax)))))))
+    (letrec*
+	((entry-spec `(entry bg: ,(colors 'row-highlight-minor)
+			     fg: ,(colors 'text)
+  			     bd: 0
+			     highlightthickness: 0
+			     insertborderwidth: 1
+  			     font: ,(list family: (settings 'font-mono)
+  					  size: (settings 'font-size)
+  					  weight: 'bold)))
+	 (d (make <ui-dialog>
+	      'title "Set scaling parameters"
+	      'children
+	      `((header ,<ui-wrapper> setup ((lbl1 label text: "min:")
+					     ,(cons 'minsel entry-spec)
+					     (lbl2 (label text: "max:"))
+					     ,(cons 'maxsel entry-spec))))
+	      'initializers
+	      (make-hooks
+	       `(ix . ,(lambda a
+			 ((ui-ref d 'minsel) 'insert 'end "0")
+			 ((ui-ref d 'maxsel) 'insert 'end "0"))))
+	      'finalizers
+	      (make-hooks
+	       `(ex . ,(lambda a
+			 (let ((mmin (string->number ((ui-ref d 'minsel)
+						      'get)))
+			       (mmax (string->number ((ui-ref d 'maxsel)
+						      'get))))
+			   (and (integer? mmin)
+				(integer? mmax)
+				(ui-scale buf mmin mmax)))))))))
+      (ui-show d)))
 
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))

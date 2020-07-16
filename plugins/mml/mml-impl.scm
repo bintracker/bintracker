@@ -3,7 +3,7 @@
     (mml::read mml::dialog)
 
   (import scheme (chicken base) (chicken string)
-	  srfi-1 srfi-13 srfi-14 pstk comparse
+	  srfi-1 srfi-13 srfi-14 pstk comparse coops
 	  bt-state bt-types bt-gui simple-exceptions)
 
   ;; Define PEG parser rules to parse MML strings using comparse
@@ -180,35 +180,43 @@
 	  (requantize ticks (round (/ 512 (* 4 quantize-to))))
 	  (error 'mml::read "Invalid quatization unit"))))
 
+  (define dialog-widget
+    (make <ui-dialog>
+      'title "MML"
+      'children
+      `((header ,<ui-wrapper> setup
+		((lbl1 label text: "Quantization unit (1-127):")
+		 (qnt entry bg: ,(colors 'row-highlight-minor)
+		      fg: ,(colors 'text)
+  		      bd: 0 highlightthickness: 0 insertborderwidth: 1
+  		      font: ,(list family: (settings 'font-mono)
+  				   size: (settings 'font-size)
+  				   weight: 'bold))))
+	(tb ,<ui-wrapper> setup
+	    ((tbox text bd: 1 highlightthickness: 0 blockcursor: yes
+      		   bg: ,(colors 'background) fg: ,(colors 'text)
+  		   insertbackground: ,(colors 'text)
+      		   font: ,(list family: (settings 'font-mono)
+      				size: (settings 'font-size))
+      		   height: 10))
+	      yscroll #t))
+      'finalizers
+      (make-hooks
+       `(f . ,(lambda a
+      		(handle-exceptions
+      		    exn
+      		    (tk/message-box* title: "MML Error"
+      				     detail:
+      				     (string-append "An error occured in MML:\n"
+      						    (->string exn))
+      				     type: 'ok)
+      		  (edit (current 'blockview) 'current 'set
+      			(mml::read ((ui-ref dialog-widget 'tbox)
+      				    'get "0.0" 'end)))))))))
+
   (define (mml::dialog)
-    (and-let* ((current-blockview (current 'blockview))
-	       (d (make-dialogue)))
-      (d 'show)
-      (d 'add 'widget 'lbl1 `(label text: "Quantization unit (1-127):"))
-      (d 'add 'widget 'qnt
-	 `(entry bg: ,(colors 'row-highlight-minor) fg: ,(colors 'text)
-  		 bd: 0 highlightthickness: 0 insertborderwidth: 1
-  		 font: ,(list family: (settings 'font-mono)
-  			      size: (settings 'font-size)
-  			      weight: 'bold)))
-      (d 'add 'widget 'tbox
-      	 `(text bd: 1 highlightthickness: 0 blockcursor: yes
-      		bg: ,(colors 'background) fg: ,(colors 'text)
-		insertbackground: ,(colors 'text)
-      		font: ,(list family: (settings 'font-mono)
-      			     size: (settings 'font-size))
-      		height: 10))
-      (d 'add 'finalizer
-      	 (lambda a
-      	   (handle-exceptions
-	       exn
-	       (tk/message-box* title: "MML Error"
-				detail:
-				(string-append "An error occured in MML:\n"
-					       (->string exn))
-				type: 'ok)
-      	     (edit current-blockview 'current 'set
-      		   (mml::read ((d 'ref 'tbox) 'get "0.0" 'end))))))
-      (tk/focus (d 'ref 'tbox))))
+    (and (current 'blockview)
+	 (ui-show dialog-widget)
+	 (tk/focus (ui-ref dialog-widget 'tbox))))
 
   )
