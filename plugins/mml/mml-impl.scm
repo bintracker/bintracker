@@ -2,9 +2,9 @@
 
     (mml::read mml::dialog)
 
-  (import scheme (chicken base) (chicken string)
+  (import scheme (chicken base) (chicken string) (chicken condition)
 	  srfi-1 srfi-13 srfi-14 pstk comparse coops
-	  bt-state bt-types bt-gui simple-exceptions)
+	  bt-state bt-types bt-gui)
 
   ;; Define PEG parser rules to parse MML strings using comparse
 
@@ -60,7 +60,7 @@
     (handle-exceptions
 	exn
 	(begin (print-call-chain)
-	       (raise exn))
+	       (abort exn))
       (parse (followed-by (zero-or-more mml-token)
 			  end-of-input)
 	     (string-downcase (string-delete char-set:whitespace str)))))
@@ -199,7 +199,10 @@
       		   font: ,(list family: (settings 'font-mono)
       				size: (settings 'font-size))
       		   height: 10))
-	      yscroll #t))
+	    yscroll #t))
+      'initializers
+      (make-hooks
+       `(ix . ,(lambda a ((ui-ref dialog-widget 'qnt) 'insert 'end "8"))))
       'finalizers
       (make-hooks
        `(f . ,(lambda a
@@ -212,7 +215,9 @@
       				     type: 'ok)
       		  (edit (current 'blockview) 'current 'set
       			(mml::read ((ui-ref dialog-widget 'tbox)
-      				    'get "0.0" 'end)))))))))
+				    'get "0.0" 'end)
+				   (string->number ((ui-ref dialog-widget 'qnt)
+						    'get))))))))))
 
   (define (mml::dialog)
     (and (current 'blockview)
