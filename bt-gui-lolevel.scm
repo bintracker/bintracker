@@ -224,7 +224,10 @@
 	    ;; 	     "-sashthickness 4"))
 	    "" ,(string-intersperse
 	    	 '("    ttk::style configure TButton"
-	    	   "-padding 4 -relief flat -shiftrelief 2"))
+	    	   "-padding 4 -relief flat -shiftrelief 2"
+		   ;; undocumented styling option! See
+		   ;; https://wiki.tcl-lang.org/page/Changing+Widget+Colors
+		   "-focuscolor $colors(-text)"))
 	    "" ,(string-intersperse
 	    	 '("    ttk::style map TButton"
 	    	   "-background [list disabled $colors(-background)"

@@ -311,7 +311,8 @@
 
   ;;; The set of hooks that will be executed immediately after startup.
   (define after-startup-hooks
-    (make-hooks))
+    (make-hooks
+     `(init-focus . ,(lambda () (focus 'resume)))))
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks

@@ -625,20 +625,53 @@
   ;;; A welcome screen with two buttons for creating and opening an MDAL module,
   ;;; respectively. Create instances with `(make <ui-welcome-buffer>)`.
   (define-class <ui-welcome-buffer> (<ui-element>)
-    ((packing-args '(expand: 1 fill: both))))
+    ((ui-zone (gensym 'welcome))
+     (packing-args '(expand: 1 fill: both))
+     (focus-controller focus)
+     (buttons '())
+     (commands `(,new-file ,load-file ,launch-help))))
 
   (define-method (initialize-instance after: (buf <ui-welcome-buffer>))
     (let ((box (ui-box buf)))
       (tk/pack (box 'create-widget 'label text: "Welcome to Bintracker.")
   	       padx: 20 pady: 20)
-      (for-each (lambda (text command)
-  		  (tk/pack (box 'create-widget 'button text: text
-				command: command)
-  			   pady: 4))
-  		'("Create new module (Ctrl-N)"
-  		  "Open existing module (Ctrl-O)"
-  		  "Help (F1)")
-		`(,new-file ,load-file ,launch-help))))
+      (set! (slot-value buf 'buttons)
+	(map (lambda (id text command)
+	       (cons id (box 'create-widget 'button text: text
+			     command: command)))
+	     '(new open help)
+	     '("Create new module (Ctrl-N)"
+  	       "Open existing module (Ctrl-O)"
+  	       "Help (F1)")
+	     (slot-value buf 'commands)))))
+
+  (define-method (ui-show before: (buf <ui-welcome-buffer>))
+    (unless (slot-value buf 'initialized)
+      (let ((buttons (slot-value buf 'buttons)))
+	(for-each (lambda (button idx)
+		    (tk/pack button pady: 4)
+		    (tk/bind button '<Tab>
+			     (lambda ()
+			       (tk/focus
+				(cdr
+				 (list-ref buttons
+					   (if (= idx (sub1 (length buttons)))
+					       0
+					       (+ 1 idx)))))))
+		    (tk/bind button '<Return>
+			     (lambda ()
+			       ((list-ref (slot-value buf 'commands) idx)))))
+		  (map cdr buttons)
+		  (iota (length buttons))))
+      (set! (slot-value buf 'initialized) #t))
+    ((slot-value buf 'focus-controller)
+     'add (slot-value buf 'ui-zone)
+     (lambda () (ui-focus buf))
+     (lambda () #t)
+     buf))
+
+  (define-method (ui-focus primary: (buf <ui-welcome-buffer>))
+    (tk/focus (cdar (slot-value buf 'buttons))))
 
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
