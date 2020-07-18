@@ -168,4 +168,5 @@
 ;; The argument to this command must be a string of plugin names separated by
 ;; whitespace.
 (bind-keys! 'plugins '<Alt-Key-M> 'mml)
-(plugins 'register "mml zufall")
+(bind-keys! 'plugins '<Alt-Key-Z> 'unzufall)
+(plugins 'register "mml unzufall")
