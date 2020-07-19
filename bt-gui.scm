@@ -136,6 +136,7 @@
 	    ((description text takefocus: 0 state: disabled bd: 0
 			  highlightthickness: 0 height: 10 wrap: word))
 	    yscroll #t))
+      'traverse '(platform-selector mdef-selector)
       'initializers
       (make-hooks
        `(configure-text-style
@@ -2375,8 +2376,9 @@
 	      'children
 	      `((header ,<ui-wrapper> setup ((lbl1 label text: "min:")
 					     ,(cons 'minsel entry-spec)
-					     (lbl2 (label text: "max:"))
+					     (lbl2 label text: "max:")
 					     ,(cons 'maxsel entry-spec))))
+	      'traverse '(minsel maxsel)
 	      'initializers
 	      (make-hooks
 	       `(ix . ,(lambda a

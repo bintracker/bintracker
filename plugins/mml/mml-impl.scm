@@ -200,6 +200,7 @@
       				size: (settings 'font-size))
       		   height: 10))
 	    yscroll #t))
+      'traverse '(tbox qnt)
       'initializers
       (make-hooks
        `(ix . ,(lambda a ((ui-ref dialog-widget 'qnt) 'insert 'end "8"))))

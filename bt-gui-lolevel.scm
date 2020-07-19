@@ -13,11 +13,11 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Utilities
+;;; ## Utilities
   ;; ---------------------------------------------------------------------------
 
-  ;;; Thread-safe version of tk/bind. Wraps the procedure PROC in a thunk
-  ;;; that is safe to execute as a callback from Tk.
+;;; Thread-safe version of tk/bind. Wraps the procedure PROC in a thunk
+;;; that is safe to execute as a callback from Tk.
   (define-syntax tk/bind*
     (syntax-rules ()
       ((_ tag sequence (x ((y (lambda args body)) subst ...)))
@@ -31,8 +31,8 @@
       ((_ tag sequence thunk)
        (tk/bind tag sequence (lambda () (tk-with-lock thunk))))))
 
-  ;;; Bind the keypress event for WIDGET to PROC. ACTION must be a mapping
-  ;;; listed in the group GROUP of the active keymap.
+;;; Bind the keypress event for WIDGET to PROC. ACTION must be a mapping
+;;; listed in the group GROUP of the active keymap.
   (define (bind-key widget group action proc)
     (let ((mapping (inverse-key-binding group action)))
       (when mapping
@@ -60,7 +60,7 @@
       (image-save img (string-append filename
 				     "." (string-drop color 1) ".png"))))
 
-  ;;; Create a tk image resource from a given PNG file.
+;;; Create a tk image resource from a given PNG file.
   (define (tk/icon filename #!optional (icon-color (colors 'text)))
     (let ((actual-filename
 	   (string-append "resources/icons/" filename
@@ -83,17 +83,17 @@
 	      anchor: 'se relx: 1.0 rely: 1.0))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ### Dialogues
+;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
 
-  ;;; This section provides abstractions over Tk dialogues and pop-ups.
-  ;;; `tk/safe-dialogue` is potentially the most useful entry points for
-  ;;; creating native dialogues from user code.
+;;; This section provides abstractions over Tk dialogues and pop-ups.
+;;; `tk/safe-dialogue` is potentially the most useful entry points for
+;;; creating native dialogues from user code.
 
-  ;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
-  ;;; tk/get-save-file that block the main application window  while the pop-up
-  ;;; is alive. This is a work-around for tk dialogue procedures getting stuck
-  ;;; once they lose focus. tk-with-lock does not help in these cases.
+;;; Used to provide safe variants of tk/message-box, tk/get-open-file, and
+;;; tk/get-save-file that block the main application window  while the pop-up
+;;; is alive. This is a work-around for tk dialogue procedures getting stuck
+;;; once they lose focus. tk-with-lock does not help in these cases.
   (define (tk/safe-dialogue type . args)
     (tk-eval "tk busy .")
     (tk/update)
@@ -101,19 +101,19 @@
       (tk-eval "tk busy forget .")
       result))
 
-  ;;; Crash-safe variant of `tk/message-box`.
+;;; Crash-safe variant of `tk/message-box`.
   (define (tk/message-box* . args)
     (apply tk/safe-dialogue (cons tk/message-box args)))
 
-  ;;; Crash-safe variant of `tk/get-open-file`.
+;;; Crash-safe variant of `tk/get-open-file`.
   (define (tk/get-open-file* . args)
     (apply tk/safe-dialogue (cons tk/get-open-file args)))
 
-  ;;; Crash-safe variant of `tk/get-save-file`.
+;;; Crash-safe variant of `tk/get-save-file`.
   (define (tk/get-save-file* . args)
     (apply tk/safe-dialogue (cons tk/get-save-file args)))
 
-  ;;; Display the "About Bintracker" message.
+;;; Display the "About Bintracker" message.
   (define (about-message)
     (tk/message-box* title: "About"
 		     message: (string-append "Bintracker\nversion "
@@ -121,9 +121,9 @@
 		     detail: "Dedicated to Ján Deák"
 		     type: 'ok))
 
-  ;;; Display a message box that asks the user whether to save unsaved changes
-  ;;; before exiting or closing. EXIT-OR-CLOSING should be the string
-  ;;; `"exit"` or `"closing"`, respectively.
+;;; Display a message box that asks the user whether to save unsaved changes
+;;; before exiting or closing. EXIT-OR-CLOSING should be the string
+;;; `"exit"` or `"closing"`, respectively.
   (define (exit-with-unsaved-changes-dialog exit-or-closing)
     (tk/message-box* title: (string-append "Save before "
 					   exit-or-closing "?")
@@ -136,12 +136,12 @@
 		     type: 'yesnocancel))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Widget Style
+;;; ## Widget Style
   ;; ---------------------------------------------------------------------------
 
   ;; TODO commented code in this section won't work.
-  ;;; Generates the default Bintracker Tk theme and saves it as
-  ;;; `resources/bt-theme.tcl`.
+;;; Generates the default Bintracker Tk theme and saves it as
+;;; `resources/bt-theme.tcl`.
   (define (default-theme-generator)
     (call-with-output-file
 	"resources/bt-theme.tcl"
@@ -313,7 +313,7 @@
 	  "\n")
 	 #f port))))
 
-  ;;; Configure ttk widget styles.
+;;; Configure ttk widget styles.
   (define (update-ttk-style)
     (let ((user-font-bold (list family: (settings 'font-mono)
 				size: (settings 'font-size)
@@ -325,7 +325,7 @@
 	 (ttk/style 'theme 'use "bintracker")))))
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Menus
+;;; ## Menus
   ;; ---------------------------------------------------------------------------
 
   ;; `submenus` shall be an alist, where keys are unique identifiers, and
@@ -335,16 +335,16 @@
     ((widget (tk 'create-widget 'menu)) : procedure)
     ((items '()) : list))
 
-  ;;; Destructively add an item to menu-struct `menu` according to
-  ;;; `item-spec`. `item-spec` must be a list containing either
-  ;;; - `('separator)`
-  ;;; - `('command id label underline accelerator command)`
-  ;;; - `('submenu id label underline items-list)`
-  ;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
-  ;;; name that will be shown in the menu for this item, and its underline
-  ;;; position; *accelerator* is a string naming a keyboard shortcut for the
-  ;;; item, command is a procedure to be associated with the item, and
-  ;;; items-list is a list of item-specs.
+;;; Destructively add an item to menu-struct `menu` according to
+;;; `item-spec`. `item-spec` must be a list containing either
+;;; - `('separator)`
+;;; - `('command id label underline accelerator command)`
+;;; - `('submenu id label underline items-list)`
+;;; where *id*  is a unique identifier symbol; *label* and *underline* are the
+;;; name that will be shown in the menu for this item, and its underline
+;;; position; *accelerator* is a string naming a keyboard shortcut for the
+;;; item, command is a procedure to be associated with the item, and
+;;; items-list is a list of item-specs.
   (define (add-menu-item! menu item-spec)
     ;; TODO add at position (insert)
     (let ((append-to-item-list!
@@ -389,17 +389,17 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## Events
+;;; ## Events
   ;; ---------------------------------------------------------------------------
 
-  ;;; Disable automatic keyboard traversal. Needed because it messes with key
-  ;;; binding involving Tab.
+;;; Disable automatic keyboard traversal. Needed because it messes with key
+;;; binding involving Tab.
   (define (disable-keyboard-traversal)
     (tk/event 'delete '<<NextWindow>>)
     (tk/event 'delete '<<PrevWindow>>))
 
-  ;;; Create default virtual events for Bintracker. This procedure only needs
-  ;;; to be called on startup, or after updating key bindings.
+;;; Create default virtual events for Bintracker. This procedure only needs
+;;; to be called on startup, or after updating key bindings.
   (define (create-virtual-events)
     (apply tk/event (append '(add <<BlockEntry>>)
 			    (map car
@@ -470,10 +470,10 @@
     (tk/event 'add '<<TransposeOctaveDown>>
 	      (inverse-key-binding 'edit 'transpose-octave-down)))
 
-  ;;; Reverse the evaluation order for tk bindings, so that global bindings are
-  ;;; evaluated before the local bindings of WIDGET. This is necessary to
-  ;;; prevent keypresses that are handled globally being passed through to the
-  ;;; widget.
+;;; Reverse the evaluation order for tk bindings, so that global bindings are
+;;; evaluated before the local bindings of WIDGET. This is necessary to
+;;; prevent keypresses that are handled globally being passed through to the
+;;; widget.
   (define (reverse-binding-eval-order widget)
     (let ((widget-id (widget 'get-id)))
       (tk-eval (string-append "bindtags " widget-id " {all . "
@@ -482,16 +482,16 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## TextGrid
+;;; ## TextGrid
   ;; ---------------------------------------------------------------------------
 
-  ;;; TextGrids are Tk Text widgets with default bindings removed and/or
-  ;;; replaced with Bintracker-specific bindings. TextGrids form the basis of
-  ;;; Bintrackers <ui-basic-blockview> metawidget, which is used to display sets
-  ;;; of blocks or order lists. A number of abstractions are provided to
-  ;;; facilitate this.
+;;; TextGrids are Tk Text widgets with default bindings removed and/or
+;;; replaced with Bintracker-specific bindings. TextGrids form the basis of
+;;; Bintrackers <ui-basic-blockview> metawidget, which is used to display sets
+;;; of blocks or order lists. A number of abstractions are provided to
+;;; facilitate this.
 
-  ;;; Configure TextGrid widget tags.
+;;; Configure TextGrid widget tags.
   (define (textgrid-configure-tags tg)
     (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
     (tg 'tag 'configure 'rowhl-major background: (colors 'row-highlight-major))
@@ -509,9 +509,9 @@
   					    (settings 'font-size)
   					    "bold")))
 
-  ;;; Abstraction over Tk's `textwidget tag add` command.
-  ;;; Contrary to Tk's convention, ROW uses 0-based indexing.
-  ;;; TAGS may be a single tag, or a list of tags.
+;;; Abstraction over Tk's `textwidget tag add` command.
+;;; Contrary to Tk's convention, ROW uses 0-based indexing.
+;;; TAGS may be a single tag, or a list of tags.
   (define (textgrid-do-tags method tg tags first-row #!optional
   			    (first-col 0) (last-col 'end) (last-row #f))
     (for-each (lambda (tag)
@@ -535,13 +535,13 @@
     (for-each (cute tg 'tag 'remove <> "0.0" "end")
   	      tags))
 
-  ;;; Convert the `row`, `char` arguments into a Tk Text index string.
-  ;;; `row` is adjusted from 0-based indexing to 1-based indexing.
+;;; Convert the `row`, `char` arguments into a Tk Text index string.
+;;; `row` is adjusted from 0-based indexing to 1-based indexing.
   (define (textgrid-position->tk-index row char)
     (string-append (->string (add1 row)) "." (->string char)))
 
-  ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
-  ;;; widget with class bindings removed.
+;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
+;;; widget with class bindings removed.
   (define (textgrid-create-basic parent)
     (let* ((tg (parent 'create-widget 'text bd: 0 highlightthickness: 0
   		       selectborderwidth: 0 padx: 0 pady: 4
@@ -562,50 +562,50 @@
 
 
   ;; ---------------------------------------------------------------------------
-  ;;; ## UI Element Base Classes
+;;; ## UI Element Base Classes
   ;; ---------------------------------------------------------------------------
 
-  ;;; A `<ui-element>` represents a GUI metawidget consisting of one or more
-  ;;; Tk widgets. The metawidget is self-contained, meaning all it's child
-  ;;; widgets are wrapped in a
-  ;;; [ttk::frame](https://www.tcl-lang.org/man/tcl8.6/TkCmd/ttk_frame.htm).
-  ;;; A `<ui-element>` instance may contain other `<ui-elements>` as child
-  ;;; elements.
-  ;;;
-  ;;; Any instance of `<ui-element>` or a derived class contains the following
-  ;;; fields:
-  ;;;
-  ;;; - `setup` - an expression specifying how to construct the UI element.
-  ;;; Details depend on the specific class type of the element. For standard
-  ;;; `<ui-element>`s, this is the only mandatory field. Provides a reader named
-  ;;; `ui-setup`.
-  ;;;
-  ;;; - `parent` - the Tk parent widget, typically a tk::frame. Defaults to `tk`
-  ;;; if not specified. Provides an accessor named `ui-parent`.
-  ;;;
-  ;;; - `packing-args` - additional arguments that are passed to tk/pack when
-  ;;; the UI element's main widget container is packed to the display.
-  ;;;
-  ;;; - `children` - an alist of child UI elements, where keys are symbols
-  ;;; and values are instances of `<ui-element>` or a descendant class. Children
-  ;;; are derived automatically from the `setup` field, so the user normally
-  ;;; does not need to interact with the `children` field directly. Provides an
-  ;;; accessor named `ui-children`.
-  ;;;
-  ;;; The generic procedures `ui-show`, `ui-hide`, and `ui-ref` are implemented
-  ;;; for all UI element classes. UI elements commonly also provide
-  ;;; `ui-set-state` and `ui-set-callbacks` methods.
-  ;;;
-  ;;; To implement your own custom UI elements, you should create a class
-  ;;; that inherits from `<ui-element>` or one of its descendants. You probably
-  ;;; want to define at least the `initialize-instance` method for your class,
-  ;;; which should be an `after:` method. Note that `<ui-element>`'s constructor
-  ;;; does not initialize the child elements. `ui-show`, however, will
-  ;;; recursively apply `ui-show` on an `<ui-element>`. Therefore the `children`
-  ;;; slot must not contain anything but named instances of `<ui-element>`,
-  ;;; unless you override `ui-show` with your own **primary** method. The
-  ;;; recommended way is to add new slots to your derived class for any custom
-  ;;; widgets not derived from `<ui-element>`.
+;;; A `<ui-element>` represents a GUI metawidget consisting of one or more
+;;; Tk widgets. The metawidget is self-contained, meaning all it's child
+;;; widgets are wrapped in a
+;;; [ttk::frame](https://www.tcl-lang.org/man/tcl8.6/TkCmd/ttk_frame.htm).
+;;; A `<ui-element>` instance may contain other `<ui-elements>` as child
+;;; elements.
+;;;
+;;; Any instance of `<ui-element>` or a derived class contains the following
+;;; fields:
+;;;
+;;; - `setup` - an expression specifying how to construct the UI element.
+;;; Details depend on the specific class type of the element. For standard
+;;; `<ui-element>`s, this is the only mandatory field. Provides a reader named
+;;; `ui-setup`.
+;;;
+;;; - `parent` - the Tk parent widget, typically a tk::frame. Defaults to `tk`
+;;; if not specified. Provides an accessor named `ui-parent`.
+;;;
+;;; - `packing-args` - additional arguments that are passed to tk/pack when
+;;; the UI element's main widget container is packed to the display.
+;;;
+;;; - `children` - an alist of child UI elements, where keys are symbols
+;;; and values are instances of `<ui-element>` or a descendant class. Children
+;;; are derived automatically from the `setup` field, so the user normally
+;;; does not need to interact with the `children` field directly. Provides an
+;;; accessor named `ui-children`.
+;;;
+;;; The generic procedures `ui-show`, `ui-hide`, and `ui-ref` are implemented
+;;; for all UI element classes. UI elements commonly also provide
+;;; `ui-set-state` and `ui-set-callbacks` methods.
+;;;
+;;; To implement your own custom UI elements, you should create a class
+;;; that inherits from `<ui-element>` or one of its descendants. You probably
+;;; want to define at least the `initialize-instance` method for your class,
+;;; which should be an `after:` method. Note that `<ui-element>`'s constructor
+;;; does not initialize the child elements. `ui-show`, however, will
+;;; recursively apply `ui-show` on an `<ui-element>`. Therefore the `children`
+;;; slot must not contain anything but named instances of `<ui-element>`,
+;;; unless you override `ui-show` with your own **primary** method. The
+;;; recommended way is to add new slots to your derived class for any custom
+;;; widgets not derived from `<ui-element>`.
   (define-class <ui-element> ()
     ((initialized #f)
      (setup reader: ui-setup)
@@ -617,7 +617,7 @@
   (define-method (initialize-instance after: (elem <ui-element>))
     (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame)))
 
-  ;;; Map the GUI element to the display.
+;;; Map the GUI element to the display.
   (define-method (ui-show primary: (elem <ui-element>))
     (unless (slot-value elem 'initialized)
       (for-each (lambda (elem)
@@ -627,7 +627,7 @@
     (apply tk/pack (cons (ui-box elem)
   			 (slot-value elem 'packing-args))))
 
-  ;;; Remove the GUI element from the display.
+;;; Remove the GUI element from the display.
   (define-method (ui-hide primary: (elem <ui-element>))
     (tk/pack 'forget (ui-box elem))
     (for-each (o ui-hide cdr) (ui-children elem)))
@@ -638,17 +638,17 @@
   (define-method (ui-what primary: (elem <ui-element>))
     "unknown value")
 
-  ;;; Remove the GUI element ELEM from the display and destroy it. Destroying an
-  ;;; element will recursively call `ui-destroy` on ELEM's child elements,
-  ;;; before destroying its associated Tk widgets. You cannot resurrect ELEM
-  ;;; after calling this method.
+;;; Remove the GUI element ELEM from the display and destroy it. Destroying an
+;;; element will recursively call `ui-destroy` on ELEM's child elements,
+;;; before destroying its associated Tk widgets. You cannot resurrect ELEM
+;;; after calling this method.
   (define-method (ui-destroy primary: (elem <ui-element>))
     (for-each (o ui-destroy cdr) (ui-children elem))
     (tk/destroy (ui-box elem)))
 
-  ;;; Returns ELEMs child UI element with the identifier CHILD-ELEMENT. The
-  ;;; requested element may be a direct descendant of ELEM, or an indirect
-  ;;; descendant in the tree of UI elements represented by ELEM.
+;;; Returns ELEMs child UI element with the identifier CHILD-ELEMENT. The
+;;; requested element may be a direct descendant of ELEM, or an indirect
+;;; descendant in the tree of UI elements represented by ELEM.
   (define-method (ui-ref primary: (elem <ui-element>) child-element)
     (let ((children (ui-children elem)))
       (and (ui-children elem)
@@ -658,24 +658,24 @@
   				    children)))
 		 (ui-ref (cdr ce) child-element))))))
 
-  ;;; Class-based container for one or more Tk widgets. This is essentially an
-  ;;; adapter for using raw Tk widgets from within Bintracker's class-based UI
-  ;;; system. Create instances as follows:
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-wrapper>
-  ;;;       'setup ((ID1 WIDGET-TYPE1 [ARGS...]) ...)
-  ;;;       ['orient ORIENT]
-  ;;;       ['yscroll YS])
-  ;;; ```
-  ;;;
-  ;;; where ID1 is a unique child element identifier, WIDGET-TYPE1 is the name
-  ;;; of a Tk widget element, and ARGS... are the arguments passed to the
-  ;;; widget's consructor. ORIENT specifies the orientation in which the widgets
-  ;;; will be packed. It must be either `'horizontal` or `'vertical`, defaults
-  ;;; to `'horizontal`. YS may be a boolean. If `#t`, setup may contain only a
-  ;;; single child element, and ORIENT must be `'horizontal`. A vertical
-  ;;; scrollbar will be added for the child element.
+;;; Class-based container for one or more Tk widgets. This is essentially an
+;;; adapter for using raw Tk widgets from within Bintracker's class-based UI
+;;; system. Create instances as follows:
+;;;
+;;; ```Scheme
+;;; (make <ui-wrapper>
+;;;       'setup ((ID1 WIDGET-TYPE1 [ARGS...]) ...)
+;;;       ['orient ORIENT]
+;;;       ['yscroll YS])
+;;; ```
+;;;
+;;; where ID1 is a unique child element identifier, WIDGET-TYPE1 is the name
+;;; of a Tk widget element, and ARGS... are the arguments passed to the
+;;; widget's consructor. ORIENT specifies the orientation in which the widgets
+;;; will be packed. It must be either `'horizontal` or `'vertical`, defaults
+;;; to `'horizontal`. YS may be a boolean. If `#t`, setup may contain only a
+;;; single child element, and ORIENT must be `'horizontal`. A vertical
+;;; scrollbar will be added for the child element.
   (define-class <ui-wrapper> (<ui-element>)
     ((yscroll #f)
      (orient 'horizontal)
@@ -733,15 +733,15 @@
     ((packing-args '(expand: 0 fill: x side: bottom))
      segments))
 
-  ;;; A modeline (aka status bar) widget. Create instances with
-  ;;;
-  ;;; `(make <ui-modeline> 'setup ((ID TEXT [COLOR]) ...))`
-  ;;;
-  ;;; where ID is a unique identifier of a modeline segment, and TEXT is the
-  ;;; string that will be displayed in the modeline segment. An empty string
-  ;;; means the segment is not displayed. If COLOR is given, it must be an
-  ;;; integer referencing one of the application colors `text-1` ... `text-7`.
-  ;;; If COLOR is omitted, the color `text` will be used.
+;;; A modeline (aka status bar) widget. Create instances with
+;;;
+;;; `(make <ui-modeline> 'setup ((ID TEXT [COLOR]) ...))`
+;;;
+;;; where ID is a unique identifier of a modeline segment, and TEXT is the
+;;; string that will be displayed in the modeline segment. An empty string
+;;; means the segment is not displayed. If COLOR is given, it must be an
+;;; integer referencing one of the application colors `text-1` ... `text-7`.
+;;; If COLOR is omitted, the color `text` will be used.
   (define-method (initialize-instance after: (buf <ui-modeline>))
     (set! (slot-value buf 'segments)
       (map (lambda (segment)
@@ -766,25 +766,25 @@
   		  (tk/pack (cdr segment) side: 'left expand: 0))
   		(slot-value buf 'segments))))
 
-  ;;; Set the TEXT string of the modeline segment identifier SEGMENT.
+;;; Set the TEXT string of the modeline segment identifier SEGMENT.
   (define-method (ui-modeline-set primary: (buf <ui-modeline>) segment text)
     (and-let* ((label (alist-ref segment (slot-value buf 'segments))))
       (label 'configure text: (string-append " " text " "))))
 
-  ;;; A class representing a labelled Tk spinbox. Create instances with
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-setting>
-  ;;;       'parent PARENT
-  ;;;       'setup '(LABEL INFO DEFAULT-VAR FROM TO [CALLBACK]))
-  ;;; ```
-  ;;;
-  ;;; where PARENT is the parent Tk widget, LABEL is the text of the label,
-  ;;; INFO is a short description of the element's function, DEFAULT-VAR is a
-  ;;; symbol denoting an entry in `(settings)`, FROM and TO are integers
-  ;;; describing the range of permitted values, and CALLBACK may optionally a
-  ;;; procedure of no arguments that will be invoked when the user selects a new
-  ;;; value.
+;;; A class representing a labelled Tk spinbox. Create instances with
+;;;
+;;; ```Scheme
+;;; (make <ui-setting>
+;;;       'parent PARENT
+;;;       'setup '(LABEL INFO DEFAULT-VAR FROM TO [CALLBACK]))
+;;; ```
+;;;
+;;; where PARENT is the parent Tk widget, LABEL is the text of the label,
+;;; INFO is a short description of the element's function, DEFAULT-VAR is a
+;;; symbol denoting an entry in `(settings)`, FROM and TO are integers
+;;; describing the range of permitted values, and CALLBACK may optionally a
+;;; procedure of no arguments that will be invoked when the user selects a new
+;;; value.
   (define-class <ui-setting> (<ui-element>)
     ((packing-args '(side: left))
      label
@@ -839,20 +839,20 @@
       ;; (bind-info-status label description)
       ))
 
-  ;;; Set the state of the UI element `buf`. `state` can be either `'disabled`
-  ;;; or `'enabled`.
+;;; Set the state of the UI element `buf`. `state` can be either `'disabled`
+;;; or `'enabled`.
   (define-method (ui-set-state primary: (buf <ui-setting>) state)
     ((slot-value buf 'spinbox) 'configure state: state))
 
-  ;;; A wrapper for one or more `<ui-setting>`s. Create instances with
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-settings-group> 'setup '((ID1 CHILD-SPEC ...) ...))
-  ;;; ```
-  ;;;
-  ;;; where ID1 is a unique child element identifier, and CHILD-SPEC ... are the
-  ;;; remaining arguments that will be passed to `<ui-setting>`'s constructor
-  ;;; the `'setup` argument.
+;;; A wrapper for one or more `<ui-setting>`s. Create instances with
+;;;
+;;; ```Scheme
+;;; (make <ui-settings-group> 'setup '((ID1 CHILD-SPEC ...) ...))
+;;; ```
+;;;
+;;; where ID1 is a unique child element identifier, and CHILD-SPEC ... are the
+;;; remaining arguments that will be passed to `<ui-setting>`'s constructor
+;;; the `'setup` argument.
   (define-class <ui-settings-group> (<ui-element>)
     ((packing-args '(expand: 0 fill: x))))
 
@@ -864,23 +864,23 @@
   		     'parent (ui-box buf) 'setup (cdr child))))
   	   (ui-setup buf))))
 
-  ;;; Enable or disable BUF. STATE must be either `'enabled` or `'disabled`.
+;;; Enable or disable BUF. STATE must be either `'enabled` or `'disabled`.
   (define-method (ui-set-state primary: (buf <ui-settings-group>) state)
     (for-each (cute ui-set-state <> state)
   	      (map cdr (ui-children buf))))
 
-  ;;; A class representing a group of button widgets. Create instances with
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-button-group> 'parent PARENT
-  ;;;       'setup '((ID INFO ICON-FILE [INIT-STATE]) ...))
-  ;;; ```
-  ;;;
-  ;;; where PARENT is the parent Tk widget, ID is a unique identifier, INFO is
-  ;;; a string of text to be displayed in the status bar when the user hovers
-  ;;; the button, ICON-FILE is the name of a file in *resources/icons/*. You
-  ;;; may optionally set the initial state of the button (enabled/disabled) by
-  ;;; specifying INIT-STATE.
+;;; A class representing a group of button widgets. Create instances with
+;;;
+;;; ```Scheme
+;;; (make <ui-button-group> 'parent PARENT
+;;;       'setup '((ID INFO ICON-FILE [INIT-STATE]) ...))
+;;; ```
+;;;
+;;; where PARENT is the parent Tk widget, ID is a unique identifier, INFO is
+;;; a string of text to be displayed in the status bar when the user hovers
+;;; the button, ICON-FILE is the name of a file in *resources/icons/*. You
+;;; may optionally set the initial state of the button (enabled/disabled) by
+;;; specifying INIT-STATE.
   (define-class <ui-button-group> (<ui-element>)
     ((packing-args '(expand: 0 side: left))
      (orient 'horizontal)
@@ -905,10 +905,10 @@
   	(tk/pack (make-separator box 'vertical)
   		 side: 'left padx: 0 fill: 'y))))
 
-  ;;; Enable or disable BUF or one of it's child elements. STATE must be either
-  ;;; `'enabled` or `'disabled`. When passing a BUTTON-ID is specified, only the
-  ;;; corresponding child element's state changes, otherwise, the change affects
-  ;;; all buttons in the group.
+;;; Enable or disable BUF or one of it's child elements. STATE must be either
+;;; `'enabled` or `'disabled`. When passing a BUTTON-ID is specified, only the
+;;; corresponding child element's state changes, otherwise, the change affects
+;;; all buttons in the group.
   (define-method (ui-set-state primary: (buf <ui-button-group>)
   			       state #!optional button-id)
     (if button-id
@@ -918,18 +918,18 @@
   		    ((cdr button) 'configure state: state))
   		  (slot-value buf 'buttons))))
 
-  ;;; Set callback procedures for buttons in the button group. `callbacks`
-  ;;; must be a list constructed as follows:
-  ;;;
-  ;;; `((ID THUNK) ...)`
-  ;;;
-  ;;; where ID is a button identifier, and THUNK is a callback procedure that
-  ;;; takes no arguments. Optionally, ENTER-BINDING may be a callback procedure
-  ;;; with no arguments that will be invoked when the user starts hovering over
-  ;;; the button with the mouse, and LEAVE-BINDING may be a callback procedure
-  ;;; with no arguments that is invoked when the mouse leaves the button area.
-  ;;; You would typically use this to display some information about the button
-  ;;; in a modeline.
+;;; Set callback procedures for buttons in the button group. `callbacks`
+;;; must be a list constructed as follows:
+;;;
+;;; `((ID THUNK) ...)`
+;;;
+;;; where ID is a button identifier, and THUNK is a callback procedure that
+;;; takes no arguments. Optionally, ENTER-BINDING may be a callback procedure
+;;; with no arguments that will be invoked when the user starts hovering over
+;;; the button with the mouse, and LEAVE-BINDING may be a callback procedure
+;;; with no arguments that is invoked when the mouse leaves the button area.
+;;; You would typically use this to display some information about the button
+;;; in a modeline.
   (define-method (ui-set-callbacks primary: (buf <ui-button-group>) callbacks
   				   #!optional modeline segment-id)
     (let ((buttons (slot-value buf 'buttons)))
@@ -966,16 +966,16 @@
        callbacks)))
 
 
-  ;;; A class representing a toolbar metawidget, consisting of
-  ;;; `<ui-button-group>`s. Create instances with
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-toolbar> 'parent PARENT
-  ;;;       'setup '((ID1 BUTTON-SPEC1 ...) ...))
-  ;;; ```
-  ;;;
-  ;;; where PARENT is the parent Tk widget, ID1 is a unique identifier, and
-  ;;; BUTTON-SPEC1 is a setup expression passed to <ui-button-group>.
+;;; A class representing a toolbar metawidget, consisting of
+;;; `<ui-button-group>`s. Create instances with
+;;;
+;;; ```Scheme
+;;; (make <ui-toolbar> 'parent PARENT
+;;;       'setup '((ID1 BUTTON-SPEC1 ...) ...))
+;;; ```
+;;;
+;;; where PARENT is the parent Tk widget, ID1 is a unique identifier, and
+;;; BUTTON-SPEC1 is a setup expression passed to <ui-button-group>.
   (define-class <ui-toolbar> (<ui-element>)
     ((packing-args '(expand: 0 fill: x))))
 
@@ -987,14 +987,14 @@
   			 'setup (cdr spec))))
   	   (ui-setup buf))))
 
-  ;;; Set callback procedures for buttons in the toolbar. `callbacks` must be
-  ;;; a list constructed as follows:
-  ;;;
-  ;;; `(ID BUTTON-GROUP-CALLBACK-SPEC ...)`
-  ;;;
-  ;;; where ID is a button group identifier and BUTTON-GROUP-CALLBACK-SPEC is
-  ;;; a callback specification as required by the `ui-set-callbacks` method of
-  ;;; `<ui-button-group>`.
+;;; Set callback procedures for buttons in the toolbar. `callbacks` must be
+;;; a list constructed as follows:
+;;;
+;;; `(ID BUTTON-GROUP-CALLBACK-SPEC ...)`
+;;;
+;;; where ID is a button group identifier and BUTTON-GROUP-CALLBACK-SPEC is
+;;; a callback specification as required by the `ui-set-callbacks` method of
+;;; `<ui-button-group>`.
   (define-method (ui-set-callbacks primary: (buf <ui-toolbar>)
   				   callbacks #!optional modeline segment-id)
     (for-each (lambda (cb)
@@ -1003,22 +1003,22 @@
   						modeline segment-id))))
   	      callbacks))
 
-  ;;; An auxiliary class used to add toolbars, settings-bars, and modelines
-  ;;; (status bars) to classes derived from `<ui-element>`.
-  ;;;
-  ;;; Classes inheriting from this must initialize the slots to an instance of
-  ;;; `<ui-toolbar>`, `<ui-settings-bar>`, and/or `<ui-modeline>`, for the
-  ;;; toolbar, settings-bar, and modeline slots, respectively.
-  ;;;
-  ;;; You can then call `ui-show-decorations` on instances of your derived class
-  ;;; to map the decorations to a chosen parent Tk frame).
+;;; An auxiliary class used to add toolbars, settings-bars, and modelines
+;;; (status bars) to classes derived from `<ui-element>`.
+;;;
+;;; Classes inheriting from this must initialize the slots to an instance of
+;;; `<ui-toolbar>`, `<ui-settings-bar>`, and/or `<ui-modeline>`, for the
+;;; toolbar, settings-bar, and modeline slots, respectively.
+;;;
+;;; You can then call `ui-show-decorations` on instances of your derived class
+;;; to map the decorations to a chosen parent Tk frame).
   (define-class <ui-buffer-decorations> ()
     ((toolbar #f)
      (settings-bar #f)
      (modeline #f)))
 
-  ;;; Pack the decorations to the PARENT Tk frame window (usually `(ui-buf)` of
-  ;;; the class that inherits from this and `<ui-element>`).
+;;; Pack the decorations to the PARENT Tk frame window (usually `(ui-buf)` of
+;;; the class that inherits from this and `<ui-element>`).
   (define-method (ui-show-decorations (d <ui-buffer-decorations>)
   				      parent #!optional after)
     (let ((pack-separator (lambda ()
@@ -1039,43 +1039,43 @@
   (define-class <ui-selectable> ()
     ((selection initform: #f accessor: ui-selection)))
 
-  ;;; A class representing a container widget that wraps multiple resizable
-  ;;; ui-buffers in a ttk
-  ;;; [panedwindow](https://www.tcl.tk/man/tcl8.6/TkCmd/ttk_panedwindow.htm).
-  ;;;
-  ;;; Create instances with
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-multibuffer> 'parent PARENT
-  ;;;       'setup ((ID1 VISIBLE WEIGHT CHILD-SPEC ...) ...))
-  ;;; ```
-  ;;;
-  ;;; where PARENT is the parent Tk widget (defaults to `tk`), ID1 is a unique
-  ;;; identifier for a child buffer, VISIBLE is a boolean specifying if the
-  ;;; child widget should initially be mapped to the display, WEIGHT is an
-  ;;; integer specifying how large the child buffer should be in relation to the
-  ;;; remaining child buffers, and CHILD-SPEC ... is the name of a UI buffer
-  ;;; class, followed by the arguments that shall be passed to `make` when
-  ;;; creating the child buffer instance.
-  ;;;
-  ;;; The optional ORIENT argument specifies the orientation of the metabuffer;
-  ;;; it shall be one of the symbols `'vertical` or `'horizontal`. By default,
-  ;;; metabuffers are oriented vertically, meaning new child buffers will be
-  ;;; added below the current ones.
-  ;;;
-  ;;; The `state` slot contains an alist with the child identifiers as keys.
-  ;;; `alist-ref` will return a list in the form (INDEX VISIBLE WEIGHT), where
-  ;;; INDEX is an integer representing the position of the child element in the
-  ;;; multibuffer, VISIBLE is `#t` if the child element is currently controlled
-  ;;; by the display manager and `#f` otherwise, and WEIGHT is an integer
-  ;;; specifying the initial size of the child element in relation to the other
-  ;;; children (not taking into account resizes by the user),
+;;; A class representing a container widget that wraps multiple resizable
+;;; ui-buffers in a ttk
+;;; [panedwindow](https://www.tcl.tk/man/tcl8.6/TkCmd/ttk_panedwindow.htm).
+;;;
+;;; Create instances with
+;;;
+;;; ```Scheme
+;;; (make <ui-multibuffer> 'parent PARENT
+;;;       'setup ((ID1 VISIBLE WEIGHT CHILD-SPEC ...) ...))
+;;; ```
+;;;
+;;; where PARENT is the parent Tk widget (defaults to `tk`), ID1 is a unique
+;;; identifier for a child buffer, VISIBLE is a boolean specifying if the
+;;; child widget should initially be mapped to the display, WEIGHT is an
+;;; integer specifying how large the child buffer should be in relation to the
+;;; remaining child buffers, and CHILD-SPEC ... is the name of a UI buffer
+;;; class, followed by the arguments that shall be passed to `make` when
+;;; creating the child buffer instance.
+;;;
+;;; The optional ORIENT argument specifies the orientation of the metabuffer;
+;;; it shall be one of the symbols `'vertical` or `'horizontal`. By default,
+;;; metabuffers are oriented vertically, meaning new child buffers will be
+;;; added below the current ones.
+;;;
+;;; The `state` slot contains an alist with the child identifiers as keys.
+;;; `alist-ref` will return a list in the form (INDEX VISIBLE WEIGHT), where
+;;; INDEX is an integer representing the position of the child element in the
+;;; multibuffer, VISIBLE is `#t` if the child element is currently controlled
+;;; by the display manager and `#f` otherwise, and WEIGHT is an integer
+;;; specifying the initial size of the child element in relation to the other
+;;; children (not taking into account resizes by the user),
   (define-class <ui-multibuffer> (<ui-element> <ui-buffer-decorations>)
     ((packing-args '(expand: 1 fill: both))
      (orient 'vertical)
      (setup '())
      panes
-     state))  ;; id, index, visible, weigth
+     state)) ;; id, index, visible, weigth
 
   ;; TODO: to properly hide a child, we must receive the "forget" event from
   ;; the child and act on it. Likewise, the "pack" event must propagate up.
@@ -1103,7 +1103,7 @@
   	(make <ui-modeline>
   	  'parent (ui-box buf) 'setup (slot-value buf 'modeline)))))
 
-  ;;; Returns the actively managed children of BUF sorted by position.
+;;; Returns the actively managed children of BUF sorted by position.
   (define-method (multibuffer-active+sorted-children
   		  primary: (buf <ui-multibuffer>))
     (let ((get-index (lambda (child)
@@ -1133,10 +1133,10 @@
   	  (set! (slot-value buf 'initialized) #t)))
     (apply tk/pack (cons (ui-box buf) (slot-value buf 'packing-args))))
 
-  ;;; Add a new child buffer. CHILD-SPEC shall have the same form as the
-  ;;; elements in the `'setup` argument to `(make <ui-multibuffer ...)`.
-  ;;; The new child buffer will be added before the child named BEFORE, or at
-  ;;; the end if BEFORE is not specified.
+;;; Add a new child buffer. CHILD-SPEC shall have the same form as the
+;;; elements in the `'setup` argument to `(make <ui-multibuffer ...)`.
+;;; The new child buffer will be added before the child named BEFORE, or at
+;;; the end if BEFORE is not specified.
   (define-method (multibuffer-add primary: (buf <ui-multibuffer>)
   				  child-spec #!key before)
     ;; (print "multibuffer-add " child-spec)
@@ -1180,8 +1180,8 @@
     ;; 	   ", final state: " (slot-value buf 'state))
     )
 
-  ;;; Map the child element CHILD to the display. Does nothing if CHILD is
-  ;;; already visible.
+;;; Map the child element CHILD to the display. Does nothing if CHILD is
+;;; already visible.
   (define-method (multibuffer-show primary: (buf <ui-multibuffer>)
   				   child)
     ;; (print "multibuffer-show " child " "
@@ -1205,10 +1205,10 @@
   	      ((slot-value buf 'panes) 'add (ui-box child-buf)
   	       weight: (caddr (alist-ref child state))))))))
 
-  ;;; Remove the child element CHILD from the display. Does nothing if CHILD is
-  ;;; currently not hidden. You can add back CHILD at a later point with
-  ;;; `multibuffer-show`. If CHILD is no longer needed at all, use
-  ;;; `multibuffer-destroy` instead.
+;;; Remove the child element CHILD from the display. Does nothing if CHILD is
+;;; currently not hidden. You can add back CHILD at a later point with
+;;; `multibuffer-show`. If CHILD is no longer needed at all, use
+;;; `multibuffer-destroy` instead.
   (define-method (multibuffer-hide primary: (buf <ui-multibuffer>)
   				   child)
     (let ((child-buf (alist-ref child (ui-children buf))))
@@ -1219,9 +1219,9 @@
   	  #f))))
 
   ;; TODO renumber?
-  ;;; Remove the child element CHILD from the multibuffer display and delete it.
-  ;;; If you just want to remove the child from the display, use
-  ;;; `multibuffer-hide` instead.
+;;; Remove the child element CHILD from the multibuffer display and delete it.
+;;; If you just want to remove the child from the display, use
+;;; `multibuffer-hide` instead.
   (define-method (multibuffer-delete primary: (buf <ui-multibuffer>)
   				     child)
     (when (alist-ref child (ui-children buf))
@@ -1232,22 +1232,22 @@
   	(alist-delete child (slot-value buf 'state)))))
 
   ;; TODO Buffers should also be scrollable.
-  ;;; This class commonly acts as a superclass for UI classes that represent
-  ;;; user data. `<ui-buffer>`'s are collapsible. This means child elements are
-  ;;; wrapped in a frame that the user can fold and unfold by clicking a button,
-  ;;; or through a key binding. `<ui-repl> and many of the module display
-  ;;; related widgets are based on this class.
-  ;;;
-  ;;; The constructor of this class does not evaluate `'setup` expressions, so
-  ;;; derived classes should provide their own setup reader. A plain <ui-buffer>
-  ;;; can be constructed with
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-buffer> 'children ((ID1 . ELEMENT1) ...))
-  ;;; ```
-  ;;;
-  ;;; where ID is a unique child element identifier, and ELEMENT1 is an
-  ;;; instance of a `<ui-element>`.
+;;; This class commonly acts as a superclass for UI classes that represent
+;;; user data. `<ui-buffer>`'s are collapsible. This means child elements are
+;;; wrapped in a frame that the user can fold and unfold by clicking a button,
+;;; or through a key binding. `<ui-repl> and many of the module display
+;;; related widgets are based on this class.
+;;;
+;;; The constructor of this class does not evaluate `'setup` expressions, so
+;;; derived classes should provide their own setup reader. A plain <ui-buffer>
+;;; can be constructed with
+;;;
+;;; ```Scheme
+;;; (make <ui-buffer> 'children ((ID1 . ELEMENT1) ...))
+;;; ```
+;;;
+;;; where ID is a unique child element identifier, and ELEMENT1 is an
+;;; instance of a `<ui-element>`.
   (define-class <ui-buffer> (<ui-element> <ui-buffer-decorations>)
     ((title "")
      (default-state 'expanded)
@@ -1278,15 +1278,15 @@
       (unless (slot-value buf 'collapse-proc)
 	(set! (slot-value buf 'collapse-proc)
   	  (lambda (x) #t
-  	    ;; (ui-hide (slot-value x 'collapse-button))
-  	    ;; (ui-show (slot-value x 'expand-button))
-	    )))
+  		  ;; (ui-hide (slot-value x 'collapse-button))
+  		  ;; (ui-show (slot-value x 'expand-button))
+		  )))
       (unless (slot-value buf 'expand-proc)
 	(set! (slot-value buf 'expand-proc)
   	  (lambda (x) #t
-  	    ;; (ui-hide (slot-value x 'expand-button))
-  	    ;; (ui-show (slot-value x 'collapse-button))
-	    )))))
+  		  ;; (ui-hide (slot-value x 'expand-button))
+  		  ;; (ui-show (slot-value x 'collapse-button))
+		  )))))
 
   (define-method (ui-show after: (buf <ui-buffer>))
     ;; (print "ui-show/buffer, children: " (ui-children buf))
@@ -1312,46 +1312,51 @@
     (when (slot-value buf 'collapsible)
       ((slot-value buf 'expand-proc) buf)))
 
-  ;;; A class representing a popup dialog. Dialogs are automatically constructed
-  ;;; with two buttons labelled "Confirm" and "Cancel", and `<Escape>` and
-  ;;; `<Return>` keypress events are always bound. Construct instances with:
-  ;;;
-  ;;; ```Scheme
-  ;;; (make <ui-dialog>
-  ;;;       ['title TITLE]
-  ;;;       ['children CHILD-SPECS]
-  ;;;       ['initializers INIT-HOOKS]
-  ;;;       ['finalizers FINAL-HOOKS]
-  ;;;       ['parent PARENT])
-  ;;; ```
-  ;;;
-  ;;; TITLE may be a string that will be displayed as the dialog window name.
-  ;;;
-  ;;; CHILDREN may be an associative list of named child elements, which must be
-  ;;; `<ui-element>`s.
-  ;;;
-  ;;; Widgets in a dialog are not created until the dialog is shown. This means
-  ;;; you cannot bind events or apply procedures to child elements of the
-  ;;; dialog directly after initialization. To apply bindings and/or procedures,
-  ;;; provide a [hook set](bt-types.md#hooks) as INIT-HOOKS.
-  ;;;
-  ;;; FINALIZERS may be a [hook set](bt-types.md#hooks) that will be executed
-  ;;; when the user clicks the "Confirm" button or hits the Return key.
-  ;;; Procedures in the hook set must be stubs, ie. they may not take any
-  ;;; arguments.
-  ;;;
-  ;;; PARENT may be a Tk toplevel window. The dialog window acts as a transient
-  ;;; on the PARENT. PARENT defaults to the root window `tk`. You normally do
-  ;;; not need to set this explicitly, except when creating dialogs acting on
-  ;;; behalf of other dialogs.
-  ;;;
-  ;;; As long as the dialog is not destroyed (by calling `ui-destroy` on it or
-  ;;; manually destroying its `ui-box`), it preserves state between invocations.
-  ;;;
-  ;;; Note that `<ui-dialog>` is not a descendant of `<ui-element>`. In practice
-  ;;; this hardly matters, as `<ui-dialog>` supports all of the basic methods
-  ;;; defined on `<ui-element>`. However, note the caveat regarding applying
-  ;;; bindings and procedures to sub-widgets above.
+;;; A class representing a popup dialog. Dialogs are automatically constructed
+;;; with two buttons labelled "Confirm" and "Cancel", and `<Escape>` and
+;;; `<Return>` keypress events are always bound. Construct instances with:
+;;;
+;;; ```Scheme
+;;; (make <ui-dialog>
+;;;       ['title TITLE]
+;;;       ['children CHILD-SPECS]
+;;;       ['traverse CHILD-IDS]
+;;;       ['initializers INIT-HOOKS]
+;;;       ['finalizers FINAL-HOOKS]
+;;;       ['parent PARENT])
+;;; ```
+;;;
+;;; TITLE may be a string that will be displayed as the dialog window name.
+;;;
+;;; CHILD-SPECS may be an associative list of named child elements, which must
+;;; be `<ui-element>`s.
+;;;
+;;; If all child elements are `<ui-wrapper>` instances, you can implement
+;;; automatic Tab/Backtab traversal by listing the CHILD-IDS of focussable child
+;;; elements.
+;;;
+;;; Widgets in a dialog are not created until the dialog is shown. This means
+;;; you cannot bind events or apply procedures to child elements of the
+;;; dialog directly after initialization. To apply bindings and/or procedures,
+;;; provide a [hook set](bt-types.md#hooks) as INIT-HOOKS.
+;;;
+;;; FINALIZERS may be a [hook set](bt-types.md#hooks) that will be executed
+;;; when the user clicks the "Confirm" button or hits the Return key.
+;;; Procedures in the hook set must be stubs, ie. they may not take any
+;;; arguments.
+;;;
+;;; PARENT may be a Tk toplevel window. The dialog window acts as a transient
+;;; on the PARENT. PARENT defaults to the root window `tk`. You normally do
+;;; not need to set this explicitly, except when creating dialogs acting on
+;;; behalf of other dialogs.
+;;;
+;;; As long as the dialog is not destroyed (by calling `ui-destroy` on it or
+;;; manually destroying its `ui-box`), it preserves state between invocations.
+;;;
+;;; Note that `<ui-dialog>` is not a descendant of `<ui-element>`. In practice
+;;; this hardly matters, as `<ui-dialog>` supports all of the basic methods
+;;; defined on `<ui-element>`. However, note the caveat regarding applying
+;;; bindings and procedures to sub-widgets above.
   (define-class <ui-dialog> ()
     ((initialized #f)
      (visible #f)
@@ -1364,7 +1369,8 @@
      footer
      cancel-button
      confirm-button
-     (children initform: '() accessor: ui-children)))
+     (children initform: '() accessor: ui-children)
+     (traverse #f)))
 
   (define-method (ui-show primary: (d <ui-dialog>) #!key initializer-args)
     ;; TODO busy the actual parent
@@ -1393,8 +1399,6 @@
 	  (set! (slot-value d 'cancel-button)
 	    ((slot-value d 'footer) 'create-widget 'button
 	     text: "Cancel" command: (lambda () (finalize #f))))
-	  (tk/bind tl '<Escape> (lambda () (finalize #f)))
-	  (tk/bind tl '<Return> (lambda () (finalize #t)))
 	  (set! (ui-children d)
 	    (map (lambda (child-spec)
 		   `(,(car child-spec)
@@ -1410,6 +1414,24 @@
 	  (if initializer-args
 	      ((slot-value d 'initializers) 'execute initializer-args)
 	      ((slot-value d 'initializers) 'execute))
+	  (tk/bind tl '<Escape> (lambda () (finalize #f)))
+	  (tk/bind tl '<Return> (lambda () (finalize #t)))
+	  (and (slot-value d 'traverse)
+	       (tk/bind tl '<Tab>
+			(lambda ()
+			  (set! (slot-value d 'traverse)
+			    (append (cdr (slot-value d 'traverse))
+				    (list (car (slot-value d 'traverse)))))
+			  (tk/focus
+			   (ui-ref d (car (slot-value d 'traverse))))))
+	       (tk/bind tl '<ISO_Left_Tab>
+			(lambda ()
+			  (set! (slot-value d 'traverse)
+			    (cons (last (slot-value d 'traverse))
+				  (drop-right (slot-value d 'traverse) 1)))
+			  (tk/focus
+			   (ui-ref d (car (slot-value d 'traverse))))))
+	       (tk/focus (ui-ref d (car (slot-value d 'traverse)))))
 	  (tk/pack (slot-value d 'footer) side: 'top fill: 'x padx: 2)
 	  (set! (slot-value d 'initialized) #t)
 	  (set! (slot-value d 'visible) #t)))

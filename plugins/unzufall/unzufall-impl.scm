@@ -95,6 +95,7 @@
 	     (pm1 radiobutton text: " Replace")
 	     (pm2 radiobutton text: " Porous/under")
 	     (pm3 radiobutton text: " Porous/over"))))
+      'traverse '(prng drw drm dst skw snc pm1 pm2 pm3)
       'initializers
       (make-hooks
        `(init
