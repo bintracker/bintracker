@@ -26,7 +26,9 @@
      prng::blum-blum-shub
      prng::pcg
      prng::xorshift64
+     prng::randu
      prng::el-cheapo-zx
+     prng::dmg-noise
      prng::sid-noise
      prng::tia-noise
      prng::info)
@@ -94,9 +96,39 @@
       (if (zero? amount)
 	  j
 	  (rol/8 (bitwise-ior (<< (bitwise-and j #x80)
-						-7)
+				  -7)
 			      (<< j 1))
 		 (sub1 amount)))))
+
+  ;;; Collect bits represented the list of zeroes and ones BSTREAM into
+  ;;; integers of size BITS.
+  (define (bitstream->int bstream bits)
+    (letrec* ((collect-bits (lambda (bs val count)
+			      (if (zero? count)
+				  val
+				  (collect-bits (cdr bs)
+						(bitwise-ior (car bs)
+							     (* 2 val))
+						(sub1 count)))))
+	      (collect-vals (lambda (bs)
+			      (if (null? bs)
+				  '()
+				  (cons (collect-bits bs 0 bits)
+					(collect-vals (drop bs bits))))))
+	      (pad (- bits (modulo (length bstream) bits))))
+      (collect-vals (if (zero? (modulo (length bstream) bits))
+			bstream
+			(append bstream
+				(make-list (- bits (modulo (length bstream)
+							   bits))
+					   0))))))
+
+  ;;; Adjust the size of the integer N by performing a logical bitshift. WANT
+  ;;; is the desired size (number of bits) of the resulting integer, and HAVE is
+  ;;; the actual size of integer N.
+  (define (adjust-integer-size n want have)
+    (bitwise-and (arithmetic-shift n (- want have))
+    		 (sub1 (expt 2 want))))
 
   ;; ;;; Calculate the number of 1-bits in the integer x.
   ;; (define (population-count x)
@@ -205,67 +237,93 @@
 	  (cons (bitwise-and next-state (sub1 (expt 2 bits)))
 		(prng::xorshift64 (sub1 amount) bits next-state)))))
 
+  ;;; A notoriously flawed LCG-type PRNG developed by IBM in the 1960s.
+  (define (prng::randu amount bits #!optional (seed (rand 32)))
+    (letrec ((make-values
+    	      (lambda (v0 n)
+    		(if (zero? n)
+    		    '()
+    		    (let ((v1 (bitwise-and #xffffffff
+    					   (* 65539
+    					      (modulo v0 (expt 2 31))))))
+    		      (cons v1 (make-values v1 (sub1 n))))))))
+      (map (cute adjust-integer-size <> bits 32)
+    	   (make-values (bitwise-ior seed 1)
+			amount))))
+
   ;;; Very fast but extremely poor 8-bit PRNG used to generate noise in various
   ;;; ZX Spectrum beeper engines.
-  (define (prng::el-cheapo-zx amount bits #!optional (state 0) (seed #x2175))
-    (letrec* ((make-values
+  (define (prng::el-cheapo-zx amount bits
+			      #!optional (seed (rand 16)) (magic #x2175))
+    (letrec ((make-values
 	      (lambda (amount state)
 		(if (zero? amount)
 		    '()
-		    (let* ((next-accu (add/16 state seed))
+		    (let* ((next-accu (add/16 state magic))
 			   (next-state (add/16 (<< (rol/8 (<< next-accu -8) 1)
 						   8)
 					       (bitwise-and next-accu #xff))))
 		      (cons (quotient next-state #x100)
-			    (make-values (sub1 amount) next-state))))))
-	      (res (make-values amount state)))
-      (scale-values res (apply min res) (sub1 (expt 2 bits)))))
+			    (make-values (sub1 amount) next-state)))))))
+      (map (cute adjust-integer-size <> bits 8)
+	   (make-values amount seed))))
+
+  ;;; Returns a Linear feedback shift register implementation. SIZE shall be
+  ;;; the number of bits of the LFSR, and FEEDBACK-FN shall be a procedure that
+  ;;; takes an integer state as argument and returns the next state.
+  (define (make-lfsr size feedback-fn)
+    (lambda (amount bits #!optional (seed (rand size)))
+      (letrec ((make-values
+		(lambda (amount state)
+		  (if (zero? amount)
+		      '()
+		      (let ((next-state (feedback-fn state)))
+			(cons next-state
+			      (make-values (sub1 amount) next-state)))))))
+	(bitstream->int (map (cute bitwise-and 1 <>)
+			     (make-values (* amount bits)
+					  (bitwise-and (sub1 (expt 2 size))
+						       (bitwise-ior seed 1))))
+			bits))))
+
+  ;;; A PRNG based on the noise waveform generator of the Gameboy APU, which is
+  ;;; a 15-bit LFSR with a tap at bit 1.
+  (define prng::dmg-noise
+    (make-lfsr 15
+	       (lambda (in)
+		 (bitwise-ior (bitwise-and #x3fff (quotient in 2))
+  			      (arithmetic-shift
+  			       (bitwise-xor (modulo in 2)
+  					    (modulo (quotient in 2) 2))
+  			       14)))))
 
   ;;; A PRNG based on the noise waveform on the MOS 6581/8580 Sound Interface
-  ;;; Device, which is a Fibonacci LSFR using the feedback polynomial
+  ;;; Device, which is a Fibonacci LFSR using the feedback polynomial
   ;;; x^22 + x^17 + 1. See http://www.sidmusic.org/sid/sidtech5.html. For added
   ;;; authenticity, initialize SEED to #x7ffff8.
-  (define (prng::sid-noise amount bits #!optional (seed (rand 23)))
-    (letrec* ((make-values
-	       (lambda (amount lsfr)
-		 (if (zero? amount)
-		     '()
-		     (let ((next-lsfr
-			    (bitwise-and
-			     #x7fffff
-			     (bitwise-ior
-			      (arithmetic-shift lsfr -1)
-			      (arithmetic-shift
-			       (bitwise-xor (arithmetic-shift lsfr -1)
-					    (arithmetic-shift lsfr -6))
-			       22)))))
-		       (cons next-lsfr
-			     (make-values (sub1 amount) next-lsfr))))))
-	      (res (make-values amount (bitwise-and #x7fffff
-						    (bitwise-ior seed 1)))))
-      (scale-values res (apply min res) (sub1 (expt 2 bits)))))
+  (define prng::sid-noise
+    (make-lfsr 23
+	       (lambda (in)
+		 (bitwise-and #x7fffff
+			      (bitwise-ior (arithmetic-shift in -1)
+			       (arithmetic-shift
+				(bitwise-xor (arithmetic-shift in -1)
+					     (arithmetic-shift in -6))
+				22))))))
 
   ;;; A PRNG based on the noise waveform (AUDCx = 8) on the Atari VCS/2600,
-  ;;; which is a 9-bit LSFR with a tap at bit 4, resulting in a period of 511.
-  (define (prng::tia-noise amount bits #!optional (seed #x1ff))
-    (letrec* ((make-values
-	       (lambda (amount lsfr)
-		 (if (zero? amount)
-		     '()
-		     (let ((next-lsfr
-			    (bitwise-and
-			     #x1ff
-			     (bitwise-ior
-			      (arithmetic-shift lsfr -1)
-			      (arithmetic-shift
-			       (bitwise-and 1 (bitwise-xor
-					       lsfr
-					       (arithmetic-shift lsfr -4)))
-			       8)))))
-		       (cons next-lsfr
-			     (make-values (sub1 amount) next-lsfr))))))
-	      (res (make-values amount (bitwise-and #x1ff seed))))
-      (scale-values res (apply min res) (sub1 (expt 2 bits)))))
+  ;;; which is a 9-bit LFSR with a tap at bit 4, resulting in a period of 511.
+  ;;; For added authenticity, initialize SEED to #x1ff.
+  (define prng::tia-noise
+    (make-lfsr 9
+	       (lambda (in)
+		 (bitwise-and #x1ff
+			      (bitwise-ior (arithmetic-shift in -1)
+			       (arithmetic-shift
+				(bitwise-and 1 (bitwise-xor
+						in
+						(arithmetic-shift in -4)))
+				8))))))
 
   ;;; Retrieve information on the pseudo-random number generators available in
   ;;; this package. Call with no arguments to retrieve the complete list. Call
@@ -307,16 +365,25 @@
 		"Classic non-scrambled 64-bit Xorshift generator, as developed"
 		" by George Marsaglia. See"
 		" https://en.wikipedia.org/wiki/Xorshift"))
+	     (prng::randu
+	      .
+	      ,(string-append "A notoriously flawed LCG-type PRNG developed by"
+			      " IBM in the 1960s."))
 	     (prng::el-cheapo-zx
 	      .
 	      ,(string-append
 		"Very fast but extremely poor 8-bit PRNG used to generate noise"
 		" in various ZX Spectrum beeper engines."))
+	     (prng::dmg-noise
+	      .
+	      ,(string-append
+		"A PRNG based on the noise waveform generator of the Gameboy"
+		" APU, which is a 15-bit LFSR with a tap at bit 1."))
 	     (prng::sid-noise
 	      .
 	      ,(string-append
 		"A PRNG based on the noise waveform on the MOS"
-		" 6581/8580 Sound Interface Device, which is a Fibonacci LSFR"
+		" 6581/8580 Sound Interface Device, which is a Fibonacci LFSR"
 		" using the feedback polynomial x^22 + x^17 + 1. See"
 		" http://www.sidmusic.org/sid/sidtech5.html. For added"
 		" authenticity, initialize SEED to #x7ffff8."))
@@ -324,8 +391,9 @@
 	      .
 	      ,(string-append
 		"A PRNG based on the noise waveform (AUDCx = 8) on"
-		" the Atari VCS/2600, which is a 9-bit LSFR with a tap at bit"
-		" 4, resulting in a period of 511.")))))
+		" the Atari VCS/2600, which is a 9-bit LFSR with a tap at bit"
+		" 4, resulting in a period of 511. For added authenticity,"
+		" initialize SEED to #x1ff.")))))
       (if (null? args) prngs (alist-ref (car args) prngs))))
 
   ) ;; end module prng

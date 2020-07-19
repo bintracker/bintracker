@@ -32,19 +32,29 @@ A variation of von Neumann's Middle Square Method that applies a Weyl sequence t
 Classic non-scrambled 64-bit [Xorshift generator](https://en.wikipedia.org/wiki/Xorshift), as developed by George Marsaglia.
 
 
-### [procedure] `(prng::el-cheapo-zx amount bits #!optional (state 0) (seed #x2175))`
+### [procedure] `(prng::randu amount bits #!optional (seed (bitwise-ior 1 (rand 32))))`
+
+A notoriously flawed LCG-type PRNG developed by IBM in the 1960s.
+
+
+### [procedure] `(prng::el-cheapo-zx amount bits #!optional (seed (rand 16) (magic #x2175))`
 
 Very fast but extremely poor 8-bit PRNG used to generate noise in various ZX Spectrum beeper engines.
 
 
+### [procedure] `(prng::dmg-noise amount bits #!optional (seed (rand 15)))`
+
+A PRNG based on the noise waveform generator of the Gameboy APU, which is a 15-bit LFSR with a tap at bit 1.
+
+
 ### [procedure] `(prng::sid-noise amount bits #!optional (seed (rand 23)))`
 
-A PRNG based on the noise waveform on the MOS 6581/8580 Sound Interface Device, which is a Fibonacci LSFR using the feedback polynomial x^22 + x^17 + 1. See http://www.sidmusic.org/sid/sidtech5.html. For added authenticity, initialize SEED to #x7ffff8.
+A PRNG based on the noise waveform on the MOS 6581/8580 Sound Interface Device, which is a Fibonacci LFSR using the feedback polynomial x^22 + x^17 + 1. See http://www.sidmusic.org/sid/sidtech5.html. For added authenticity, initialize SEED to #x7ffff8.
 
 
-### [procedure] `(prng::tia-noise amount bits #!optional (seed #x1ff))`
+### [procedure] `(prng::tia-noise amount bits #!optional (seed (rand 9))`
 
-A PRNG based on the noise waveform (AUDCx = 8) on the Atari VCS/2600,; which is a 9-bit LSFR with a tap at bit 4, resulting in a period of 511.
+A PRNG based on the noise waveform (AUDCx = 8) on the Atari VCS/2600,; which is a 9-bit LFSR with a tap at bit 4, resulting in a period of 511. For added authenticity, initialize SEED to #x1ff.
 
 
 ### [procedure] `(prng::info . args)`
