@@ -6,10 +6,14 @@
 	  srfi-1 srfi-13 srfi-69 pstk coops
 	  bt-state bt-types bt-gui mdal prng)
 
-  (define (make-position-list len weight prng)
-    (map (lambda (n)
-	   (if (<= n (* 256 weight)) #t #f))
-	 (prng len 8)))
+  (define (make-position-list len weight prng 1bit?)
+    (if 1bit?
+	(map (lambda (n)
+	       (if (zero? n) #f #t))
+	     (prng len 1))
+	(map (lambda (n)
+	       (if (<= n (* 256 weight)) #t #f))
+	     (prng len 8))))
 
   (define (get-selected-contents blockview)
     (let* ((selection (ui-normalized-selection blockview))
@@ -88,6 +92,9 @@
   			       size: (settings 'font-size)
   			       weight: 'bold))))
 	(d3 ,<ui-wrapper> setup
+	    ((l1 label text: "Position 1-bit Mode:       ")
+	     (bit1 checkbutton)))
+	(d4 ,<ui-wrapper> setup
 	    ((lss label text: "Position Sync:             ")
 	     (snc checkbutton)))
 	(pm ,<ui-wrapper> setup
@@ -108,6 +115,7 @@
 		  (selected-prng (tk-var "prng"))
 		  (distance-mode (tk-var "distancemode"))
 		  (paste-mode (tk-var "pastemode"))
+		  (bit1-mode (tk-var "bit1mode"))
 		  (sync-enabled (tk-var "syncenabled")))
 	      ((ui-ref dialog-widget 'prng)
 	       'configure values: prng-names textvariable: selected-prng)
@@ -125,6 +133,9 @@
 	       'configure values: prng-names textvariable: distance-mode)
 	      (tk-set-var! "distancemode" "xorshift64")
 	      ((ui-ref dialog-widget 'skw) 'insert 'end "0.5")
+	      ((ui-ref dialog-widget 'snc)
+	       'configure variable: bit1-mode)
+	      (tk-set-var! "bit1mode" 0)
 	      ((ui-ref dialog-widget 'snc)
 	       'configure variable: sync-enabled)
 	      (tk-set-var! "syncenabled" 0)))))
@@ -151,6 +162,8 @@
 		     (current-contents (get-selected-contents bv))
 		     (sync? (= 1 (string->number
 				  (->string (tk-get-var "syncenabled")))))
+		     (1bit? (= 1 (string->number
+				  (->string (tk-get-var "bit1mode")))))
 		     (data-prng (tk-var->prng "prng"))
 		     (variance (string->number
 				((ui-ref dialog-widget 'drw) 'get)))
@@ -159,8 +172,8 @@
 		     (weight (string->number
 			      ((ui-ref dialog-widget 'skw) 'get)))
 		     (synced-positions (and sync?
-					    (make-position-list len weight
-								pos-prng))))
+					    (make-position-list
+					     len weight pos-prng 1bit?))))
 		((case (car (string->list (tk-get-var "pastemode")))
 		   ((#\r) ui-paste)
 		   ((#\o) ui-porous-paste-over)
@@ -174,7 +187,8 @@
 				      '()))
 				(data-prng len 1)
 				(or synced-positions
-				    (make-position-list len weight pos-prng))))
+				    (make-position-list
+				     len weight pos-prng 1bit?))))
 			  ((int uint)
 			   (let ((range (or (command-range cmd)
 					    (bits->range
@@ -190,7 +204,7 @@
 				   (range-max range))
 				  (or synced-positions
 				      (make-position-list
-				       len weight pos-prng)))))
+				       len weight pos-prng 1bit?)))))
 			  ((key ukey)
 			   (let ((keys (if (command-has-flag? cmd 'is-note)
 					   (get-allowed-keys cmd variance mean)
@@ -204,7 +218,7 @@
 						(sub1 (length keys)))
 				  (or synced-positions
 				      (make-position-list
-				       len weight pos-prng)))))
+				       len weight pos-prng 1bit?)))))
 			  (else current-values)))
 		      commands
 		      current-contents)))))))))
