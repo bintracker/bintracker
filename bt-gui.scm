@@ -41,11 +41,10 @@
     (if (and (current 'module-view)
   	     (ui-metastate (current 'module-view) 'modified))
   	(match (exit-with-unsaved-changes-dialog dialogue-string)
-  	  ("yes" (begin (save-file)
-  			(proc)))
-  	  ("no" (proc))
+  	  ("yes" (begin (save-file) (proc) #t))
+  	  ("no" (begin (proc) #t))
   	  (else #f))
-  	(proc)))
+  	(begin (proc) #t)))
 
   ;;; Shut down the running application.
   (define (exit-bintracker)
@@ -65,10 +64,11 @@
   ;;; Close the currently opened module file.
   (define (close-file)
     ;; TODO disable menu option
-    (when (current 'module-view)
-      (do-proc-with-exit-dialogue
-       "closing"
-       (lambda () (on-close-file-hooks 'execute)))))
+    (if (current 'module-view)
+	(do-proc-with-exit-dialogue
+	 "closing"
+	 (lambda () (on-close-file-hooks 'execute)))
+	#t))
 
   (define after-load-file-hooks
     (make-hooks
@@ -90,36 +90,36 @@
   ;; TODO logging
   ;;; Prompt the user to load an MDAL module file.
   (define (load-file)
-    (close-file)
-    ;; TODO not sure if not using tk/safe-dialogue is a good idea here, keep
-    ;; an eye on it
-    (let ((filename (tk/get-open-file
-  		     filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}})))
-      (unless (string-null? filename)
-  	(handle-exceptions
-  	    exn
-	    (begin
-	      ;; TODO display error dialog instead if repl deactivated
-  	      (repl-insert
-	       (repl)
-	       (string-append
-		"\nError: "
-		(->string exn)
-  		"\n"
-		(if ((condition-predicate 'mdal) exn)
-		    ((condition-property-accessor 'mdal 'message) exn)
-		    ((condition-property-accessor 'exn 'message) exn))
-		"\n"))
-	      (repl-insert-prompt (repl)))
-  	  (after-load-file-hooks 'execute #f filename)))))
+    (when (close-file)
+      ;; TODO not sure if not using tk/safe-dialogue is a good idea here, keep
+      ;; an eye on it
+      (let ((filename (tk/get-open-file
+  		       filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}})))
+	(unless (string-null? filename)
+  	  (handle-exceptions
+  	      exn
+	      (begin
+		;; TODO display error dialog instead if repl deactivated
+  		(repl-insert
+		 (repl)
+		 (string-append
+		  "\nError: "
+		  (->string exn)
+  		  "\n"
+		  (if ((condition-predicate 'mdal) exn)
+		      ((condition-property-accessor 'mdal 'message) exn)
+		      ((condition-property-accessor 'exn 'message) exn))
+		  "\n"))
+		(repl-insert-prompt (repl)))
+  	    (after-load-file-hooks 'execute #f filename))))))
 
   (define (create-new-module mdef-name)
-    (close-file)
-    (after-load-file-hooks
-     'execute
-     (generate-new-mmod (file->mdef (settings 'mdal-mdef-dir) mdef-name)
-  			(settings 'default-block-length))
-     #f))
+    (when (close-file)
+      (after-load-file-hooks
+       'execute
+       (generate-new-mmod (file->mdef (settings 'mdal-mdef-dir) mdef-name)
+  			  (settings 'default-block-length))
+       #f)))
 
   (define new-file-dialog
     (make <ui-dialog>
@@ -235,17 +235,17 @@
   ;; Opens a dialog for users to chose an MDAL definition. Based on the
   ;; user's choice, a new MDAL module is created and displayed.
   (define (new-file)
-    (close-file)
-    (ui-show new-file-dialog)
-    (let* ((mdef-selector (ui-ref new-file-dialog 'mdef-selector))
-	   (item-list (string-split
-  		       (string-delete
-  			(string->char-set "{}")
-  			(->string (mdef-selector 'children '{}))))))
-      (unless (null? item-list)
-	(tk/focus mdef-selector)
-	(mdef-selector 'focus (car item-list))
-	(mdef-selector 'selection 'set (list (car item-list))))))
+    (when (close-file)
+      (ui-show new-file-dialog)
+      (let* ((mdef-selector (ui-ref new-file-dialog 'mdef-selector))
+	     (item-list (string-split
+  			 (string-delete
+  			  (string->char-set "{}")
+  			  (->string (mdef-selector 'children '{}))))))
+	(unless (null? item-list)
+	  (tk/focus mdef-selector)
+	  (mdef-selector 'focus (car item-list))
+	  (mdef-selector 'selection 'set (list (car item-list)))))))
 
   (define on-save-file-hooks
     (make-hooks
