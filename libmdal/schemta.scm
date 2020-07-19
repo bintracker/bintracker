@@ -405,11 +405,7 @@
 
   (define incbin-directive (a-directive-using-string-operand 'incbin))
 
-  (define cpu-directive
-    (bind (a-directive-using-string-operand 'cpu)
-	  ;; TODO shouldn't it be cadr instead of third?
-	  (lambda (r) (begin ;; (set-target! (third r))
-			     (result r)))))
+  (define cpu-directive (a-directive-using-string-operand 'cpu))
 
   (define (org-directive target)
     (sequence* ((_ (char-seq "org"))
@@ -726,7 +722,7 @@
 	   (begin (state 'current-origin #f) (state 'done #f) (list node))))
       ((cpu)
        (state 'target (make-target (string->symbol (third node))))
-       (list 'swap-target (string->symbol (third node))))
+       (list (list 'swap-target (string->symbol (third node)))))
       ((include) (if (file-exists? (third node))
 		     (parse-source (call-with-input-file (third node)
 				     (cute read-string #f <>))
@@ -811,6 +807,7 @@
 
   (: ast->bytes (list -> (list-of char)))
   (define (ast->bytes ast)
+    ;; (print "ast->bytes " ast)
     (map integer->char
 	 (concatenate (remove (lambda (node)
 				(memq (car node) '(swap-namespace swap-target)))
@@ -1018,7 +1015,7 @@
 				    (if (and (eqv? 'directive (car result))
 					     (eqv? 'cpu (cadr result)))
 					(make-target
-					 (string->symbol (cadadr result)))
+					 (string->symbol (caddr result)))
 					trgt)
 				    (cons result ast))))))))
       (parse-it (strip-source source) target '())))
