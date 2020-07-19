@@ -930,10 +930,31 @@
 		  (string-split source "\n")))
      "\n"))
 
-  ;; Throw an exception for a syntax error.
+  ;;; Split raw assembly source code into lines. Helper for throw-syntax-error.
+  (define (split-source-lines source)
+    (parse (zero-or-more
+	    (as-string
+	     (followed-by*
+	      (zero-or-more
+	       (any-of (sequence
+			 (is #\")
+			 (zero-or-more
+			  (any-of (preceded-by (is #\\)
+					       (is #\"))
+				  (in (char-set-difference
+				       (char-set-union char-set:graphic
+						       (->char-set #\newline))
+				       (->char-set #\")))))
+			 (is #\"))
+		       (in (char-set-difference char-set:printing
+						(->char-set #\newline)))))
+	      (is #\newline))))
+	   (string-append source "\n")))
+
+  ;;; Throw an exception for a syntax error.
   (define (throw-syntax-error source remainder)
     (letrec* ((rem (list->string (parse (zero-or-more item) remainder)))
-	      (src-lines (string-split source "\n"))
+	      (src-lines (split-source-lines source))
 	      (enumerated-src (map (lambda (line i) `(,i . ,line))
 				   src-lines
 				   (iota (length src-lines) 1)))
