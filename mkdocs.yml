@@ -47,6 +47,8 @@ nav:
       - Plugins:
           - Overview: plugins.md
           - mml: 'plugins/mml/README.md'
+          - prng: 'plugins/prng/README.md'
+          - unzufall: 'plugins/unzufall/README.md'
   - "Developer Documentation":
       - "Getting Started": hacking.md
       - Quickref: quickref.md

@@ -6,7 +6,7 @@ This chapter describes how to develop plugins for Bintracker.
 
 Plugins extend Bintracker's core functionality by defining additional procedures, registering new hooks, adding key bindings, etc. Bintracker plugins are Scheme code wrapped in a [plugin definition expression](#plugin-defintions). The plugin code is executed at runtime, usually as the last step of reading the main configuration file.
 
-Plugin code has access to standard Scheme bindings, the entire Bintracker API including libmdal and Schemta, the [Chicken Scheme modules](https://wiki.call-cc.org/man/5/Included%20modules) `base`, `string`, `bitwise`, `file`, `platform`, and `random`, and the [extensions](https://eggs.call-cc.org/5/) `srfi-1`, `srif-13`, `srfi-18`, `srfi-69`, `coops`, `list-utils`, `simple-exceptions`, and `pstk`, plus the `exec` and `sql` procedures from `sql-de-lite`. A plugin may also depend on other plugins, and has access to bindings defined in those dependencies.
+Plugin code has access to standard Scheme bindings, the entire Bintracker API including libmdal and Schemta, the [Chicken Scheme modules](https://wiki.call-cc.org/man/5/Included%20modules) `base`, `string`, `bitwise`, `file`, `condition`, `platform`, and `random`, and the [extensions](https://eggs.call-cc.org/5/) `srfi-1`, `srif-13`, `srfi-18`, `srfi-69`, `coops`, `list-utils`, and `pstk`, plus the `exec` and `sql` procedures from `sql-de-lite`. A plugin may also depend on other plugins, and has access to bindings defined in those dependencies.
 
 
 ## Plugin Definitions
