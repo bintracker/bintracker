@@ -136,7 +136,7 @@
 	    ((description text takefocus: 0 state: disabled bd: 0
 			  highlightthickness: 0 height: 10 wrap: word))
 	    yscroll #t))
-      'traverse '(platform-selector mdef-selector)
+      'traverse '(mdef-selector platform-selector)
       'initializers
       (make-hooks
        `(configure-text-style
@@ -189,6 +189,7 @@
   					      values: (list (cadr mdef)
 							    (third mdef))))
   			     (btdb-list-mdefs selected-platform))
+		   (tk/update 'idletasks)
 		   (mdef-selector 'focus (car (get-item-list)))
 		   (mdef-selector 'selection 'set
   				  (list (car (get-item-list)))))))
@@ -199,20 +200,23 @@
 	       ;; because Tk delays execution of the selection too long.
 	       ;; Calling tk/update or tk/update 'idletasks hangs the app.
 	       ;; For now, use tk/after 100 as a (very brittle) work-around.
+	       ;; Update: Seems fairly stable now with forcing a tk/update
+	       ;; 'idletasks in the ComboboxSelect event above. Still fails
+	       ;; without a delay though.
 	       (lambda ()
-		 (tk/after
-		  100
-		  (lambda ()
-		    (let* ((selected-engine
-			    (string->symbol
-			     (mdef-selector
-  			      'item (mdef-selector 'selection) text:)))
-			   (description (->string (btdb-get-mdef-description
-						   selected-engine))))
-		      (description-widget 'configure state: 'normal)
-		      (description-widget 'delete "0.0" 'end)
-		      (description-widget 'insert 'end description)
-		      (description-widget 'configure state: 'disabled))))))))))
+	       	 (tk/after
+	       	  20
+	       	  (lambda ()
+	       	    (let* ((selected-engine
+	       		    (string->symbol
+	       		     (mdef-selector
+  	       		      'item (mdef-selector 'selection) text:)))
+	       		   (description (->string (btdb-get-mdef-description
+	       					   selected-engine))))
+	       	      (description-widget 'configure state: 'normal)
+	       	      (description-widget 'delete "0.0" 'end)
+	       	      (description-widget 'insert 'end description)
+	       	      (description-widget 'configure state: 'disabled))))))))))
       'finalizers
       (make-hooks
        `(ex
