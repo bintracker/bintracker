@@ -67,6 +67,10 @@
       `((ps ,<ui-wrapper> setup
 	    ((l1 label text: "Data PRNG:                 ")
 	     (prng combobox state: readonly)))
+	(ds ,<ui-wrapper> setup
+	    ((desc text takefocus: 0 state: disabled bd: 0
+		   highlightthickness: 0 height: 8 wrap: word))
+	    yscroll #t)
 	(pr ,<ui-wrapper> setup
 	    ((l1 label text: "Data Variance (0 - 1.0):   ")
 	     (drw entry bg: ,(colors 'row-highlight-minor) fg: ,(colors 'text)
@@ -102,9 +106,16 @@
 	     (pm1 radiobutton text: " Replace")
 	     (pm2 radiobutton text: " Porous/under")
 	     (pm3 radiobutton text: " Porous/over"))))
-      'traverse '(prng drw drm dst skw snc pm1 pm2 pm3)
+      'traverse '(prng drw drm dst skw bit1 snc pm1 pm2 pm3)
       'initializers
       (make-hooks
+       `(configure-text-style
+	 .
+	 ,(lambda ()
+	    ((ui-ref dialog-widget 'desc) 'configure
+	     bg: (colors 'background) fg: (colors 'text)
+	     font: (list family: (settings 'font-mono)
+  				  size: (settings 'font-size)))))
        `(init
 	 .
 	 ,(lambda a
@@ -120,6 +131,10 @@
 	      ((ui-ref dialog-widget 'prng)
 	       'configure values: prng-names textvariable: selected-prng)
 	      (tk-set-var! "prng" "xorshift64")
+	      ((ui-ref dialog-widget 'desc) 'configure state: 'normal)
+	      ((ui-ref dialog-widget 'desc) 'insert 'end
+	       (prng::info 'prng::xorshift64))
+	      ((ui-ref dialog-widget 'desc) 'configure state: 'disabled)
 	      ((ui-ref dialog-widget 'drw) 'insert 'end "0.5")
 	      ((ui-ref dialog-widget 'drm) 'insert 'end "0.5")
 	      ((ui-ref dialog-widget 'pm1)
@@ -138,7 +153,25 @@
 	      (tk-set-var! "bit1mode" 0)
 	      ((ui-ref dialog-widget 'snc)
 	       'configure variable: sync-enabled)
-	      (tk-set-var! "syncenabled" 0)))))
+	      (tk-set-var! "syncenabled" 0))))
+       `(bind-info
+	 .
+	 ,(lambda a
+	    (tk/bind
+	     (ui-ref dialog-widget 'prng)
+	     '<<ComboboxSelected>>
+	     (lambda ()
+	       (tk/after
+		20
+		(lambda ()
+		  (let ((desc (ui-ref dialog-widget 'desc)))
+		    (desc 'configure state: 'normal)
+		    (desc 'delete "0.0" 'end)
+		    (desc 'insert 'end
+			  (prng::info (string->symbol
+				       (string-append "prng::"
+						      (tk-get-var "prng")))))
+		    (desc 'configure state: 'disabled)))))))))
       'finalizers
       (make-hooks
        `(gen
