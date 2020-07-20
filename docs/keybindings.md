@@ -98,6 +98,7 @@ In the following image, a number in the top right corner of a key represents the
 Key                 | Function
 --------------------|----------------------------------------
 `.`                 | repeat last set value
+`Tab`               | toggle focus between block view and order view
 
 Numeric columns accept any number that is valid for the given command, using the radix (number base) set in `(settings 'number-base)`. Trigger commands accept any of the piano keys.
 

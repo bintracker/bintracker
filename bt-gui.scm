@@ -2948,6 +2948,11 @@
   		     ", column "
   		     field-id)))
 
+  (define-method (ui-blockview-bind-events after: (buf <ui-block-view>))
+    (tk/bind (slot-value buf 'block-content)
+	     '<Tab>
+	     (lambda () (tk-with-lock (lambda () (focus 'next))))))
+
   ;;; A class representing the display of the order block of an MDAL group node
   ;;; instance.
   ;;;
@@ -3319,6 +3324,11 @@
   		      ((string-prefix-ci? "R_" field-id)
   		       (string-drop field-id 2))
   		      (else field-id)))))
+
+  (define-method (ui-blockview-bind-events after: (buf <ui-order-view>))
+    (tk/bind (slot-value buf 'block-content)
+	     '<Tab>
+	     (lambda () (tk-with-lock (lambda () (focus 'previous))))))
 
   ;;; A widget class suitable for displaying an MDAL group node's block members.
   ;;; It is a wrapper around a <ui-block-view> and the associated
