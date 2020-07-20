@@ -82,6 +82,26 @@
     (tk/place (tk 'create-widget 'sizegrip style: 'BT.TSizegrip)
 	      anchor: 'se relx: 1.0 rely: 1.0))
 
+  ;;; Bind a tooltip to the Tk widget WIDGET, displaying TEXT on hover. By
+  ;;; default tooltips are bound to the `tk` root window. You can bind to a
+  ;;; different window by specifying the WINDOW argument.
+  (define (tooltip widget text #!optional (window tk))
+    (let ((tt (window 'create-widget 'label text: text
+		      style: 'Tooltip.TLabel relief: 'ridge)))
+      (tk/bind widget '<Enter>
+	       (lambda ()
+		 (let ((x (tk/winfo 'pointerx window))
+		       (y (tk/winfo 'pointery window)))
+		   (tk/after 500
+			     (lambda ()
+			       (tk/place tt x: x y: y)
+			       (tk/raise tt)))
+		   (tk/after 3000
+			     (lambda ()
+			       (tk/place 'forget tt))))))
+      (tk/bind widget '<Leave>
+	       (lambda () (tk/place 'forget tt)))))
+
   ;; ---------------------------------------------------------------------------
 ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
@@ -262,6 +282,10 @@
 	    ;; 	   '("    ttk::style map TNotebook"
 	    ;; 	     "-background [list selected $colors(-highlight-minor)"
 	    ;; 	     "active $colors(-highlight-minor)]"))
+	    "" ,(string-intersperse
+		 '("    ttk::style configure Tooltip.TLabel"
+		   "-font BTFont"
+		   "-background $colors(-highlight-minor)"))
 	    "" "    ttk::style configure Modeline.TLabel -font BTFont"
 	    ,@(map (lambda (color-idx)
 	    	     (string-append
@@ -479,6 +503,8 @@
       (tk-eval (string-append "bindtags " widget-id " {all . "
 			      (tk/winfo 'class widget)
 			      " " widget-id "}"))))
+
+
 
 
   ;; ---------------------------------------------------------------------------

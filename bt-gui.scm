@@ -2387,7 +2387,13 @@
 	      (make-hooks
 	       `(ix . ,(lambda a
 			 ((ui-ref d 'minsel) 'insert 'end "0")
-			 ((ui-ref d 'maxsel) 'insert 'end "0"))))
+			 ((ui-ref d 'maxsel) 'insert 'end "0")
+			 (tooltip (ui-ref d 'minsel)
+				  "Lower range limit"
+				  (ui-box d))
+			 (tooltip (ui-ref d 'maxsel)
+				  "Upper range limit"
+				  (ui-box d)))))
 	      'finalizers
 	      (make-hooks
 	       `(ex . ,(lambda a
