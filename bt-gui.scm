@@ -1081,7 +1081,6 @@
 			    mdef))))
 		(map cdr (ui-children buf)))))
 
-  ;; TODO expand: 1 fill: both?
   ;;; Abstract base class for `<ui-block-view>` and `<ui-order-view>`,
   ;;; implementing shared code for these two classes. You most likely do not
   ;;; need to construct an instance of this class directly. However, consider
@@ -1370,28 +1369,6 @@
   			(ui-blockview-get-current-field-instance buf))
   	      (ui-blockview-get-current-field-index buf)))
 
-  ;;; Apply type tags and the `'active` tag to the current active zone of the
-  ;;; blockview BUF.
-  (define-method (ui-blockview-tag-active-zone primary:
-  					       (buf <ui-basic-block-view>))
-    (let ((zone-limits (ui-blockview-get-active-zone buf))
-  	  (grid (slot-value buf 'block-content))
-  	  (rownums (slot-value buf 'rownums)))
-      (textgrid-remove-tags-globally
-       grid (cons 'active (map (o bv-field-config-type-tag cadr)
-  			       (slot-value buf 'field-configs))))
-      (textgrid-remove-tags-globally rownums '(active txt))
-      (textgrid-add-tags rownums '(active txt)
-  			 (car zone-limits)
-  			 0 'end (cadr zone-limits))
-      (textgrid-add-tags grid 'active (car zone-limits)
-  			 0 'end (cadr zone-limits))
-      (for-each (lambda (row)
-  		  (ui-blockview-add-type-tags buf row))
-  		(iota (- (cadr zone-limits)
-  			 (sub1 (car zone-limits)))
-  		      (car zone-limits) 1))))
-
   ;;; Update the row highlights of the blockview.
   (define-method (ui-blockview-update-row-highlights
   		  primary: (buf <ui-basic-block-view>))
@@ -1516,7 +1493,8 @@
       (when (or (< actual-row (car active-zone))
   		(> actual-row (cadr active-zone)))
   	(ui-blockview-tag-active-zone buf))
-      (ui-blockview-show-cursor buf)
+      (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
+	(ui-blockview-show-cursor buf))
       (grid 'see 'insert)
       ((slot-value buf 'rownums) 'see
        (textgrid-position->tk-index actual-row 0))))
@@ -2839,6 +2817,41 @@
   	      (slot-value buf 'item-cache)))
   	"\n"))))
 
+  ;;; Apply type tags and the `'active` tag to the current active zone of the
+  ;;; blockview BUF.
+  (define-method (ui-blockview-tag-active-zone primary:
+  					       (buf <ui-block-view>))
+    (let ((zone-limits (ui-blockview-get-active-zone buf))
+  	  (grid (slot-value buf 'block-content))
+  	  (rownums (slot-value buf 'rownums)))
+      (textgrid-remove-tags-globally
+       grid (cons 'active (map (o bv-field-config-type-tag cadr)
+  			       (slot-value buf 'field-configs))))
+      (textgrid-remove-tags-globally rownums '(active txt))
+      (textgrid-add-tags rownums '(active txt)
+  			 (car zone-limits)
+  			 0 'end (cadr zone-limits))
+      (textgrid-add-tags grid 'active (car zone-limits)
+  			 0 'end (cadr zone-limits))
+      (for-each (lambda (row)
+  		  (ui-blockview-add-type-tags buf row))
+  		(iota (- (cadr zone-limits)
+  			 (sub1 (car zone-limits)))
+  		      (car zone-limits) 1))))
+
+  ;;; Set the cursor of the associated order view.
+  (define-method (ui-blockview-set-sibling-cursor primary:
+						  (buf <ui-block-view>))
+    (let ((ov (ui-ref (ui-ref (ui-metastate buf 'group-ref
+					    (slot-value buf 'group-id))
+			      'blocks)
+		      'order)))
+      (ui-blockview-set-cursor
+       ov
+       (ui-blockview-get-current-order-pos buf)
+       (cadr (ui-blockview-get-cursor-position ov)))
+      (ui-blockview-tag-active-zone ov)))
+
   ;; TODO can be unified with specialization on ui-order-view
   ;;; Set the blockview's cursor to the grid position currently closest to the
   ;;; mouse pointer.
@@ -2852,15 +2865,19 @@
   			       (find (cute <= <> (cadr mouse-pos))
   				     (reverse
   				      (ui-blockview-cursor-x-positions buf))))
-      (ui-blockview-update-current-command-info buf)))
+      (ui-blockview-update-current-command-info buf)
+      (ui-blockview-set-sibling-cursor buf)))
 
   (define-method (ui-blockview-move-cursor primary: (buf <ui-block-view>)
   					   direction)
-    (ui-blockview-move-cursor-common buf
-  				     direction
-  				     (if (zero? (ui-metastate buf 'edit-step))
-  					 1
-  					 (ui-metastate buf 'edit-step))))
+    (let ((active-first-row (car (ui-blockview-get-active-zone buf))))
+      (ui-blockview-move-cursor-common buf
+  				       direction
+  				       (if (zero? (ui-metastate buf 'edit-step))
+  					   1
+  					   (ui-metastate buf 'edit-step)))
+      (unless (= active-first-row (car (ui-blockview-get-active-zone buf)))
+	(ui-blockview-set-sibling-cursor buf))))
 
   ;; TODO unify with specialization on ui-order-view?
   ;;; **deprecated**, use (edit BUF 'cursor VALUE) instead
@@ -3045,15 +3062,6 @@
   ;;; at the first nesting level.
   (define-method (ui-blockview-get-item-list primary: (buf <ui-order-view>))
     (let ((group-id (slot-value buf 'group-id)))
-      ;; (map (lambda (row)
-      ;; 	     (print "row: " row)
-      ;; 	     (map (lambda (field)
-      ;; 		    (print "field: " field)
-      ;; 		    (if (null? field) #f field))
-      ;; 		  row))
-      ;; 	   (cddr (mod-get-group-instance-order
-      ;; 		  (ui-blockview-parent-instance buf)
-      ;; 		  (slot-value buf 'group-id))))
       (list (mod-get-order-values group-id
       				  (ui-blockview-parent-instance buf)))))
 
@@ -3079,6 +3087,34 @@
   	      (slot-value buf 'item-cache)))
   	"\n"))))
 
+  ;;; Apply type tags and the `'active` tag to the current active zone of the
+  ;;; order view BUF.
+  (define-method (ui-blockview-tag-active-zone primary: (buf <ui-order-view>))
+    (let ((grid (slot-value buf 'block-content))
+  	  (rownums (slot-value buf 'rownums))
+	  (current-row (ui-blockview-get-current-row buf)))
+      (textgrid-remove-tags-globally
+       grid (cons 'active (map (o bv-field-config-type-tag cadr)
+  			       (slot-value buf 'field-configs))))
+      (textgrid-remove-tags-globally rownums '(active txt))
+      (textgrid-add-tags rownums '(txt active) current-row)
+      (textgrid-add-tags grid 'active current-row)
+      (ui-blockview-add-type-tags buf current-row)))
+
+  ;;; Set the cursor of the associated blockview.
+  (define-method (ui-blockview-set-sibling-cursor primary:
+						  (buf <ui-order-view>))
+    (let ((bv (ui-ref (ui-ref (ui-metastate buf 'group-ref
+					    (slot-value buf 'group-id))
+			      'blocks)
+		      'blocks)))
+      (ui-blockview-set-cursor
+       bv
+       (car (list-ref (ui-blockview-start+end-positions bv)
+		      (ui-blockview-get-current-row buf)))
+       (cadr (ui-blockview-get-cursor-position bv)))
+      (ui-blockview-tag-active-zone bv)))
+
   ;; TODO this relies on ui-zones, which are due to change
   ;;; Set the blockview's cursor to the grid position currently closest to the
   ;;; mouse pointer.
@@ -3090,11 +3126,16 @@
   			       (find (cute <= <> (cadr mouse-pos))
   				     (reverse
   				      (ui-blockview-cursor-x-positions buf))))
-      (ui-blockview-update-current-command-info buf)))
+      (ui-blockview-update-current-command-info buf)
+      (ui-blockview-tag-active-zone buf)
+      (ui-blockview-set-sibling-cursor buf)))
 
   (define-method (ui-blockview-move-cursor primary: (buf <ui-order-view>)
   					   direction)
-    (ui-blockview-move-cursor-common buf direction 1))
+    (ui-blockview-move-cursor-common buf direction 1)
+    (ui-blockview-tag-active-zone buf)
+    (when (memv direction '(Up Down))
+      (ui-blockview-set-sibling-cursor buf)))
 
   ;;; Return the MDAL node path string of the field currently under cursor.
   (define-method (ui-blockview-get-current-block-instance-path
@@ -3739,6 +3780,23 @@
   	((set-info) (and (slot-value buf 'modeline)
   			 (ui-modeline-set (slot-value buf 'modeline)
   					  'active-field (cadr args))))
+	((group-ref)
+	 (letrec* ((find-by-id
+		    (lambda (tree subgroups-buf)
+		      (if (= 1 (length tree))
+			  (alist-ref (cadr args)
+				     (slot-value subgroups-buf 'subgroups))
+			  (find-by-id
+			   (cdr tree)
+			   (ui-ref (alist-ref (car tree)
+					      (slot-value subgroups-buf
+							  'subgroups))
+				   'subgroups))))))
+	   (find-by-id (reverse
+			(mdef-get-node-ancestors-ids
+			 (cadr args)
+			 (mdef-itree (car (slot-value buf 'mmod)))))
+		       (alist-ref 'subgroups (ui-children buf)))))
   	(else (error 'metastate (string-append "invalid command "
   					       (->string args)))))))
 
@@ -3974,17 +4032,21 @@
   ;;; Push an edit action to the undo stack. ACTION shall be the inverse of an
   ;;; edit your applying (see above).
   ;;;
-  ;;; `(ui-metastate MD 'undo)`
+  ;;; `(ui-metastate MV 'undo)`
   ;;;
   ;;; Undo the most recent edit, if any.
   ;;;
-  ;;; `(ui-metastate MD 'redo)`
+  ;;; `(ui-metastate MV 'redo)`
   ;;;
   ;;; Redo the most recently undone edit.
   ;;;
-  ;;; `(ui-metastate MD 'set-info STR)`
+  ;;; `(ui-metastate MV 'set-info STR)`
   ;;;
   ;;; Set the active command info in the modeline to STR.
+  ;;;
+  ;;; `(ui-metastate MV 'group-ref ID)
+  ;;;
+  ;;; Get the `<ui-group>` instance representing the MDAL group node named ID.
   (define-method (ui-metastate primary: (buf <ui-module-view>)
   			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
