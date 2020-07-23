@@ -112,6 +112,9 @@ Key              | Function
 `Return`         | Evaluate command
                  |
 `Ctrl-L`         | Clear REPL
+                 |
+`Alt-P`          | Get previous command from history
+`Alt-N`          | Get next command from history
 
 There are a number of bindings that are not yet configurable. These are mostly standard shortcuts used by any modern text editor, ie. `Shift` + arrow keys selects, `Ctrl-C`/`Ctrl-X`/`Ctrl-V` copies/cuts/pastes, and so on.
 

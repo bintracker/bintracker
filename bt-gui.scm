@@ -689,7 +689,8 @@
      repl
      yscroll
      (prompt "repl> ")
-     (history '())))
+     (history initform: '() accessor: repl-history)
+     (history-pointer 0)))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
     (set! (slot-value buf 'repl)
@@ -717,10 +718,13 @@
   	(repl-insert-prompt buf)
   	(repl 'mark 'gravity "prompt" 'left)
   	(repl 'see 'end)
-  	(bind-key (slot-value buf 'repl) 'console 'eval-console
-  		  (lambda () (repl-eval buf)))
-  	(bind-key (slot-value buf 'repl) 'console 'clear-console
-  		  (lambda () (repl-clear buf)))
+	(for-each (lambda (bind-id proc)
+		    (bind-key (slot-value buf 'repl) 'console bind-id proc))
+		  '(eval-console clear-console previous-command next-command)
+		  `(,(lambda () (repl-eval buf))
+		    ,(lambda () (repl-clear buf))
+		    ,(lambda () (repl-insert-from-history buf 'previous))
+		    ,(lambda () (repl-insert-from-history buf 'next))))
   	(set! (slot-value buf 'initialized) #t)
   	(tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
   		  (lambda ()
@@ -762,6 +766,28 @@
   ;;; [Tk manual page](https://www.tcl.tk/man/tcl8.6/TkCmd/text.htm#M124).
   (define-method (repl-get primary: (buf <ui-repl>) #!rest args)
     (apply (slot-value buf 'repl) (cons 'get args)))
+
+  (define-method (repl-insert-from-history primary: (buf <ui-repl>)
+					   direction)
+    (unless (or (null? (repl-history buf))
+		(and (eqv? direction 'previous)
+		     (>= (slot-value buf 'history-pointer)
+			 (length (repl-history buf))))
+		(and (eqv? direction 'next)
+		     (< (slot-value buf 'history-pointer) 2)))
+      ((slot-value buf 'repl) 'delete "prompt" 'end)
+      (if (eqv? direction 'next)
+	  (begin
+	    (repl-insert buf (list-ref (repl-history buf)
+				       (- (slot-value buf 'history-pointer) 2)))
+	    (set! (slot-value buf 'history-pointer)
+	      (sub1 (slot-value buf 'history-pointer))))
+	  (begin
+	    (repl-insert buf (list-ref (repl-history buf)
+				       (slot-value buf 'history-pointer)))
+	    (set! (slot-value buf 'history-pointer)
+	      (+ 1 (slot-value buf 'history-pointer)))))
+      ((slot-value buf 'repl) 'see 'end)))
 
   ;;; Evaluate the latest command that the user entered into the repl prompt.
   (define-method (repl-eval primary: (buf <ui-repl>))
@@ -805,7 +831,10 @@
   			      (not (string-prefix-ci? "(say" input-str)))
   		     (say 'sanitize res))
   		   (string-append "\n" res)))
-  		(repl-insert-prompt buf))
+  		(repl-insert-prompt buf)
+		(set! (slot-value buf 'history-pointer) 0)
+		(set! (slot-value buf 'history)
+		  (cons input-str (slot-value buf 'history))))
   	      (repl-insert
   	       buf
   	       (string-append "\n"
