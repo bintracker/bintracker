@@ -725,10 +725,11 @@
 		    ,(lambda () (repl-clear buf))
 		    ,(lambda () (repl-insert-from-history buf 'previous))
 		    ,(lambda () (repl-insert-from-history buf 'next))))
-  	(set! (slot-value buf 'initialized) #t)
+	(repl-modify-default-events buf)
   	(tk/bind* (slot-value buf 'repl) '<ButtonPress-1>
   		  (lambda ()
-  		    (focus-controller 'set (slot-value buf 'ui-zone)))))
+  		    (focus-controller 'set (slot-value buf 'ui-zone))))
+  	(set! (slot-value buf 'initialized) #t))
       (focus-controller 'add (slot-value buf 'ui-zone)
   			(lambda () (ui-focus buf))
   			(lambda () #t)
@@ -745,6 +746,57 @@
 
   (define-method (ui-what primary: (buf <ui-repl>))
     "unknown")
+
+  ;;; Protect the prompt string by applying various tweaks to the standard event
+  ;;; handlers of Tk text widgets.
+  (define-method (repl-modify-default-events primary: (buf <ui-repl>))
+    (tk/bind (slot-value buf 'repl) '<<PrevChar>>
+	     (lambda ()
+	       (let* ((mark->pos
+		       (lambda (mark)
+			 (map string->number
+  			      (string-split
+			       ((slot-value buf 'repl) 'index mark)
+  			       "."))))
+		      (cursor-pos (mark->pos 'insert))
+		      (prompt-pos (mark->pos "prompt")))
+		 (unless (and (= (car prompt-pos) (car cursor-pos))
+			      (<= (cadr cursor-pos) (cadr prompt-pos)))
+		   (tk-eval (string-append "tk::TextSetCursor "
+					   ((slot-value buf 'repl) 'get-id)
+					   " insert-1displayindices"))))))
+    (tk-eval (string-append "bind "
+			    ((slot-value buf 'repl) 'get-id)
+			    " <<PrevChar>> +break"))
+    (tk/bind (slot-value buf 'repl) '<BackSpace>
+	     (lambda ()
+	       (let* ((mark->pos
+		       (lambda (mark)
+			 (map string->number
+  			      (string-split
+			       ((slot-value buf 'repl) 'index mark)
+  			       "."))))
+		      (cursor-pos (mark->pos 'insert))
+		      (prompt-pos (mark->pos "prompt"))
+		      (tk-id ((slot-value buf 'repl) 'get-id)))
+		 (unless (and (= (car prompt-pos) (car cursor-pos))
+			      (<= (cadr cursor-pos) (cadr prompt-pos)))
+		   (tk-eval
+		    (string-append
+		     "if {[tk::TextCursorInSelection "
+		     tk-id
+		     "]} {\n\t"
+		     tk-id
+		     " delete sel.first sel.last\n} else {\n\tif {["
+		     tk-id
+		     " compare insert != 1.0]} {\n\t\t"
+		     tk-id
+		     " delete insert-1c\n}\n\t "
+		     tk-id
+		     " see insert\n}"))))))
+    (tk-eval (string-append "bind "
+			    ((slot-value buf 'repl) 'get-id)
+			    " <BackSpace> +break")))
 
   ;;; Insert STR at the end of the prompt of the `<ui-repl>` instance BUF.
   (define-method (repl-insert primary: (buf <ui-repl>) str)
@@ -834,7 +886,8 @@
   		(repl-insert-prompt buf)
 		(set! (slot-value buf 'history-pointer) 0)
 		(set! (slot-value buf 'history)
-		  (cons input-str (slot-value buf 'history))))
+		  (cons input-str (slot-value buf 'history)))
+		((slot-value buf 'repl) 'mark 'set 'insert "end-1c"))
   	      (repl-insert
   	       buf
   	       (string-append "\n"
