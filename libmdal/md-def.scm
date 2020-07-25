@@ -77,8 +77,8 @@
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
 	  (chicken condition) (chicken sort)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 typed-records
-	  md-helpers md-types md-command md-note-table schemta)
-  (reexport md-command md-note-table schemta)
+	  md-helpers md-types md-command md-note-table md-audio schemta)
+  (reexport md-command md-note-table md-audio schemta)
 
 
   ;; ---------------------------------------------------------------------------

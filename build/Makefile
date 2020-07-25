@@ -92,6 +92,12 @@ md-note-table.so: $(MDAL_SRC)utils/md-note-table.scm
 md-note-table.import.so: md-note-table.so
 	$(CSC) $(IMPORTFLAGS) md-note-table.import.scm
 
+md-audio.so: $(MDAL_SRC)utils/md-audio.scm
+	$(CSC) $(LIBFLAGS) $< -j md-audio -o $@
+
+md-audio.import.so: md-audio.so
+	$(CSC) $(IMPORTFLAGS) md-audio.import.scm
+
 md-command.so: $(MDAL_SRC)md-command.scm md-helpers.import.so
 	$(CSC) $(LIBFLAGS) $< -j md-command -o $@
 
@@ -99,7 +105,7 @@ md-command.import.so: md-command.so
 	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
 md-def.so: $(MDAL_SRC)md-def.scm $(BASEDEPS) md-command.import.so\
- md-note-table.import.so schemta.import.so
+ md-note-table.import.so md-audio.import.so schemta.import.so
 	$(CSC) $(LIBFLAGS) $< -j md-def -o $@
 
 md-def.import.so: md-def.so
@@ -141,6 +147,7 @@ gendoc/generated/md-helpers.md: $(MDAL_SRC)md-helpers.scm
 gendoc/generated/md-types.md: $(MDAL_SRC)md-types.scm
 gendoc/generated/md-parser.md: $(MDAL_SRC)md-parser.scm
 gendoc/generated/md-command.md: $(MDAL_SRC)md-command.scm
+gendoc/generated/utils/md-audio.md: $(MDAL_SRC)utils/md-audio.scm
 gendoc/generated/utils/md-note-table.md: $(MDAL_SRC)utils/md-note-table.scm
 gendoc/generated/schemta.md: $(MDAL_SRC)schemta.scm
 
@@ -160,6 +167,7 @@ docs: gendoc-dirs\
  gendoc/generated/md-parser.md\
  gendoc/generated/md-command.md\
  gendoc/generated/schemta.md\
+ gendoc/generated/utils/md-audio.md\
  gendoc/generated/utils/md-note-table.md
 	for file in ../docs/*.md; do cp $$file gendoc/; done
 	for file in ../libmdal/docs/*.md; do cp $$file gendoc/; done
@@ -185,6 +193,7 @@ TAGS: $(BT_SRC)bt-types.scm\
  $(MDAL_SRC)md-parser.scm\
  $(MDAL_SRC)md-def.scm\
  $(MDAL_SRC)md-command.scm\
+ $(MDAL_SRC)utils/md-audio.scm\
  $(MDAL_SRC)utils/md-note-table.scm\
  $(MDAL_SRC)md-types.scm\
  $(MDAL_SRC)md-helpers.scm\
@@ -193,7 +202,7 @@ TAGS: $(BT_SRC)bt-types.scm\
  bt-gui-lolevel.scm bt-gui.scm bt-db.scm bt-emulation.scm bintracker-core.scm\
  libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-def.scm\
  libmdal/md-command.scm libmdal/md-types.scm libmdal/md-helpers.scm\
- libmdal/utils/md-note-table.scm libmdal/mdal.scm
+ libmdal/utils/md-audio.scm libmdal/utils/md-note-table.scm libmdal/mdal.scm
 
 .PHONY: mame-bridge
 mame-bridge:

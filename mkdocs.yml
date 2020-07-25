@@ -75,6 +75,7 @@ nav:
           - "md-command": 'generated/md-command.md'
           - "md-parser": 'generated/md-parser.md'
           - utils:
+              - "md-audio": 'generated/utils/md-audio.md'
               - "md-note-table": 'generated/utils/md-note-table.md'
       - "Schemta Assembler":
           - Introduction: 'schemta.md'
