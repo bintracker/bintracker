@@ -65,9 +65,8 @@ By utz 2016. MZ-700 port by MooZ 2018."
 					       (field from: PHASE))))))
 
  output: ((asm file: "phaserx.asm")
-	  (field bytes: 2 compose: $pattern0)
+	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
 	  (field bytes: 2 compose: 0)
-	  (symbol id: pattern0)
 	  (group id: PATTERNS from: PATTERNS nodes:
 		 ((block id: CHANS
 			 from: (TEMPO DRUMS MIXING CH1 CH2)
@@ -135,5 +134,5 @@ By utz 2016. MZ-700 port by MooZ 2018."
 				  (or pattern-start?
 				      ??NOTE2A ??NOTE2B ??PHASE ??DMOD2A
 				      ??DMOD2B ??DUTY2A ??DUTY2B)
-				  compose: ?PHASE)))))
-	  (field bytes: 1 compose: #x40)))
+				  compose: ?PHASE)
+			  (after bytes: 1 compose: #x40)))))))

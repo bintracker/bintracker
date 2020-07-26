@@ -33,9 +33,8 @@ By utz 2017."
 	  (symbol id: duty2 compose: ?DUTY2)
 	  (symbol id: duty3 compose: ?DUTY3)
 	  (asm file: "sleizsa3.asm")
-	  (field bytes: 2 compose: $pattern0)
+	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
 	  (field bytes: 1 compose: #xff)
-	  (symbol id: pattern0)
 	  (group id: PATTERNS from: PATTERNS nodes:
 	  	 ((block id: CHANS from: (TEMPO DRUMS CH1 CH2 CH3)
 	  		 nodes: ((repeat bytes: 1 compose:
@@ -47,5 +46,5 @@ By utz 2017."
 	  			 (repeat bytes: 1 compose: (* 2 ?NOTE2))
 	  			 (repeat bytes: 1 compose:
 	  				 (+ (* 2 ?NOTE3)
-	  				    (if ?NOISE 1 0)))))))
-	  (field bytes: 1 compose: 0)))
+	  				    (if ?NOISE 1 0)))
+				 (after bytes: 1 compose: 0)))))))

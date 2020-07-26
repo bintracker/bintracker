@@ -1010,7 +1010,7 @@
   ;;      should emit pointers.
   ;;; Returns a procedure that will transform a raw ref-matrix order (as
   ;;; emitted by group onodes) into the desired `layout`.
-  (define (make-order-transformer layout base-index)
+  (define (make-order-transformer layout base-index from)
     (letrec ((transform-index
 	      (lambda (order-pos order-length column)
 		(if (null? order-pos)
@@ -1021,39 +1021,121 @@
 					   (+ 1 column)))))))
       (case layout
 	((shared-numeric-matrix)
-	 (lambda (raw-order)
-	   (flatten (map (cute transform-index <> (length raw-order) 0)
-			 raw-order))))
-	((pointer-matrix) (lambda (raw-order) raw-order))
+	 (lambda (symbols)
+	   (let ((raw-order (alist-ref (symbol-append 'mdal__order_ from)
+				       symbols)))
+	     (flatten (map (cute transform-index <> (length raw-order) 0)
+			   raw-order)))))
 	;; TODO
-	((pointer-list) (lambda (raw-order) '()))
+	((unique-numeric-matrix) (lambda (symbols) '()))
+	((pointer-matrix)
+	 (lambda (symbols)
+	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
+					 symbols))
+		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
+							from)
+					 symbols)))
+	     (flatten
+	      (map (lambda (row)
+		     (map (lambda (field)
+			    (+ group-begin
+			       (apply + (map cdr
+					     (filter (lambda (bsize)
+						       (< (car bsize)
+							  field))
+						     block-sizes)))))
+			  row))
+		   (alist-ref (symbol-append 'mdal__order_ from)
+			      symbols))))))
+	((pointer-matrix-hibyte)
+	 (lambda (symbols)
+	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
+					 symbols))
+		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
+							from)
+					 symbols)))
+	     (flatten
+	      (map (lambda (row)
+		     (map (lambda (field)
+			    (msb (+ group-begin
+				    (apply + (map cdr
+						  (filter (lambda (bsize)
+							    (< (car bsize)
+							       field))
+							  block-sizes))))))
+			  row))
+		   (alist-ref (symbol-append 'mdal__order_ from)
+			      symbols))))))
+	((pointer-matrix-lobyte)
+	 (lambda (symbols)
+	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
+					 symbols))
+		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
+							from)
+					 symbols)))
+	     (flatten
+	      (map (lambda (row)
+		     (map (lambda (field)
+			    (lsb (+ group-begin
+				    (apply + (map cdr
+						  (filter (lambda (bsize)
+							    (< (car bsize)
+							       field))
+							  block-sizes))))))
+			  row))
+		   (alist-ref (symbol-append 'mdal__order_ from)
+			      symbols))))))
 	(else (error "unsupported order type")))))
 
   ;; TODO
   (define (make-oorder proto-mdef mdef-dir path-prefix #!key from layout
 		       element-size (base-index 0))
-    (let ((transformer-proc (make-order-transformer layout base-index))
-	  (order-symbol (symbol-append '_mdal_order_ from)))
+    (let ((transformer-proc (make-order-transformer layout base-index from))
+	  (order-symbol (symbol-append 'mdal__order_ from))
+	  (group-symbol (symbol-append 'mdal__group_ from))
+	  (sizes-symbol (symbol-append 'mdal__block_sizes_ from)))
       (make-onode
        type: 'order
-       fn: (lambda (onode parent-inode mdef current-org md-symbols)
-	     (if (alist-ref order-symbol md-symbols)
-		 (let* ((output
-			 (flatten
-			  (map (cute int->bytes <> element-size
-				     (mdef-get-target-endianness mdef))
-			       (transformer-proc
-				(alist-ref (symbol-append '_mdal_order_
-							  from)
-					   md-symbols)))))
-			(output-length (length output)))
-		   (if (alist-ref order-symbol md-symbols)
-		       (list (make-onode type: 'order size: output-length
-					 val: output)
-			     (and current-org (+ current-org output-length))
-			     md-symbols)
-		       (list onode #f md-symbols)))
-		 (list onode #f md-symbols))))))
+       fn: (if (memq layout '(shared-numeric-matrix unique-numeric-matrix))
+	       (lambda (onode parent-inode mdef current-org md-symbols)
+		 (if (alist-ref order-symbol md-symbols)
+		     (let* ((output
+			     (flatten
+			      (map (cute int->bytes <> element-size
+					 (mdef-get-target-endianness mdef))
+				   (transformer-proc md-symbols))))
+			    (output-length (length output)))
+		       (if (alist-ref order-symbol md-symbols)
+			   (list (make-onode type: 'order
+					     size: output-length
+					     val: output)
+				 (and current-org (+ current-org output-length))
+				 md-symbols)
+			   (list onode #f md-symbols)))
+		     (list onode #f md-symbols)))
+	       ;; pointer sequence layout
+	       (lambda (onode parent-inode mdef current-org md-symbols)
+		 (let ((raw-order (alist-ref order-symbol md-symbols)))
+		   (if (and raw-order (alist-ref sizes-symbol md-symbols))
+		       (if (and current-org (alist-ref group-symbol md-symbols))
+			   (let* ((output
+				   (flatten
+				    (map (cute int->bytes <> element-size
+					       (mdef-get-target-endianness
+						mdef))
+					 (transformer-proc md-symbols))))
+				  (output-length (length output)))
+			     (list (make-onode type: 'order
+					       size: output-length
+					       val: output)
+				   (+ current-org output-length)
+				   md-symbols))
+			   (list onode
+				 (+ current-org
+				    (* element-size
+				       (length (flatten raw-order))))
+				 md-symbols))
+		       (list onode #f md-symbols))))))))
 
   ;;; Helper for `split-block-instance-contents`. Backtrace on PREVIOUS-CHUNK
   ;;; to replace values in the first row of CURRENT-CHUNK with the last set
@@ -1284,21 +1366,49 @@
   (define (resolve-oblock iblock-instances field-prototypes
 			  mdef current-org md-symbols)
     (let* ((origin current-org)
+	   (filter-field-type (lambda (type)
+				(map cdr (filter (lambda (field)
+						   (eqv? type (car field)))
+						 field-prototypes))))
+	   (before-fields (filter-field-type 'before))
+	   (after-fields (filter-field-type 'after))
+	   (repeat-fields (filter-field-type 'repeat))
 	   (final-result
 	    (map-in-order
 	     (lambda (block-instance)
-	       (map-in-order
-		(lambda (row-pos)
-		  (remove null? (map-in-order
-				 (lambda (field-prototype)
-				   (let ((result ((onode-fn field-prototype)
-						  field-prototype
-						  block-instance row-pos
-						  mdef origin md-symbols)))
-				     (set! origin (cadr result))
-				     (car result)))
-				 field-prototypes)))
-		(iota (length (cddr block-instance)))))
+	       (remove
+		null?
+		(append
+		 (list (map-in-order
+			(lambda (field-prototype)
+			  (let ((result ((onode-fn field-prototype)
+					 field-prototype
+					 block-instance 0
+					 mdef origin md-symbols)))
+			    (set! origin (cadr result))
+			    (car result)))
+			before-fields))
+		 (map-in-order
+		  (lambda (row-pos)
+		    (remove null? (map-in-order
+				   (lambda (field-prototype)
+				     (let ((result ((onode-fn field-prototype)
+						    field-prototype
+						    block-instance row-pos
+						    mdef origin md-symbols)))
+				       (set! origin (cadr result))
+				       (car result)))
+				   repeat-fields)))
+		  (iota (length (cddr block-instance))))
+		 (list (map-in-order
+			(lambda (field-prototype)
+			  (let ((result ((onode-fn field-prototype)
+					 field-prototype
+					 block-instance 0
+					 mdef origin md-symbols)))
+			    (set! origin (cadr result))
+			    (car result)))
+			after-fields)))))
 	     iblock-instances)))
       (list final-result origin)))
 
@@ -1317,7 +1427,7 @@
   ;;; 2. An alist is created from the order, which assigns a key to each unique
   ;;;    combination of required source iblocks.
   ;;; 3. From the above alist, the output order is created, which is emitted as
-  ;;;    an md-symbol, with the key being '_mdal_order_ + the oblock id.
+  ;;;    an md-symbol, with the key being 'mdal__order_ + the oblock id.
   ;;; 4. From the order alist, an alist is derived with only unique key/value
   ;;;    pairs.
   ;;; 5. From the above alist, pseudo block instances are created, whose
@@ -1329,15 +1439,18 @@
     (let* ((parent-inode-id (car (mdef-get-node-ancestors-ids
 				  (car from) (mdef-itree proto-mdef))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
+	   (output-order-id (symbol-append 'mdal__order_ id))
+	   (output-sizes-id (symbol-append 'mdal__block_sizes_ id))
 	   (source-block-ids (order-oblock-sources from parent-inode-id
 						   proto-mdef))
 	   ;; TODO repeat vs static
-	   (field-prototypes (map (lambda (node)
-				    (apply make-oblock-rowfield
-					   (append (list proto-mdef
-							 source-block-ids)
-						   (cdr node))))
-				  nodes)))
+	   (field-prototypes
+	    (map (lambda (node)
+		   (cons (car node)
+			 (apply make-oblock-rowfield
+				(append (list proto-mdef source-block-ids)
+					(cdr node)))))
+		 nodes)))
       (make-onode
        type: 'block
        fn: (lambda (onode parent-inode mdef current-org md-symbols)
@@ -1357,15 +1470,18 @@
 				 size: (length (flatten (car result)))
 				 val: (car result))
 		     (cadr result)
-		     (cons (cons (symbol-append '_mdal_order_ id)
-				 (map car order-alist))
-			   md-symbols)))))))
+		     (append (list (cons output-order-id
+					 (map car order-alist))
+				   (cons output-sizes-id
+					 (map (o length flatten)
+					      (car result))))
+			     md-symbols)))))))
 
-  ;;; Determine the order symbol names that will be emitted by an ogroup's
-  ;;; oblock members
-  (define (get-oblock-order-ids group-nodes)
+  ;;; Determine the order related symbol names that will be emitted by an
+  ;;; ogroup's oblock members
+  (define (get-oblock-order-ids group-nodes prefix)
     (map (lambda (oid)
-	   (symbol-append '_mdal_order_ oid))
+	   (symbol-append prefix oid))
 	 (map (lambda (node)
 		(apply (lambda (#!key id) id)
 		       (cdr node)))
@@ -1385,9 +1501,20 @@
 		       nodes))
 	   (generate-order
 	    (lambda (syms)
-	      (cons (symbol-append '_mdal_order_ id)
-		    (apply zip (map (lambda (id) (alist-ref id syms))
-				    (get-oblock-order-ids nodes)))))))
+	      (let ((raw-order-lst (map (lambda (id) (alist-ref id syms))
+					(get-oblock-order-ids
+					 nodes 'mdal__order_))))
+		(list
+		 (cons (symbol-append 'mdal__order_ id)
+		       (apply zip raw-order-lst))
+		 ;; TODO this will fail for unique pointer matrices
+		 (cons (symbol-append 'mdal__block_sizes_ id)
+		       (map cons
+			    (concatenate raw-order-lst)
+			    (concatenate
+			     (map (lambda (id) (alist-ref id syms))
+				  (get-oblock-order-ids
+				   nodes 'mdal__block_sizes_))))))))))
       (make-onode
        type: 'group
        fn: (lambda (onode parent-inode mdef current-org md-symbols)
@@ -1401,11 +1528,32 @@
 		    (subtree-size (apply + (map onode-size
 						(car subtree-result))))
 		    (new-symbols (third subtree-result)))
-	       (list (make-onode type: 'group size: subtree-size
-				 val: (map onode-val (car subtree-result)))
-		     (and current-org (+ current-org subtree-size))
-		     (cons (generate-order new-symbols)
-			   new-symbols)))))))
+	       (if current-org
+		   (list
+		    (make-onode type: 'group size: subtree-size
+				val: (map onode-val (car subtree-result)))
+		    (+ current-org subtree-size)
+		    (append (list (cons (symbol-append 'mdal__group_ id)
+					current-org))
+			    (generate-order new-symbols)
+			    new-symbols))
+		   (list
+		    (make-onode
+		     type: 'group size: subtree-size
+		     fn:
+		     (lambda (onode parent-inode mdef current-org md-symbols)
+		       (if current-org
+			   (list (make-onode type: 'group size: subtree-size
+					     val: (map onode-val
+						       (car subtree-result)))
+				 (+ current-org subtree-size)
+				 (cons (cons (symbol-append 'mdal__group_ id)
+					     current-org)
+				       md-symbols))
+			   (list onode #f md-symbols))))
+		    #f
+		    (append (generate-order new-symbols)
+			    new-symbols))))))))
 
   ;;; Dispatch output note config expressions to the appropriate onode
   ;;; generators

@@ -36,11 +36,8 @@
 					       (field from: NOISE))))))
 
  output: ((asm file: "quattropic.asm")
-	  ;; (comment "tempo")
-	  ;; (field bytes: 1 compose: ?SPEED)
-	  (field bytes: 2 compose: $pattern0)
+	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
 	  (field bytes: 2 compose: 0)
-	  (symbol id: pattern0)
 	  (group id: PATTERNS from: PATTERNS nodes:
 		 ((block id: CHANS from: (TEMPO CH1 CH2 CH3 CH4)
 			 nodes: ((repeat bytes: 1 compose:
@@ -57,5 +54,5 @@
 				 (repeat bytes: 2 compose: ?NOTE1)
 				 (repeat bytes: 2 compose: ?NOTE2)
 				 (repeat bytes: 2 compose: ?NOTE3)
-				 (repeat bytes: 2 compose: ?NOTE4)))))
-	  (field bytes: 1 compose: #x40)))
+				 (repeat bytes: 2 compose: ?NOTE4)
+				 (after bytes: 1 compose: #x40)))))))
