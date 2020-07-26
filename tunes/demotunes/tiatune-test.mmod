@@ -1,0 +1,95 @@
+(mdal-module
+  #:version
+  2
+  #:mdef
+  "tiatune"
+  #:engine-version
+  0.2
+  (AUTHOR "utz")
+  (TITLE "tiatune test")
+  (LICENSE "CC0")
+  (PATTERNS
+    (TEMPO (1) 15)
+    (CH1 (a3 7 squa)
+         ((NOTE1 e3))
+         ((NOTE1 c3))
+         ((NOTE1 g2))
+         ((NOTE1 e2))
+         3
+         ((NOTE1 a1) (AUDC1 buzz))
+         7)
+    (CH1 #:id
+         1
+         ((NOTE1 f3) (AUDC1 buzz))
+         3
+         ((NOTE1 rest))
+         3
+         ((NOTE1 f3))
+         1
+         ((NOTE1 rest))
+         1
+         ((NOTE1 f3))
+         1
+         ((NOTE1 rest)))
+    (CH1 #:id 2 ((NOTE1 f4)) 3 ((NOTE1 rest)) 3 ((NOTE1 f4)) 3 ((NOTE1 rest)))
+    (CH2 ((NOTE2 rest))
+         7
+         (d#7 13 nois)
+         ((NOTE2 e7) (VOLUME2 6))
+         ((NOTE2 e7) (VOLUME2 10))
+         ((NOTE2 f7) (VOLUME2 8))
+         ((NOTE2 f7) (VOLUME2 7))
+         ((NOTE2 a7) (VOLUME2 6))
+         2)
+    (CH2 #:id
+         1
+         (a3 7 squa)
+         ((NOTE2 rest))
+         ((NOTE2 c4) (VOLUME2 7))
+         ((NOTE2 a3) (VOLUME2 3))
+         ((NOTE2 e4) (VOLUME2 7))
+         ((NOTE2 c4) (VOLUME2 3))
+         ((NOTE2 g4) (VOLUME2 7))
+         ((NOTE2 e4) (VOLUME2 3))
+         ((NOTE2 a4) (VOLUME2 7))
+         ((NOTE2 g4) (VOLUME2 3))
+         ((NOTE2 c5) (VOLUME2 7))
+         ((NOTE2 a4) (VOLUME2 3))
+         ((NOTE2 e5) (VOLUME2 7))
+         ((NOTE2 c5) (VOLUME2 3))
+         ((NOTE2 rest))
+         ((NOTE2 e5) (VOLUME2 3)))
+    (CH2 #:id
+         3
+         (g3 7 squa)
+         ((NOTE2 rest))
+         ((NOTE2 a#3) (VOLUME2 7))
+         ((NOTE2 g3) (VOLUME2 3))
+         ((NOTE2 d4) (VOLUME2 7))
+         ((NOTE2 a#3) (VOLUME2 3))
+         ((NOTE2 f4) (VOLUME2 7))
+         ((NOTE2 d4) (VOLUME2 3))
+         ((NOTE2 g4) (VOLUME2 7))
+         ((NOTE2 f4) (VOLUME2 3))
+         ((NOTE2 a#4) (VOLUME2 7))
+         ((NOTE2 g4) (VOLUME2 3))
+         ((NOTE2 d5) (VOLUME2 7))
+         ((NOTE2 a#4) (VOLUME2 3))
+         ((NOTE2 rest))
+         ((NOTE2 d5) (VOLUME2 3)))
+    (ORDER (16 0 0 1)
+           (16 0 0 0)
+           (16 0 0 1)
+           (16 0 0 0)
+           (16 0 0 1)
+           (16 0 0 0)
+           (16 0 0 3)
+           (16 0 0 0)
+           (16 0 0 1)
+           (16 0 0 0)
+           (16 0 0 1)
+           (16 0 0 0)
+           (16 0 0 1)
+           (16 0 0 0)
+           (16 0 1 2)
+           (16 0 2 0))))

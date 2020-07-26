@@ -1,0 +1,72 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 0.2 target: atari2600
+ description: "A music driver for the Atari 2600 (VCS) console. Unlike other TIA music drivers, it does not rely on the on the built-in frequency dividers. That means that the detune usually associated with TIA music is absent in TIAtune.
+
+By utz 2017."
+ default-origin: #xf000
+
+ commands: ((command id: TICKS bits: 5 type: uint default: 4
+	    	     flags: (use-last-set)
+	    	     description: "Ticks per row")
+	    (command id: AUDC bits: 3 type: ukey default: squa
+		     flags: (use-last-set)
+		     keys: ((squa . 0)
+			    (nois . 1)
+			    (buzz . 2)
+			    (rect . 3)
+			    (dist . 4))
+		     description: "Select AUDC Waveform.")
+	    (command id: VOLUME bits: 4 type: uint default: 7
+		     flags: (use-last-set)
+		     description: "Channel volume")
+	    (command id: NOTE bits: 8 type: ukey default: rest
+		     flags: (is-note use-last-set)
+		     keys: (make-counters 1 97 1 0)))
+
+ input: ((group id: PATTERNS flags: (ordered)
+	 	nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+	 		(clone 2 (block id: CH nodes: ((field from: NOTE)
+						       (field from: VOLUME)
+						       (field from: AUDC)))))))
+
+ output: ((asm file: "tiatune.asm")
+	  (symbol id: sequence_hi)
+	  (order from: PATTERNS layout: pointer-matrix-hibyte element-size: 1)
+	  (field bytes: 1 compose: 0)
+	  (symbol id: sequence_lo)
+	  (order from: PATTERNS layout: pointer-matrix-lobyte element-size: 1)
+	  (field bytes: 1 compose: 0)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS from: (TEMPO CH1 CH2) resize: 8
+			 nodes:
+			 ((repeat bytes: 1 compose:
+				  (+ ?TICKS
+				     (if (or ??NOTE1 ??VOLUME1 ??AUDC1)
+					 0 #x80)
+				     (if (or ??NOTE2 ??VOLUME2 ??AUDC2)
+					 0 #x40)))
+			  (repeat bytes: 1
+				  condition: (or ??NOTE1 ??VOLUME1 ??AUDC1)
+				  compose: (+ ?AUDC1 (* 8 ?VOLUME1)))
+			  (repeat bytes: 1
+				  condition: (or ??NOTE1 ??VOLUME1 ??AUDC1)
+				  compose: (cond
+					    ((and (memq ?AUDC1 '(3 4))
+						  (> ?NOTE1 41))
+					     41)
+					    ((and (= ?AUDC1 2) (> ?NOTE1 53))
+					     53)
+					    (else ?NOTE1)))
+			  (repeat bytes: 1
+				  condition: (or ??NOTE2 ??VOLUME2 ??AUDC2)
+				  compose: (+ ?AUDC2 (* 8 ?VOLUME2)))
+			  (repeat bytes: 1
+				  condition: (or ??NOTE2 ??VOLUME2 ??AUDC2)
+				  compose: (cond
+					    ((and (memq ?AUDC2 '(3 4))
+						  (> ?NOTE2 41))
+					     41)
+					    ((and (= ?AUDC2 2) (> ?NOTE2 53))
+					     53)
+					    (else ?NOTE2)))
+			  (after bytes: 1 compose: 0)))))))
