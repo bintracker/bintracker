@@ -80,6 +80,8 @@ Key                 | Function
 `Ctrl t`            | Invert values (min + max - x)
 `Ctrl ?`            | Randomize selection
 `Ctrl r`            | Reverse selection
+`Ctrl h`            | Shuffle selection
+`Ctrl Shift h`      | Shuffle selection (synchronized)
 
 
 ### Note Entry

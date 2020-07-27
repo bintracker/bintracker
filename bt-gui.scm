@@ -2288,6 +2288,43 @@
       (edit buf 'current 'set (map reverse selected-contents))
       (ui-blockview-tag-selection buf)))
 
+  (define-method (ui-shuffle primary: (buf <ui-basic-block-view>)
+			     #!optional synced)
+    (and-let* ((selection (ui-normalized-selection buf))
+	       (selected-contents (ui-selected-contents buf))
+	       (swap (lambda (lst pos1 pos2)
+		       (if (= pos1 pos2)
+			   lst
+			   (let ((x1 (min pos1 pos2))
+				 (x2 (max pos1 pos2)))
+			     (append (take lst x1)
+				     (list (list-ref lst x2))
+				     (drop (take lst x2) (+ 1 x1))
+				     (list (list-ref lst x1))
+				     (drop lst (+ x2 1)))))))
+	       (shuffle
+		(lambda (lst)
+		  (letrec*
+		      ((sh (lambda (cnt ls)
+			     (if (= 1 cnt)
+				 ls
+				 (sh (sub1 cnt)
+				     (swap ls
+					   cnt
+					   (pseudo-random-integer cnt)))))))
+		    (sh (sub1 (length lst)) lst)))))
+      (edit buf 'current 'set
+	    (if synced
+		(let ((positions (shuffle
+				  (iota (length (car selected-contents))))))
+		  (map (lambda (col)
+			 (map (lambda (pos)
+				(list-ref col pos))
+			      positions))
+		       selected-contents))
+		(map shuffle selected-contents)))
+      (ui-blockview-tag-selection buf)))
+
   ;;; Interpolate selected block field values.
   (define-method (ui-interpolate primary: (buf <ui-basic-block-view>)
 				 #!optional (interpolation-type 'linear))
@@ -2554,6 +2591,8 @@
 	 (<<InvertCurrent>> . ,(lambda () (ui-invert buf)))
 	 (<<RandomizeCurrent>> . ,(lambda () (ui-randomize buf)))
 	 (<<ReverseCurrent>> . ,(lambda () (ui-reverse buf)))
+	 (<<ShuffleCurrent>> . ,(lambda () (ui-shuffle buf)))
+	 (<<ShuffleSyncedCurrent>> . ,(lambda () (ui-shuffle buf #t)))
 	 (<<TransposeNoteUp>> . ,(lambda () (ui-transpose buf 1)))
 	 (<<TransposeNoteDown>> . ,(lambda () (ui-transpose buf -1)))
 	 (<<TransposeOctaveUp>> . ,(lambda () (ui-transpose buf 12)))
@@ -4238,6 +4277,12 @@
 
   (define (reverse-current)
     (do-current ui-reverse))
+
+  (define (shuffle-current)
+    (do-current ui-shuffle))
+
+  (define (shuffle-synced-current)
+    (do-current ui-shuffle #t))
 
   (define (interpolate-linear)
     (do-current ui-interpolate 'linear))

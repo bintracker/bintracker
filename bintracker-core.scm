@@ -167,6 +167,18 @@
 					    'edit 'lower-unit)
 					  ,lower-by-unit-current)))
 			       (submenu
+				shuffle
+				"Shuffle..."
+				2
+				((command shuffle-reg "regular" 0
+					  ,(key-binding->info 'edit
+							      'shuffle-current)
+					  ,shuffle-current)
+				 (command  shuffle-synced "synchronized" 0
+					  ,(key-binding->info
+					    'edit 'shuffle-synced-current)
+					  ,shuffle-synced-current)))
+			       (submenu
 				transpose
 				"Transpose..."
 				0

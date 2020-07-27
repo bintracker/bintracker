@@ -475,6 +475,10 @@
 	      (inverse-key-binding 'edit 'randomize-current))
     (tk/event 'add '<<ReverseCurrent>>
 	      (inverse-key-binding 'edit 'reverse-current))
+    (tk/event 'add '<<ShuffleCurrent>>
+	      (inverse-key-binding 'edit 'shuffle-current))
+    (tk/event 'add '<<ShuffleSyncedCurrent>>
+	      (inverse-key-binding 'edit 'shuffle-synced-current))
     (tk/event 'add '<<ScaleCurrent>>
 	      (inverse-key-binding 'edit 'scale-current))
     (tk/event 'add '<<Raise1>>
