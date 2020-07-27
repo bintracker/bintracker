@@ -57,6 +57,11 @@ A PRNG based on the noise waveform on the MOS 6581/8580 Sound Interface Device, 
 A PRNG based on the noise waveform (AUDCx = 8) on the Atari VCS/2600,; which is a 9-bit LFSR with a tap at bit 4, resulting in a period of 511. For added authenticity, initialize SEED to #x1ff.
 
 
+### [procedure] `(prng::pi-digits amount bits #!optional (seed (rand 10)))`
+
+Not an actual PRNG. Creates random-looking integer sequences from pi. Uses the Bailey–Borwein–Plouffe formula to calculate hexadecimal digits of pi. SEED is the initial fractional digit index, ie. SEED = 0 starts extracting digits from the first fractional digit.
+
+
 ### [procedure] `(prng::info . args)`
 
 Retrieve information on the pseudo-random number generators available in this package. Call with no arguments to retrieve the complete list. Call with a symbol naming a procedure in this package to retrieve the documentation for that procedure.

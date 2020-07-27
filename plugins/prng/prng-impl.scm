@@ -31,10 +31,11 @@
      prng::dmg-noise
      prng::sid-noise
      prng::tia-noise
+     prng::pi-digits
      prng::info)
 
   (import scheme (chicken base) (chicken bitwise) (chicken random)
-	  srfi-1 srfi-13 (only mdal scale-values))
+	  srfi-1 srfi-13)
 
   ;;; > Anyone who considers arithmetical methods of producing random digits is,
   ;;; > of course, in a state of sin.
@@ -325,6 +326,70 @@
 						(arithmetic-shift in -4)))
 				8))))))
 
+  ;;; Not an actual PRNG. Creates random-looking integer sequences from pi.
+  ;;; Uses the Bailey–Borwein–Plouffe formula to calculate hexadecimal digits
+  ;;; of pi. SEED is the initial fractional digit index, ie. SEED = 0 starts
+  ;;; extracting digits from the first fractional digit.
+  (define (prng::pi-digits amount bits #!optional (seed (rand 10)))
+    (letrec* ((powermod (lambda (base exp mod)
+			  (letrec
+			      ((pm (lambda (b e acc)
+				     (if (zero? e)
+					 acc
+					 (pm (modulo (* b b) mod)
+					     (arithmetic-shift e -1)
+					     (if (even? e)
+						 acc
+						 (modulo (* b acc) mod)))))))
+			    (pm base exp 1))))
+	      (fractional-part (lambda (r) (- r (floor r))))
+	      (finite-sum (lambda (s k n denom)
+			    (if (> k n)
+				(cons s denom)
+				(finite-sum
+				 (fractional-part
+				  (exact->inexact
+				   (+ s (/ (powermod 16 (- n k) denom)
+					   denom))))
+				 (+ k 1)
+				 n
+				 (+ denom 8)))))
+	      (infinite-sum (lambda (s num denom lastfrac)
+			      (let ((newfrac (exact->inexact (/ num denom))))
+				(if (= lastfrac newfrac)
+				    s
+				    (infinite-sum (+ s newfrac)
+						  (/ num 16)
+						  (+ denom 8)
+						  newfrac)))))
+	      (sigma (lambda (n j)
+		       (let ((finite (finite-sum 0.0 0 n j)))
+			 (fractional-part
+			  (infinite-sum (car finite)
+					(/ 1 16)
+					(cdr finite)
+					0)))))
+	      (nth-digit (lambda (n)
+			   (inexact->exact
+			    (floor (* 16 (fractional-part
+					  (- (* 4 (sigma (sub1 n) 1))
+					     (* 2 (sigma (sub1 n) 4))
+					     (sigma (sub1 n) 5)
+					     (sigma (sub1 n) 6))))))))
+	      (digit->bin-lst (lambda (d)
+				(list (quotient (bitwise-and d 8) 8)
+				      (quotient (bitwise-and d 4) 4)
+				      (quotient (bitwise-and d 2) 2)
+				      (bitwise-and d 1)))))
+      (bitstream->int (flatten (map (o digit->bin-lst nth-digit)
+				    (iota (if (zero? (modulo bits 4))
+					      (* amount (quotient bits 4))
+					      (+ 1
+						 (* amount (quotient bits 4))))
+					  (+ 1 seed)
+					  1)))
+		      bits)))
+
   ;;; Retrieve information on the pseudo-random number generators available in
   ;;; this package. Call with no arguments to retrieve the complete list. Call
   ;;; with a symbol naming a procedure in this package to retrieve the
@@ -393,7 +458,15 @@
 		"A PRNG based on the noise waveform (AUDCx = 8) on"
 		" the Atari VCS/2600, which is a 9-bit LFSR with a tap at bit"
 		" 4, resulting in a period of 511. For added authenticity,"
-		" initialize SEED to #x1ff.")))))
+		" initialize SEED to #x1ff."))
+	     (prng::pi-digits
+	      .
+	      ,(string-append
+		"Not an actual PRNG. Creates random-looking integer sequences"
+		" from pi. Uses the Bailey–Borwein–Plouffe formula to calculate"
+		" hexadecimal digits of pi. SEED is the initial fractional"
+		" digit index, ie. SEED = 0 starts extracting digits from the"
+		" first fractional digit.")))))
       (if (null? args) prngs (alist-ref (car args) prngs))))
 
   ) ;; end module prng
