@@ -741,6 +741,26 @@
   (define-method (ui-destroy before: (buf <ui-repl>))
     ((slot-value buf 'focus-controller) 'remove (slot-value buf 'ui-zone)))
 
+  (define-method (ui-collapse before: (buf <ui-repl>))
+    (unless (or (not (slot-value buf 'collapsible))
+		(slot-value buf 'collapsed))
+      (let ((repl (slot-value buf 'repl))
+	    (yscroll (slot-value buf 'yscroll)))
+	(tk/pack 'forget repl)
+	(tk/pack 'forget yscroll)
+	(repl 'configure height: 2)
+	(tk/pack repl expand: 1 fill: 'x side: 'right))))
+
+  (define-method (ui-expand before: (buf <ui-repl>))
+    (when (and (slot-value buf 'collapsible)
+	       (slot-value buf 'collapsed))
+      (let ((repl (slot-value buf 'repl))
+	    (yscroll (slot-value buf 'yscroll)))
+	(tk/pack 'forget repl)
+	(tk/pack 'forget yscroll)
+	(tk/pack yscroll side: 'right fill: 'y)
+	(tk/pack repl expand: 1 fill: 'both side: 'right))))
+
   (define-method (ui-where primary: (buf <ui-repl>))
     "read eval print loop")
 
