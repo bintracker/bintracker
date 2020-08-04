@@ -5,7 +5,7 @@
  license: "MIT"
  description: "A plugin that pretends to generate random data in various ways."
 
- dependencies: (("prng" ">=0.0"))
+ dependencies: (("prng" ">=0.0") ("stat" ">=0.0"))
 
  body: ((load "plugins/unzufall/unzufall-impl.scm")
 	(import unzufall)

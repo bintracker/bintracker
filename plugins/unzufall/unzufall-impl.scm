@@ -4,7 +4,7 @@
 
   (import scheme (chicken base) (chicken port) (chicken condition)
 	  srfi-1 srfi-13 srfi-69 pstk coops
-	  bt-state bt-types bt-gui mdal prng)
+	  bt-state bt-types bt-gui mdal prng stat)
 
   (define (make-position-list len weight prng 1bit?)
     (if 1bit?
@@ -13,7 +13,7 @@
 	     (prng len 1))
 	(map (lambda (n)
 	       (if (<= n (* 256 weight)) #t #f))
-	     (prng len 8))))
+	     (prng len 255))))
 
   (define (get-selected-contents blockview)
     (let* ((selection (ui-normalized-selection blockview))
@@ -60,6 +60,11 @@
     (eval (with-input-from-string (string-append "prng::" (tk-get-var varname))
 	    read)))
 
+  (define (tk-var->distribution varname)
+    (case (string->symbol (tk-get-var varname))
+      ((normal) stat::gauss)
+      (else #f)))
+
   (define dialog-widget
     (make <ui-dialog>
       'title "Unzufall"
@@ -71,6 +76,9 @@
 	    ((desc text takefocus: 0 state: disabled bd: 0
 		   highlightthickness: 0 height: 8 wrap: word))
 	    yscroll #t)
+	(db ,<ui-wrapper> setup
+	    ((l1 label text: "Distribution:              ")
+	     (dstr combobox state: readonly)))
 	(pr ,<ui-wrapper> setup
 	    ((l1 label text: "Data Variance (0 - 1.0):   ")
 	     (drw entry bg: ,(colors 'row-highlight-minor) fg: ,(colors 'text)
@@ -115,7 +123,7 @@
 	    ((ui-ref dialog-widget 'desc) 'configure
 	     bg: (colors 'background) fg: (colors 'text)
 	     font: (list family: (settings 'font-mono)
-  				  size: (settings 'font-size)))))
+  			 size: (settings 'font-size)))))
        `(init
 	 .
 	 ,(lambda a
@@ -124,6 +132,7 @@
 			  (string-drop (symbol->string (car p)) 6))
 			(prng::info)))
 		  (selected-prng (tk-var "prng"))
+		  (selected-distribution (tk-var "dstr"))
 		  (distance-mode (tk-var "distancemode"))
 		  (paste-mode (tk-var "pastemode"))
 		  (bit1-mode (tk-var "bit1mode"))
@@ -131,6 +140,10 @@
 	      ((ui-ref dialog-widget 'prng)
 	       'configure values: prng-names textvariable: selected-prng)
 	      (tk-set-var! "prng" "xorshift64")
+	      ((ui-ref dialog-widget 'dstr)
+	       'configure values: '("uniform" "normal")
+	       textvariable: selected-distribution)
+	      (tk-set-var! "dstr" "uniform")
 	      ((ui-ref dialog-widget 'desc) 'configure state: 'normal)
 	      ((ui-ref dialog-widget 'desc) 'insert 'end
 	       (prng::info 'prng::xorshift64))
@@ -198,6 +211,7 @@
 		     (1bit? (= 1 (string->number
 				  (->string (tk-get-var "bit1mode")))))
 		     (data-prng (tk-var->prng "prng"))
+		     (distribution (tk-var->distribution "dstr"))
 		     (variance (string->number
 				((ui-ref dialog-widget 'drw) 'get)))
 		     (mean (string->number ((ui-ref dialog-widget 'drm) 'get)))
@@ -231,10 +245,11 @@
 				    (or (and position value) '()))
 				  ;; TODO don't scale, check if in range and
 				  ;; run generator again if necessary
-				  (scale-values
-				   (data-prng len (command-bits cmd))
-				   (range-min range)
-				   (range-max range))
+				  (map (cute + <> (range-min range))
+				       ((or distribution data-prng)
+					len
+					(- (range-max range)
+					   (range-min range))))
 				  (or synced-positions
 				      (make-position-list
 				       len weight pos-prng 1bit?)))))
@@ -246,9 +261,9 @@
 			     (map (lambda (value position)
 				    (or (and position (list-ref keys value))
 					'()))
-				  (scale-values (data-prng len 16)
-						0
-						(sub1 (length keys)))
+				  ((or distribution data-prng)
+				   len
+				   (sub1 (length keys)))
 				  (or synced-positions
 				      (make-position-list
 				       len weight pos-prng 1bit?)))))
