@@ -7,7 +7,7 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  (chicken file) (chicken io) (chicken sort)
+	  (chicken file) (chicken io) (chicken sort) (chicken process)
 	  coops list-utils typed-records srfi-1 srfi-13 pstk imlib2 web-colors
 	  bt-state bt-types)
 
@@ -172,6 +172,16 @@
 					     *bintracker-version*)
 		     detail: "Dedicated to Ján Deák"
 		     type: 'ok))
+
+  ;;; Display a message box for the given EXN, and output a summary of the
+  ;;; error on the active text-to-speech utility, if any. PROLOGUE will be
+  ;;; prepended to the exception message.
+  (define (report-exception exn prologue)
+    (text-to-speech
+     (string-append prologue ": " (sanitize-string-for-speech (->string exn))))
+    (tk/message-box* title: "Error"
+      		     detail: (string-append prologue ":\n" (->string exn))
+      		     type: 'ok))
 
   ;;; Display a message box that asks the user whether to save unsaved changes
   ;;; before exiting or closing. EXIT-OR-CLOSING should be the string

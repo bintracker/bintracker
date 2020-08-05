@@ -192,12 +192,7 @@
 	 ,(lambda a
 	    (handle-exceptions
 		exn
-		(begin
-		  (tk/message-box* title: "Error"
-      				   detail:
-      				   (string-append "Something went wrong: "
-						  (->string exn))
-      				   type: 'ok))
+		(report-exception exn "Something went wrong")
 	      (let* ((bv (current 'blockview))
 		     (mdef (current 'mdef))
 		     (selection (ui-normalized-selection bv))

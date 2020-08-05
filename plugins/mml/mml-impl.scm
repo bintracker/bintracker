@@ -209,11 +209,8 @@
        `(f . ,(lambda a
       		(handle-exceptions
       		    exn
-      		    (tk/message-box* title: "MML Error"
-      				     detail:
-      				     (string-append "An error occured in MML:\n"
-      						    (->string exn))
-      				     type: 'ok)
+		    (report-exception
+		     exn "MML Error" "An error occured in MML")
       		  (edit (current 'blockview) 'current 'set
       			(mml::read ((ui-ref dialog-widget 'tbox)
 				    'get "0.0" 'end)
