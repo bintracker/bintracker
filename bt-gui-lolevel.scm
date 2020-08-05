@@ -102,6 +102,38 @@
       (tk/bind widget '<Leave>
 	       (lambda () (tk/place 'forget tt)))))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ### Accessibility
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Translate the string STR so that it will make more sense when read by a
+  ;;; text-to-speech utility.
+  (define (sanitize-string-for-speech str)
+    (string-translate* str '(("\n" . "newline ")
+    	       		     (">'>" . "")
+    	       		     ("`<" . "")
+    	       		     ("()" . " empty list ")
+    	       		     ("(" . " open parens ")
+    	       		     (")" . " close parens ")
+    	       		     ("'" . " quote ")
+    	       		     ("`" . " backtick ")
+    	       		     (",@" . " quote-unsplice ")
+    	       		     ("_" . " ")
+			     ("#\\" . " char ")
+    	       		     ("#(" . " vector open-parens ")
+    	       		     ("#<condition:" . "")
+    	       		     ("#<procedure" . "procedure ")
+    	       		     ("instance of" . "instance of class")
+    	       		     ("#<coops " . ""))))
+
+  ;;; Output TEXT on the active text-to-speech utility, if any.
+  (define (text-to-speech text)
+    (and (settings 'text-to-speech)
+    	 (process-run (car (settings 'text-to-speech))
+    	       	      (append (cdr (settings 'text-to-speech))
+    	       		      (list text)))))
+
   ;; ---------------------------------------------------------------------------
   ;;; ### Dialogues
   ;; ---------------------------------------------------------------------------
