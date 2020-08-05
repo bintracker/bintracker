@@ -8,7 +8,7 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  (chicken sort) (chicken module) (chicken process)
+	  (chicken sort) (chicken module)
 	  (chicken random) (chicken condition) (chicken port)
 	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
 	  coops typed-records pstk stack comparse matchable
@@ -176,6 +176,26 @@
   				      (string->char-set "{}")
   				      (->string
 				       (mdef-selector 'children '{})))))))
+	      (tk/bind platform-selector
+		       (inverse-key-binding 'global 'where)
+		       (lambda () (say "platform selection")))
+	      (tk/bind platform-selector
+		       (inverse-key-binding 'global 'what)
+		       (lambda () (say (tk-get-var "selectedplatform"))))
+	      (tk/bind mdef-selector
+		       (inverse-key-binding 'global 'where)
+		       (lambda () (say "engine selection")))
+	      (tk/bind mdef-selector
+		       (inverse-key-binding 'global 'what)
+		       (lambda ()
+			 (let ((selected-engine
+	       			 (mdef-selector
+  	       			  'item (mdef-selector 'selection) text:)))
+			   (say (string-append
+				 selected-engine
+				 " for "
+				 (btdb-get-mdef-platform
+				  (string->symbol selected-engine)))))))
 	      (tk/bind
 	       platform-selector
 	       '<<ComboboxSelected>>
@@ -634,7 +654,8 @@
      (packing-args '(expand: 1 fill: both))
      (focus-controller focus)
      (buttons '())
-     (commands `(,new-file ,load-file ,launch-help))))
+     (commands `(,new-file ,load-file ,launch-help))
+     (where "welcome buffer")))
 
   (define-method (initialize-instance after: (buf <ui-welcome-buffer>))
     (let ((box (ui-box buf)))
@@ -678,6 +699,11 @@
   (define-method (ui-focus primary: (buf <ui-welcome-buffer>))
     (tk/focus (cdar (slot-value buf 'buttons))))
 
+  (define-method (ui-what primary: (buf <ui-welcome-buffer>))
+    (string-intersperse
+     (map (lambda (btn) ((cdr btn) 'cget text:))
+	  (slot-value buf 'buttons))))
+
   ;;; A class representing a read-evaluate-print-loop prompt. `'setup` shall be
   ;;; the initial text to display on the prompt. To register the widget as
   ;;; focussable in the Bintracker main UI, specify a ui-zone identifier as
@@ -690,7 +716,8 @@
      yscroll
      (prompt "repl> ")
      (history initform: '() accessor: repl-history)
-     (history-pointer 0)))
+     (history-pointer 0)
+     (where "read eval print loop")))
 
   (define-method (initialize-instance after: (buf <ui-repl>))
     (set! (slot-value buf 'repl)
@@ -760,12 +787,6 @@
 	(tk/pack 'forget yscroll)
 	(tk/pack yscroll side: 'right fill: 'y)
 	(tk/pack repl expand: 1 fill: 'both side: 'right))))
-
-  (define-method (ui-where primary: (buf <ui-repl>))
-    "read eval print loop")
-
-  (define-method (ui-what primary: (buf <ui-repl>))
-    "unknown")
 
   ;;; Protect the prompt string by applying various tweaks to the standard event
   ;;; handlers of Tk text widgets.

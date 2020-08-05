@@ -684,7 +684,8 @@
      (parent initform: tk accessor: ui-parent)
      (packing-args '())
      (box accessor: ui-box)
-     (children initform: '() accessor: ui-children)))
+     (children initform: '() accessor: ui-children)
+     (where "unknown UI element")))
 
   (define-method (initialize-instance after: (elem <ui-element>))
     (set! (ui-box elem) ((ui-parent elem) 'create-widget 'frame)))
@@ -705,7 +706,7 @@
     (for-each (o ui-hide cdr) (ui-children elem)))
 
   (define-method (ui-where primary: (elem <ui-element>))
-    "unknown ui element")
+    (slot-value elem 'where))
 
   (define-method (ui-what primary: (elem <ui-element>))
     "unknown value")
