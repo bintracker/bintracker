@@ -2,8 +2,6 @@
 
 The `prng` plugin provides a set of pseudo-random number generators of varying quality ranging from laughable to solid. Some of the included generators are of historical significance, while others are implementations of noise generators found in various sound chips.
 
-Note that several of the generators are currently broken and may not generate correct results.
-
 
 ## API
 
@@ -22,9 +20,9 @@ A variation of von Neumann's Middle Square Method that applies a Weyl sequence t
 [Blum Blum Shub Generator](https://en.wikipedia.org/wiki/Blum_Blum_Shub). SEED must be greater than 1, and neither p nor q may be a factor of SEED. The generator will replace invalid seeds with a random seed if SEED fails to satisfy these conditions.
 
 
-### [procedure] `(prng::pcg amount maxint #!optional (seed (rand 64)) (increment (rand 64)))`
+### [procedure] `(prng::pcg amount maxint #!optional (seed (rand 64))`
 
-[Permuted Congruential Generator](https://www.pcg-random.org/). SEED and INCREMENT must be a 64-bit integer seed. MAXINT must be an integer between 1 and 0xffffffff.
+Xorshift-Rotate-Right [Permuted Congruential Generator](https://www.pcg-random.org/).
 
 
 ### [procedure] `(prng::xorshift64 amount maxint #!optional (state (rand 64)))`

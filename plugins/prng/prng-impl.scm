@@ -127,12 +127,12 @@
 							   bits))
 					   0))))))
 
-  ;;; Adjust the size of the integer N by performing a logical bitshift. WANT
-  ;;; is the desired size (number of bits) of the resulting integer, and HAVE is
-  ;;; the actual size of integer N.
-  (define (adjust-integer-size n want have)
-    (bitwise-and (arithmetic-shift n (- want have))
-    		 (sub1 (expt 2 want))))
+  ;; ;;; Adjust the size of the integer N by performing a logical bitshift. WANT
+  ;; ;;; is the desired size (number of bits) of the resulting integer, and HAVE is
+  ;; ;;; the actual size of integer N.
+  ;; (define (adjust-integer-size n want have)
+  ;;   (bitwise-and (arithmetic-shift n (- want have))
+  ;;   		 (sub1 (expt 2 want))))
 
   ;; ;;; Calculate the number of 1-bits in the integer x.
   ;; (define (population-count x)
@@ -212,32 +212,37 @@
 			       64))
 	  (prng::blum-blum-shub amount maxint (rand 32) p q))))
 
-  ;; TODO tends to break after ~60 values.
-  ;;; Permuted Congruential Generator, https://www.pcg-random.org/
-  ;;; `seed` and `increment` must be a 64-bit integer seed. `bits` must be
-  ;;; between 1 and 32.
-  (define (prng::pcg amount maxint
-		     #!optional (seed (rand 64)) (increment (rand 64)))
-    (letrec*
-	((inc (bitwise-ior increment 1))
-	 (gen-next
-	  (lambda (n state)
-	    (if (zero? n)
-		'()
-		(let ((xor-shifted (<< (bitwise-xor state (<< state -18))
-				       -27))
-		      (rot (<< state -59)))
-		  (cons (bitwise-and
-			 #xffffffff
-			 (bitwise-ior (<< xor-shifted (- rot))
-				      (<< xor-shifted
-					  (bitwise-ior 31 (- rot)))))
-			(gen-next (sub1 n)
-				  (add/64 (mul/64 state 6364136223846793005)
-					  state))))))))
+  ;;; Xorshift-Rotate-Right Permuted Congruential Generator,
+  ;;; see https://www.pcg-random.org/
+  (define (prng::pcg amount maxint #!optional (seed (rand 64)))
+    (letrec* ((ror (lambda (n amnt)
+		     (bitwise-and #xffffffff
+				  (bitwise-ior
+				   (bitwise-and (<< n (- amnt))
+						(sub1 (expt 2 (- 32 amnt))))
+				   (<< n (bitwise-and (- amnt) #x1f))))))
+	      (make-values
+	       (lambda (n state)
+		 (if (zero? n)
+		     '()
+		     (cons (ror
+			    (bitwise-and
+			     #xffffffff
+			     (<< (bitwise-xor state
+					      (bitwise-and
+					       (<< state -18)
+					       (sub1 (expt 2 46))))
+				 -27))
+			    (bitwise-and (<< state -59) #x1f))
+			   (make-values
+			    (sub1 n)
+			    (bitwise-and #xffffffffffffffff
+					 (+ (* state 6364136223846793005)
+					    1442695040888963407))))))))
       (map (lambda (x)
 	     (inexact->exact (round (* maxint (/ x #x100000000)))))
-	   (cdr (gen-next (+ 1 amount) seed)))))
+	   (make-values amount (bitwise-and #xffffffffffffffff
+					    (+ seed 1442695040888963407))))))
 
   ;;; Classic non-scrambled 64-bit Xorshift generator, as developed by George
   ;;; Marsaglia. See https://en.wikipedia.org/wiki/Xorshift
@@ -465,8 +470,8 @@
 		" See https://en.wikipedia.org/wiki/Blum_blum_shub"))
 	     (prng::pcg
 	      .
-	      ,(string-append "Permuted Congruential Generator."
-			      " See https://www.pcg-random.org/"))
+	      ,(string-append "Xorshift-Rotate-Right Permuted Congruential"
+			      " Generator, see https://www.pcg-random.org"))
 	     (prng::xorshift64
 	      .
 	      ,(string-append
