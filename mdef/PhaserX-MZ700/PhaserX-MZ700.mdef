@@ -15,12 +15,13 @@ By utz 2016. MZ-700 port by MooZ 2018."
  default-origin: #x1200
 
  commands: ((command id: TICKS bits: 8 type: uint default: 6
-		     flags: (use-last-set)
+		     flags: (use-last-set is-ticks)
 		     description: "Ticks per row")
 	    (command id: DRUM bits: 2 type: ukey default: none
 		     keys: ((bd . 1)
 			    (hh . #x80)
 			    (none . 0))
+		     flags: (is-percussion)
 		     description: "Interrupting click drum")
 	    (command id: MIX bits: 8 type: ukey default: xor
 		     flags: (use-last-set)
@@ -42,10 +43,10 @@ By utz 2016. MZ-700 port by MooZ 2018."
 		     description:
 		     "Duty modulation strength (0 = no modulation)")
 	    (command id: DUTY bits: 8 type: uint default: #x80
-		     flags: (use-last-set))
+		     flags: (use-last-set is-duty))
 	    (command id: PHASE bits: 16 type: uint default: 0
 		     description: "Phase offset"
-		     flags: (use-last-set)))
+		     flags: (use-last-set is-phase)))
 
  input: ((group id: PATTERNS flags: (ordered)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))

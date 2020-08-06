@@ -6,10 +6,10 @@ By utz 2017."
  default-origin: #xf000
 
  commands: ((command id: TICKS bits: 5 type: uint default: 4
-	    	     flags: (use-last-set)
+	    	     flags: (use-last-set is-ticks)
 	    	     description: "Ticks per row")
 	    (command id: AUDC bits: 3 type: ukey default: squa
-		     flags: (use-last-set)
+		     flags: (use-last-set is-waveform)
 		     keys: ((squa . 0)
 			    (nois . 1)
 			    (buzz . 2)
@@ -17,7 +17,7 @@ By utz 2017."
 			    (dist . 4))
 		     description: "Select AUDC Waveform.")
 	    (command id: VOLUME bits: 4 type: uint default: 7
-		     flags: (use-last-set)
+		     flags: (use-last-set is-volume)
 		     description: "Channel volume")
 	    (command id: NOTE bits: 8 type: ukey default: rest
 		     flags: (is-note use-last-set)

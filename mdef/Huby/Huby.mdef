@@ -4,13 +4,15 @@
  By Shiru 2011, 2013."
  default-origin: #x8000
 
- commands: ((command id: BPM bits: 16 type: uint default: 140)
+ commands: ((command id: BPM bits: 16 type: uint default: 140
+		     flags: (is-bpm))
 	    (command id: NOTE bits: 8 type: ukey
 		     flags: (enable-modifiers use-last-set is-note)
 		     keys: (make-inverse-dividers 118 8 0 -1)
 		     default: rest)
 	    (command id: DRUM type: trigger default: #f description:
-		     "Trigger a click drum. Replaces note on channel 1."))
+		     "Trigger a click drum. Replaces note on channel 1."
+		     flags: (is-percussion)))
 
  input: ((field from: BPM)
 	 (group id: PATTERNS flags: (ordered)

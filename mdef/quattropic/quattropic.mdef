@@ -6,14 +6,14 @@
 
  commands: (;; (command id: SPEED bits: 8 type: uint default: 6)
 	    (command id: TICKS bits: 5 type: uint default: 6
-		     flags: (use-last-set)
+		     flags: (use-last-set is-ticks)
 		     description: "Ticks per row")
 	    (command id: NOTE bits: 16 type: ukey
 		     flags: (enable-modifiers use-last-set is-note)
 		     keys: (make-dividers 224 16 0)
 		     default: rest)
 	    (command id: DUTY bits: 8 type: uint default: #x80
-		     flags: (use-last-set)
+		     flags: (use-last-set is-duty)
 		     description: "Pulse Wave Duty")
 	    (command id: NOISE bits: 1 type: uint default: 0
 		     flags: (use-last-set)

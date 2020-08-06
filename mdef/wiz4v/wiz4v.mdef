@@ -5,14 +5,14 @@
  default-origin: #x100
 
  commands: ((command id: TICKS bits: 8 type: uint default: 6
-		     flags: (use-last-set)
+		     flags: (use-last-set is-ticks)
 		     description: "Ticks per row")
 	    (command id: NOTE bits: 16 type: ukey
 		     flags: (enable-modifiers use-last-set is-note)
 		     keys: (make-dividers 263 16 0)
 		     default: rest)
 	    (command id: WAVE bits: 8 type: ukey
-		     flags: (use-last-set)
+		     flags: (use-last-set is-waveform)
 		     keys: ((tri . #x2)
 			    (rect . #x3)
 			    (saw . #x4)

@@ -4,10 +4,10 @@
 
  default-origin: #x8000
 
- commands: ((command id: DUTY bits: 7 type: uint default: #x10
+ commands: ((command id: DUTY bits: 7 type: uint default: #x10 flags: (is-duty)
 		     description: "Global duty setting")
 	    (command id: TICKS bits: 5 type: uint default: 6
-		     flags: (use-last-set)
+		     flags: (use-last-set is-ticks)
 		     description: "Ticks per row")
 	    (command id: NOTE bits: 16 type: ukey default: rest
 		     keys: (make-dividers 499 16 0)

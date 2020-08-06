@@ -5,9 +5,9 @@ By utz 2017."
  default-origin: #x800
 
  commands: ((command id: TICKS bits: 5 type: uint default: 4
-		     flags: (use-last-set)
+		     flags: (use-last-set is-ticks)
 		     description: "Ticks per row")
-	    (command id: DUTY bits: 8 type: uint default: #x10
+	    (command id: DUTY bits: 8 type: uint default: #x10 flags: (is-duty)
 	    	     description: "Channel duty")
 	    (command id: NOTE bits: 8 type: ukey
 	    	     flags: (use-last-set is-note)
@@ -17,6 +17,7 @@ By utz 2017."
 	    	     flags: (use-last-set)
 	    	     description: "Noise mode: 0 = disable, 1 = enable")
 	    (command id: DRUM bits: 2 type: uint default: 0
+		     flags: (is-percussion)
 		     ;; keys: ((none . 0)
 		     ;; 	    (kick . 1)
 		     ;; 	    (noise . 2))
