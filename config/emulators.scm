@@ -3,4 +3,5 @@
 			  "mame-bridge/mame-startup.lua"
 			  "-rompath" "roms"
 			  "-nomouse"
+			  "-mouse_device" "none"
 			  "-autoboot_delay" "0")))
