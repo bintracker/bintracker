@@ -37,6 +37,7 @@
     (and (ui)
 	 (alist-ref 'repl (slot-value (ui) 'children))))
 
+  ;;; (procedure (colors . ARGS))
   ;;; This is the interface to Bintracker's application colors. It is a
   ;;; procedure that can be called as follows:
   ;;;
@@ -343,6 +344,7 @@
 	  (else (error (string-append "Unsupported ui-zones action"
 				      (->string args))))))))
 
+  ;;; (procedure (focus ACTION . ARGS))
   ;;; The focus controller for the main application window. See
   ;;; `make-focus-control` above for details on how to interact with focus
   ;;; control. Any UI buffer within Bintracker's main application window must

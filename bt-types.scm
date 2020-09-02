@@ -115,6 +115,7 @@
   (defstruct app-keys
     (global '()) (console '()) (edit '()) (note-entry '()) (plugins '()))
 
+  ;;; (procedure (settings . ARGS))
   ;;; The global application settings registry. Use as follows:
   ;;;
   ;;; * `(settings)` - Return the complete list of settings.

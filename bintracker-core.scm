@@ -259,6 +259,7 @@
 	    (else (error 'check-required-plugin-version
 			 (string-append "Unknown modifier " need-modifier)))))))
 
+  ;;; (procedure (plugins . ARGS))
   ;;; This is Bintracker's plugin registry. When calling this procedure without
   ;;; any arguments, it returns the list of currently loaded plugins. To load a
   ;;; new plugin, call it as follows:

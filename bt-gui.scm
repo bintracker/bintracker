@@ -4348,7 +4348,7 @@
   ;;   '())
 
   ;; ---------------------------------------------------------------------------
-  ;;; Screen Reader/Text-to-Speech API
+  ;;; ### Screen Reader/Text-to-Speech API
   ;; ---------------------------------------------------------------------------
 
   ;;; An interface to the screen reader/text-to-speech tool. Use as follows:
