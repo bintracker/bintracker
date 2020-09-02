@@ -129,10 +129,10 @@ schemta-exe: $(MDAL_SRC)schemta-exe.scm schemta.import.so
 
 # generate documentation
 gendoc/generated/%.md: $(BT_SRC)%.scm
-	$(DOCGEN) -i $< -o $@ -m
+	$(DOCGEN) -a -i $< -o $@ -m
 
 gendoc/generated/%.md: $(MDAL_SRC)%.scm
-	$(DOCGEN) -i $< -o $@ -m
+	$(DOCGEN) -a -i $< -o $@ -m
 
 gendoc/generated/bintracker-core.md: $(BT_SRC)bintracker-core.scm
 gendoc/generated/bt-gui.md: $(BT_SRC)bt-gui.scm
