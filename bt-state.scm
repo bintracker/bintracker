@@ -11,12 +11,20 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  (chicken port) srfi-1 srfi-13 srfi-69
+	  (chicken condition) (chicken port) (chicken time posix)
+	  (chicken platform)
+	  srfi-1 srfi-13 srfi-69
 	  coops typed-records simple-exceptions pstk list-utils stack
 	  bt-types bt-db bt-emulation mdal)
 
   (define *bintracker-version* "0.2.0")
   (define *bintracker-state* (make-app-state))
+
+  ;;; Return the current local time as a string in the form
+  ;;; "day_mon_dd_hh-mm-ss_yyyy"
+  (define (now)
+    (string-translate (string-translate (seconds->string) #\: #\-)
+		      #\space #\_))
 
   ;;; Get the global application state, or a specific PARAMeter of that
   ;;; state.
@@ -473,5 +481,31 @@
   (define (copy arg)
     (clipboard 'put arg)
     arg)
+
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Error Handling
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Return a string representing a human-readable representation of the
+  ;;; exception object EXN.
+  (define (exn->message exn)
+    (string-append (->string exn)
+		   (with-output-to-string
+		     (lambda () (print-error-message exn)))))
+
+  ;;; Write a log file with information on the current crash. Returns the
+  ;;; filename of the log file.
+  (define (write-crash-log exn)
+    (let ((filename (string-append "crash-" (now) ".log")))
+      (with-output-to-file
+	  filename
+	(lambda ()
+	  (print (exn->message exn)
+		 "\nOS: " (software-version)
+		 "\nArchitecture: " (machine-type)
+		 "\nChicken version: " (chicken-version #t)
+		 "\n\n")))
+      filename))
 
   ) ;; end module bt-state

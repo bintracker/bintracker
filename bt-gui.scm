@@ -894,17 +894,14 @@
 							   (take callx 2)
 							   (car callx)))))
 					 (drop-right call-chain 3))
-				    "\n"))
-	       (error-msg (with-output-to-string
-			    (lambda () (print-error-message exn)))))
+				    "\n")))
 	  (repl-insert buf (string-append "\n"
-					  (->string exn)
-					  error-msg
+					  (exn->message exn)
 					  "\n"
 					  formatted-call-chain
 					  "\n"))
   	       (when (settings 'text-to-speech)
-  		 (say 'sanitize (string-append (->string exn) error-msg)))
+  		 (say 'sanitize (exn->message exn)))
   	       (repl-insert-prompt buf)
   	       ((slot-value buf 'repl) 'see 'end))
       (let ((input-str (repl-get buf "prompt" "end-1c"))

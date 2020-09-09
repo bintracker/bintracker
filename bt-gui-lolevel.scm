@@ -180,7 +180,7 @@
     (text-to-speech
      (string-append prologue ": " (sanitize-string-for-speech (->string exn))))
     (tk/message-box* title: "Error"
-      		     detail: (string-append prologue ":\n" (->string exn))
+      		     detail: (string-append prologue ":\n\n" (exn->message exn))
       		     type: 'ok))
 
   ;;; Display a message box that asks the user whether to save unsaved changes

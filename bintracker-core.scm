@@ -32,8 +32,8 @@
     (if (file-exists? "config/config.scm")
 	(handle-exceptions
 	    exn
-	    (begin (tk-end)
-		   (abort exn))
+	    (begin (report-exception exn "Error in configuration file")
+		   (abort (condition '(config))))
 	  (load "config/config.scm"))
 	(warning "Configuration file \"config/config.scm\" not found."))
     (unless (settings 'keymap) (load-keymap "en")))

@@ -42,7 +42,31 @@
 
 (handle-exceptions
     exn
-    (begin (when (current 'emulator) ((current 'emulator) 'quit))
+    (begin (unless ((condition-predicate 'config) exn)
+	     (let* ((mmod-dump-name (string-append "crashdump-" (now) ".mmod"))
+		    (dumped-mmod?
+		     (and (current 'mmod)
+			  (handle-exceptions
+			      exn
+			      #f
+			    (begin (mmod->file (current 'mmod) mmod-dump-name)
+				   #t))))
+		    (crash-log-filename (write-crash-log exn)))
+	       (report-exception
+		exn
+		(string-append
+		 "Sorry, Bintracker has crashed unexpectedly. "
+		 "Please report this error at "
+		 "https://github.com/bintracker/bintracker/issues or "
+		 "https://bintracker.org/contact, and include the crash log "
+		 crash-log-filename
+		 "."
+		 (if dumped-mmod?
+		     (string-append "\n\nYour work in progress was saved to "
+				    mmod-dump-name
+				    ".")
+		     "")))))
+	   (when (current 'emulator) ((current 'emulator) 'quit))
 	   (tk-end)
 	   (abort exn))
   (begin
