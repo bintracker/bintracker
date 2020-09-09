@@ -44,7 +44,7 @@
     exn
     (begin (when (current 'emulator) ((current 'emulator) 'quit))
 	   (tk-end)
-	   (raise exn))
+	   (abort exn))
   (begin
     (on-startup-hooks 'execute)
 
