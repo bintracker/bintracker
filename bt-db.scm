@@ -29,7 +29,8 @@
 (module bt-db
     *
 
-  (import scheme (chicken base) (chicken sort) (only (chicken file) directory)
+  (import scheme (chicken base) (chicken sort) (chicken condition)
+	  (only (chicken file) directory)
 	  (only (chicken file posix) directory?)
 	  srfi-1 srfi-13 sqlite3 simple-md5 mdal)
 
@@ -94,20 +95,32 @@
 
   ;;; Collect information on the MDAL definition named MDEF-ID into a
   ;;; list, which has the form `(VERSION HASH TARGET-PLATFORM DESCRIPTION)`.
-  ;;; Returns `#f` if the mdef is not found in the MDAL definition
+  ;;; Returns `#f` if the mdef is invalid or not found in the MDAL definition
   ;;; directory.
   (define (gather-mdef-info mdef-id)
-    (let ((mdef (file->mdef mdal-mdef-dir mdef-id)))
-      (and mdef
-	   (list (string-append
-		  (number->string (engine-version-major
-				   (mdef-engine-version mdef)))
-		  "." (number->string (engine-version-minor
-				       (mdef-engine-version mdef))))
-		 (file-md5sum (string-append mdal-mdef-dir mdef-id
-  					     "/" mdef-id ".mdef"))
-		 (target-platform-id (mdef-target mdef))
-		 (mdef-description mdef)))))
+    (handle-exceptions
+	exn
+	(begin
+	  (print "Ignoring broken MDEF "
+		 mdef-id
+		 " (broken by "
+		 exn
+		 " - "
+		 (if ((condition-predicate 'mdal) exn)
+		     ((condition-property-accessor 'mdal 'message) exn)
+		     ((condition-property-accessor 'exn 'message) exn))
+		 ")")
+	  #f)
+      (let ((mdef (file->mdef mdal-mdef-dir mdef-id)))
+	(list (string-append
+	       (number->string (engine-version-major
+				(mdef-engine-version mdef)))
+	       "." (number->string (engine-version-minor
+				    (mdef-engine-version mdef))))
+	      (file-md5sum (string-append mdal-mdef-dir mdef-id
+  					  "/" mdef-id ".mdef"))
+	      (target-platform-id (mdef-target mdef))
+	      (mdef-description mdef)))))
 
   ;;; Add the MDAL definition named MDEF-ID to the Bintracker database.
   (define (btdb-add-mdef! mdef-id)
@@ -154,20 +167,24 @@
       (let* ((current-mdefs (map-row identity btdb "SELECT id FROM mdefs;"))
 	     (new-dirs (remove (lambda (dir)
 				 (member dir current-mdefs))
-			       mdef-dirs)))
-	(unless (null? new-dirs)
+			       mdef-dirs))
+	     (infos (map gather-mdef-info new-dirs))
+	     (ids+infos (filter-map (lambda (id info) (and info (cons id info)))
+				    new-dirs
+				    infos)))
+	(unless (null? ids+infos)
 	  (execute btdb
 		   (string-append
 		    "INSERT INTO mdefs (id, version, "
 		    "hash, platform, description) VALUES "
 		    (string-intersperse
-		     (map (lambda (id)
+		     (map (lambda (id+info)
 			    (string-append "('"
 					   (string-intersperse
-					    (cons id (gather-mdef-info id))
+					    id+info
 					    "', '")
 					   "')"))
-			  new-dirs)
+			  ids+infos)
 		     ", ")
 		    ";")))
 	(for-each (lambda (dir)
@@ -176,13 +193,18 @@
 		    (btdb-update-mdef! dir))
 		  (remove
 		   (lambda (dir)
-		     (string=
-		      (file-md5sum (string-append mdal-mdef-dir dir "/"
-		  				  dir ".mdef"))
-		      (first-result btdb
-		  		    (string-append
-		  		     "SELECT hash FROM mdefs WHERE id='"
-		  		     dir "';"))))
+		     (or (null? (map-row identity btdb
+					 (string-append
+					  "SELECT hash FROM mdefs WHERE id='"
+					  dir
+					  "';")))
+			 (string=
+			  (file-md5sum (string-append mdal-mdef-dir dir "/"
+		  				      dir ".mdef"))
+			  (first-result btdb
+		  			(string-append
+		  			 "SELECT hash FROM mdefs WHERE id='"
+		  			 dir "';")))))
 		   mdef-dirs)))))
 
   ;;; Update the Bintracker Database on first run of the application.
