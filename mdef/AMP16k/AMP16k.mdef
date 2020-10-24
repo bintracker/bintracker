@@ -1,0 +1,74 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.0 target: spectrum48
+ description: "AMP16K is a ZX Spectrum beeper engine with four tone channels, and a further channel of interrupting drums. The tone channels support eight levels of pulse width set in steps of sound loop iterations (224 T states on the ZX Spectrum 16/48K). Channel mixing is of the accumulating non-PWM type similar to that used in Squeeker by Zilogat0r. There are eight predefined drum sounds, with a maximum of 14 allowed by the song data format.
+
+As its name suggests, AMP16K supports operation in contended memory, making it the first multichannel engine suitable for use in ZX Spectrum 16K programs. The engine is presumed to be incompatible with a number of peripherals that put random data on the bus (DivIDE, Kempston interface...).
+
+By Hikaru/Intense 2020."
+
+ default-origin: #x8000
+
+ commands: ((command id: DUTY bits: 3 type: uint default: #x2 flags: (is-duty)
+		     description: "Channel duty setting")
+	    (command id: TEMPO bits: 5 type: uint default: 6
+		     flags: (use-last-set is-ticks)
+		     description: "Ticks per row")
+	    (command id: NOTE bits: 8 type: ukey default: rest
+		     keys: (make-counters 0 96 1 0)
+		     flags: (use-last-set is-note))
+	    (command id: DRUM bits: 3 type: uint default: 0
+		     flags: (is-percussion)
+		     description: "Interrupting click drum"))
+
+ input: ((field from: TEMPO)
+	 (group id: PATTERNS flags: (ordered)
+		nodes: ((block id: DRUMS nodes: ((field from: DRUM)))
+			(clone 4 (block id: CH
+					nodes: ((field from: NOTE)
+						(field from: DUTY)))))))
+
+ output: ((asm file: "amp16k.asm")
+	  (field bytes: 2 compose: (- $pattern-data $pattern-list))
+	  (symbol id: pattern-list)
+	  (order from: PATTERNS layout: pointer-matrix element-size: 2
+		 base-index: $pattern-data)
+	  (symbol id: pattern-list-end)
+	  (field bytes: 2 compose: (- $pattern-list $pattern-list-end 2))
+	  (symbol id: pattern-data)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS
+			 from: (DRUMS CH1 CH2 CH3 CH4)
+			 nodes:
+			 ;; TODO: (per-pattern) tempo
+			 ((before bytes: 1 compose: 6)
+			  (repeat bytes: 1 compose:
+				  (+ (if ??DRUM (+ 2 ?DRUM) 0)
+				     (if (or ??NOTE1 ??DUTY1) #x80 0)
+				     (if (or ??NOTE2 ??DUTY2) #x40 0)
+				     (if (or ??NOTE3 ??DUTY3) #x20 0)
+				     (if (or ??NOTE4 ??DUTY4) #x10 0)))
+			  (repeat bytes: 1
+				  condition: (or ??NOTE1 ??DUTY1)
+				  compose: (+ ?NOTE1 (if ??DUTY1 #x80 0)))
+			  (repeat bytes: 1
+				  condition: ??DUTY1
+				  compose: ?DUTY1)
+			  (repeat bytes: 1
+				  condition: (or ??NOTE2 ??DUTY2)
+				  compose: (+ ?NOTE2 (if ??DUTY2 #x80 0)))
+			  (repeat bytes: 1
+				  condition: ??DUTY2
+				  compose: ?DUTY2)
+			  (repeat bytes: 1
+				  condition: (or ??NOTE3 ??DUTY3)
+				  compose: (+ ?NOTE3 (if ??DUTY3 #x80 0)))
+			  (repeat bytes: 1
+				  condition: ??DUTY3
+				  compose: ?DUTY3)
+			  (repeat bytes: 1
+				  condition: (or ??NOTE4 ??DUTY4)
+				  compose: (+ ?NOTE4 (if ??DUTY4 #x80 0)))
+			  (repeat bytes: 1
+				  condition: ??DUTY4
+				  compose: ?DUTY4)
+			  (after bytes: 1 compose: 1)))))))
