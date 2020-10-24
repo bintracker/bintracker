@@ -1034,19 +1034,27 @@
 					 symbols))
 		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
 							from)
-					 symbols)))
-	     (flatten
-	      (map (lambda (row)
-		     (map (lambda (field)
-			    (+ group-begin
-			       (apply + (map cdr
-					     (filter (lambda (bsize)
-						       (< (car bsize)
-							  field))
-						     block-sizes)))))
-			  row))
-		   (alist-ref (symbol-append 'mdal__order_ from)
-			      symbols))))))
+					 symbols))
+		 (base-index (if (number? base-index)
+				 base-index
+				 (alist-ref (string->symbol
+					     (string-drop
+					      (symbol->string base-index)
+					      1))
+					    symbols))))
+	     (and base-index
+		  (flatten
+		   (map (lambda (row)
+			  (map (lambda (field)
+				 (+ (- group-begin base-index)
+				    (apply + (map cdr
+						  (filter (lambda (bsize)
+							    (< (car bsize)
+							       field))
+							  block-sizes)))))
+			       row))
+			(alist-ref (symbol-append 'mdal__order_ from)
+				   symbols)))))))
 	((pointer-matrix-hibyte)
 	 (lambda (symbols)
 	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
@@ -1117,7 +1125,14 @@
 	       (lambda (onode parent-inode mdef current-org md-symbols)
 		 (let ((raw-order (alist-ref order-symbol md-symbols)))
 		   (if (and raw-order (alist-ref sizes-symbol md-symbols))
-		       (if (and current-org (alist-ref group-symbol md-symbols))
+		       (if (and current-org
+				(alist-ref group-symbol md-symbols)
+				(or (number? base-index)
+				    (alist-ref (string->symbol
+						(string-drop
+						 (symbol->string base-index)
+						 1))
+					       md-symbols)))
 			   (let* ((output
 				   (flatten
 				    (map (cute int->bytes <> element-size
