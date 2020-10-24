@@ -338,7 +338,8 @@
 	    "" ,(string-intersperse
 	    	 '("   ttk::style configure TScrollbar"
 	    	   "-arrowcolor $colors(-text)"
-	    	   "-troughcolor $colors(-background)"))
+	    	   "-troughcolor $colors(-background)"
+		   "-gripcount 0"))
 	    "" ,(string-intersperse
 	    	 '("   ttk::style map TScrollbar"
 	    	   "-background [list active $colors(-highlight-minor)"
