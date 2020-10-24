@@ -7,7 +7,7 @@
 (module md-helpers *
 
   (import scheme (chicken base) (chicken condition) (chicken string)
-	  (only (chicken bitwise) bitwise-and)
+	  (only (chicken bitwise) bitwise-and arithmetic-shift)
 	  srfi-1 srfi-13 srfi-69
 	  typed-records)
 
@@ -56,7 +56,7 @@
 			    (if (zero? remaining-bytes)
 				'()
 				(cons (integer->char (bitwise-and #xff restval))
-				      (make-bytes (quotient restval #x100)
+				      (make-bytes (arithmetic-shift restval -8)
 						  (sub1 remaining-bytes))))))
 	      (byte-list (make-bytes i number-of-bytes)))
       (if (eq? 'little-endian endian)
