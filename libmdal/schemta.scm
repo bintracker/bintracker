@@ -766,8 +766,12 @@
 		     (lambda (s)
 		       (alist-ref
 			(if (is-local-symbol? s)
-  			    (symbol-append (state 'local-namespace) s)
-  			    s)
+  			    (symbol-append (state 'local-namespace)
+					   (string->symbol
+					    (string-downcase
+					     (symbol->string s))))
+  			    (string->symbol
+			     (string-downcase (symbol->string s))))
   			(state 'symbols)))))
 	  (let ((res (eval (cadr node))))
 	    (cond
