@@ -613,6 +613,24 @@
   (define (textgrid-position->tk-index row char)
     (string-append (->string (add1 row)) "." (->string char)))
 
+  ;;; Convert the mouse position (relativ pixel offset in widget) to the nearest
+  ;;; character position. The result is adjusted to 0-based indexing.
+  (define (textgrid-xy->char-pos tg x y)
+    (let ((raw-pos
+	   (map string->number
+		(string-split (tg 'index (string-append "@"
+							(number->string x)
+							","
+							(number->string y)))
+			      "."))))
+      ;; Work-around for a bug in Tk: Occasionally, the "index" command will
+      ;; return an incorrect result. In this case, we re-run the command until
+      ;; we get a valid result.
+      (if (= 2 (length raw-pos))
+	  (list (sub1 (car raw-pos))
+		(cadr raw-pos))
+	  (textgrid-xy->char-pos tg x y))))
+
   ;;; Create a TextGrid as slave of the Tk widget `parent`. Returns a Tk Text
   ;;; widget with class bindings removed.
   (define (textgrid-create-basic parent)

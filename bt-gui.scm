@@ -2128,6 +2128,41 @@
   				   '(selected))
     (set! (ui-selection buf) #f))
 
+  ;;; Initialize or continue a selection process with the mouse.
+  (define-method (ui-select-with-mouse primary: (buf <ui-basic-block-view>)
+				       xpos ypos)
+    (let* ((mouse-pos (textgrid-xy->char-pos (slot-value buf 'block-content)
+					     xpos
+					     ypos))
+	   (local-start
+	    (list (car mouse-pos)
+		  (list-ref (slot-value buf 'field-ids)
+  		(list-index
+  		 (lambda (cfg)
+  		   (and (>= (cadr mouse-pos)
+			    (bv-field-config-start (cadr cfg)))
+
+  			(> (+ (bv-field-config-start (cadr cfg))
+  			      (bv-field-config-width (cadr cfg))
+			      ;; ignore spacing between fields
+			      2)
+  			   (cadr mouse-pos))))
+  		 (slot-value buf 'field-configs))))))
+      (set! (ui-selection buf)
+  	(append (if (ui-selection buf)
+  		    (take (ui-selection buf) 2)
+  		    local-start)
+		local-start))
+      (ui-blockview-set-cursor buf
+			       (car mouse-pos)
+			       (find (cute <= <> (cadr mouse-pos))
+  				     (reverse
+  				      (ui-blockview-cursor-x-positions buf))))
+      (ui-blockview-tag-selection buf)
+      (ui-blockview-update-current-command-info buf)
+      (ui-blockview-tag-active-zone buf)
+      (ui-blockview-set-sibling-cursor buf)))
+
   ;;; Retrieve the contents (values) within the bounds of SELECTION, which must
   ;;; be a list of four elements denoting the top left and bottom right corners
   ;;; of the selection. Coordinates are given as *row, field-id* pairs, so
@@ -2566,13 +2601,13 @@
        (lambda (event-spec)
   	 (tk/bind grid (car event-spec)
   		  (if (pair? (cdr event-spec))
-  		      `(,(lambda (keysym)
-			   ;; (tk-eval "tk busy .")
-			   (tk-with-lock (lambda ()
-					   ((cadr event-spec) keysym)))
-			   ;; (tk-eval "tk busy forget .")
-			   )
-  			,(caddr event-spec))
+  		      (cons (lambda args
+			      ;; (tk-eval "tk busy .")
+			      (tk-with-lock (lambda ()
+					      (apply (cadr event-spec) args)))
+			      ;; (tk-eval "tk busy forget .")
+			      )
+  			    (cddr event-spec))
   		      (lambda ()
 			(tk-with-lock (cdr event-spec))))))
        `((<<BlockMotion>> ,(lambda (keysym)
@@ -2607,6 +2642,7 @@
 	 (<<BVPorousPasteUnder>> . ,(lambda () (ui-porous-paste-under buf)))
 	 (<<BVPorousPasteOver>> . ,(lambda () (ui-porous-paste-over buf)))
   	 (<Button-1> . ,(lambda () (ui-blockview-set-cursor-from-mouse buf)))
+	 (<B1-Motion> ,(lambda (x y) (ui-select-with-mouse buf x y)) %x %y)
   	 (<<ClearCurrent>>
 	  .
 	  ,(lambda ()
