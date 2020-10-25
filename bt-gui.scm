@@ -1664,6 +1664,23 @@
       (when (memv direction '(Left Right))
   	(ui-blockview-update-current-command-info buf))))
 
+  ;; TODO can be unified with specialization on ui-order-view
+  ;;; Set the blockview's cursor to the grid position currently closest to the
+  ;;; mouse pointer.
+  (define-method (ui-blockview-set-cursor-from-mouse
+		  primary: (buf <ui-basic-block-view>))
+    (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
+      ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
+      (ui-cancel-selection buf)
+      (ui-blockview-set-cursor buf
+  			       (car mouse-pos)
+  			       (find (cute <= <> (cadr mouse-pos))
+  				     (reverse
+  				      (ui-blockview-cursor-x-positions buf))))
+      (ui-blockview-update-current-command-info buf)
+      (ui-blockview-tag-active-zone buf)
+      (ui-blockview-set-sibling-cursor buf)))
+
   ;;; Set the input focus to the blockview BUF. In addition to setting the
   ;;; Tk focus, it also shows the cursor and updates the status bar info text.
   (define-method (ui-blockview-focus primary: (buf <ui-basic-block-view>))
@@ -3012,22 +3029,6 @@
        (cadr (ui-blockview-get-cursor-position ov)))
       (ui-blockview-tag-active-zone ov)))
 
-  ;; TODO can be unified with specialization on ui-order-view
-  ;;; Set the blockview's cursor to the grid position currently closest to the
-  ;;; mouse pointer.
-  (define-method (ui-blockview-set-cursor-from-mouse primary:
-  						     (buf <ui-block-view>))
-    (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
-      ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
-      (ui-cancel-selection buf)
-      (ui-blockview-set-cursor buf
-  			       (car mouse-pos)
-  			       (find (cute <= <> (cadr mouse-pos))
-  				     (reverse
-  				      (ui-blockview-cursor-x-positions buf))))
-      (ui-blockview-update-current-command-info buf)
-      (ui-blockview-set-sibling-cursor buf)))
-
   (define-method (ui-blockview-move-cursor primary: (buf <ui-block-view>)
   					   direction)
     (let ((active-first-row (car (ui-blockview-get-active-zone buf))))
@@ -3274,21 +3275,6 @@
 		      (ui-blockview-get-current-row buf)))
        (cadr (ui-blockview-get-cursor-position bv)))
       (ui-blockview-tag-active-zone bv)))
-
-  ;; TODO this relies on ui-zones, which are due to change
-  ;;; Set the blockview's cursor to the grid position currently closest to the
-  ;;; mouse pointer.
-  (define-method (ui-blockview-set-cursor-from-mouse primary:
-  						     (buf <ui-order-view>))
-    (let ((mouse-pos (ui-blockview-mark->position buf 'current)))
-      ((slot-value buf 'focus-controller) 'set (slot-value buf 'ui-zone))
-      (ui-blockview-set-cursor buf (car mouse-pos)
-  			       (find (cute <= <> (cadr mouse-pos))
-  				     (reverse
-  				      (ui-blockview-cursor-x-positions buf))))
-      (ui-blockview-update-current-command-info buf)
-      (ui-blockview-tag-active-zone buf)
-      (ui-blockview-set-sibling-cursor buf)))
 
   (define-method (ui-blockview-move-cursor primary: (buf <ui-order-view>)
   					   direction)
