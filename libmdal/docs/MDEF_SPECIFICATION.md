@@ -273,6 +273,7 @@ A number of primitives are provided.
 - An input node identifier prefixed by two question marks `??` can be used to check if the current node instance is set.
 - An identifier of an output symbol node prefixed by a dollar sign `$` can be used to retrieve the value of that symbol node.
 - An identifier of an output node prefixed by an exclamation mark `!` can be used to reference that output node.
+- To determine whether the currently evaluated field occurs at the start of a pattern block, use the special condition `pattern-start?`.
 
 See the [Example](#example) for some uses of composition expressions.
 
