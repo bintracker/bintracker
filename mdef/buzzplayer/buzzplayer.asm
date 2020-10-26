@@ -70,7 +70,16 @@ curpat	ldx	#.(- (symbol-ref 'PATTERNS) 2)	;load pointer to patterns
 	cmpx	#.(+ (symbol-ref 'sequence-end) 2)	;end of patterns, time to loop
 nlhalt
         .(if (symbol-ref 'no-loop)
-             " nop\n nop\n blo nlhalt"
+             (string-intersperse
+               '(" lda #6"
+                 " deca"
+                 " sta .(+ 1 (symbol-ref 'nlhalt))"
+                 " bne start"
+                 " nop"
+                 " nop"
+                 " nop"
+                 " blo .(+ (symbol-ref 'nlhalt) 8)")
+               "\n")
              " bcc nxpat")      ; TODO is blo (bcs) in the original
 	;; blo	nxpat
 
