@@ -82,7 +82,7 @@ _LOC_PatternListPtr .equ .(+ 1 current-origin)
 	pop hl			;PTxx-PatternData
 	bit 7,h
 	jr z,_no_loop
-        .(if (symbol-ref 'no-loop)
+        .(if (symbol-ref 'row-play)
              " di\n halt"
              " add hl,sp\n ld sp,hl")
 	;; add hl,sp		;BIT 7 = 1: PatternListLoop-PatternData

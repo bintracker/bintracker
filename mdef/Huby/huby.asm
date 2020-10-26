@@ -12,7 +12,7 @@ OP_INCL	.equ $2c
 begin
     ld hl,musicData
 
-    ;; .(unless (symbol-ref 'no-loop)
+    ;; .(unless (symbol-ref 'row-play)
     ;;     " call play\n jp begin\n")
 
 play
@@ -30,7 +30,7 @@ readPos
 	inc hl
 	or a
 	;; ret z					;if it is zero, it is the end of the song
-    .(if (symbol-ref 'no-loop)
+    .(if (symbol-ref 'row-play)
          " jr nz,skip\n di\n halt\n"
          " jr z,begin\n")
 skip
@@ -120,7 +120,7 @@ _l4
 	jr z,readPos			;if no key was pressed, continue
 
     ;; 	ret
-    .(if (symbol-ref 'no-loop)
+    .(if (symbol-ref 'row-play)
          " di\n halt\n"
          " ret")
 

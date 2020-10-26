@@ -42,7 +42,7 @@ seqpntr .equ .(+ 1 current-origin)
 	jr nz,rdptn0
 
 ;; halt -> jp exit
-        .(if (symbol-ref 'no-loop)
+        .(if (symbol-ref 'row-play)
              " halt\n"
              " ld sp,loop\n jp .(+ 3 (symbol-ref 'rdseq))\n")
 

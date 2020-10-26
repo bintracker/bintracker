@@ -81,7 +81,7 @@ _readseq
 
 	dci musicLoop			;point DC0 to loop point
 
-	.(if (symbol-ref 'no-loop)
+	.(if (symbol-ref 'row-play)
              " clr\n outs 5\n_halt\n nop\n br _halt"
              " br .(+ 1 (symbol-ref '_readseq))")
     ;; The nop before br _halt is a work-around for a bug in MAME that prevents

@@ -87,7 +87,7 @@ _l1
 rdSeq				;read next entry in sequence
 	ldx <SEQOFFS
 	lda sequence_hi,x
-        .(unless (symbol-ref 'no-loop)
+        .(unless (symbol-ref 'row-play)
            " beq reset")
 	;; beq reset		;if hi-byte = 0, loop
 
@@ -102,7 +102,7 @@ rdPtn
 	lda (PTNPTRL),y		;ctrl byte
 	;; beq rdSeq		;0-end marker
 
-        .(if (symbol-ref 'no-loop)
+        .(if (symbol-ref 'row-play)
              " bne _l0\n nop\n hlt"
              " beq rdSeq")
 _l0

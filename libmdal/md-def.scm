@@ -931,7 +931,7 @@
   	   (source (or code (call-with-input-file (string-append mdef-dir file)
   			      (cute read-string #f <>))))
   	   (looping-asm (make-assembly cpu source org))
-  	   (non-looping-asm (make-assembly cpu source org '((no-loop . #t))))
+  	   (non-looping-asm (make-assembly cpu source org '((row-play . #t))))
   	   (_ (looping-asm 'assemble 3))
   	   (_ (non-looping-asm 'assemble 3))
   	   (looping-result (looping-asm 'result))
@@ -941,7 +941,7 @@
        fn:
        (if (and looping-result non-looping-result)
   	   (lambda (onode parent-inode mdef current-org md-symbols)
-  	     (let ((no-loop? (alist-ref 'no-loop md-symbols)))
+  	     (let ((no-loop? (alist-ref 'row-play md-symbols)))
   	       (list (make-onode type: 'asm
   				 size: (if no-loop?
   					   (length non-looping-result)
@@ -955,7 +955,7 @@
   					     (length looping-result))))
 		     md-symbols)))
 	   (lambda (onode parent-inode mdef current-org md-symbols)
-	     (let* ((no-loop? (alist-ref 'no-loop md-symbols))
+	     (let* ((no-loop? (alist-ref 'row-play md-symbols))
 		    (asm (if no-loop?
 			     (non-looping-asm 'copy)
 			     (looping-asm 'copy)))
