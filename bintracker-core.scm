@@ -94,7 +94,9 @@
 				   ,(key-binding->info 'global 'save-file-as)
 				   ,save-file-as)
 			  (submenu export "Export" 0
-				   ((command bin ".bin" 0 "Alt+E b"
+				   ((command bin ".asm" 0 "Alt+X A"
+					     ,export-asm)
+				    (command bin ".bin" 0 "Alt+X B"
 					     ,export-bin)))
 			  (command close "Close" 0
 				   ,(key-binding->info 'global 'close-file)

@@ -13,6 +13,8 @@
 	  (<F5> play-from-start)
 	  (<F7> play-pattern)
 	  (<F8> stop-playback)
+	  (<Alt-x><Key-a> export-asm)
+	  (<Alt-x><Key-b> export-bin)
 	  (<Alt-w> what)
 	  (<Alt-W> where))
  console: ((<Return> eval-console)

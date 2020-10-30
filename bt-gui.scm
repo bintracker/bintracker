@@ -298,6 +298,14 @@
   	(ui-metastate (current 'module-view) 'filename filename)
   	(on-save-file-hooks 'execute))))
 
+  (define (export-asm)
+    (and-let* ((mmod (current 'mmod))
+  	       (filename (tk/get-save-file*
+  			  filetypes: '(((Assembly source) (.asm)))
+  			  defaultextension: '.asm))
+  	       (_ (not (string-null? filename))))
+      (mod-export-asm filename mmod (mdef-default-origin (current 'mdef)))))
+
   (define (export-bin)
     (and-let* ((mmod (current 'mmod))
   	       (filename (tk/get-save-file*

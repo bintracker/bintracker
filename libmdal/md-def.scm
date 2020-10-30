@@ -59,6 +59,7 @@
      onode-size
      onode-val
      onode-fn
+     onode-asm-cache
      display-onode
      eval-effective-field-val
      eval-group-field
@@ -371,7 +372,7 @@
   ;; ---------------------------------------------------------------------------
 
   (defstruct onode
-    type size val fn)
+    type size val fn asm-cache)
 
   (define (onode-resolved? onode)
     (not (onode-fn onode)))
@@ -900,10 +901,14 @@
 			#!key id value compose)
     (unless id (mdal-abort "missing id" "onode-definition"))
     (make-onode
-     type: 'symbol size: 0
+     type: 'symbol
+     size: 0
      fn: (cond
 	  (value (lambda (onode parent-inode mdef current-org md-symbols)
-		   (list (make-onode type: 'symbol size: 0 val: #t)
+		   (list (make-onode type: 'symbol
+				     size: 0
+				     val: #t
+				     asm-cache: id)
 			 current-org
 			 (cons (cons id value) md-symbols))))
 	  (compose
@@ -911,18 +916,22 @@
 		 (required-symbols (get-required-symbols compose)))
 	     (lambda (onode parent-inode mdef current-org md-symbols)
 	       (if (have-required-symbols required-symbols md-symbols)
-		   (list (make-onode type: 'symbol size: 0 val: #t)
-			 current-org
-			 (cons (cons id (compose-proc 0 parent-inode
-						      md-symbols mdef))
-			       md-symbols))
+		   (let ((symbol-val (compose-proc 0 parent-inode
+						   md-symbols mdef)))
+		     (list (make-onode type: 'symbol size: 0 val: #t
+				       asm-cache: (cons id symbol-val))
+			   current-org
+			   (cons (cons id symbol-val)
+				 md-symbols)))
 		   (list onode current-org md-symbols)))))
 	  (else (lambda (onode parent-inode mdef current-org md-symbols)
 		  (if current-org
-		      (list (make-onode type: 'symbol size: 0 val: #t)
+		      (list (make-onode type: 'symbol size: 0 val: #t
+					asm-cache: id)
 			    current-org
 			    (cons (cons id current-org) md-symbols))
-		      (list onode #f md-symbols)))))))
+		      (list onode #f md-symbols)))))
+     asm-cache: id))
 
   ;; TODO passing in all of md-symbols may cause namespace clashes
   (define (make-oasm proto-mdef mdef-dir path-prefix #!key file code)
@@ -948,7 +957,8 @@
   					   (length looping-result))
   				 val: (if no-loop?
   					  non-looping-result
-  					  looping-result))
+  					  looping-result)
+				 asm-cache: source)
 		     (and current-org
 			  (+ current-org (if no-loop?
   					     (length non-looping-result)
@@ -963,12 +973,14 @@
 				(asm 'assemble 3)
 				(asm 'result))))
 	       (if res
-		   (list (make-onode type: 'asm size: (length res) val: res)
+		   (list (make-onode type: 'asm size: (length res) val: res
+				     asm-cache: source)
 			 (and current-org (+ current-org (length res)))
 			 md-symbols)
 		   (list onode
 			 (asm 'current-origin)
-			 md-symbols))))))))
+			 md-symbols)))))
+       asm-cache: source)))
 
   ;;; Extract required md-symbols from a compose expression
   (define (get-required-symbols compose-expr)

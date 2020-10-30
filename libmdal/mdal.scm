@@ -5,8 +5,9 @@
 (module mdal
     (mmod->file
      mod-compile
-     mod->bin
      mod->asm
+     mod->bin
+     mod-export-asm
      mod-export-bin
      mod-get-group-instance-blocks
      mod-get-block-field-value
@@ -130,15 +131,68 @@
 			  (mod-compile mod origin extra-symbols)))))
 
   ;;; Compile an module into an assembly source
-  (define (mod->asm mod origin extra-symbols)
-    (let ((otree (mod-compile mod origin #!optional extra-symbols)))
-      '()))
+  (define (mod->asm mod origin #!optional (extra-symbols '()))
+    (let ((otree (mod-compile mod origin extra-symbols)))
+      (string-intersperse
+       (append
+	(list (string-append "    .org " (number->string origin) "\n"))
+	(map (lambda (sym)
+	       (string-append (symbol->string (car sym))
+			      " .equ "
+			      (->string (cdr sym))))
+	     extra-symbols)
+	(map (lambda (node)
+	       (case (onode-type node)
+		 ((comment)
+		  (string-append "; " (onode-val node)))
+		 ((asm)
+		  (onode-asm-cache node))
+		 ((field)
+		  (string-append "    .db "
+				 (string-intersperse
+				  (map (o number->string char->integer)
+				       (onode-val node))
+				  ", ")))
+		 ((symbol)
+		  (if (pair? (onode-asm-cache node))
+		      (string-append
+		       (symbol->string (car (onode-asm-cache node)))
+		       " .equ "
+		       (->string (cdr (onode-asm-cache node))))
+		      (symbol->string (onode-asm-cache node))))
+		 ((order)
+		  (string-append "; order\n    .db "
+				 (string-intersperse
+				  (map (o number->string char->integer)
+				       (onode-val node))
+				  ", ")))
+		 ((group)
+		  (string-intersperse
+		   (flatten
+		    (map (lambda (block)
+			   (string-append "    .db "
+					  (string-intersperse
+					   (map (o number->string
+						   char->integer)
+						(flatten block)))))
+			 (onode-val node)))
+		   "\n"))
+		 (else (onode-type node))))
+	     otree))
+       "\n")))
+
+  ;;; Compile the given module to a binary file.
+  (define (mod-export-asm filename mod origin)
+    (call-with-output-file filename
+      (lambda (port)
+	(write-string (mod->asm mod origin) #f port))))
 
   ;;; Compile the given module to a binary file.
   (define (mod-export-bin filename mod origin)
     (call-with-output-file filename
       (lambda (port)
 	(write-string (list->string (mod->bin mod origin)) #f port))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Additional accessors
