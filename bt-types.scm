@@ -137,6 +137,7 @@
 	       (text-to-speech . #f)
 	       (show-menu . #t)
 	       (show-toolbars . #t)
+	       (show-scrollbars . #t)
 	       (show-modelines . #t)
 	       (font-mono . "Courier")
 	       (font-size . 10)

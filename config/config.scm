@@ -47,6 +47,9 @@
 ;; Enable or disable toolbars.
 ;; (settings 'show-toolbars #t)
 
+;; Enable or disable scrollbars.
+;; (settings 'show-scrollbars #f)
+
 ;; Integrate a text-to-speech/screen reader tool. Takes the name of the reader
 ;; application and optionally additional arguments in a list of strings.
 ;; (settings 'text-to-speech '("espeak" "-v" "en" "-a" "80"))

@@ -775,7 +775,8 @@
 
   (define-method (initialize-instance after: (elem <ui-wrapper>))
     ;; (print "initialize-instance/ui-wrapper")
-    (when (slot-value elem 'yscroll)
+    (when (and (settings 'show-scrollbars)
+	       (slot-value elem 'yscroll))
       (when (eqv? (slot-value elem 'orient) 'vertical)
 	(error '|make <ui-wrapper>|
 	       "Cannot create vertical scrollbar with vertical orientation"))

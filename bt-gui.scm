@@ -721,7 +721,7 @@
     ((ui-zone (gensym 'repl))
      (focus-controller focus)
      repl
-     yscroll
+     (yscroll #f)
      (prompt "repl> ")
      (history initform: '() accessor: repl-history)
      (history-pointer 0)
@@ -730,10 +730,11 @@
   (define-method (initialize-instance after: (buf <ui-repl>))
     (set! (slot-value buf 'repl)
       ((slot-value buf 'content-box) 'create-widget 'text))
-    (set! (slot-value buf 'yscroll)
-      ((slot-value buf 'content-box)
-       'create-widget 'scrollbar orient: 'vertical
-       'command: `(,(slot-value buf 'repl) yview))))
+    (and (settings 'show-scrollbars)
+	 (set! (slot-value buf 'yscroll)
+	   ((slot-value buf 'content-box)
+	    'create-widget 'scrollbar orient: 'vertical
+	    'command: `(,(slot-value buf 'repl) yview)))))
 
   (define-method (ui-show before: (buf <ui-repl>))
     (let ((repl (slot-value buf 'repl))
@@ -746,9 +747,9 @@
   	      insertbackground: (colors 'text)
   	      font: (list family: (settings 'font-mono)
   			  size: (settings 'font-size)))
-  	(tk/pack yscroll side: 'right fill: 'y)
+  	(and yscroll (tk/pack yscroll side: 'right fill: 'y))
   	(tk/pack repl expand: 1 fill: 'both side: 'right)
-  	(repl 'configure 'yscrollcommand: `(,yscroll set))
+  	(and yscroll (repl 'configure 'yscrollcommand: `(,yscroll set)))
   	(repl-insert buf (ui-setup buf))
   	(repl-insert-prompt buf)
   	(repl 'mark 'gravity "prompt" 'left)
@@ -782,7 +783,7 @@
       (let ((repl (slot-value buf 'repl))
 	    (yscroll (slot-value buf 'yscroll)))
 	(tk/pack 'forget repl)
-	(tk/pack 'forget yscroll)
+	(and yscroll (tk/pack 'forget yscroll))
 	(repl 'configure height: 2)
 	(tk/pack repl expand: 1 fill: 'x side: 'right))))
 
@@ -792,8 +793,9 @@
       (let ((repl (slot-value buf 'repl))
 	    (yscroll (slot-value buf 'yscroll)))
 	(tk/pack 'forget repl)
-	(tk/pack 'forget yscroll)
-	(tk/pack yscroll side: 'right fill: 'y)
+	(and yscroll
+	     (tk/pack 'forget yscroll)
+	     (tk/pack yscroll side: 'right fill: 'y))
 	(tk/pack repl expand: 1 fill: 'both side: 'right))))
 
   ;;; Protect the prompt string by applying various tweaks to the standard event
@@ -1232,8 +1234,8 @@
      block-frame
      block-header
      block-content
-     xscroll
-     yscroll
+     (xscroll #f)
+     (yscroll #f)
      (item-cache '())
      (collapsible #f)
      (packing-args '(expand: 0 fill: both))))
@@ -1256,20 +1258,23 @@
   	(textgrid-create-basic (slot-value buf 'block-frame)))
       (set! (slot-value buf 'block-content)
   	(textgrid-create (slot-value buf 'block-frame)))
-      (set! (slot-value buf 'xscroll)
-  	(content-box 'create-widget 'scrollbar orient: 'horizontal
-  		     command: ;; `(,(slot-value buf 'block-content) xview)
-		     (lambda args
-  		       (apply (slot-value buf 'block-content)
-			      (cons 'xview args))
-  		       (apply (slot-value buf 'block-header)
-			      (cons 'xview args)))))
-      (set! (slot-value buf 'yscroll)
-  	((slot-value buf 'content-frame)
-  	 'create-widget 'scrollbar orient: 'vertical
-  	 command: (lambda args
-  		    (apply (slot-value buf 'block-content) (cons 'yview args))
-  		    (apply (slot-value buf 'rownums) (cons 'yview args)))))
+      (when (settings 'show-scrollbars)
+	(set! (slot-value buf 'xscroll)
+  	  (content-box 'create-widget 'scrollbar orient: 'horizontal
+  		       command: ;; `(,(slot-value buf 'block-content) xview)
+		       (lambda args
+  			 (apply (slot-value buf 'block-content)
+				(cons 'xview args))
+  			 (apply (slot-value buf 'block-header)
+				(cons 'xview args)))))
+	(set! (slot-value buf 'yscroll)
+  	  ((slot-value buf 'content-frame)
+  	   'create-widget 'scrollbar orient: 'vertical
+  	   command: (lambda args
+  		      (apply (slot-value buf 'block-content)
+			     (cons 'yview args))
+  		      (apply (slot-value buf 'rownums)
+			     (cons 'yview args))))))
       (when (settings 'show-modelines)
   	(set! (slot-value buf 'modeline)
   	  (make <ui-modeline>
@@ -1282,11 +1287,11 @@
       (let ((xscroll (slot-value buf 'xscroll))
   	    (yscroll (slot-value buf 'yscroll))
   	    (block-content (slot-value buf 'block-content)))
-  	(tk/pack xscroll fill: 'x side: 'bottom)
+  	(when xscroll (tk/pack xscroll fill: 'x side: 'bottom))
   	(tk/pack (slot-value buf 'content-frame)
   		 expand: 1 fill: 'both side: 'bottom)
   	(tk/pack (slot-value buf 'header-frame) fill: 'x side: 'bottom)
-  	(tk/pack yscroll fill: 'y side: 'right)
+  	(when yscroll (tk/pack yscroll fill: 'y side: 'right))
   	(tk/pack (slot-value buf 'rownum-frame) fill: 'y side: 'left)
   	(tk/pack (slot-value buf 'rownum-header) padx: '(4 0) side: 'top)
   	(tk/pack (slot-value buf 'rownums)
@@ -1296,8 +1301,8 @@
   	(tk/pack (slot-value buf 'block-header) fill: 'x side: 'top)
   	(ui-init-content-header buf)
   	(tk/pack block-content expand: 1 fill: 'both side: 'top)
-  	(block-content 'configure xscrollcommand: `(,xscroll set)
-  		       yscrollcommand: `(,yscroll set))
+  	(when xscroll (block-content 'configure xscrollcommand: `(,xscroll set)
+  				     yscrollcommand: `(,yscroll set)))
   	(block-content 'mark 'set 'insert "1.0")
   	(ui-blockview-bind-events buf)))
     (ui-update buf)
@@ -3155,8 +3160,10 @@
 
   (define-method (ui-show before: (buf <ui-block-view>))
     (unless (slot-value buf 'initialized)
-      ((slot-value buf 'rownums)
-       'configure width: 6 yscrollcommand: `(,(slot-value buf 'yscroll) set))
+      ((slot-value buf 'rownums) 'configure width: 6)
+      (when (settings 'show-scrollbars)
+	((slot-value buf 'rownums) 'configure
+	 yscrollcommand: `(,(slot-value buf 'yscroll) set)))
       ((slot-value buf 'rownum-header) 'configure height: 2 width: 6)
       ((slot-value buf 'block-header) 'configure height: 2)))
 
@@ -3542,8 +3549,10 @@
 
   (define-method (ui-show before: (buf <ui-order-view>))
     (unless (slot-value buf 'initialized)
-      ((slot-value buf 'rownums)
-       'configure width: 5 yscrollcommand: `(,(slot-value buf 'yscroll) set))
+      ((slot-value buf 'rownums) 'configure width: 5)
+      (when (settings 'show-scrollbars)
+	((slot-value buf 'rownums)
+	 'configure yscrollcommand: `(,(slot-value buf 'yscroll) set)))
       ((slot-value buf 'rownum-header) 'configure height: 1 width: 5)
       ((slot-value buf 'block-header) 'configure height: 1)))
 
