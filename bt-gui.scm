@@ -1386,11 +1386,16 @@
   ;;; to 0-based indexing.
   (define-method (ui-blockview-mark->position
   		  primary: (buf <ui-basic-block-view>) mark)
-    (let ((pos (map string->number
-  		    (string-split ((slot-value buf 'block-content) 'index mark)
-  				  "."))))
-      (list (sub1 (car pos))
-  	    (cadr pos))))
+    (let ((mark-idx ((slot-value buf 'block-content) 'index mark)))
+      (if (string? mark-idx)
+	  (let ((pos (map string->number (string-split mark-idx "."))))
+	    (if (= 2 (length pos))
+		(list (sub1 (car pos))
+  		      (cadr pos))
+		;; .w 'index isn't guaranteed to return a valid result even
+		;; after update 'idletasks, so just retry until it does
+		(ui-blockview-mark->position mark)))
+	  (ui-blockview-mark->position buf mark))))
 
   ;;; Returns the current cursor position as a list containing the row in car,
   ;;; and the character position in cadr. Row position is adjusted to 0-based
