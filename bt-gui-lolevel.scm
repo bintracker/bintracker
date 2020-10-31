@@ -1559,4 +1559,88 @@
   				    children)))
 		 (ui-ref (cdr ce) child-element))))))
 
+
+  ;; ---------------------------------------------------------------------------
+  ;;; ## Toolbar Sets
+  ;; ---------------------------------------------------------------------------
+
+  ;;; Toolbar Sets can be used to create customizable `<ui-toolbar>` objects
+  ;;; Their main purpose is to provide a possibility for plug-ins to extend
+  ;;; the toolbars of existing UI classes.
+
+  ;;; Create a toolbar set. GROUP-SPECS shall be a setup list as required by
+  ;;; `<ui-toolbar>`. CALLBACK-SPECS shall be a list of callback procedures,
+  ;;; similar to `<ui-toolbar>`'s `ui-set-callbacks` method.
+  ;;;
+  ;;; Returns a closure. When called without arguments, the closure returns a
+  ;;; list containing the group specifications in car, and the callback
+  ;;; specifications in cadr. Otherwise, the closure can be called as follows:
+  ;;;
+  ;;; `(TS 'add 'button GROUP-ID BUTTON-SPEC1...)`
+  ;;;
+  ;;; Add the button specification(s) BUTTON-SPEC1... to the button group
+  ;;; GROUP-ID. If GROUP-ID does not exist in the toolbar set's groups, a new
+  ;;; group is created. If the button given in BUTTON-SPEC1 already exists, its
+  ;;; specification is updated instead.
+  ;;;
+  ;;; `(TS 'add 'callback GROUP-ID CALLBACK-SPEC1...)`
+  ;;;
+  ;;; Add or replace the callback specification(s) CALLBACK-SPEC1... for the
+  ;;; button group GROUP-ID, where CALLBACK-SPEC1 is a list containing a valid
+  ;;; button ID in car, and a procedure in cadr.
+  ;;;
+  ;;; `(TS 'callbacks)`
+  ;;;
+  ;;; Returns the current callback specifications.
+  ;;;
+  ;;; `(TS 'groups)`
+  ;;;
+  ;;; Returns the button group specifications.
+  (define (create-toolbar-set group-specs callback-specs)
+    (let* ((groups group-specs)
+	   (callbacks callback-specs)
+	   (update (lambda (what args)
+		     (if (memv (caddr args) (map car what))
+			 (alist-update
+			  (caddr args)
+			  (append (map (lambda (entry)
+					 (if (memv (car entry)
+						   (map car (cdddr args)))
+					     (assv (car entry) (cdddr args))
+					     entry))
+				       (alist-ref (caddr args) what))
+				  (remove (lambda (entry)
+					    (memv (car entry)
+						  (map car
+						       (alist-ref (caddr args)
+								  what))))
+					  (cdddr args)))
+			  what)
+			 (append what (cddr args))))))
+      (lambda args
+	(if (null? args)
+	    (list groups callbacks)
+	    (case (car args)
+	      ((add)
+	       (case (cadr args)
+		 ((button) (set! groups (update groups args)))
+		 ((callback)
+		  (unless (memv (caddr args) (map car groups))
+		    (error '|toolbar-set add callback|
+			   (string-append "Button group "
+					  (->string (caddr args))
+					  " does not exist.")))
+
+		  (set! callbacks (update callbacks args)))
+		 (else (error 'toolbar-set
+			      (string-append "unknown action "
+					     (->string (car args))
+					     " "
+					     (->string (cadr args)))))))
+	      ((groups) groups)
+	      ((callbacks) callbacks)
+	      (else (error 'toolbar-set
+			   (string-append "unknown action "
+					  (->string args)))))))))
+
   ) ;; end module bt-gui-lolevel

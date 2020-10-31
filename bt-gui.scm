@@ -3210,6 +3210,20 @@
   (define-class <ui-order-view> (<ui-basic-block-view>)
     ((ui-zone (gensym 'order-view))))
 
+  ;;; (procedure (order-view-toolbar ARGS...))
+  ;;; Toolbar set for the order view toolbar. Callback procedures will be
+  ;;; wrapped in a lambda, which calls the actual callback with the order view
+  ;;; object as its first and only argument. So specifying a callback procedure
+  ;;; `foo` will result in the effective callback `(lambda () (foo ORDER-BUF))`.
+  (define order-view-toolbar
+    (create-toolbar-set
+     '((edit (insert-row "Insert a new step" "insert-row.png" enabled)
+  	     (cut-row "Delete step" "delete-row.png" enabled))
+       (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
+  		      (simple "Simplified sequence" "seq-simple.png")))
+     `((edit (insert-row ,ui-blockview-insert-row)
+	     (cut-row ,ui-blockview-cut-row)))))
+
   (define-method (initialize-instance after: (buf <ui-order-view>))
     (let ((group-id (slot-value buf 'group-id)))
       (set! (slot-value buf 'field-ids)
@@ -3223,17 +3237,16 @@
       (when (settings 'show-toolbars)
   	(set! (slot-value buf 'toolbar)
   	  (make <ui-toolbar> 'parent (ui-box buf)
-  		'setup
-  		'((edit (insert-row "Insert a new step" "insert-row.png"
-  				    enabled)
-  			(cut-row "Delete step" "delete-row.png" enabled))
-  		  (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
-  				 (simple "Simplified sequence"
-  					 "seq-simple.png")))))
+		'setup (order-view-toolbar 'groups)))
 	(ui-set-callbacks
 	 (slot-value buf 'toolbar)
-	 `((edit (insert-row ,(lambda () (ui-blockview-insert-row buf)))
-		 (cut-row ,(lambda () (ui-blockview-cut-row buf)))))))))
+	 (map (lambda (group)
+	 	(cons (car group)
+	 	      (map (lambda (button)
+	 		     (list (car button)
+	 			   (lambda () ((cadr button) buf))))
+	 		   (cdr group))))
+	      (order-view-toolbar 'callbacks))))))
 
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-order-view>))
@@ -3783,37 +3796,111 @@
      (journal (make-app-journal))
      (emulator initform: #f reader: module-view-emulator)))
 
+  (define module-view-toolbar
+    (create-toolbar-set
+     '((file (new-file "New File" "new.png" enabled)
+  	     (load-file "Load File..." "load.png" enabled)
+  	     (save-file "Save File" "save.png"))
+       (journal (undo "Undo last edit" "undo.png")
+  		(redo "Redo last edit" "redo.png"))
+       (edit (copy "Copy Selection" "copy.png" enabled)
+      	     (cut-selection "Cut Selection (delete with shift)" "cut.png"
+			    enabled)
+      	     (clear "Clear Selection (delete, no shift)" "clear.png"
+  		    enabled)
+      	     (insert "Insert from Clipbard (with shift)" "insert.png"
+  		     enabled)
+      	     (paste "Paste from Clipboard (no shift)" "paste.png" enabled)
+  	     (porous-paste-under "Porous paste under current data"
+  				 "porous-paste-under.png" enabled)
+  	     (porous-paste-over "Porous paste over current data"
+  				"porous-paste-over.png" enabled)
+      	     (swap "Swap Selection with Clipboard" "swap.png" enabled))
+       (play (stop-playback "Stop Playback" "stop.png" enabled)
+      	     (play-from-start "Play Track from Start"
+  			      "play-from-start.png" enabled)
+      	     (play-from-here "Play Track from Current Position"
+  			     "play-from-here.png")
+      	     (play-pattern "Play Pattern" "play-ptn.png" enabled)))
+     `((file (new-file ,(lambda (buf) (new-file)))
+  	     (load-file ,(lambda (buf) (load-file)))
+  	     (save-file ,(lambda (buf) (save-file))))
+       (edit (copy ,(lambda (buf)
+		      (and-let*
+			  ((current-zone (ui-module-view-current-zone buf)))
+			(ui-copy current-zone))))
+	     (clear ,(lambda (buf)
+		       (and-let*
+			   ((current-zone (ui-module-view-current-zone buf)))
+			 (clipboard
+			  'put
+	     		  (if (slot-value current-zone 'selection)
+	     		      (ui-selected-contents current-zone)
+	     		      (ui-blockview-get-current-field-value
+			       current-zone)))
+			 (edit current-zone 'current 'clear)
+			 (ui-blockview-tag-selection current-zone))))
+	     (cut-selection
+	      ,(lambda (buf)
+		 (and-let*
+		     ((current-zone (ui-module-view-current-zone buf))
+		      (_ (ui-selection current-zone)))
+		   (edit current-zone 'selection 'cut))))
+	     (paste ,(lambda (buf)
+		       (and-let*
+			   ((current-zone (ui-module-view-current-zone buf)))
+			 (ui-paste current-zone))))
+	     (porous-paste-under
+	      ,(lambda (buf)
+		 (and-let* ((current-zone (ui-module-view-current-zone buf))
+			    (_ (or (symbol-contains
+				    (slot-value current-zone 'ui-zone)
+				    "block-view")
+				   (symbol-contains
+				    (slot-value current-zone 'ui-zone)
+				    "order-view"))))
+		   (ui-porous-paste-under current-zone))))
+	     (porous-paste-over
+	      ,(lambda (buf)
+		 (and-let* ((current-zone (ui-module-view-current-zone buf))
+			    (_ (or (symbol-contains
+				    (slot-value current-zone 'ui-zone)
+				    "block-view")
+				   (symbol-contains
+				    (slot-value current-zone 'ui-zone)
+				    "order-view"))))
+		   (ui-porous-paste-over current-zone))))
+	     (insert ,(lambda (buf)
+			(and-let*
+			    ((contents (clipboard))
+			     (current-zone (ui-module-view-current-zone buf)))
+			  (edit current-zone 'current 'insert contents))))
+	     (swap ,(lambda (buf)
+		      (and-let*
+			  ((current-zone (ui-module-view-current-zone buf))
+			   (_ (or (symbol-contains
+				   (slot-value current-zone 'ui-zone)
+				   "block-view")
+				  (symbol-contains
+				   (slot-value current-zone 'ui-zone)
+				   "order-view"))))
+			(ui-swap current-zone)))))
+       (play (play-from-start ,(lambda (buf) (play-from-start)))
+  	     (play-pattern ,(lambda (buf) (play-pattern)))
+  	     (stop-playback ,(lambda (buf) (stop-playback))))
+       (journal (undo ,(lambda (buf) (module-view-undo buf)))
+  		(redo ,(lambda (buf) (module-view-redo buf)))))))
+
   ;;; Helper for `<ui-module-view>` constructor.
   (define-method (make-module-view-toolbar primary: (buf <ui-module-view>)
   					   #!optional save-enabled)
-    (make <ui-toolbar> 'parent (ui-box buf)
-  	  'setup
-  	  `((file (new-file "New File" "new.png" enabled)
-  		  (load-file "Load File..." "load.png" enabled)
-  		  (save-file "Save File" "save.png" ,(if save-enabled
-  							 'enabled
-  							 'disabled)))
-  	    (journal (undo "Undo last edit" "undo.png")
-  		     (redo "Redo last edit" "redo.png"))
-  	    (edit (copy "Copy Selection" "copy.png" enabled)
-      		  (cut-selection "Cut Selection (delete with shift)" "cut.png"
-				 enabled)
-      		  (clear "Clear Selection (delete, no shift)" "clear.png"
-  			 enabled)
-      		  (insert "Insert from Clipbard (with shift)" "insert.png"
-  			  enabled)
-      		  (paste "Paste from Clipboard (no shift)" "paste.png" enabled)
-  		  (porous-paste-under "Porous paste under current data"
-  				      "porous-paste-under.png" enabled)
-  		  (porous-paste-over "Porous paste over current data"
-  				     "porous-paste-over.png" enabled)
-      		  (swap "Swap Selection with Clipboard" "swap.png" enabled))
-  	    (play (stop-playback "Stop Playback" "stop.png" enabled)
-      		  (play-from-start "Play Track from Start"
-  				   "play-from-start.png" enabled)
-      		  (play-from-here "Play Track from Current Position"
-  				  "play-from-here.png")
-      		  (play-pattern "Play Pattern" "play-ptn.png" enabled)))))
+    (module-view-toolbar 'add 'button 'file
+			 (if save-enabled
+			     '(save-file "Save File" "save.png" enabled)
+			     '(save-file "Save File" "save.png")))
+    (make <ui-toolbar>
+      'parent (ui-box buf)
+      'setup (module-view-toolbar 'groups)))
 
   ;;; Helper for `<ui-module-view>` constructor.
   (define-method (make-module-view-settings-bar primary: (buf <ui-module-view>))
@@ -4030,74 +4117,13 @@
   	(make-module-view-toolbar buf (slot-value buf 'modified)))
       (ui-set-callbacks
        (slot-value buf 'toolbar)
-       `((file (new-file ,new-file)
-  	       (load-file ,load-file)
-  	       (save-file ,save-file))
-  	 (edit (copy ,(lambda ()
-			(and-let*
-			    ((current-zone (ui-module-view-current-zone buf)))
-			  (ui-copy current-zone))))
-	       (clear ,(lambda ()
-			 (and-let*
-			     ((current-zone (ui-module-view-current-zone buf)))
-			   (clipboard
-			    'put
-	     		    (if (slot-value current-zone 'selection)
-	     			(ui-selected-contents current-zone)
-	     			(ui-blockview-get-current-field-value
-				 current-zone)))
-			   (edit current-zone 'current 'clear)
-			   (ui-blockview-tag-selection current-zone))))
-	       (cut-selection
-		,(lambda ()
-		   (and-let*
-		       ((current-zone (ui-module-view-current-zone buf))
-			(_ (ui-selection current-zone)))
-		     (edit current-zone 'selection 'cut))))
-	       (paste ,(lambda ()
-			 (and-let*
-			     ((current-zone (ui-module-view-current-zone buf)))
-			   (ui-paste current-zone))))
-	       (porous-paste-under
-		,(lambda ()
-		   (and-let* ((current-zone (ui-module-view-current-zone buf))
-			      (_ (or (symbol-contains
-				      (slot-value current-zone 'ui-zone)
-				      "block-view")
-				     (symbol-contains
-				      (slot-value current-zone 'ui-zone)
-				      "order-view"))))
-		     (ui-porous-paste-under current-zone))))
-	       (porous-paste-over
-		,(lambda ()
-		   (and-let* ((current-zone (ui-module-view-current-zone buf))
-			      (_ (or (symbol-contains
-				      (slot-value current-zone 'ui-zone)
-				      "block-view")
-				     (symbol-contains
-				      (slot-value current-zone 'ui-zone)
-				      "order-view"))))
-		     (ui-porous-paste-over current-zone))))
-	       (insert ,(lambda ()
-			  (and-let*
-			      ((contents (clipboard))
-			       (current-zone (ui-module-view-current-zone buf)))
-			    (edit current-zone 'current 'insert contents))))
-	       (swap ,(lambda ()
-			(and-let*
-			    ((current-zone (ui-module-view-current-zone buf))
-			     (_ (or (symbol-contains
-				     (slot-value current-zone 'ui-zone)
-				     "block-view")
-				    (symbol-contains
-				     (slot-value current-zone 'ui-zone)
-				     "order-view"))))
-			  (ui-swap current-zone)))))
-  	 (play (play-from-start ,play-from-start)
-  	       (play-pattern ,play-pattern)
-  	       (stop-playback ,stop-playback))
-  	 (journal (undo ,(cute module-view-undo buf))
-  		  (redo ,(cute module-view-redo buf))))
+       (map (lambda (group)
+	 	(cons (car group)
+	 	      (map (lambda (button)
+	 		     (list (car button)
+	 			   (lambda () ((cadr button) buf))))
+	 		   (cdr group))))
+	      (module-view-toolbar 'callbacks))
        (slot-value buf 'modeline)
        'active-field))
     (set! (slot-value buf 'settings-bar)
