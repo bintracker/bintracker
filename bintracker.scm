@@ -20,6 +20,7 @@
 ;; Init pstk and fire up Tcl/Tk runtime.
 ;; This must be done prior to defining anything that depends on Tk.
 
+(tk-throw-exceptions #t)
 (tk-start)
 
 ;; disable "tearoff" style menus
