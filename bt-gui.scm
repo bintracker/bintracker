@@ -1394,7 +1394,7 @@
   		      (cadr pos))
 		;; .w 'index isn't guaranteed to return a valid result even
 		;; after update 'idletasks, so just retry until it does
-		(ui-blockview-mark->position mark)))
+		(ui-blockview-mark->position buf mark)))
 	  (ui-blockview-mark->position buf mark))))
 
   ;;; Returns the current cursor position as a list containing the row in car,
