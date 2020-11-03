@@ -2891,10 +2891,11 @@
       (ui-blockview-show-cursor buf)))
 
   (define-method (ui-blockview-cut-row primary: (buf <ui-block-view>))
-    (let* ((current-row (ui-blockview-get-current-field-instance buf))
+    (let* ((mod (ui-metastate buf 'mmod))
+	   (current-row (ui-blockview-get-current-field-instance buf))
   	   (parent-instance-path (slot-value buf 'parent-instance-path))
   	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node mod)))
   	   (block-instance-ids
   	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
   						 parent-instance)
@@ -2908,14 +2909,22 @@
   			  block-id
   			  `((,instance-id
   			     (,current-row
-  			      ,(make-list
-  				(length (mdef-get-subnode-ids
-  					 block-id
-  					 (mdef-itree (ui-metastate buf
-  								   'mdef))))
-  				;; TODO: in this case we need the actual
-  				;; block values.
-  				'()))))))
+			      ,(map (lambda (field-id)
+				      (mod-get-block-field-value
+				       ((node-path (string-append
+						    parent-instance-path
+						    "/"
+						    (symbol->string block-id)
+						    "/"
+						    (number->string instance-id)
+						    "/"))
+					(mmod-global-node mod))
+				       current-row
+				       field-id
+				       (car mod)))
+				   (mdef-get-subnode-ids
+  				    block-id
+  				    (mdef-itree (ui-metastate buf 'mdef)))))))))
   		  (slot-value buf 'block-ids)
   		  block-instance-ids)))
       (ui-blockview-show-cursor buf)))
@@ -2989,9 +2998,10 @@
 
   (define-method (ui-blockview-blockcut primary: (buf <ui-block-view>)
 					contents start end)
-    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+    (let* ((mod (ui-metastate buf 'mmod))
+	   (parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
+  	   		     (mmod-global-node mod)))
 	   (group-id (slot-value buf 'group-id))
 	   (order (mod-get-order-values group-id parent-instance))
 	   (all-field-ids (slot-value buf 'field-ids))
@@ -3025,7 +3035,19 @@
 					  "/"
 					  (number->string block-inst-id))
 			   field-id
-			   `((,(car start) ())))))
+			   `((,(car start)
+			      ,(mod-get-block-field-value
+				((node-path (string-append
+					     parent-instance-path
+					     "/"
+					     (symbol->string block-id)
+					     "/"
+					     (number->string block-inst-id)
+					     "/"))
+				 (mmod-global-node mod))
+				row
+				field-id
+				(car mod)))))))
 		 (iota (- (+ 1 (car end))
 			  (car start))
 		       (car start))))
