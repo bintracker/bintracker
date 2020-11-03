@@ -24,101 +24,101 @@ bintracker: $(BT_SRC)bintracker.scm bintracker-core.import.so\
 bintracker-core.so: $(BT_SRC)bintracker-core.scm bt-state.import.so\
  bt-types.import.so bt-gui.import.so bt-db.import.so bt-emulation.import.so\
  mdal.so $(DO_TAGS)
-	$(CSC) $(LIBFLAGS) $< -j bintracker-core -o $@
+	$(CSC) $(LIBFLAGS) $< -j bintracker-core -emit-types-file bintracker-core.types -o $@
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
 
 bintracker-core.import.so: bintracker-core.so
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
 
 bt-types.so: $(BT_SRC)bt-types.scm
-	$(CSC) $(LIBFLAGS) $< -j bt-types -o $@
+	$(CSC) $(LIBFLAGS) $< -j bt-types -emit-types-file bt-types.types -o $@
 
 bt-types.import.so: bt-types.so
 	$(CSC) $(IMPORTFLAGS) bt-types.import.scm
 
 bt-state.so: $(BT_SRC)bt-state.scm bt-types.import.so bt-db.import.so\
  bt-emulation.import.so mdal.so
-	$(CSC) $(LIBFLAGS) $< -j bt-state -o $@
+	$(CSC) $(LIBFLAGS) $< -j bt-state -emit-types-file bt-state.types -o $@
 
 bt-state.import.so: bt-state.so
 	$(CSC) $(IMPORTFLAGS) bt-state.import.scm
 
 bt-db.so: $(BT_SRC)bt-db.scm mdal.so
-	$(CSC) $(LIBFLAGS) $< -j bt-db -o $@
+	$(CSC) $(LIBFLAGS) $< -j bt-db -emit-types-file bt-db.types -o $@
 
 bt-db.import.so: bt-db.so
 	$(CSC) $(IMPORTFLAGS) bt-db.import.scm
 
 bt-emulation.so: $(BT_SRC)bt-emulation.scm
-	$(CSC) $(LIBFLAGS) $< -j bt-emulation -o $@
+	$(CSC) $(LIBFLAGS) $< -j bt-emulation -emit-types-file bt-emulation.types -o $@
 
 bt-emulation.import.so: bt-emulation.so
 	$(CSC) $(IMPORTFLAGS) bt-emulation.import.scm
 
 bt-gui.so: $(BT_SRC)bt-gui.scm bt-state.import.so bt-types.import.so bt-db.import.so\
  bt-emulation.import.so bt-gui-lolevel.import.so mdal.so
-	$(CSC) $(LIBFLAGS) $< -j bt-gui -o $@
+	$(CSC) $(LIBFLAGS) $< -j bt-gui -emit-types-file bt-gui.types -o $@
 
 bt-gui.import.so: bt-gui.so
 	$(CSC) $(IMPORTFLAGS) bt-gui.import.scm
 
 bt-gui-lolevel.so: $(BT_SRC)bt-gui-lolevel.scm bt-state.import.so\
  bt-types.import.so bt-emulation.import.so
-	$(CSC) $(LIBFLAGS) $< -j bt-gui-lolevel -o $@
+	$(CSC) $(LIBFLAGS) $< -j bt-gui-lolevel -emit-types-file bt-gui-lolevel.types -o $@
 
 bt-gui-lolevel.import.so: bt-gui-lolevel.so
 	$(CSC) $(IMPORTFLAGS) bt-gui-lolevel.import.scm
 
 mdal.so: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-def.import.so\
  md-parser.import.so schemta.import.so
-	$(CSC) $(LIBFLAGS) $< -j mdal -o $@
+	$(CSC) $(LIBFLAGS) $< -j mdal -emit-types-file mdal.types -o $@
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
 
 md-helpers.so: $(MDAL_SRC)md-helpers.scm
-	$(CSC) $(LIBFLAGS) $< -j md-helpers -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-helpers -emit-types-file md-helpers.types -o $@
 
 md-helpers.import.so: md-helpers.so
 	$(CSC) $(IMPORTFLAGS) md-helpers.import.scm
 
 md-types.so: $(MDAL_SRC)md-types.scm md-helpers.import.so
-	$(CSC) $(LIBFLAGS) $< -j md-types -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-types -emit-types-file md-types.types -o $@
 
 md-types.import.so: md-types.so
 	$(CSC) $(IMPORTFLAGS) md-types.import.scm
 
 md-note-table.so: $(MDAL_SRC)utils/md-note-table.scm
-	$(CSC) $(LIBFLAGS) $< -j md-note-table -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-note-table -emit-types-file md-note-table.types -o $@
 
 md-note-table.import.so: md-note-table.so
 	$(CSC) $(IMPORTFLAGS) md-note-table.import.scm
 
 md-audio.so: $(MDAL_SRC)utils/md-audio.scm
-	$(CSC) $(LIBFLAGS) $< -j md-audio -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-audio -emit-types-file md-audio.types -o $@
 
 md-audio.import.so: md-audio.so
 	$(CSC) $(IMPORTFLAGS) md-audio.import.scm
 
 md-command.so: $(MDAL_SRC)md-command.scm md-helpers.import.so
-	$(CSC) $(LIBFLAGS) $< -j md-command -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-command -emit-types-file md-command.types -o $@
 
 md-command.import.so: md-command.so
 	$(CSC) $(IMPORTFLAGS) md-command.import.scm
 
 md-def.so: $(MDAL_SRC)md-def.scm $(BASEDEPS) md-command.import.so\
  md-note-table.import.so md-audio.import.so schemta.import.so
-	$(CSC) $(LIBFLAGS) $< -j md-def -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-def -emit-types-file md-def.types -o $@
 
 md-def.import.so: md-def.so
 	$(CSC) $(IMPORTFLAGS) md-def.import.scm
 
 md-parser.so: $(MDAL_SRC)md-parser.scm $(BASEDEPS) md-def.import.so
-	$(CSC) $(LIBFLAGS) $< -j md-parser -o $@
+	$(CSC) $(LIBFLAGS) $< -j md-parser -emit-types-file md-parser.types -o $@
 
 md-parser.import.so: md-parser.so
 	$(CSC) $(IMPORTFLAGS) md-parser.import.scm
 
 schemta.so: $(MDAL_SRC)schemta.scm
-	$(CSC) $(LIBFLAGS) $< -j schemta -o $@
+	$(CSC) $(LIBFLAGS) $< -j schemta -emit-types-file schemta.types -o $@
 
 schemta.import.so: schemta.so
 	$(CSC) $(IMPORTFLAGS) schemta.import.scm
