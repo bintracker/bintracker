@@ -59,6 +59,7 @@ nav:
          - "bintracker-core": 'generated/bintracker-core.md'
          - "bt-types": 'generated/bt-types.md'
          - "bt-state": 'generated/bt-state.md'
+         - "bt-maths": 'generated/bt-maths.md'
          - "bt-gui": 'generated/bt-gui.md'
          - "bt-gui-lolevel": 'generated/bt-gui-lolevel.md'
          - "bt-emulation": 'generated/bt-emulation.md'

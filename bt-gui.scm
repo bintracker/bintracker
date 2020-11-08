@@ -12,7 +12,7 @@
 	  (chicken random) (chicken condition) (chicken port)
 	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
 	  coops typed-records pstk stack comparse matchable
-	  bt-gui-lolevel bt-state bt-types bt-emulation bt-db mdal)
+	  bt-maths bt-gui-lolevel bt-state bt-types bt-emulation bt-db mdal)
 
   (reexport bt-gui-lolevel)
 
@@ -2442,84 +2442,87 @@
 	       (field-ids (slot-value buf 'field-ids))
 	       (field-index (lambda (id)
 			      (list-index (cute eqv? <> id) field-ids))))
-      (letrec ((interpolate-values
-		(lambda (vals)
-		  (cond
-		   ((< (length (remove null? vals)) 2) vals)
-		   ((null? (car vals))
-		    (append (take-while null? vals)
-			    (interpolate-values (drop-while null? vals))))
-		   (else
-		    (case interpolation-type
-		      ((linear)
-		       (let ((start-val (car vals))
-			     (end-val (car (drop-while null? (cdr vals))))
-			     (len (+ 1 (length (take-while null? (cdr vals))))))
-			 (if (< len 2)
-			     (cons start-val (interpolate-values (cdr vals)))
-			     (append
-			      (cons start-val
-				    (map (o inexact->exact round)
-					 (iota (sub1 len)
-					       (+ start-val
-						  (/ (- end-val start-val) len))
-					       (/ (- end-val start-val) len))))
-			      (interpolate-values (drop vals len))))))
-		      ((cosine)
-		       (let* ((start-val (car vals))
-			      (end-val (car (drop-while null? (cdr vals))))
-			      (len (+ 1 (length (take-while null? (cdr vals)))))
-			      (cosine-interpolate
-			       (lambda (mu)
-				 (let ((mu2 (/ (- 1 (cos (* mu 3.1415926535)))
-					       2)))
-				   (inexact->exact
-				    (round (+ (* start-val (- 1 mu2))
-					      (* end-val mu2))))))))
-			 (if (< len 2)
-			     (cons start-val (interpolate-values (cdr vals)))
-			     (append
-			      (cons start-val
-				    (map cosine-interpolate
-					 (iota (sub1 len) 0 (/ 1 len))))
-			      (interpolate-values (drop vals len))))))
-		      ;; spline, trigonometric
-		      ((polynominal) vals)
-		      (else (error 'ui-interpolate
-				   (string-append
-				    "Unknown interpolation type "
-				    (->string interpolation-type))))))))))
+      (letrec*
+	  ((map-to-keys
+	    (lambda (keys vals)
+	      (map (lambda (x)
+		     (if (null? x)
+			 '()
+			 (caar (sort (map (lambda (kv)
+					    (cons (car kv)
+						  (abs (- (cdr kv) x))))
+					  (hash-table->alist keys))
+				     (lambda (x y)
+				       (< (cdr x) (cdr y)))))))
+		   vals)))
+	   (interpolate-columns
+	    (lambda (columns commands)
+	      (if (null? commands)
+		  '()
+		  (let ((cmd-type
+			 (command-type (car commands)))
+			(have-modifiers
+			 (and (>= 2 (length columns))
+			      (memv 'enable-modifiers
+				    (command-flags (car commands))))))
+		    (if have-modifiers
+			(let* ((keys (command-keys (car commands)))
+			       (raw-vals
+				(interpolate
+				 (map (lambda (field1 field2)
+					(if (null? field1)
+					    '()
+					    (eval-modifier
+					     (hash-table-ref keys field1)
+					     field2)))
+				      (car columns)
+				      (cadr columns))
+				 interpolation-type))
+			       (key-vals (map-to-keys keys raw-vals)))
+			  (append
+			   (list key-vals
+				 (map (lambda (raw-val key)
+					(let ((offset (- raw-val
+							 (hash-table-ref keys
+									 key))))
+					  (if (= 0 offset)
+					      '()
+					      (string->symbol
+					       (string-append
+						(number->string (abs offset))
+						(if (negative? offset)
+						    "-"
+						    "+"))))))
+				      raw-vals
+				      key-vals))
+			   (interpolate-columns (drop columns 2)
+						(drop commands 2))))
+			(cons (case cmd-type
+				((key ukey)
+				 (let ((keys (command-keys (car commands))))
+				   (map-to-keys
+				    keys
+				    (interpolate
+				     (map (lambda (field)
+					    (if (null? field)
+						'()
+						(hash-table-ref keys field)))
+					  (car columns))
+				     interpolation-type))))
+				((int uint)
+				 (interpolate (car columns)
+					      interpolation-type))
+				(else (car columns)))
+			      (interpolate-columns (cdr columns)
+						   (cdr commands)))))))))
 	(edit buf 'current 'set
-	      (map (lambda (column command)
-		     (case (command-type command)
-		       ((key ukey)
-			(let* ((keys (command-keys command))
-			       (kv-alist (hash-table->alist keys)))
-			  (map (lambda (x)
-				 (if (null? x)
-				     '()
-				     (caar
-				      (sort (map (lambda (kv)
-						   `(,(car kv)
-						     . ,(abs (- (cdr kv) x))))
-						 kv-alist)
-					    (lambda (x y)
-					      (< (cdr x) (cdr y)))))))
-			       (interpolate-values
-				(map (lambda (field)
-				       (if (null? field)
-					   '()
-					   (hash-table-ref keys field)))
-				     column)))))
-		       ((int uint)
-			(interpolate-values column))
-		       (else column)))
-		   selected-contents
-		   (map (cute mdef-get-inode-source-command
-			  <> (ui-metastate buf 'mdef))
-			(drop (take field-ids
-				    (+ 1 (field-index (cadddr selection))))
-			      (field-index (cadr selection)))))))
+	      (interpolate-columns
+	       selected-contents
+	       (map (cute mdef-get-inode-source-command
+		      <> (ui-metastate buf 'mdef))
+		    (drop (take field-ids
+				(+ 1 (field-index (cadddr selection))))
+			  (field-index (cadr selection)))))))
       (ui-blockview-tag-selection buf)))
 
   ;;; Invert selected numeric values

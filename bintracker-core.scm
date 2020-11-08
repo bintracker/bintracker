@@ -11,10 +11,10 @@
 	  (chicken file) (chicken random) (chicken condition)
 	  srfi-1 srfi-13 srfi-14 srfi-18 srfi-69
 	  pstk typed-records matchable list-utils comparse coops sqlite3
-	  mdal bt-state bt-types bt-db bt-emulation bt-gui)
+	  mdal bt-maths bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
-  (reexport mdal pstk bt-types bt-state bt-db bt-emulation bt-gui
+  (reexport mdal pstk bt-maths bt-types bt-state bt-db bt-emulation bt-gui
 	    (chicken base) (chicken string) (chicken module) (chicken bitwise)
 	    (chicken file) (chicken platform) (chicken random)
 	    (chicken condition)

@@ -61,6 +61,7 @@
      onode-fn
      onode-asm-cache
      display-onode
+     eval-modifier
      eval-effective-field-val
      eval-group-field
      backtrace-block-fields
@@ -701,6 +702,8 @@
   ;;; address (if it can be deduced, otherwise #f), and the updated list of
   ;;; symbols.
 
+  ;;; Calculate the result of applying the modifier command value MODIFIER-VAL
+  ;;; to the integer value RAW-VAL.
   (define (eval-modifier raw-val modifier-val)
     (if (null? modifier-val)
 	raw-val

@@ -22,13 +22,20 @@ bintracker: $(BT_SRC)bintracker.scm bintracker-core.import.so\
 
 # build bintracker-core
 bintracker-core.so: $(BT_SRC)bintracker-core.scm bt-state.import.so\
- bt-types.import.so bt-gui.import.so bt-db.import.so bt-emulation.import.so\
- mdal.so $(DO_TAGS)
+ bt-maths.import.so bt-types.import.so bt-gui.import.so bt-db.import.so\
+ bt-emulation.import.so\
+ mdal.import.so $(DO_TAGS)
 	$(CSC) $(LIBFLAGS) $< -j bintracker-core -emit-types-file bintracker-core.types -o $@
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
 
 bintracker-core.import.so: bintracker-core.so
 	$(CSC) $(IMPORTFLAGS) bintracker-core.import.scm
+
+bt-maths.so: $(BT_SRC)bt-maths.scm
+	$(CSC) $(LIBFLAGS) $< -j bt-maths -emit-types-file bt-maths.types -o $@
+
+bt-maths.import.so: bt-maths.so
+	$(CSC) $(IMPORTFLAGS) bt-maths.import.scm
 
 bt-types.so: $(BT_SRC)bt-types.scm
 	$(CSC) $(LIBFLAGS) $< -j bt-types -emit-types-file bt-types.types -o $@
@@ -137,6 +144,7 @@ gendoc/generated/%.md: $(MDAL_SRC)%.scm
 gendoc/generated/bintracker-core.md: $(BT_SRC)bintracker-core.scm
 gendoc/generated/bt-gui.md: $(BT_SRC)bt-gui.scm
 gendoc/generated/bt-gui-lolevel.md: $(BT_SRC)bt-gui-lolevel.scm
+gendoc/generated/bt-maths.md: $(BT_SRC)bt-maths.scm
 gendoc/generated/bt-state.md: $(BT_SRC)bt-state.scm
 gendoc/generated/bt-types.md: $(BT_SRC)bt-types.scm
 gendoc/generated/bt-emulation.md: $(BT_SRC)bt-emulation.scm
@@ -156,6 +164,7 @@ docs: gendoc-dirs\
  gendoc/generated/bintracker-core.md\
  gendoc/generated/bt-gui.md\
  gendoc/generated/bt-gui-lolevel.md\
+ gendoc/generated/bt-maths.md\
  gendoc/generated/bt-state.md\
  gendoc/generated/bt-types.md\
  gendoc/generated/bt-db.md\
@@ -183,6 +192,7 @@ gendoc-dirs:
 
 # Generate ETags file for Emacs
 TAGS: $(BT_SRC)bt-types.scm\
+ $(BT_SRC)bt-maths.scm\
  $(BT_SRC)bt-state.scm\
  $(BT_SRC)bt-gui-lolevel.scm\
  $(BT_SRC)bt-gui.scm\
@@ -198,7 +208,7 @@ TAGS: $(BT_SRC)bt-types.scm\
  $(MDAL_SRC)md-types.scm\
  $(MDAL_SRC)md-helpers.scm\
  $(MDAL_SRC)mdal.scm
-	cd .. && etags -r '"  (def.*? "' bt-types.scm bt-state.scm\
+	cd .. && etags -r '"  (def.*? "' bt-maths.scm bt-types.scm bt-state.scm\
  bt-gui-lolevel.scm bt-gui.scm bt-db.scm bt-emulation.scm bintracker-core.scm\
  libmdal/schemta.scm libmdal/md-parser.scm libmdal/md-def.scm\
  libmdal/md-command.scm libmdal/md-types.scm libmdal/md-helpers.scm\
