@@ -172,4 +172,4 @@
 ;; whitespace.
 (bind-keys! 'plugins '<Alt-Key-M> 'mml)
 (bind-keys! 'plugins '<Alt-Key-Z> 'unzufall)
-(plugins 'register "mml unzufall")
+(plugins 'register "extra-formats mml unzufall key algocomp ssmc")

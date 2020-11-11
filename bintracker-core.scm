@@ -11,15 +11,16 @@
 	  (chicken file) (chicken random) (chicken condition)
 	  srfi-1 srfi-13 srfi-14 srfi-18 srfi-69
 	  pstk typed-records matchable list-utils comparse coops sqlite3
+	  bitstring
 	  mdal bt-maths bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-maths bt-types bt-state bt-db bt-emulation bt-gui
 	    (chicken base) (chicken string) (chicken module) (chicken bitwise)
-	    (chicken file) (chicken platform) (chicken random)
+	    (chicken file) (chicken platform) (chicken random) (chicken io)
 	    (chicken condition)
   	    srfi-1 srfi-13 srfi-14 srfi-18 srfi-69 coops list-utils
-	    comparse
+	    bitstring comparse
 	    (only sqlite3 execute))
 
 
@@ -94,9 +95,9 @@
 				   ,(key-binding->info 'global 'save-file-as)
 				   ,save-file-as)
 			  (submenu export "Export" 0
-				   ((command bin ".asm" 0 "Alt+X A"
+				   ((command asm ".asm" 1 "Alt+X A"
 					     ,export-asm)
-				    (command bin ".bin" 0 "Alt+X B"
+				    (command bin ".bin" 1 "Alt+X B"
 					     ,export-bin)))
 			  (command close "Close" 0
 				   ,(key-binding->info 'global 'close-file)
