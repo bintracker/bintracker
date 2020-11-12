@@ -1597,6 +1597,10 @@
   			 (iota (bv-field-config-cursor-digits field-cfg))))
   		  (map cadr (slot-value buf 'field-configs)))))
 
+  (define-method (ui-blockview-column-x-positions primary:
+						  (buf <ui-basic-block-view>))
+    (map bv-field-config-start (map cadr (slot-value buf 'field-configs))))
+
   ;;; Show or hide the blockview's cursor. ACTION shall be `'add` or
   ;;; `'remove`.
   (define-method (ui-blockview-cursor-do primary: (buf <ui-basic-block-view>)
@@ -1637,9 +1641,14 @@
       ((slot-value buf 'rownums) 'see
        (textgrid-position->tk-index actual-row 0))))
 
-  ;;; Move the blockview's cursor in DIRECTION.
+  ;;; Move the blockview's cursor in DIRECTION, which must be one of `Up`,
+  ;;; `Down`, `Home`, `End`, `Left` or `Right`. If moving Down, STEP specifies
+  ;;; specifies the number of rows to move, otherwise the argument is ignored.
+  ;;; If SELECTING is `#t`, Left/Right movement will move in column increments,
+  ;;; rather than cursor positions.
   (define-method (ui-blockview-move-cursor-common
-  		  primary: (buf <ui-basic-block-view>) direction step)
+  		  primary: (buf <ui-basic-block-view>) direction step
+		  #!optional selecting)
     (let* ((grid (slot-value buf 'block-content))
   	   (current-pos (ui-blockview-get-cursor-position buf))
   	   (current-row (car current-pos))
@@ -1672,11 +1681,16 @@
   			  (sub1 total-length)))))
   	 (else current-row))
        (case direction
-  	 ((Left) (or (find (cute < <> current-char)
-  			   (reverse (ui-blockview-cursor-x-positions buf)))
-  		     (car (reverse (ui-blockview-cursor-x-positions buf)))))
+  	 ((Left) (let ((cursor-positions (if selecting
+					     ui-blockview-column-x-positions
+					     ui-blockview-cursor-x-positions)))
+		   (or (find (cute < <> current-char)
+  			     (reverse (cursor-positions buf)))
+  		       (car (reverse (cursor-positions buf))))))
   	 ((Right) (or (find (cute > <> current-char)
-  			    (ui-blockview-cursor-x-positions buf))
+  			    (if selecting
+				(ui-blockview-column-x-positions buf)
+				(ui-blockview-cursor-x-positions buf)))
   		      0))
   	 (else current-char)))
       (when (memv direction '(Left Right))
@@ -2131,7 +2145,7 @@
   			    keysym)
     (let ((local-start (list (ui-blockview-get-current-row buf)
   			     (ui-blockview-get-current-field-id buf))))
-      (ui-blockview-move-cursor buf keysym)
+      (ui-blockview-move-cursor buf keysym #t)
       (set! (ui-selection buf)
   	(append (if (ui-selection buf)
   		    (take (ui-selection buf) 2)
@@ -3113,13 +3127,14 @@
       (ui-blockview-tag-active-zone ov)))
 
   (define-method (ui-blockview-move-cursor primary: (buf <ui-block-view>)
-  					   direction)
+  					   direction #!optional selecting)
     (let ((active-first-row (car (ui-blockview-get-active-zone buf))))
       (ui-blockview-move-cursor-common buf
   				       direction
   				       (if (zero? (ui-metastate buf 'edit-step))
   					   1
-  					   (ui-metastate buf 'edit-step)))
+  					   (ui-metastate buf 'edit-step))
+				       selecting)
       (unless (= active-first-row (car (ui-blockview-get-active-zone buf)))
 	(ui-blockview-set-sibling-cursor buf))))
 
@@ -3375,8 +3390,8 @@
       (ui-blockview-tag-active-zone bv)))
 
   (define-method (ui-blockview-move-cursor primary: (buf <ui-order-view>)
-  					   direction)
-    (ui-blockview-move-cursor-common buf direction 1)
+  					   direction #!optional selecting)
+    (ui-blockview-move-cursor-common buf direction 1 selecting)
     (ui-blockview-tag-active-zone buf)
     (when (memv direction '(Up Down))
       (ui-blockview-set-sibling-cursor buf)))
