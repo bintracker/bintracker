@@ -2101,22 +2101,39 @@
   	   (y1 (car selection))
   	   (x1 (list-index (cute eqv? <> (cadr selection)) field-ids))
   	   (y2 (caddr selection))
-  	   (x2 (list-index (cute eqv? <> (cadddr selection)) field-ids)))
-      (textgrid-remove-tags-globally (slot-value buf 'block-content)
-  				     '(selected))
+  	   (x2 (list-index (cute eqv? <> (cadddr selection)) field-ids))
+	   (fc2 (cadr (list-ref (slot-value buf 'field-configs)
+  				(max x1 x2))))
+	   (x-end (+ (bv-field-config-start fc2)
+  		     (bv-field-config-width fc2)))
+	   (x-start (bv-field-config-start
+		     (cadr (list-ref (slot-value buf 'field-configs)
+  				     (min x1 x2)))))
+	   (end-index (string-append (number->string (+ 1 (max y1 y2)))
+				     "."
+				     (number->string (+ 1 x-end)))))
+      (when (or (not (string-null?
+		      ((slot-value buf 'block-content)
+		       'tag 'nextrange 'selected end-index)))
+		(not (string-null?
+		      ((slot-value buf 'block-content) 'tag 'prevrange 'selected
+		       (string-append (number->string (+ 1 (min y1 y2)))
+				      "."
+				      (number->string x-start)))))
+		(string-contains
+		 ((slot-value buf 'block-content) 'tag 'names end-index)
+		 "selected"))
+	(textgrid-remove-tags-globally (slot-value buf 'block-content)
+  				       '(selected)))
       (for-each (lambda (row)
   		  (textgrid-add-tags
   		   (slot-value buf 'block-content)
   		   'selected
   		   row
   		   (bv-field-config-start
-  		    (cadr
-  		     (list-ref (slot-value buf 'field-configs)
-  			       (min x1 x2))))
-  		   (let ((fc2 (cadr (list-ref (slot-value buf 'field-configs)
-  					      (max x1 x2)))))
-  		     (+ (bv-field-config-start fc2)
-  			(bv-field-config-width fc2)))))
+  		    (cadr (list-ref (slot-value buf 'field-configs)
+  				    (min x1 x2))))
+		   x-end))
   		(iota (+ 1 (abs (- y2 y1)))
   		      (min y1 y2)))))
 
