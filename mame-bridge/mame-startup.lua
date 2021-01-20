@@ -1,5 +1,5 @@
 -- This file is part of Bintracker.
--- Copyright (c) utz/irrlicht project 2019-2020
+-- Copyright (c) utz/irrlicht project 2019-2021
 -- See LICENSE for license details.
 
 -- io.stdin:setvbuf'line'
@@ -7,17 +7,24 @@
 local listener = emu.thread()
 local started = false
 
+local machine_manager
+if tonumber(emu.app_version()) >= 0.227 then
+   machine_manager = manager.machine
+else
+   machine_manager = manager:machine()
+end
+
 local print_machine_info = function ()
    print("System: ", emu.gamename())
    print("driver: ", emu.romname())
-   print("\nMachine devices [manager:machine().devices]")
-   for k,v in pairs(manager:machine().devices) do print(k) end
+   print("\nMachine devices [machine_manager.devices]")
+   for k,v in pairs(machine_manager.devices) do print(k) end
    print("\nMachine options")
    -- appearantly this is the same as calling manager:options().entries
-   for k,v in pairs(manager:machine():options().entries) do
+   for k,v in pairs(machine_manager:options().entries) do
       print(k, "=", v:value())
    end
-   local cpu = manager:machine().devices[":maincpu"]
+   local cpu = machine_manager.devices[":maincpu"]
    print("\nCPU State Registers\nState:")
    for k,v in pairs(cpu.state) do print(k, v.value) end
    -- print("\nSpaces:")
@@ -26,13 +33,13 @@ local print_machine_info = function ()
    -- for k,v in pairs(cpu.items) do print(k) end
    print("\nMemory layout")
    for k,v in pairs(cpu.spaces) do print(k) end
-   local cartslot = manager:machine().devices[":cartslot"]
+   local cartslot = machine_manager.devices[":cartslot"]
    print("\nCartridge:");
    for k,v in pairs(cartslot.spaces) do print(k) end
    print("\nShares all:\n")
-   for k,v in pairs(manager:machine():memory().shares) do print (k) end
+   for k,v in pairs(machine_manager:memory().shares) do print (k) end
    print("\nRegions all:\n")
-   for k,v in pairs(manager:machine():memory().regions) do print (k) end
+   for k,v in pairs(machine_manager:memory().regions) do print (k) end
    -- print("\nRegions maincpu")
    -- local regions = manager:machine():memory().regions[":maincpu"]
    -- print((tostring(regions)))
@@ -45,7 +52,7 @@ local loader_type = 0 -- 0 = RAM, 1 = cartridge
 local default_run_address = false
 
 local machine_set_pc = function (addr)
-   manager:machine().devices[":maincpu"].state[pc_name].value = tonumber(addr)
+   machine_manager.devices[":maincpu"].state[pc_name].value = tonumber(addr)
 end
 
 local machine_load_bin = function (addr, data)
@@ -53,10 +60,10 @@ local machine_load_bin = function (addr, data)
    local mem
    local local_addr = addr
    if loader_type == 0 then
-      mem = manager:machine().devices[":maincpu"].spaces["program"]
+      mem = machine_manager.devices[":maincpu"].spaces["program"]
    else
       do
-	 mem = manager:machine():memory().regions[":cartslot:cart:rom"]
+	 mem = machine_manager:memory().regions[":cartslot:cart:rom"]
 	 local_addr = 0
       end
    end
@@ -121,9 +128,9 @@ end
 
 local machine_reset = function (reset_type)
    if reset_type == "h" then
-      manager:machine():hard_reset()
+      machine_manager:hard_reset()
    elseif reset_type == "s" then
-      manager:machine():soft_reset()
+      machine_manager:soft_reset()
    end
 end
 
@@ -139,7 +146,7 @@ local remote_commands = {
    ["d"] = function (argstr) default_run_address = tonumber(argstr) end,
    ["l"] = function (argstr) loader_type = tonumber(argstr) end,
    ["n"] = function (argstr) pc_name = argstr end,
-   ["q"] = function () manager:machine():exit() end,
+   ["q"] = function () machine_manager:exit() end,
    ["p"] = emu.pause,
    ["r"] = machine_reset,
    ["s"] = machine_set_pc,
