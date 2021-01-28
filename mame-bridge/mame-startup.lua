@@ -26,7 +26,7 @@ local print_machine_info = function ()
    print("System: ", emu.gamename())
    print("driver: ", emu.romname())
    print("\nMachine devices [machine_manager.devices]")
-   for k,v in pairs(machine_manager.devices) do print(k) end
+   for k,_ in pairs(machine_manager.devices) do print(k) end
    print("\nMachine options")
    -- appearantly this is the same as calling manager:options().entries
    for k,v in pairs(machine_manager:options().entries) do
@@ -40,16 +40,16 @@ local print_machine_info = function ()
    -- print("\nItems:")
    -- for k,v in pairs(cpu.items) do print(k) end
    print("\nMemory layout")
-   for k,v in pairs(cpu.spaces) do print(k) end
+   for k,_ in pairs(cpu.spaces) do print(k) end
    if machine_manager.devices[":cartslot"] ~= nil then
       local cartslot = machine_manager.devices[":cartslot"]
       print("\nCartridge:");
-      for k,v in pairs(cartslot.spaces) do print(k) end
+      for k,_ in pairs(cartslot.spaces) do print(k) end
    end
    print("\nShares all:\n")
-   for k,v in pairs(machine_manager:memory().shares) do print (k) end
+   for k,_ in pairs(machine_manager:memory().shares) do print (k) end
    print("\nRegions all:\n")
-   for k,v in pairs(machine_manager:memory().regions) do print (k) end
+   for k,_ in pairs(machine_manager:memory().regions) do print (k) end
    -- print("\nRegions maincpu")
    -- local regions = manager:machine():memory().regions[":maincpu"]
    -- print((tostring(regions)))
