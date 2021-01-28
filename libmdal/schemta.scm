@@ -685,8 +685,10 @@
 		  (begin (state 'done? #f) (list node)))))
       ((dw) (let ((res (list (flatten
 			      (map (lambda (arg)
-				     (word->bytes (eval-operand arg state)
-						  (state 'target)))
+				     (let ((op-res (eval-operand arg state)))
+				       (and op-res
+					    (word->bytes op-res
+							 (state 'target)))))
       				   (apply list (third node)))))))
 	      (and-let* ((org (state 'current-origin)))
 		(state 'current-origin (+ org (* 2 (length (third node))))))
@@ -695,8 +697,10 @@
 		  (begin (state 'done? #f) (list node)))))
       ((dl) (let ((res (list (flatten
 			      (map (lambda (arg)
-				     (word->bytes (eval-operand arg state)
-						  (state 'target)))
+				     (let ((op-res (eval-operand arg state)))
+				       (and op-res
+					    (long->bytes op-res
+							 (state 'target)))))
       				   (apply list (third node)))))))
 	      (and-let* ((org (state 'current-origin)))
 		(state 'current-origin (+ org (* 4 (length (third node))))))
