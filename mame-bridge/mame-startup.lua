@@ -7,11 +7,19 @@
 local listener = emu.thread()
 local started = false
 
+-- Ensure backwards compatibility with MAME <= 0.226
 local machine_manager
 if tonumber(emu.app_version()) >= 0.227 then
    machine_manager = manager.machine
 else
    machine_manager = manager:machine()
+end
+
+-- Detect system's CPU device name.
+local main_cpu = ":maincpu"
+if machine_manager.devices[":f3"] ~= nil then
+   -- using m6502 driver
+   main_cpu = ":f3"
 end
 
 local print_machine_info = function ()
@@ -24,7 +32,7 @@ local print_machine_info = function ()
    for k,v in pairs(machine_manager:options().entries) do
       print(k, "=", v:value())
    end
-   local cpu = machine_manager.devices[":maincpu"]
+   local cpu = machine_manager.devices[main_cpu]
    print("\nCPU State Registers\nState:")
    for k,v in pairs(cpu.state) do print(k, v.value) end
    -- print("\nSpaces:")
@@ -33,9 +41,11 @@ local print_machine_info = function ()
    -- for k,v in pairs(cpu.items) do print(k) end
    print("\nMemory layout")
    for k,v in pairs(cpu.spaces) do print(k) end
-   local cartslot = machine_manager.devices[":cartslot"]
-   print("\nCartridge:");
-   for k,v in pairs(cartslot.spaces) do print(k) end
+   if machine_manager.devices[":cartslot"] ~= nil then
+      local cartslot = machine_manager.devices[":cartslot"]
+      print("\nCartridge:");
+      for k,v in pairs(cartslot.spaces) do print(k) end
+   end
    print("\nShares all:\n")
    for k,v in pairs(machine_manager:memory().shares) do print (k) end
    print("\nRegions all:\n")
@@ -52,7 +62,7 @@ local loader_type = 0 -- 0 = RAM, 1 = cartridge
 local default_run_address = false
 
 local machine_set_pc = function (addr)
-   machine_manager.devices[":maincpu"].state[pc_name].value = tonumber(addr)
+   machine_manager.devices[main_cpu].state[pc_name].value = tonumber(addr)
 end
 
 local machine_load_bin = function (addr, data)
@@ -60,7 +70,7 @@ local machine_load_bin = function (addr, data)
    local mem
    local local_addr = addr
    if loader_type == 0 then
-      mem = machine_manager.devices[":maincpu"].spaces["program"]
+      mem = machine_manager.devices[main_cpu].spaces["program"]
    else
       do
 	 mem = machine_manager:memory().regions[":cartslot:cart:rom"]
