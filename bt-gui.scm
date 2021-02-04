@@ -304,7 +304,7 @@
   			  filetypes: '(((Assembly source) (.asm)))
   			  defaultextension: '.asm))
   	       (_ (not (string-null? filename))))
-      (mod-export-asm filename mmod (mdef-default-origin (current 'mdef)))))
+      (mod-export-asm filename mmod)))
 
   (define (export-bin)
     (and-let* ((mmod (current 'mmod))
@@ -312,7 +312,7 @@
   			  filetypes: '(((Binary) (.bin)))
   			  defaultextension: '.bin))
   	       (_ (not (string-null? filename))))
-      (mod-export-bin filename mmod (mdef-default-origin (current 'mdef)))))
+      (mod-export-bin filename mmod)))
 
   ;;; Calls undo on (current 'module-view).
   (define (undo)
@@ -342,10 +342,10 @@
   ;; ---------------------------------------------------------------------------
 
   (define (play-from-start)
-    (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
-  	   (origin (mdef-default-origin (car mmod))))
-      ((ui-metastate (current 'module-view) 'emulator)
-       'run origin (mod->bin mmod origin))))
+    (let ((mmod (ui-metastate (current 'module-view) 'mmod)))
+      ((ui-metastate (current 'module-view) 'emulator) 'run
+       (mdef-default-origin (car mmod))
+       (mod->bin mmod))))
 
   (define (play-pattern)
     (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
@@ -355,8 +355,7 @@
       		  mmod
       		  (slot-value (current 'blockview) 'group-id)
       		  (ui-blockview-get-current-order-pos
-      		   (current 'blockview)))
-      		 origin))))
+      		   (current 'blockview)))))))
 
   (define (stop-playback)
     ((ui-metastate (current 'module-view) 'emulator) 'pause))
@@ -4079,13 +4078,12 @@
   	     (slot-value buf 'emulator)
   	     (case (cadr args)
   	       ((play-row)
-  		(let* ((mmod (slot-value buf 'mmod))
-  		       (origin (mdef-default-origin (car mmod))))
+  		(let ((mmod (slot-value buf 'mmod)))
   		  ((slot-value buf 'emulator) 'run
-  		   origin
+  		   (mdef-default-origin (car mmod))
   		   (mod->bin (apply derive-single-row-mmod
   				    (cons mmod (cddr args)))
-  			     origin '((row-play . #t)))))))))
+  			     extra-symbols: '((row-play . #t)))))))))
   	((modified)
   	 (if (null? (cdr args))
   	     (slot-value buf 'modified)

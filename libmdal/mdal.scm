@@ -127,7 +127,9 @@
   ;;; Compile the MDAL module MOD into a list of byte values, starting at
   ;;; the target memory address ORIGIN. Optionally, EXTRA-SYMBOLS may be a list
   ;;; of additional key,value pairs to be passed to the compiler.
-  (define (mod->bin mod origin #!optional (extra-symbols '()))
+  (define (mod->bin mod
+		    #!key (origin (mdef-default-origin (mmod-mdef mod)))
+		    (extra-symbols '()))
     (flatten (map onode-val
 		  (remove (lambda (onode)
 			    (memq (onode-type onode)
@@ -136,10 +138,13 @@
 				       origin
 				       extra-symbols: extra-symbols)))))
 
-  ;;; Transpile the MDAL module MOD into assembly source code, starting at
-  ;;; the target memory address ORIGIN. Optionally, EXTRA-SYMBOLS may be a list
-  ;;; of additional key,value pairs to be passed to the compiler.
-  (define (mod->asm mod origin #!optional (extra-symbols '()))
+  ;;; Transpile the MDAL module MOD into assembly source code. ORIGIN may
+  ;;; specify the initial target memory address. If not given, the default
+  ;;; origin specified by the module's engine definition is used. EXTRA-SYMBOLS
+  ;;; may be a list of additional key,value pairs to be passed to the compiler.
+  (define (mod->asm mod
+		    #!key (origin (mdef-default-origin (mmod-mdef mod)))
+		    (extra-symbols '()))
     (let ((otree (mod-compile mod
 			      origin
 			      output-asm: #t
@@ -156,16 +161,20 @@
        "\n\n")))
 
   ;;; Compile the given module to a binary file.
-  (define (mod-export-asm filename mod origin)
+  (define (mod-export-asm filename mod
+			  #!optional (origin (mdef-default-origin
+					      (mmod-mdef mod))))
     (call-with-output-file filename
       (lambda (port)
-	(write-string (mod->asm mod origin) #f port))))
+	(write-string (mod->asm mod origin: origin) #f port))))
 
   ;;; Compile the given module to a binary file.
-  (define (mod-export-bin filename mod origin)
+  (define (mod-export-bin filename mod
+			  #!optional (origin (mdef-default-origin
+					      (mmod-mdef mod))))
     (call-with-output-file filename
       (lambda (port)
-	(write-string (list->string (mod->bin mod origin)) #f port))))
+	(write-string (list->string (mod->bin mod origin: origin)) #f port))))
 
 
   ;; ---------------------------------------------------------------------------
