@@ -1680,7 +1680,7 @@
   ;;; generators
   (define (dispatch-onode-expr expr proto-mdef mdef-dir path-prefix)
     (apply (case (car expr)
-	     ((comment) (lambda (proto-mdef mdef-dir c p)
+	     ((comment) (lambda (proto-mdef mdef-dir p c)
 			  (make-onode type: 'comment
 				      size: 0
 				      val: (string-append "; " c))))
