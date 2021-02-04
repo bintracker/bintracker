@@ -65,6 +65,13 @@ local machine_set_pc = function (addr)
    machine_manager.devices[main_cpu].state[pc_name].value = tonumber(addr)
 end
 
+-- unfreeze Z80 emulation after halt instruction
+local machine_unhalt = function ()
+   if machine_manager.devices[main_cpu].state["HALT"] ~= nil then
+      machine_manager.devices[main_cpu].state["HALT"].value = 0
+   end
+end
+
 local machine_load_bin = function (addr, data)
    local datatbl = {string.byte(data, 1, #data)}
    local mem
@@ -133,6 +140,7 @@ local machine_run_bin = function (argstr)
    else
       machine_set_pc(addr)
    end
+   machine_unhalt()
    emu.unpause()
 end
 
