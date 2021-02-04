@@ -23,6 +23,7 @@
      inode-config-instance-range
      inode-config-cmd-id
      inode-config-order-id
+     inode-config-flags
      display-inode-config
      single-instance-node?
      validate-field-value
@@ -110,7 +111,7 @@
     (max 1))
 
   (defstruct inode-config
-    type instance-range cmd-id order-id)
+    type instance-range cmd-id order-id (flags '()))
 
   (define (display-inode-config cfg)
     (printf "#<inode-config\n")
