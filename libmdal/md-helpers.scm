@@ -63,6 +63,18 @@
 	  byte-list
 	  (reverse byte-list))))
 
+  ;;; Convert a list of bytes to `.db` assembly statements.
+  (define (bytes->asm bytes)
+    (string-append "    .db $"
+		   (string-intersperse
+		    (map (lambda (byte)
+			   (string-pad (number->string (char->integer byte)
+						       #x10)
+				       2
+				       #\0))
+			 bytes)
+		    ", $")))
+
   ;;; Add a key/value pair to the hash-table HT.
   ;;; Will be ignored if KEY is already in HT.
   (define (add-hash-table-entry ht key value)

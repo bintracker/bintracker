@@ -115,71 +115,45 @@
 		     (mmod-mdef mod)))
 	    port))))
 
-  ;; TODO and a list of symbols for mod->asm?
   ;;; Compile a module to an onode tree.
-  (define (mod-compile mod origin #!optional (extra-symbols '()))
+  (define (mod-compile mod origin #!key output-asm (extra-symbols '()))
     ((mdef-compiler (mmod-mdef mod))
-     mod origin (cons `(mdal_current_module . ,mod)
-		      extra-symbols)))
+     mod
+     origin
+     output-asm: output-asm
+     extra-symbols: (cons `(mdal_current_module . ,mod)
+			  extra-symbols)))
 
-  ;;; Compile a module into a list of byte values.
+  ;;; Compile the MDAL module MOD into a list of byte values, starting at
+  ;;; the target memory address ORIGIN. Optionally, EXTRA-SYMBOLS may be a list
+  ;;; of additional key,value pairs to be passed to the compiler.
   (define (mod->bin mod origin #!optional (extra-symbols '()))
     (flatten (map onode-val
 		  (remove (lambda (onode)
 			    (memq (onode-type onode)
 				  '(comment symbol)))
-			  (mod-compile mod origin extra-symbols)))))
+			  (mod-compile mod
+				       origin
+				       extra-symbols: extra-symbols)))))
 
-  ;;; Compile an module into an assembly source
+  ;;; Transpile the MDAL module MOD into assembly source code, starting at
+  ;;; the target memory address ORIGIN. Optionally, EXTRA-SYMBOLS may be a list
+  ;;; of additional key,value pairs to be passed to the compiler.
   (define (mod->asm mod origin #!optional (extra-symbols '()))
-    (let ((otree (mod-compile mod origin extra-symbols)))
+    (let ((otree (mod-compile mod
+			      origin
+			      output-asm: #t
+			      extra-symbols: extra-symbols)))
       (string-intersperse
        (append
-	(list (string-append "    .org " (number->string origin) "\n"))
+	(list (string-append "    .org $" (number->string origin #x10)))
 	(map (lambda (sym)
 	       (string-append (symbol->string (car sym))
 			      " .equ "
 			      (->string (cdr sym))))
 	     extra-symbols)
-	(map (lambda (node)
-	       (case (onode-type node)
-		 ((comment)
-		  (string-append "; " (onode-val node)))
-		 ((asm)
-		  (onode-asm-cache node))
-		 ((field)
-		  (string-append "    .db "
-				 (string-intersperse
-				  (map (o number->string char->integer)
-				       (onode-val node))
-				  ", ")))
-		 ((symbol)
-		  (if (pair? (onode-asm-cache node))
-		      (string-append
-		       (symbol->string (car (onode-asm-cache node)))
-		       " .equ "
-		       (->string (cdr (onode-asm-cache node))))
-		      (symbol->string (onode-asm-cache node))))
-		 ((order)
-		  (string-append "; order\n    .db "
-				 (string-intersperse
-				  (map (o number->string char->integer)
-				       (onode-val node))
-				  ", ")))
-		 ((group)
-		  (string-intersperse
-		   (flatten
-		    (map (lambda (block)
-			   (string-append "    .db "
-					  (string-intersperse
-					   (map (o number->string
-						   char->integer)
-						(flatten block)))))
-			 (onode-val node)))
-		   "\n"))
-		 (else (onode-type node))))
-	     otree))
-       "\n")))
+	(map onode-val otree))
+       "\n\n")))
 
   ;;; Compile the given module to a binary file.
   (define (mod-export-asm filename mod origin)

@@ -59,7 +59,6 @@
      onode-size
      onode-val
      onode-fn
-     onode-asm-cache
      display-onode
      eval-modifier
      eval-effective-field-val
@@ -373,7 +372,7 @@
   ;; ---------------------------------------------------------------------------
 
   (defstruct onode
-    type size val fn asm-cache)
+    type size val fn)
 
   (define (onode-resolved? onode)
     (not (onode-fn onode)))
@@ -583,7 +582,8 @@
 			    instance-range: (get-inode-range
 					     type min-instances max-instances
 					     instances parent-type)
-			    cmd-id: from))
+			    cmd-id: from
+			    flags: (if (list? flags) flags '())))
 		     (or modifier-node (append subnodes order-nodes)))))))
       (apply eval-node node-expr)))
 
@@ -907,34 +907,47 @@
      type: 'symbol
      size: 0
      fn: (cond
-	  (value (lambda (onode parent-inode mdef current-org md-symbols)
-		   (list (make-onode type: 'symbol
-				     size: 0
-				     val: #t
-				     asm-cache: id)
+	  (value (lambda (onode parent-inode mdef current-org md-symbols
+				output-asm)
+		   (list (make-onode
+			  type: 'symbol
+			  size: 0
+			  val: (or (not output-asm)
+				   (string-append (symbol->string id)
+						  " .equ $"
+						  (number->string value #x10))))
 			 current-org
 			 (cons (cons id value) md-symbols))))
 	  (compose
 	   (let ((compose-proc (transform-compose-expr compose proto-mdef))
 		 (required-symbols (get-required-symbols compose)))
-	     (lambda (onode parent-inode mdef current-org md-symbols)
+	     (lambda (onode parent-inode mdef current-org md-symbols
+			    output-asm)
 	       (if (have-required-symbols required-symbols md-symbols)
 		   (let ((symbol-val (compose-proc 0 parent-inode
 						   md-symbols mdef)))
-		     (list (make-onode type: 'symbol size: 0 val: #t
-				       asm-cache: (cons id symbol-val))
+		     (list (make-onode
+			    type: 'symbol
+			    size: 0
+			    val: (or (not output-asm)
+				     (string-append (symbol->string id)
+						    " .equ $"
+						    (number->string
+						     symbol-val #x10))))
 			   current-org
 			   (cons (cons id symbol-val)
 				 md-symbols)))
 		   (list onode current-org md-symbols)))))
-	  (else (lambda (onode parent-inode mdef current-org md-symbols)
+	  (else (lambda (onode parent-inode mdef current-org md-symbols
+			       output-asm)
 		  (if current-org
-		      (list (make-onode type: 'symbol size: 0 val: #t
-					asm-cache: id)
+		      (list (make-onode type: 'symbol
+					size: 0
+					val: (or (not output-asm)
+						 (symbol->string id)))
 			    current-org
 			    (cons (cons id current-org) md-symbols))
-		      (list onode #f md-symbols)))))
-     asm-cache: id))
+		      (list onode #f md-symbols)))))))
 
   ;; TODO passing in all of md-symbols may cause namespace clashes
   (define (make-oasm proto-mdef mdef-dir path-prefix #!key file code)
@@ -950,40 +963,41 @@
   	   (non-looping-result (non-looping-asm 'result)))
       (make-onode
        type: 'asm
-       fn:
-       (if (and looping-result non-looping-result)
-  	   (lambda (onode parent-inode mdef current-org md-symbols)
-  	     (let ((no-loop? (alist-ref 'row-play md-symbols)))
-  	       (list (make-onode type: 'asm
-  				 size: (if no-loop?
-  					   (length non-looping-result)
-  					   (length looping-result))
-  				 val: (if no-loop?
-  					  non-looping-result
-  					  looping-result)
-				 asm-cache: source)
-		     (and current-org
-			  (+ current-org (if no-loop?
-  					     (length non-looping-result)
-  					     (length looping-result))))
-		     md-symbols)))
-	   (lambda (onode parent-inode mdef current-org md-symbols)
-	     (let* ((no-loop? (alist-ref 'row-play md-symbols))
-		    (asm (if no-loop?
-			     (non-looping-asm 'copy)
-			     (looping-asm 'copy)))
-		    (res (begin (asm 'symbols md-symbols)
-				(asm 'assemble 3)
-				(asm 'result))))
-	       (if res
-		   (list (make-onode type: 'asm size: (length res) val: res
-				     asm-cache: source)
-			 (and current-org (+ current-org (length res)))
-			 md-symbols)
-		   (list onode
-			 (asm 'current-origin)
-			 md-symbols)))))
-       asm-cache: source)))
+       fn: (if (and looping-result non-looping-result)
+  	       (lambda (onode parent-inode mdef current-org md-symbols
+			      output-asm)
+		 (let ((no-loop? (alist-ref 'row-play md-symbols)))
+  		   (list (make-onode type: 'asm
+  				     size: (if no-loop?
+  					       (length non-looping-result)
+  					       (length looping-result))
+  				     val: (cond
+					   (output-asm source)
+					   (no-loop? non-looping-result)
+					   (else looping-result)))
+			 (and current-org
+			      (+ current-org (if no-loop?
+  						 (length non-looping-result)
+  						 (length looping-result))))
+			 md-symbols)))
+	       (lambda (onode parent-inode mdef current-org md-symbols
+			      output-asm)
+		 (let* ((no-loop? (alist-ref 'row-play md-symbols))
+			(asm (if no-loop?
+				 (non-looping-asm 'copy)
+				 (looping-asm 'copy)))
+			(res (begin (asm 'symbols md-symbols)
+				    (asm 'assemble 3)
+				    (asm 'result))))
+		   (if res
+		       (list (make-onode type: 'asm
+					 size: (length res)
+					 val: (if output-asm source res))
+			     (and current-org (+ current-org (length res)))
+			     md-symbols)
+		       (list onode
+			     (asm 'current-origin)
+			     md-symbols))))))))
 
   ;;; Extract required md-symbols from a compose expression
   (define (get-required-symbols compose-expr)
@@ -1009,21 +1023,26 @@
 	  (endianness (mdef-get-target-endianness proto-mdef))
 	  (required-symbols (get-required-symbols compose)))
       (make-onode
-       type: 'field size: bytes
-       fn: (lambda (onode parent-inode mdef current-org md-symbols)
+       type: 'field
+       size: bytes
+       fn: (lambda (onode parent-inode mdef current-org md-symbols
+			  output-asm)
 	     (list (if (have-required-symbols required-symbols md-symbols)
 		       (make-onode
-			type: 'field size: bytes
-			val: (int->bytes (compose-proc 0 parent-inode md-symbols
-						       mdef)
-					 bytes endianness))
+			type: 'field
+			size: bytes
+			val: (let ((res (int->bytes
+					 (compose-proc 0 parent-inode
+						       md-symbols mdef)
+					 bytes endianness)))
+			       (if output-asm (bytes->asm res) res)))
 		       onode)
 		   (and current-org (+ current-org bytes))
 		   md-symbols)))))
 
   ;; TODO loop points?
   ;;; Returns a procedure that will transform a raw ref-matrix order (as
-  ;;; emitted by group onodes) into the desired `layout`.
+  ;;; emitted by group onodes) into the desired LAYOUT.
   (define (make-order-transformer layout base-index from)
     (let ((pointer-matrix-common
 	   (lambda (number-transformer)
@@ -1079,7 +1098,72 @@
 	 (pointer-matrix-common lsb))
 	(else (error "unsupported order type")))))
 
-  ;; TODO
+  ;;; Convert a pointer matrix order to assemly code. SYMBOLS shall be an alist
+  ;;; of resolved MDAL symbols, including the target group order. LAYOUT shall
+  ;;; be one of `pointer-matrix`, `pointer-matrix-lobyte`, or
+  ;;; `pointer-matrix-hibyte`. BASE-INDEX shall be either a number or MDAL
+  ;;; symbol denoting an offset that is applied to the order's pointers.
+  ;;; FROM shall be the ID of the target MDAL group.
+  (define (order->asm symbols layout base-index from)
+    (unless (memv layout
+		  '(pointer-matrix pointer-matrix-lobyte pointer-matrix-hibyte))
+      (error "unsupported order type"))
+    (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
+				  symbols))
+	  (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
+						 from)
+				  symbols)))
+      (string-intersperse
+       (map (lambda (row)
+	      (string-append
+	       (if (eqv? layout 'pointer-matrix)
+		   "    .dw "
+		   "    .db ")
+	       (string-intersperse
+		(map (lambda (field)
+		       (let ((block-name (string-append
+					  "mdal__group_"
+					  (symbol->string from)
+					  "_b"
+					  (number->string field #x10)))
+			     (prefix-string
+			      (case layout
+				((pointer-matrix-lobyte) ".(lsb ")
+				((pointer-matrix-hibyte) ".(msb ")
+				(else ".")))
+			     (postfix-string
+			      (if (eqv? layout 'pointer-matrix) "" ")")))
+			 (cond
+			  ((symbol? base-index)
+			   (string-append
+			    prefix-string
+			    "(+ (symbol-ref '"
+			    (string-drop (symbol->string base-index) 1)
+			    ") (symbol-ref '"
+			    block-name
+			    postfix-string))
+			  ((zero? base-index)
+			   (if (eqv? layout 'pointer-matrix)
+			       block-name
+			       (string-append prefix-string
+					      "(symbol-ref '"
+					      block-name
+					      ")"
+					      postfix-string)))
+			  (else
+			   (string-append prefix-string
+					  "(+ #x"
+					  (number->string base-index #x10)
+					  " (symbol-ref '"
+					  block-name
+					  postfix-string)))))
+		     row)
+		", ")))
+	    (alist-ref (symbol-append 'mdal__order_ from)
+		       symbols))
+       "\n")))
+
+  ;;; Generate an onode of type `order`.
   (define (make-oorder proto-mdef mdef-dir path-prefix #!key from layout
 		       element-size (base-index 0))
     (let ((transformer-proc (make-order-transformer layout base-index from))
@@ -1089,7 +1173,8 @@
       (make-onode
        type: 'order
        fn: (if (memq layout '(shared-numeric-matrix unique-numeric-matrix))
-	       (lambda (onode parent-inode mdef current-org md-symbols)
+	       (lambda (onode parent-inode mdef current-org md-symbols
+			      output-asm)
 		 (if (alist-ref order-symbol md-symbols)
 		     (let* ((output
 			     (flatten
@@ -1100,13 +1185,16 @@
 		       (if (alist-ref order-symbol md-symbols)
 			   (list (make-onode type: 'order
 					     size: output-length
-					     val: output)
+					     val: (if output-asm
+						      (bytes->asm output)
+						      output))
 				 (and current-org (+ current-org output-length))
 				 md-symbols)
 			   (list onode #f md-symbols)))
 		     (list onode #f md-symbols)))
 	       ;; pointer sequence layout
-	       (lambda (onode parent-inode mdef current-org md-symbols)
+	       (lambda (onode parent-inode mdef current-org md-symbols
+			      output-asm)
 		 (let ((raw-order (alist-ref order-symbol md-symbols)))
 		   (if (and raw-order (alist-ref sizes-symbol md-symbols))
 		       (if (and current-org
@@ -1126,7 +1214,12 @@
 				  (output-length (length output)))
 			     (list (make-onode type: 'order
 					       size: output-length
-					       val: output)
+					       val: (if output-asm
+							(order->asm md-symbols
+								    layout
+								    base-index
+								    from)
+							output))
 				   (+ current-org output-length)
 				   md-symbols))
 			   (list onode
@@ -1297,15 +1390,17 @@
 		       condition proto-mdef subnode-ids))
 	   (endianness (mdef-get-target-endianness proto-mdef)))
       (make-onode
-       type: 'field size: bytes fn:
-       (lambda (onode parent-inode instance-id mdef current-org md-symbols)
-	 (if (cond-proc instance-id parent-inode md-symbols mdef)
-	     (list (int->bytes (compose-proc instance-id parent-inode
-					     md-symbols mdef)
-			       bytes endianness)
-		   (and current-org (+ current-org bytes))
-		   md-symbols)
-	     (list '() current-org md-symbols))))))
+       type: 'field
+       size: bytes
+       fn: (lambda (onode parent-inode instance-id mdef current-org md-symbols
+			  output-asm)
+	     (if (cond-proc instance-id parent-inode md-symbols mdef)
+		 (list (int->bytes (compose-proc instance-id parent-inode
+						 md-symbols mdef)
+				   bytes endianness)
+		       (and current-org (+ current-org bytes))
+		       md-symbols)
+		 (list '() current-org md-symbols))))))
 
   ;;; Helper function for `make-oblock`.
   ;;; Generate an alist where the keys represent the oblock's output order, and
@@ -1363,7 +1458,7 @@
   ;; may change in the future though. TODO
   ;; TODO currently just returns the onode val
   (define (resolve-oblock iblock-instances field-prototypes
-			  mdef current-org md-symbols)
+			  mdef current-org md-symbols output-asm)
     (let* ((origin current-org)
 	   (filter-field-type (lambda (type)
 				(map cdr (filter (lambda (field)
@@ -1383,7 +1478,7 @@
 			  (let ((result ((onode-fn field-prototype)
 					 field-prototype
 					 block-instance 0
-					 mdef origin md-symbols)))
+					 mdef origin md-symbols output-asm)))
 			    (set! origin (cadr result))
 			    (car result)))
 			before-fields))
@@ -1394,7 +1489,8 @@
 				     (let ((result ((onode-fn field-prototype)
 						    field-prototype
 						    block-instance row-pos
-						    mdef origin md-symbols)))
+						    mdef origin md-symbols
+						    output-asm)))
 				       (set! origin (cadr result))
 				       (car result)))
 				   repeat-fields)))
@@ -1404,7 +1500,8 @@
 			  (let ((result ((onode-fn field-prototype)
 					 field-prototype
 					 block-instance 0
-					 mdef origin md-symbols)))
+					 mdef origin md-symbols
+					 output-asm)))
 			    (set! origin (cadr result))
 			    (car result)))
 			after-fields)))))
@@ -1452,7 +1549,8 @@
 		 nodes)))
       (make-onode
        type: 'block
-       fn: (lambda (onode parent-inode mdef current-org md-symbols)
+       fn: (lambda (onode parent-inode mdef current-org md-symbols
+			  output-asm)
 	     (let* ((parent (resize-blocks parent-inode parent-inode-id
 					   resize mdef))
 		    (order-alist
@@ -1464,10 +1562,25 @@
 				      parent source-block-ids
 				      unique-order-combinations)
 				     field-prototypes mdef current-org
-				     md-symbols)))
-	       (list (make-onode type: 'block
-				 size: (length (flatten (car result)))
-				 val: (car result))
+				     md-symbols
+				     output-asm)))
+	       (list (make-onode
+		      type: 'block
+		      size: (length (flatten (car result)))
+		      val: (if output-asm
+			       (string-intersperse
+				(map (lambda (id block-data)
+				       (string-append
+					"mdal__group_"
+					(symbol->string parent-inode-id)
+					"_b"
+					(number->string id #x10)
+					"\n"
+					(bytes->asm block-data)))
+				     (map car order-alist)
+				     (car result))
+				"\n")
+			       (car result)))
 		     (cadr result)
 		     (append (list (cons output-order-id
 					 (map car order-alist))
@@ -1516,21 +1629,25 @@
 				   nodes 'mdal__block_sizes_))))))))))
       (make-onode
        type: 'group
-       fn: (lambda (onode parent-inode mdef current-org md-symbols)
+       fn: (lambda (onode parent-inode mdef current-org md-symbols output-asm)
 	     (let* ((subtree-result
 		     (compile-otree
 		      otree
 		      ;; TODO currently assuming there's only one instance, but
 		      ;;      actually must be done for every instance
 		      (inode-instance-ref 0 (subnode-ref from parent-inode))
-		      mdef current-org md-symbols))
+		      mdef current-org md-symbols output-asm: output-asm))
 		    (subtree-size (apply + (map onode-size
 						(car subtree-result))))
 		    (new-symbols (third subtree-result)))
 	       (if current-org
 		   (list
-		    (make-onode type: 'group size: subtree-size
-				val: (map onode-val (car subtree-result)))
+		    (make-onode type: 'group
+				size: subtree-size
+				val: ((if output-asm
+					  (cute string-intersperse <> "\n")
+					  identity)
+				      (map onode-val (car subtree-result))))
 		    (+ current-org subtree-size)
 		    (append (list (cons (symbol-append 'mdal__group_ id)
 					current-org))
@@ -1540,11 +1657,16 @@
 		    (make-onode
 		     type: 'group size: subtree-size
 		     fn:
-		     (lambda (onode parent-inode mdef current-org md-symbols)
+		     (lambda (onode parent-inode mdef current-org md-symbols
+				    output-asm)
 		       (if current-org
-			   (list (make-onode type: 'group size: subtree-size
-					     val: (map onode-val
-						       (car subtree-result)))
+			   (list (make-onode
+				  type: 'group
+				  size: subtree-size
+				  val: ((if output-asm
+					    (cute string-intersperse <> "\n")
+					    identity)
+					(map onode-val (car subtree-result))))
 				 (+ current-org subtree-size)
 				 (cons (cons (symbol-append 'mdal__group_ id)
 					     current-org)
@@ -1559,7 +1681,9 @@
   (define (dispatch-onode-expr expr proto-mdef mdef-dir path-prefix)
     (apply (case (car expr)
 	     ((comment) (lambda (proto-mdef mdef-dir c p)
-			  (make-onode type: 'comment size: 0 val: c)))
+			  (make-onode type: 'comment
+				      size: 0
+				      val: (string-append "; " c))))
 	     ((asm) make-oasm)
 	     ((symbol) make-osymbol)
 	     ((field) make-ofield)
@@ -1585,14 +1709,15 @@
   ;;; Do a single compiler pass run over the given otree.
   ;;; Returns a list containing the updated otree in the 1st slot, the updated
   ;;; origin in the 2nd slot, and the updated list of symbols in the 3rd slot.
-  (define (do-compiler-pass otree parent-inode mdef origin md-symbols)
+  (define (do-compiler-pass otree parent-inode mdef origin md-symbols
+			    #!key output-asm)
     (let* ((org origin)
 	   (syms md-symbols)
 	   (resolve-node
 	    (lambda (onode)
 	      (if (onode-fn onode)
 		  (let ((result ((onode-fn onode) onode parent-inode mdef
-				 org syms)))
+				 org syms output-asm)))
 		    (set! org (cadr result))
 		    (set! syms (caddr result))
 		    (car result))
@@ -1606,7 +1731,8 @@
   ;;; list of md-symbols in the 3rd slot.
   ;;; Will throw an exception of type 'compiler-failed if the otree cannot
   ;;; be resolved after 3 passes.
-  (define (compile-otree otree parent-inode mdef origin md-symbols)
+  (define (compile-otree otree parent-inode mdef origin md-symbols
+			 #!key output-asm)
     (letrec
 	((run-compiler
 	  (lambda (current-otree current-symbols passes)
@@ -1614,7 +1740,8 @@
 	      (error 'compile-otree "Failed to compile module"))
 	    (let ((tree-result
 		   (do-compiler-pass current-otree parent-inode mdef
-				     origin current-symbols)))
+				     origin current-symbols
+				     output-asm: output-asm)))
 	      ;; if done resolving nodes
 	      ;; (display "pass ")
 	      ;; (display passes)
@@ -1632,8 +1759,6 @@
       ;; (newline)
       (run-compiler otree md-symbols 0)))
 
-  ;; TODO haven't thought about optional fields at all yet (how about "only-if")
-  ;;      also, more conditions, eg. required-if begin etc...
   ;;; Generate a compiler from the given output config expression.
   ;;; `proto-mdef` must be a mdef struct with all fields resolved
   ;;; except the mdef-comiler itself.
@@ -1646,10 +1771,13 @@
     (let ((otree (map (cute dispatch-onode-expr
 			<> proto-mdef mdef-dir path-prefix)
 		      output-expr)))
-      (lambda (mod origin #!optional extra-symbols)
-	(car (compile-otree otree (cadr (mmod-global-node mod))
+      (lambda (mod origin #!key output-asm (extra-symbols '()))
+	(car (compile-otree otree
+			    (cadr (mmod-global-node mod))
 			    (mmod-mdef mod)
-			    origin (or extra-symbols '()))))))
+			    origin
+			    extra-symbols
+			    output-asm: output-asm)))))
 
 
   ;; ---------------------------------------------------------------------------
