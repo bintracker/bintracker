@@ -1021,93 +1021,62 @@
 		   (and current-org (+ current-org bytes))
 		   md-symbols)))))
 
-  ;; TODO loop points? Also, currently groups emit numeric refs,  but they
-  ;;      should emit pointers.
+  ;; TODO loop points?
   ;;; Returns a procedure that will transform a raw ref-matrix order (as
   ;;; emitted by group onodes) into the desired `layout`.
   (define (make-order-transformer layout base-index from)
-    (letrec ((transform-index
-	      (lambda (order-pos order-length column)
-		(if (null? order-pos)
-		    '()
-		    (cons (+ base-index (* order-length column)
-			     (car order-pos))
-			  (transform-index (cdr order-pos) order-length
-					   (+ 1 column)))))))
+    (let ((pointer-matrix-common
+	   (lambda (number-transformer)
+	     (lambda (symbols)
+	       (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
+					     symbols))
+		     (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
+							    from)
+					     symbols))
+		     (base-index (if (number? base-index)
+				     base-index
+				     (alist-ref (string->symbol
+						 (string-drop
+						  (symbol->string base-index)
+						  1))
+						symbols))))
+		 (and base-index
+		      (flatten
+		       (map (lambda (row)
+			      (map (lambda (field)
+				     (number-transformer
+				      (+ (- group-begin base-index)
+					 (apply + (map cdr
+						       (filter (lambda (bsize)
+								 (< (car bsize)
+								    field))
+							       block-sizes))))))
+				   row))
+			    (alist-ref (symbol-append 'mdal__order_ from)
+				       symbols)))))))))
       (case layout
 	((shared-numeric-matrix)
-	 (lambda (symbols)
-	   (let ((raw-order (alist-ref (symbol-append 'mdal__order_ from)
-				       symbols)))
-	     (flatten (map (cute transform-index <> (length raw-order) 0)
-			   raw-order)))))
+	 (letrec ((transform-index
+		   (lambda (order-pos order-length column)
+		     (if (null? order-pos)
+			 '()
+			 (cons (+ base-index (* order-length column)
+				  (car order-pos))
+			       (transform-index (cdr order-pos) order-length
+						(+ 1 column)))))))
+	   (lambda (symbols)
+	     (let ((raw-order (alist-ref (symbol-append 'mdal__order_ from)
+					 symbols)))
+	       (flatten (map (cute transform-index <> (length raw-order) 0)
+			     raw-order))))))
 	;; TODO
 	((unique-numeric-matrix) (lambda (symbols) '()))
 	((pointer-matrix)
-	 (lambda (symbols)
-	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
-					 symbols))
-		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
-							from)
-					 symbols))
-		 (base-index (if (number? base-index)
-				 base-index
-				 (alist-ref (string->symbol
-					     (string-drop
-					      (symbol->string base-index)
-					      1))
-					    symbols))))
-	     (and base-index
-		  (flatten
-		   (map (lambda (row)
-			  (map (lambda (field)
-				 (+ (- group-begin base-index)
-				    (apply + (map cdr
-						  (filter (lambda (bsize)
-							    (< (car bsize)
-							       field))
-							  block-sizes)))))
-			       row))
-			(alist-ref (symbol-append 'mdal__order_ from)
-				   symbols)))))))
+	 (pointer-matrix-common identity))
 	((pointer-matrix-hibyte)
-	 (lambda (symbols)
-	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
-					 symbols))
-		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
-							from)
-					 symbols)))
-	     (flatten
-	      (map (lambda (row)
-		     (map (lambda (field)
-			    (msb (+ group-begin
-				    (apply + (map cdr
-						  (filter (lambda (bsize)
-							    (< (car bsize)
-							       field))
-							  block-sizes))))))
-			  row))
-		   (alist-ref (symbol-append 'mdal__order_ from)
-			      symbols))))))
+	 (pointer-matrix-common msb))
 	((pointer-matrix-lobyte)
-	 (lambda (symbols)
-	   (let ((group-begin (alist-ref (symbol-append 'mdal__group_ from)
-					 symbols))
-		 (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
-							from)
-					 symbols)))
-	     (flatten
-	      (map (lambda (row)
-		     (map (lambda (field)
-			    (lsb (+ group-begin
-				    (apply + (map cdr
-						  (filter (lambda (bsize)
-							    (< (car bsize)
-							       field))
-							  block-sizes))))))
-			  row))
-		   (alist-ref (symbol-append 'mdal__order_ from)
-			      symbols))))))
+	 (pointer-matrix-common lsb))
 	(else (error "unsupported order type")))))
 
   ;; TODO
