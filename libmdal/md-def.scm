@@ -1577,7 +1577,7 @@
 					"_b"
 					(number->string id #x10)
 					"\n"
-					(bytes->asm block-data)))
+					(bytes->asm (flatten block-data))))
 				     (map car order-alist)
 				     (car result))
 				"\n")
