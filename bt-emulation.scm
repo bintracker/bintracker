@@ -123,30 +123,29 @@
   ;;; the target system requests.
   (define (platform->emulator platform)
     (let* ((platform-config
-	    (let ((pf (alist-ref platform
-				 (read (open-input-file
-					"config/systems.scm"))
-				 string=)))
-	      (unless pf (error (string-append "Unknown target system "
-					       platform)))
+	    (let ((pf (or (alist-ref platform
+				     (read (open-input-file
+					    "config/systems.scm"))
+				     string=)
+			  (error (string-append "Unknown target system "
+						platform)))))
 	      (apply (lambda (#!key emulator (startup-args '())
 				    (pc-name "PC") (loader-type 'ram)
 				    default-run-address)
 		       `(,emulator ,startup-args ,pc-name ,loader-type
 				   ,default-run-address))
 		     pf)))
-	   (emulator-default-args
-	    (let ((emul (alist-ref (car platform-config)
-				   (read (open-input-file
-					  "config/emulators.scm"))
-				   string=)))
-	      (unless emul (error (string-append "Unknown emulator "
-						 (car platform-config))))
-	      (apply (lambda (#!key (default-args '()))
-		       default-args)
+	   (emulator-args
+	    (let ((emul (or (alist-ref (car platform-config)
+				       (read (open-input-file
+					      "config/emulators.scm")))
+			    (error (string-append "Unknown emulator "
+						  (car platform-config))))))
+	      (apply (lambda (#!key program-name (default-args '()))
+		       `(,program-name . ,default-args))
 		     emul))))
-      (make-emulator (car platform-config)
-		     (append emulator-default-args (cadr platform-config))
+      (make-emulator (car emulator-args)
+		     (append (cdr emulator-args) (cadr platform-config))
 		     (caddr platform-config)
 		     (cadddr platform-config)
 		     (fifth platform-config))))

@@ -1,7 +1,8 @@
 
-(("mame64" default-args: ("-w" "-skip_gameinfo" "-autoboot_script"
-			  "mame-bridge/mame-startup.lua"
-			  "-rompath" "roms"
-			  "-nomouse"
-			  "-mouse_device" "none"
-			  "-autoboot_delay" "0")))
+((mame program-name: "mame64"
+       default-args: ("-w" "-skip_gameinfo" "-autoboot_script"
+		      "mame-bridge/mame-startup.lua"
+		      "-rompath" "roms"
+		      "-nomouse"
+		      "-mouse_device" "none"
+		      "-autoboot_delay" "0")))
