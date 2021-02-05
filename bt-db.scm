@@ -122,17 +122,20 @@
 	      (target-platform-id (mdef-target mdef))
 	      (mdef-description mdef)))))
 
-  ;;; Add the MDAL definition named MDEF-ID to the Bintracker database.
+  ;;; Add the MDAL definition named MDEF-ID to the Bintracker database. Returns
+  ;;; `#t` on success, `#f` on failure.
   (define (btdb-add-mdef! mdef-id)
     (let ((info (gather-mdef-info mdef-id)))
-      (when info
-  	(execute btdb (string-append
-  		       "INSERT INTO mdefs (id, version, "
-  		       "hash, platform, description) VALUES ('" mdef-id
-		       "', '" (car info)
-  		       "', '" (cadr info)
-		       "', '" (third info)
-  		       "', '" (or (fourth info) "") "');")))))
+      (and info
+	   (begin
+  	     (execute btdb (string-append
+  			    "INSERT INTO mdefs (id, version, "
+  			    "hash, platform, description) VALUES ('" mdef-id
+			    "', '" (car info)
+  			    "', '" (cadr info)
+			    "', '" (third info)
+  			    "', '" (or (fourth info) "") "');"))
+	     #t))))
 
   ;;; Remove the MDAL definition named MDEF-ID from the Bintracker
   ;;; database.
@@ -141,15 +144,18 @@
 				 mdef-id "';")))
 
   ;;; Update the MDAL definition named MDEF-ID in the Bintracker
-  ;;; database.
+  ;;; database. Returns `#t` on success, `#f` on failure.
   (define (btdb-update-mdef! mdef-id)
     (let ((info (gather-mdef-info mdef-id)))
-      (execute btdb (string-append "UPDATE mdefs SET "
-				   "version='" (car info)
-				   "', hash='" (cadr info)
-				   "', platform='" (third info)
-				   "', description='" (fourth info)
-				   "' WHERE id='" mdef-id "';"))))
+      (and info
+	   (begin
+	     (execute btdb (string-append "UPDATE mdefs SET "
+					  "version='" (car info)
+					  "', hash='" (cadr info)
+					  "', platform='" (third info)
+					  "', description='" (fourth info)
+					  "' WHERE id='" mdef-id "';"))
+	     #t))))
 
   ;;; Scan the MDAL mdef directory, and update the Bintracker database
   ;;; accordingly. Definitions no longer found in the mdef directory are
@@ -158,8 +164,7 @@
   (define (btdb-scan-mdal-mdefs!)
     (let ((mdef-dirs (get-mdef-dir-subdirs)))
       (for-each (lambda (db-entry)
-      		  (display (string-append "removing mdef: " db-entry))
-      		  (newline)
+      		  (print "removing mdef: " db-entry)
       		  (btdb-remove-mdef! db-entry))
       		(remove (lambda (db-entry)
       			  (member db-entry mdef-dirs))
@@ -188,9 +193,10 @@
 		     ", ")
 		    ";")))
 	(for-each (lambda (dir)
-		    (display (string-append "found updated mdef: " dir))
-		    (newline)
-		    (btdb-update-mdef! dir))
+		    (print "found updated mdef: " dir)
+		    (unless (btdb-update-mdef! dir)
+		      (print "update broke mdef, removed it.")
+		      (btdb-remove-mdef! dir)))
 		  (remove
 		   (lambda (dir)
 		     (or (null? (map-row identity btdb
