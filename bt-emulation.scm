@@ -12,9 +12,7 @@
 
   ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
   ;;; shall be a list of command line argument strings that are passed to
-  ;;; `program` on startup. Optionally PC-NAME provides the name of the target's
-  ;;; main program counter register (defaults to "PC"). You can check for the
-  ;;; appropriate name with the `info` command as detailed below.
+  ;;; `program` on startup.
   ;;;
   ;;; The returned emulator is not yet running. To run it, call
   ;;; `(EMULATOR 'start)`.
@@ -31,8 +29,7 @@
   ;;; * `'unpause` - Unpause emulation.
   ;;; * `'start` - Launch emulator program in new thread.
   ;;; * `'quit` - Exit the Emulator.
-  (define (make-emulator program program-args #!optional (pc-name "PC")
-			 (loader-type 'ram) default-run-address)
+  (define (make-emulator program program-args)
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)
 	      (emul-output-port #f)
@@ -96,12 +93,6 @@
 	  ((unpause) (send-command "u"))
 	  ((run) (begin
 		   (unless emul-initialized
-		     (send-command (string-append "n" pc-name))
-		     (send-command (if (eqv? loader-type 'ram) "l0" "l1"))
-		     (when default-run-address
-		       (send-command
-			(string-append "d"
-				       (number->string default-run-address))))
 		     (set! emul-initialized #t))
 		   (send-command
 			 (string-append "b" (number->string (cadr args))
@@ -129,11 +120,8 @@
 				     string=)
 			  (error (string-append "Unknown target system "
 						platform)))))
-	      (apply (lambda (#!key emulator (startup-args '())
-				    (pc-name "PC") (loader-type 'ram)
-				    default-run-address)
-		       `(,emulator ,startup-args ,pc-name ,loader-type
-				   ,default-run-address))
+	      (apply (lambda (#!key emulator (startup-args '()))
+		       `(,emulator ,startup-args))
 		     pf)))
 	   (emulator-args
 	    (let ((emul (or (alist-ref (car platform-config)
@@ -145,9 +133,6 @@
 		       `(,program-name . ,default-args))
 		     emul))))
       (make-emulator (car emulator-args)
-		     (append (cdr emulator-args) (cadr platform-config))
-		     (caddr platform-config)
-		     (cadddr platform-config)
-		     (fifth platform-config))))
+		     (append (cdr emulator-args) (cadr platform-config)))))
 
   ) ;; end module bt-emulation

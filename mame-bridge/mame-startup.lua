@@ -2,10 +2,6 @@
 -- Copyright (c) utz/irrlicht project 2019-2021
 -- See LICENSE for license details.
 
--- io.stdin:setvbuf'line'
-
-local listener = emu.thread()
-local started = false
 
 -- Ensure backwards compatibility with MAME <= 0.226
 local machine_manager
@@ -15,12 +11,53 @@ else
    machine_manager = manager:machine()
 end
 
--- Detect system's CPU device name.
-local main_cpu = ":maincpu"
-if machine_manager.devices[":f3"] ~= nil then
-   -- using m6502 driver
-   main_cpu = ":f3"
+-- Enumerated loader types. See `machine_load_bin` below.
+local loader_types = { ram = 0, cart = 1 }
+
+-- This table holds information on machine specific emulation features.
+-- The following defaults are implicit:
+--   cpu_name = ":main_cpu"
+--   pc_name = "PC"
+--   loader_type = loader_types["ram"]
+--   default_run_address = nil
+--   post_load_actions = nil
+local machine_features = {
+   a2600 = {loader_type = loader_types["cart"],
+	    default_run_address = 0xf000},
+   cbm8032 = {cpu_name = ":f3",
+	      default_run_address = 0x40d},
+   channelf = {pc_name = "PC0",
+	       loader_type = loader_types["cart"],
+	       default_run_address = 0x802},
+   dragon32 = {},
+   kc85_4 = {},
+   mz700 = {},
+   spectrum = {
+      post_load_actions = function ()
+	 -- set stack pointer to a safe address
+	 machine_manager.devices[":maincpu"].state["SP"].value = 0xfffe
+	 -- unfreeze Z80 emulation after halt instruction
+	 machine_manager.devices[":maincpu"].state["HALT"].value = 0
+      end
+   },
+   sorcerer = {}}
+
+-- initialize machine_features implicit defaults for emulated machine
+local machine_specific = machine_features[emu.romname()]
+if machine_specific.cpu_name == nil then
+   machine_specific.cpu_name = ":maincpu"
 end
+if machine_specific.pc_name == nil then machine_specific.pc_name = "PC" end
+if machine_specific.loader_type == nil then
+      machine_specific.loader_type = loader_types["ram"]
+end
+
+-- Extract machine specific vars for faster access
+local machine_cpu = machine_manager.devices[machine_specific.cpu_name]
+local machine_pc = machine_cpu.state[machine_specific.pc_name]
+local loader_type = machine_specific.loader_type
+local default_run_address = machine_specific.default_run_address
+local post_load_actions = machine_specific.post_load_actions
 
 local print_machine_info = function ()
    print("System: ", emu.gamename())
@@ -28,19 +65,17 @@ local print_machine_info = function ()
    print("\nMachine devices [machine_manager.devices]")
    for k,_ in pairs(machine_manager.devices) do print(k) end
    print("\nMachine options")
-   -- appearantly this is the same as calling manager:options().entries
    for k,v in pairs(machine_manager:options().entries) do
       print(k, "=", v:value())
    end
-   local cpu = machine_manager.devices[main_cpu]
    print("\nCPU State Registers\nState:")
-   for k,v in pairs(cpu.state) do print(k, v.value) end
+   for k,v in pairs(machine_cpu.state) do print(k, v.value) end
    -- print("\nSpaces:")
-   -- for k,v in pairs(cpu.spaces) do print(k) end
+   -- for k,v in pairs(machine_cpu.spaces) do print(k) end
    -- print("\nItems:")
-   -- for k,v in pairs(cpu.items) do print(k) end
+   -- for k,v in pairs(machine_cpu.items) do print(k) end
    print("\nMemory layout")
-   for k,_ in pairs(cpu.spaces) do print(k) end
+   for k,_ in pairs(machine_cpu.spaces) do print(k) end
    if machine_manager.devices[":cartslot"] ~= nil then
       local cartslot = machine_manager.devices[":cartslot"]
       print("\nCartridge:");
@@ -50,34 +85,18 @@ local print_machine_info = function ()
    for k,_ in pairs(machine_manager:memory().shares) do print (k) end
    print("\nRegions all:\n")
    for k,_ in pairs(machine_manager:memory().regions) do print (k) end
-   -- print("\nRegions maincpu")
-   -- local regions = manager:machine():memory().regions[":maincpu"]
-   -- print((tostring(regions)))
-   -- print("cartslot state")
-   -- for k,v in pairs(cartslot.state) do print(k) end
 end
-
-local pc_name = "PC"
-local loader_type = 0 -- 0 = RAM, 1 = cartridge
-local default_run_address = false
 
 local machine_set_pc = function (addr)
-   machine_manager.devices[main_cpu].state[pc_name].value = tonumber(addr)
-end
-
--- unfreeze Z80 emulation after halt instruction
-local machine_unhalt = function ()
-   if machine_manager.devices[main_cpu].state["HALT"] ~= nil then
-      machine_manager.devices[main_cpu].state["HALT"].value = 0
-   end
+   machine_pc.value = tonumber(addr)
 end
 
 local machine_load_bin = function (addr, data)
    local datatbl = {string.byte(data, 1, #data)}
    local mem
    local local_addr = addr
-   if loader_type == 0 then
-      mem = machine_manager.devices[main_cpu].spaces["program"]
+   if loader_type == loader_types["ram"] then
+      mem = machine_cpu.spaces["program"]
    else
       do
 	 mem = machine_manager:memory().regions[":cartslot:cart:rom"]
@@ -85,9 +104,9 @@ local machine_load_bin = function (addr, data)
       end
    end
    for i = 1, #datatbl do
-      -- print("write at ", addr, ": ", (tostring(datatbl[i])))
       mem:write_u8(local_addr, datatbl[i])
-      -- print("read back: ", (tostring(mem:read_u8(addr))))
+      -- print("write: ", (tostring(datatbl[i])),
+      -- 	    ", read: ", (tostring(mem:read_u8(local_addr))))
       local_addr = local_addr + 1
    end
 end
@@ -118,7 +137,6 @@ local get_numeric_arg = function (argstr)
       res = res..string.sub(argstr, 1, 1)
       argstr = string.sub(argstr, 2)
    end
-   -- print(res)
    return tonumber(res)
 end
 
@@ -126,21 +144,19 @@ local get_data_arg = function (argstr)
    while string.sub(argstr, 1, 1) ~= "%" do
       argstr = string.sub(argstr, 2)
    end
-   -- print(string.sub(argstr, 2))
    return string.sub(argstr, 2)
 end
 
 local machine_run_bin = function (argstr)
    local addr = get_numeric_arg(argstr)
-   -- local data = get_data_arg(argstr)
    emu.pause()
    machine_load_bin(addr, base64_decode(get_data_arg(argstr)))
-   if default_run_address then
+   if default_run_address ~= nil then
       machine_set_pc(default_run_address)
    else
       machine_set_pc(addr)
    end
-   machine_unhalt()
+   if post_load_actions ~= nil then post_load_actions() end
    emu.unpause()
 end
 
@@ -161,9 +177,6 @@ end
 local remote_commands = {
    ["b"] = machine_run_bin,
    ["i"] = print_machine_info,
-   ["d"] = function (argstr) default_run_address = tonumber(argstr) end,
-   ["l"] = function (argstr) loader_type = tonumber(argstr) end,
-   ["n"] = function (argstr) pc_name = argstr end,
    ["q"] = function () machine_manager:exit() end,
    ["p"] = emu.pause,
    ["r"] = machine_reset,
@@ -182,12 +195,8 @@ local dispatch_remote_command = function(cmd)
    if exec_cmd then exec_cmd(string.sub(cmd, 2)) end
 end
 
--- -- not implemented yet in MAME 0.209?
--- emu.register_mandatory_file_manager_override(
---    function()
---       print("have mandatory file callback")
---    end
--- )
+local listener = emu.thread()
+local started = false
 
 -- Register a period callback from the main emulation thread. On first run, it
 -- starts a thread that listens to stdin, and returns the received input once it
