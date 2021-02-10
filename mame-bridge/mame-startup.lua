@@ -36,8 +36,10 @@ local machine_features = {
       post_load_actions = function ()
 	 -- set stack pointer to a safe address
 	 machine_manager.devices[":maincpu"].state["SP"].value = 0xfffe
-	 -- unfreeze Z80 emulation after halt instruction
-	 machine_manager.devices[":maincpu"].state["HALT"].value = 0
+	 -- unfreeze Z80 emulation after halt instruction on newer MAME versions
+	 if machine_manager.devices[":maincpu"].state["HALT"] ~= nil then
+	    machine_manager.devices[":maincpu"].state["HALT"].value = 0
+	 end
       end
    },
    sorcerer = {}}
