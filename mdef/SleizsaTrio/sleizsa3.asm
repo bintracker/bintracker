@@ -1,8 +1,8 @@
 ;**********************************************************************************************
-; Sleizsa Trio v0.1 - Fairchild Channel F Music routine
+; Sleizsa Trio v0.2 - Fairchild Channel F Music routine
 ; by utz 2017 * irrlichtproject.de
 ;**********************************************************************************************
-; Copyright (c) 2017, utz/irrlicht project
+; Copyright (c) 2017-2020, utz/irrlicht project
 ; All rights reserved.
 ;
 ; Redistribution and use in source and binary forms, with or without
@@ -106,7 +106,7 @@ _drumlp1
 _drumexit
 	lr dc,h				;restore data pointer
 
-	li $c0				;adjust speed counter
+	li $c8				;adjust speed counter
 
 _drumexit2
 	lr Kl,a
@@ -160,7 +160,7 @@ _noUpd
 	lr 4,a
 	bnz _drumlp2
 
-	li $b0
+	li $88
 
 	br _drumexit2
 
