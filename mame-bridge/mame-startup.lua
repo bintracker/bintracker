@@ -28,7 +28,11 @@ local machine_features = {
 	      default_run_address = 0x40d},
    channelf = {pc_name = "PC0",
 	       loader_type = loader_types["cart"],
-	       default_run_address = 0x802},
+	       default_run_address = 0x802,
+	       post_load_actions = function ()
+		  machine_manager:soft_reset()
+	       end
+   },
    dragon32 = {},
    kc85_4 = {},
    mz700 = {},
