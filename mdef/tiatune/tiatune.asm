@@ -87,9 +87,7 @@ _l1
 rdSeq				;read next entry in sequence
 	ldx <SEQOFFS
 	lda sequence_hi,x
-        .(unless (symbol-ref 'row-play)
-           " beq reset")
-	;; beq reset		;if hi-byte = 0, loop
+	beq reset		;if hi-byte = 0, loop
 
 	sta <PTNPTRH
 	lda sequence_lo,x
@@ -100,12 +98,8 @@ rdSeq				;read next entry in sequence
 
 rdPtn
 	lda (PTNPTRL),y		;ctrl byte
-	;; beq rdSeq		;0-end marker
+	beq rdSeq		;0-end marker
 
-        .(if (symbol-ref 'row-play)
-             " bne _l0\n nop\n hlt"
-             " beq rdSeq")
-_l0
 	sta <ROWLENH
 	bmi no_ch1_reload
 
@@ -249,7 +243,10 @@ continue_ch2 .equ .(+ #x80 (- current-origin (symbol-ref 'playercode)))
 	dec <ROWLENH
 	bne playerCode
 
-	jmp rdPtn		;3
+	;; jmp rdPtn		;3
+        .(if (symbol-ref 'row-play)
+             " hlt"
+             " jmp rdPtn")
 
 rwait_ch1
 wait_ch1 .equ .(- current-origin (+ #x80 (symbol-ref 'playercode)))

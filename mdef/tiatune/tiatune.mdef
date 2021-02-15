@@ -35,7 +35,7 @@ By utz 2017."
 	  (field bytes: 1 compose: 0)
 	  (symbol id: sequence_lo)
 	  (order from: PATTERNS layout: pointer-matrix-lobyte element-size: 1)
-	  (field bytes: 1 compose: 0)
+	  ;; (field bytes: 1 compose: 0)
 	  (group id: PATTERNS from: PATTERNS nodes:
 		 ((block id: CHANS from: (TEMPO CH1 CH2) resize: 8
 			 nodes:
