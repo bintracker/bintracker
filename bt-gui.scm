@@ -342,23 +342,24 @@
   ;; ---------------------------------------------------------------------------
 
   (define (play-from-start)
-    (let ((mmod (ui-metastate (current 'module-view) 'mmod)))
-      ((ui-metastate (current 'module-view) 'emulator) 'run
-       (mdef-default-origin (car mmod))
-       (mod->bin mmod))))
+    (and-let* ((emul (ui-metastate (current 'module-view) 'emulator))
+	       (mmod (ui-metastate (current 'module-view) 'mmod)))
+      (emul 'run (mdef-default-origin (car mmod)) (mod->bin mmod))))
 
   (define (play-pattern)
-    (let* ((mmod (ui-metastate (current 'module-view) 'mmod))
-  	   (origin (mdef-default-origin (car mmod))))
-      ((ui-metastate (current 'module-view) 'emulator) 'run origin
-       (mod->bin (derive-single-pattern-mmod
-      		  mmod
-      		  (slot-value (current 'blockview) 'group-id)
-      		  (ui-blockview-get-current-order-pos
-      		   (current 'blockview)))))))
+    (and-let* ((emul (ui-metastate (current 'module-view) 'emulator))
+	       (mmod (ui-metastate (current 'module-view) 'mmod))
+  	       (origin (mdef-default-origin (car mmod))))
+      (emul 'run origin
+	    (mod->bin (derive-single-pattern-mmod
+      		       mmod
+      		       (slot-value (current 'blockview) 'group-id)
+      		       (ui-blockview-get-current-order-pos
+      			(current 'blockview)))))))
 
   (define (stop-playback)
-    ((ui-metastate (current 'module-view) 'emulator) 'pause))
+    (and-let* ((emul (ui-metastate (current 'module-view) 'emulator)))
+      (emul 'pause)))
 
 
   ;; ---------------------------------------------------------------------------
@@ -3174,7 +3175,8 @@
       (ui-metastate buf 'push-undo
   		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
-      (when (and play-row
+      (when (and (ui-metastate buf 'emulator)
+		 play-row
   		 (settings 'enable-row-play)
       		 (not (null? new-value)))
       	(ui-metastate buf 'emulator 'play-row
@@ -4345,14 +4347,25 @@
 
   (define-method (ui-show before: (buf <ui-module-view>))
     (unless (slot-value buf 'initialized)
-      (set! (slot-value buf 'emulator)
-  	(platform->emulator (target-platform-id
-  			     (mdef-target (car (slot-value buf 'mmod))))))
-      ((module-view-emulator buf) 'start)
+      (let ((emul (handle-exceptions
+      		      exn
+      		      (begin
+      			(report-exception
+			 exn
+      			 (string-append "Failed to run emulator. "
+      					"Playback will be unavailable."))
+      			#f)
+      		    (platform->emulator
+		     (target-platform-id
+      		      (mdef-target (car (slot-value buf 'mmod))))))))
+      	(when emul
+      	  (set! (slot-value buf 'emulator) emul)
+      	  (emul 'start)))
       (update-window-title!)))
 
   (define-method (ui-destroy before: (buf <ui-module-view>))
-    ((module-view-emulator buf) 'quit))
+    (and-let* ((emul (module-view-emulator buf)))
+      (emul 'quit)))
 
 
   ;; ---------------------------------------------------------------------------

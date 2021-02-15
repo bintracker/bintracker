@@ -6,9 +6,23 @@
     *
   (import scheme (chicken base) (chicken file posix)
 	  (chicken process) (chicken string) (chicken condition)
+	  (only (chicken file) file-exists? file-executable?)
+	  (only (chicken process-context) get-environment-variable)
+	  (only (chicken pathname) make-pathname)
+	  (only (chicken platform) software-type)
 	  srfi-1 srfi-13 srfi-18 base64)
 
   ;;;
+
+  ;;; Check if the executable PROGRAM-NAME exists in $PATH and user has the
+  ;;; necessary permissions to run it.
+  (define (executable-exists? program-name)
+    (find (lambda (dir)
+	    (let ((path (make-pathname dir program-name)))
+	      (and (file-exists? path)
+		   (file-executable? path))))
+	  (string-split (get-environment-variable "PATH")
+			(if (eqv? 'windows (software-type)) ";" ":"))))
 
   ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
   ;;; shall be a list of command line argument strings that are passed to
@@ -30,6 +44,11 @@
   ;;; * `'start` - Launch emulator program in new thread.
   ;;; * `'quit` - Exit the Emulator.
   (define (make-emulator program program-args)
+    (unless (executable-exists? program)
+      (error 'make-emulator
+	     (string-append "Emulator \""
+			    program
+			    "\" not found or not runnable.")))
     (letrec* ((emul-started #f)
 	      (emul-input-port #f)
 	      (emul-output-port #f)
@@ -68,9 +87,6 @@
 	      (start-emul (lambda ()
 			    (set! emul-thread
 			      (make-thread (lambda ()
-					     (handle-exceptions
-						 exn
-						 (raise exn))
 					     (launch-emul-process)
 					     (emul-event-loop))))
 			    (thread-start! emul-thread)
