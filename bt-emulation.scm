@@ -5,8 +5,8 @@
 (module bt-emulation
     *
   (import scheme (chicken base) (chicken file posix)
-	  (chicken process) (chicken string)
-	  srfi-1 srfi-13 srfi-18 simple-exceptions base64)
+	  (chicken process) (chicken string) (chicken condition)
+	  srfi-1 srfi-13 srfi-18 base64)
 
   ;;;
 
