@@ -1113,7 +1113,10 @@
 				  symbols))
 	  (block-sizes (alist-ref (symbol-append 'mdal__block_sizes_
 						 from)
-				  symbols)))
+				  symbols))
+	  (block-ids (map symbol->string
+			  (alist-ref (symbol-append 'mdal__oblock_ids_ from)
+				     symbols))))
       (string-intersperse
        (map (lambda (row)
 	      (string-append
@@ -1121,10 +1124,12 @@
 		   "    .dw "
 		   "    .db ")
 	       (string-intersperse
-		(map (lambda (field)
+		(map (lambda (field block-id)
 		       (let ((block-name (string-append
 					  "mdal__group_"
 					  (symbol->string from)
+					  "_"
+					  block-id
 					  "_b"
 					  (number->string field #x10)))
 			     (prefix-string
@@ -1158,7 +1163,8 @@
 					  " (symbol-ref '"
 					  block-name
 					  postfix-string)))))
-		     row)
+		     row
+		     block-ids)
 		", ")))
 	    (alist-ref (symbol-append 'mdal__order_ from)
 		       symbols))
@@ -1570,12 +1576,14 @@
 		      size: (length (flatten (car result)))
 		      val: (if output-asm
 			       (string-intersperse
-				(map (lambda (id block-data)
+				(map (lambda (inst-id block-data)
 				       (string-append
 					"mdal__group_"
 					(symbol->string parent-inode-id)
+					"_"
+					(symbol->string id)
 					"_b"
-					(number->string id #x10)
+					(number->string inst-id #x10)
 					"\n"
 					(bytes->asm (flatten block-data))))
 				     (map car order-alist)
@@ -1590,16 +1598,20 @@
 					      (car result))))
 			     md-symbols)))))))
 
+  ;;; Get the list of IDs of the oblock nodes from a list of ogroup subnodes
+  (define (get-oblock-ids group-nodes)
+    (map (lambda (node)
+	   (apply (lambda (#!key id) id)
+		  (cdr node)))
+	 (filter (lambda (node) (eqv? 'block (car node)))
+		 group-nodes)))
+
   ;;; Determine the order related symbol names that will be emitted by an
   ;;; ogroup's oblock members
   (define (get-oblock-order-ids group-nodes prefix)
     (map (lambda (oid)
 	   (symbol-append prefix oid))
-	 (map (lambda (node)
-		(apply (lambda (#!key id) id)
-		       (cdr node)))
-	      (filter (lambda (node) (eqv? 'block (car node)))
-		      group-nodes))))
+	 (get-oblock-ids group-nodes)))
 
   ;; TODO
   ;; - groups must always emit a pointer matrix order as symbol
@@ -1618,6 +1630,8 @@
 					(get-oblock-order-ids
 					 nodes 'mdal__order_))))
 		(list
+		 (cons (symbol-append 'mdal__oblock_ids_ id)
+		       (get-oblock-ids nodes))
 		 (cons (symbol-append 'mdal__order_ id)
 		       (apply zip raw-order-lst))
 		 ;; TODO this will fail for unique pointer matrices
