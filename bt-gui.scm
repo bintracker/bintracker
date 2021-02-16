@@ -41,7 +41,8 @@
     (if (and (current 'module-view)
   	     (ui-metastate (current 'module-view) 'modified))
   	(match (exit-with-unsaved-changes-dialog dialogue-string)
-  	  ("yes" (begin (save-file) (proc) #t))
+  	  ("yes" (and (save-file)
+		      (begin (proc) #t)))
   	  ("no" (begin (proc) #t))
   	  (else #f))
   	(begin (proc) #t)))
@@ -284,19 +285,25 @@
   ;;; Save the current MDAL module. If no file name has been specified yet,
   ;;; promt the user for one.
   (define (save-file)
-    (when (ui-metastate (current 'module-view) 'modified)
-      (if (ui-metastate (current 'module-view) 'filename)
-  	  (on-save-file-hooks 'execute)
-  	  (save-file-as))))
+    (if (ui-metastate (current 'module-view) 'modified)
+	(if (ui-metastate (current 'module-view) 'filename)
+  	    (begin
+	      (on-save-file-hooks 'execute)
+	      #t)
+  	    (save-file-as))
+	#t))
 
   ;;; Save the current MDAL module under a new, different name.
   (define (save-file-as)
     (let ((filename (tk/get-save-file*
   		     filetypes: '(((MDAL Modules) (.mmod)))
   		     defaultextension: '.mmod)))
-      (unless (string-null? filename)
-  	(ui-metastate (current 'module-view) 'filename filename)
-  	(on-save-file-hooks 'execute))))
+      (if (string-null? filename)
+	  #f
+	  (begin
+  	    (ui-metastate (current 'module-view) 'filename filename)
+  	    (on-save-file-hooks 'execute)
+	    #t))))
 
   (define (export-asm)
     (and-let* ((mmod (current 'mmod))
