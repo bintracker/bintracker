@@ -33,6 +33,7 @@ local machine_features = {
 		  machine_manager:soft_reset()
 	       end
    },
+   coco3 = {},
    dragon32 = {},
    kc85_4 = {},
    mz700 = {},

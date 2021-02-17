@@ -4,6 +4,7 @@
  ("cbm8032" emulator: mame startup-args: ("cbm8032"))
  ("channelf" emulator: mame
   startup-args: ("channelf" "-cart" "mame-bridge/channelf_dummy.bin"))
+ ("coco3" emulator: mame startup-args: ("coco3"))
  ("dragon32" emulator: mame startup-args: ("dragon32"))
  ("kc85_4" emulator: mame startup-args: ("kc85_4"))
  ("mz700" emulator: mame startup-args: ("mz700"))
