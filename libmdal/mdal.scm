@@ -551,7 +551,11 @@
 	      ((group) (map (lambda (subnode-id)
 			      (list subnode-id
 				    (generate-new-inode-instance
-				     mdef subnode-id block-length)))
+				     mdef
+				     subnode-id
+				     (or (inode-config-block-length
+					  (mdef-inode-ref subnode-id mdef))
+					 block-length))))
 			    (mdef-get-subnode-ids node-id
 						  (mdef-itree mdef)))))))
 

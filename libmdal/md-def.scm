@@ -21,6 +21,7 @@
      make-inode-config
      inode-config-type
      inode-config-instance-range
+     inode-config-block-length
      inode-config-cmd-id
      inode-config-order-id
      inode-config-flags
@@ -111,7 +112,7 @@
     (max 1))
 
   (defstruct inode-config
-    type instance-range cmd-id order-id (flags '()))
+    type instance-range block-length cmd-id order-id (flags '()))
 
   (define (display-inode-config cfg)
     (printf "#<inode-config\n")
@@ -520,20 +521,25 @@
 		 subnodes))))
 
   ;;; Preliminary error checks for inode config specifications.
-  (define (check-inode-spec type id from nodes parent-type)
+  (define (check-inode-spec type id from block-length nodes parent-type)
     (unless type (mdal-abort "missing type" "inode-definition"))
-    (unless (memq type '(field block group))
+    (when (and block-length (not (eqv? type 'group)))
+      (mdal-abort (string-append
+		   "\"block-length\" argument has no effect on nodes of type "
+		   (->string type))
+		  "inode-definition"))
+    (unless (memv type '(field block group))
       (mdal-abort (string-append "unknown type " (->string type))
 		  "inode-definition"))
-    (when (and (eq? type 'field)
+    (when (and (eqv? type 'field)
 	       (not from))
       (mdal-abort "missing source command id specifier" "inode-definition"))
-    (unless (or id (eq? type 'field))
+    (unless (or id (eqv? type 'field))
       (mdal-abort "missing id" "inode-definition"))
-    (unless (or nodes (eq? type 'field))
+    (unless (or nodes (eqv? type 'field))
       (mdal-abort "missing subnodes" "inode-definition"))
-    (when (and (eq? parent-type 'block)
-	       (not (eq? type 'field)))
+    (when (and (eqv? parent-type 'block)
+	       (not (eqv? type 'field)))
       (mdal-abort (string-append "inode of type "
 				 (->string type)
 				 " may not be a child of a block inode")
@@ -559,8 +565,8 @@
   (define (eval-inode-config node-expr commands parent-type)
     (let ((eval-node
 	   (lambda (type #!key id from min-instances max-instances
-			 instances flags nodes)
-	     (check-inode-spec type id from nodes parent-type)
+			 instances block-length flags nodes)
+	     (check-inode-spec type id from block-length nodes parent-type)
 	     (let* ((subnodes
 		     (if nodes (get-mdef-inodes nodes commands type) '()))
 		    (order-nodes
@@ -584,6 +590,7 @@
 					     type min-instances max-instances
 					     instances parent-type)
 			    cmd-id: from
+			    block-length: block-length
 			    flags: (if (list? flags) flags '())))
 		     (or modifier-node (append subnodes order-nodes)))))))
       (apply eval-node node-expr)))
@@ -723,28 +730,38 @@
 
   ;;; Transform the field node instance value CURRENT-VAL according to
   ;;; the given MDAL COMMAND-CONFIG.
-  (define (eval-effective-field-val current-val command-config
-				    #!optional modifier-val)
+  (define (eval-effective-field-val current-val md-symbols command-config
+				    #!key modifier no-ref)
     (case (command-type command-config)
-      ((int uint reference string trigger) current-val)
-      ((key ukey) (if modifier-val
-		      (eval-modifier
-		       (hash-table-ref (command-keys command-config)
-				       current-val)
-		       modifier-val)
-		      (hash-table-ref (command-keys command-config)
-				      current-val)))
+      ((int uint string trigger)
+       current-val)
+      ((key ukey)
+       (if modifier
+	   (eval-modifier (hash-table-ref (command-keys command-config)
+					  current-val)
+			  modifier)
+	   (hash-table-ref (command-keys command-config) current-val)))
+      ((reference)
+       (if no-ref
+	   current-val
+	   (alist-ref (string->symbol
+		       (string-append
+			"mdal__"
+			(symbol->string (command-reference-to command-config))
+			"_"
+			(number->string current-val)))
+		      md-symbols)))
       (else (error "cmd type not implemented"))))
 
   ;;; Evaluate a group field node instance, resolving `key` and `ukey` values as
   ;;; needed. This always returns the effective field value, ie. an empty node
   ;;; instance returns the default value of the underlying command.
-  (define (eval-group-field field-node instance-id command-config)
+  (define (eval-group-field field-node instance-id md-symbols command-config)
     (let* ((current-val (cddr (inode-instance-ref instance-id field-node)))
 	   (raw-val (if (null? current-val)
 			(command-default command-config)
 			current-val)))
-      (eval-effective-field-val raw-val command-config)))
+      (eval-effective-field-val raw-val md-symbols command-config)))
 
   ;;; Helper for 'eval-block-field`. Finds the last set field instance of the
   ;;; field node at FIELD-INDEX before ROW in the BLOCK-INSTANCE.
@@ -762,8 +779,9 @@
   ;;; COMMAND-CONFIG has the `use-last-set` flag. Backtracing can be disabled
   ;;; by passing NO-BACKTRACE as `#t`. This is useful for determining whether
   ;;; a specific field instance is set.
-  (define (eval-block-field block-instance field-index row command-config
-			    #!optional no-backtrace)
+  (define (eval-block-field block-instance field-index row md-symbols
+			    command-config
+			    #!key no-backtrace no-ref)
     ;; TODO this should be resolved during mdef evaluation
     (if (command-has-flag? command-config 'enable-modifiers)
 	(let ((raw-field-val (block-field-ref block-instance row field-index))
@@ -792,8 +810,10 @@
 			     '0+)
 			 raw-mod-val)))
 		(eval-effective-field-val actual-field-val
+					  md-symbols
 					  command-config
-					  actual-mod-val))))
+					  modifier: actual-mod-val
+					  no-ref: no-ref))))
 	(let ((raw-val (block-field-ref block-instance row field-index)))
 	  (if no-backtrace
 	      (and (not (null? raw-val))
@@ -807,7 +827,9 @@
 			   (command-default command-config))
 		       (command-default command-config))
 		   raw-val)
-	       command-config)))))
+	       md-symbols
+	       command-config
+	       no-ref: no-ref)))))
 
   ;;; Get the inode type of the parent of node NODE-ID.
   (define (get-parent-node-type node-id mdef)
@@ -852,7 +874,7 @@
   				    field-indices)))
 		    `(,eval-group-field
 		      (,subnode-ref (quote ,transformed-symbol) parent-node)
-		      instance-id ,command-config))
+		      instance-id md-symbols ,command-config))
 		(if conditional?
 		    (if uses-modifier
 			`(or (,(complement null?)
@@ -863,8 +885,9 @@
 			     (,(complement null?)
   			      (,list-ref
 			       (,list-ref (,cddr parent-node) instance-id)
-  			       ,(+ 1 (list-index (cute eqv? <> transformed-symbol)
-  			  			 field-indices)))))
+  			       ,(+ 1
+				   (list-index (cute eqv? <> transformed-symbol)
+  			  		       field-indices)))))
 			`(,(complement null?)
   			  (,list-ref
 			   (,list-ref (,cddr parent-node) instance-id)
@@ -876,8 +899,9 @@
 		      ,(list-index (cute eqv? <> transformed-symbol)
 				   field-indices)
 		      instance-id ;; row
+		      md-symbols
 		      ,command-config
-		      ,conditional?)))))
+		      no-backtrace: ,conditional?)))))
 	 ((string-prefix? "$" symbol-name)
 	  `(,alist-ref (quote ,transformed-symbol) md-symbols))
 	 (else elem))))
@@ -1428,7 +1452,9 @@
 			   (list-index (cute eqv? field-id <>)
 				       order-fields)
 			   order-pos
-			   (mdef-get-inode-source-command field-id mdef)))
+			   '() ;; TODO md-symbols
+			   (mdef-get-inode-source-command field-id mdef)
+			   no-ref: #t))
 			required-field-ids))
 		 (iota order-length)))
 	   (unique-combinations '()))
@@ -1524,6 +1550,22 @@
 		       subnode-id))
 		(mdef-get-subnode-ids parent-node-id (mdef-itree mdef))))
 
+  ;;; Helper for `make-oblock`.
+  ;;; Generate a list of mdal symbols that may be used to resolve reference
+  ;;; commands.
+  (define (make-block-ref-symbols base-name instance-ids sizes origin)
+    ;; TODO must ensure we have origin before entering this
+    (if (or (not origin) (null? instance-ids))
+	'()
+	(cons (cons (string->symbol
+		     (string-append base-name
+				    (number->string (car instance-ids))))
+		    origin)
+	      (make-block-ref-symbols base-name
+				      (cdr instance-ids)
+				      (cdr sizes)
+				      (+ origin (car sizes))))))
+
   ;;; Oblock compilation works as follows:
   ;;; 1. The parent inode instance contents are resized if necessary, and a new
   ;;;    order is generated.
@@ -1560,6 +1602,9 @@
 			  output-asm)
 	     (let* ((parent (resize-blocks parent-inode parent-inode-id
 					   resize mdef))
+		    ;; TODO ^^ This is dodgy. If resize is #f, this gets handled
+		    ;; in resize-block-instances (merge all into 1 block), but
+		    ;; this is certainly not what we want.
 		    (order-alist
 		     (make-order-alist (subnode-ref order-id parent)
 				       source-block-ids mdef))
@@ -1591,12 +1636,20 @@
 				"\n")
 			       (car result)))
 		     (cadr result)
-		     (append (list (cons output-order-id
-					 (map car order-alist))
-				   (cons output-sizes-id
-					 (map (o length flatten)
+		     (let ((output-sizes (map (o length flatten)
 					      (car result))))
-			     md-symbols)))))))
+		       (append (list (cons output-order-id
+					   (map car order-alist))
+				     (cons output-sizes-id output-sizes))
+			       (make-block-ref-symbols
+				(string-append "mdal__"
+					       (symbol->string parent-inode-id)
+					       "_")
+				;; TODO this obv won't work for unordered groups
+ 				(map car order-alist)
+				output-sizes
+				current-org)
+			       md-symbols))))))))
 
   ;;; Get the list of IDs of the oblock nodes from a list of ogroup subnodes
   (define (get-oblock-ids group-nodes)

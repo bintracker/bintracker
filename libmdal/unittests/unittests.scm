@@ -404,7 +404,7 @@
 	120
 	(eval-group-field
 	 (subnode-ref 'BPM (inode-instance-ref 0 (mmod-global-node my-mod)))
-	 0 (mdef-get-inode-source-command 'BPM my-cfg)))
+	 0 '() (mdef-get-inode-source-command 'BPM my-cfg)))
 
  (test "eval-block-field"
        (hash-table-ref (command-keys (mdef-get-inode-source-command
@@ -412,7 +412,7 @@
 		       'a2)
        (eval-block-field ((node-path "0/PATTERNS/0/CH2/0")
 			  (mmod-global-node my-mod))
-			 0 10 (mdef-command-ref 'NOTE my-cfg)))
+			 0 10 '() (mdef-command-ref 'NOTE my-cfg)))
 
  ;; (test "get-required-symbols"
  ;;       '((foo)

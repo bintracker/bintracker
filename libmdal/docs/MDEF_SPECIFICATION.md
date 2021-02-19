@@ -203,16 +203,18 @@ Fields are the basic building blocks of an input structure. They can exist as si
 
 Groups wrap logical units of input nodes, including other groups.
 
-|keyword | description|
-|--------|------------|
-|`flags:`| A list of flags. See below for supported flags.
-|`id:`   | A unique identifier naming the symbol node.
-|`nodes:`| A list of child nodes, which may be `field`s, `block`s, and/or other `group`s.
+|keyword      | description|
+|-------------|------------|
+|`block-size` | Forces `block` sub-nodes to have a fixed size. Takes an unsigned integer argument.
+|`flags:`     | A list of flags. See below for supported flags.
+|`id:`        | A unique identifier naming the symbol node.
+|`nodes:`     | A list of child nodes, which may be `field`s, `block`s, and/or other `group`s.
 
 |flag | description|
 |-----|------------|
 |`ordered`| An order (sequence) node will be generated for this group.
 
+It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-blocks) instead.
 
 
 ## Output Nodes

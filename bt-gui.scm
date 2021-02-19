@@ -3764,7 +3764,7 @@
   ;;; A widget class suitable for displaying an MDAL group node.
   ;;;
   ;;; ```Scheme
-  ;;; (make <ui-subgroups>
+  ;;; (make <ui-group>
   ;;;      'group-id ID
   ;;;      'parent-instance-path PATH
   ;;;      'metastate-accessor ACCESSOR)
