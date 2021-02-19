@@ -1600,11 +1600,12 @@
        type: 'block
        fn: (lambda (onode parent-inode mdef current-org md-symbols
 			  output-asm)
-	     (let* ((parent (resize-blocks parent-inode parent-inode-id
-					   resize mdef))
-		    ;; TODO ^^ This is dodgy. If resize is #f, this gets handled
-		    ;; in resize-block-instances (merge all into 1 block), but
-		    ;; this is certainly not what we want.
+	     (let* ((parent (if (inode-config-block-length
+				 (mdef-inode-ref parent-inode-id mdef))
+				;; do not resize if input block length is fixed
+				parent-inode
+				(resize-blocks parent-inode parent-inode-id
+					       resize mdef)))
 		    (order-alist
 		     (make-order-alist (subnode-ref order-id parent)
 				       source-block-ids mdef))
