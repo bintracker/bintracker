@@ -47,7 +47,15 @@ local machine_features = {
 	 end
       end
    },
-   sorcerer = {}}
+   sorcerer = {
+      post_load_actions = function ()
+	 -- unfreeze Z80 emulation after halt instruction on newer MAME versions
+	 if machine_manager.devices[":maincpu"].state["HALT"] ~= nil then
+	    machine_manager.devices[":maincpu"].state["HALT"].value = 0
+	 end
+      end
+   }
+}
 
 -- initialize machine_features implicit defaults for emulated machine
 local machine_specific = machine_features[emu.romname()]
