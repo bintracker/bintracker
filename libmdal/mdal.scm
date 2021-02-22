@@ -251,7 +251,10 @@
 		       (list-ref block-contents row)))))
 	  block-instance-ids
 	  (remove (lambda (node)
-		    (symbol-contains (car node) "_ORDER"))
+		    (or (not (eqv? 'block
+				   (inode-config-type (mdef-inode-ref (car node)
+								      mdef))))
+			(symbol-contains (car node) "_ORDER")))
 		  (cddr group-instance)))))
 
   ;;; Returns the values of all field node instances of the non-order block
