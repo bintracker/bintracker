@@ -14,24 +14,60 @@ With an engine definition, authors of hardware-level music players implementatio
 It is the task of an MDAL compiler to figure out how to transform MMOD input into the desired binary output format.
 
 
-### Core Concepts
-
-- MDEF describes how to translate **standardized input** (in the form of MMODs) into **customized output** (in the form of assembly language data definitions). MDEF is not a bi-directional data translation language, ie. it does not help you to derive MMODs from generic data.
-
-- MDEF is a "dumb" language, meaning it does not care about semantics except where strictly necessary. MDEF describes data in terms of structure, while generally ignoring content. Simply put, MDEF is concerned with **how** to deal with data, rather than **what** that data represents. There are some exceptions to this rule. Notably, MDEF understands the concept of a (musical) note, and the concept of an order list (song order, sequence).
-
-- **Don't bother the user** with implementation details. The input structure should be as abstract as possible. For example, consider a player that expects patterns to have a fixed length. Such a requirement complicates the work of composers, hence they should not be burdened with it. Instead, MDAL knows how to translate arbitrary-length patterns into fixed length ones, so it is a good strategy to hide this implementation detail from the user altogether.
-
-- Enable users to shoot themselves in the foot if necessary. That is, prefer feature richness over safety. Yes, stupid users do stupid things, but that is generally not a good enough reason to prevent intelligent users from exploiting your player implementation to the max. If you can expand the feature set of an MDEF at the risk of enabling inconsiderate users to enter invalid input, take the risk. This should never be a serious problem, because the default behavior for parsing MMODs is to warn on and sanitize invalid input data, and only fail on invalid syntax.
-
-
-### Conventions in this Document
+## Conventions in this Document
 
 The names "sound engine", "music routine", and "music driver" are used interchangeably, and mean the same thing: A piece of code that will read in a data structure representing a musical score, and generate music accordingly.
 
 In code examples used in this document, an UPPERCASE name represents an argument that may be referred to in the documentation. Anything enclosed in square brackets `[]` represents an optional argument. An ellipsis `...` signifies that more arguments or argument expressions of the same type as the preceding one follow.
 
 DSSSL style keywords (`name:`) are used in place of standard Scheme syntax (`#:symbol`).
+
+
+
+## Core Concepts
+
+#### Overview
+
+The MDEF language is a one-directional data translation language. It describes how to generate output from input, but not the reverse process. MDEF describes data in terms of structure, while generally ignoring the meaning of the data itself. Simply put, MDEF is concerned with **how** to deal with data, rather than **what** that data represents. (There are some exceptions to this rule, for example MDEF understands the concept of a musical note). The MDEF syntax is based on [symbolic expressions](https://en.wikipedia.org/wiki/S-expression).
+
+An MDEF expression describes how to translate *standardized input* (in the form of MMODs) into *customized output* (binary or assembly).
+
+
+#### Input Format
+
+Standardized input consists of a tree structure, using three node types: [Fields](#input-field), [Blocks](#input-block), and [Groups](#input-group). An MMOD module consists of *instances* of these nodes.
+
+- A *Field* instance holds a single value. Each Field has an associated [Command](#commands), which defines the type of values a Field instance can assume.
+
+- A *Block* instance holds instances of one or more Field subnodes.
+
+- A *Group* instance holds instances of Field, Block, and other Group nodes.
+
+All structures typically found in Chiptune modules (patterns, samples, sequences, effects tables, global settings) are abstracted into one of these node types.
+
+Learn more about the input format in the chapter on [Input Nodes](#input-nodes).
+
+
+#### Output Format
+
+The customized output format is also described in terms of a tree structure. Output nodes may define a relation to one or more input nodes. The following output node types exist:
+
+- [`asm`](#output-asm) nodes contain arbitrary assembly code.
+- [`field`](#output-field) nodes output a single integer values. Values are computed by evaluating a [composition expression](#composition-expressions), which may operate on other input- and output nodes.
+- [`block`](#output-block) contain instances of one ore more output fields. Blocks derive output from one or more input blocks.
+- [`group`](#output-group) nodes contain instances block and field nodes. Each output group node references an input group node.
+- [`order`](#output-order) nodes output ordered lists of addresses or lookup indices, by means of evaluating an expression.
+- [`symbol`](#output-symbol) nodes emit key/value pairs that can be referenced by other output nodes.
+
+Learn more about the output format in the chapter on [Output Nodes](#output-nodes).
+
+
+#### Core Principles for Designing MDEFs
+
+- **Don't bother the user with implementation details.** The input structure should be as abstract as possible. For example, consider a player that expects patterns to have a fixed length. Such a requirement complicates the work of composers, hence they should not be burdened with it. Instead, MDAL knows how to translate arbitrary-length patterns into fixed length ones, so it is a good strategy to hide this implementation detail from the user altogether.
+
+- **Enable users to shoot themselves in the foot.** That is, prefer feature richness over safety. Yes, stupid users do stupid things, but that is generally not a good enough reason to prevent intelligent users from exploiting your player implementation to the max. If you can expand the feature set of an MDEF at the risk of enabling inconsiderate users to enter invalid input, take the risk. This should never be a serious problem, because the default behavior for parsing MMODs is to warn on and sanitize invalid input data, and only fail on invalid syntax.
+
 
 
 ## Syntax
@@ -68,6 +104,7 @@ DESCRIPTION may be an optional string describing the music player routine.
 COMMAND1 is a [command definition](#commands), INPUT-NODE1 is an [input node definition](#input-nodes), and OUTPUT-NODE1 is an [output node definition](#output-nodes).
 
 This expression shall be stored in a file using the .mdef extension. It must reside in a directory bearing the same name as the .mdef file (without the extension). The directory must contain any auxiliary files, such as the assembly code of the underlying player.
+
 
 
 ## Commands
@@ -114,6 +151,7 @@ Remarks:
 - `modifier` commands are normally auto-generated by setting the `enable-modifiers` flag (see below).
 - `trigger` commands are only checked for their "set" status, their value is ignored. They may not carry the `use-last-set` flag.
 
+
 #### Command Flags
 
 All MDAL implementations support at least the following flags:
@@ -140,7 +178,6 @@ In addition to the above mandatory flags, you can set any number of optional use
 |`is-waveform`   | waveform setting                                        | `key`, `ukey`, `reference`|
 
 
-
 #### Auto-Generated Commands
 
 For each MDEF configuration, the following commands are automatically generated:
@@ -163,7 +200,7 @@ The basic building blocks of the input configuration are [`field`s](#input-field
 
 The parent node of all defined input nodes is an implicit `group` node called `GLOBAL`.
 
-Nodes for order lists (sequences, song order) are implicit in MDEF v2 and cannot be explicitly defined.
+Nodes for order lists (sequences, song order) are generated automatically and cannot (yet) be explicitly defined.
 
 
 ### Input `block`
@@ -205,16 +242,19 @@ Groups wrap logical units of input nodes, including other groups.
 
 |keyword      | description|
 |-------------|------------|
-|`block-size` | Forces `block` sub-nodes to have a fixed size. Takes an unsigned integer argument.
+|`block-size` | Forces `block` sub-nodes to have a fixed size. Takes an unsigned integer argument.¹
 |`flags:`     | A list of flags. See below for supported flags.
 |`id:`        | A unique identifier naming the symbol node.
 |`nodes:`     | A list of child nodes, which may be `field`s, `block`s, and/or other `group`s.
 
+¹ It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-blocks) instead.
+
+
 |flag | description|
 |-----|------------|
-|`ordered`| An order (sequence) node will be generated for this group.
+|`ordered`| An order (sequence) node will be generated for this group.²
 
-It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-blocks) instead.
+² Internally, orders are always created, but the compiler treats orders differently depending on this flag. When the flag is set, the compiler merges and splits block instances according to each position in the order. Without the flag set, the compiler considers only unique order positions.
 
 
 ## Output Nodes
@@ -282,7 +322,7 @@ See the [Example](#example) for some uses of composition expressions.
 
 ### Output `group`
 
-An output group node wraps multiple output blocks. If the corresponding input node uses an order (sequence), the output group will generate a matching order, which will be emitted as a symbol. The name of the symbol is the ID of the output group, prefixed by `mdal__order_`
+An output group node wraps multiple output blocks. If the corresponding input node is ordered (ie. the `ordered` flag is set), the output group will generate a matching order, which will be emitted as a symbol. The name of the symbol is the ID of the output group, prefixed by `mdal__order_`
 
 |keyword | description|
 |--------|------------|
@@ -320,7 +360,7 @@ A symbol output node generates an internal symbol that can be referenced by othe
 
 |keyword | description|
 |--------|------------|
-|`id`    | A unique identifier naming the symbol node.
+|`id`    | A unique identifier naming the symbol node.|
 
 
 
@@ -344,6 +384,9 @@ ZX Spectrum beeper.
  commands: ((command id: BPM bits: 16 type: uint default: 140)
 	        (command id: NOTE bits: 8 type: ukey
 		             tags: (enable-modifiers use-last-set is-note)
+					 ;; notes represent 8-bit dividers for a 118 clock cycle
+					 ;; loop, the value for a rest is 0, the table is shifted by
+					 ;; -4 octaves
 		             keys: (make-dividers 118 8 0 -4)
 		             default: "rest")
 	        (command id: DRUM type: trigger default: #f description:
@@ -354,9 +397,9 @@ ZX Spectrum beeper.
          ;; An input group which will use an order (sequence).
 		 ;; 3 subnodes are defined, 2 of which are generated by a clone node.
 	     (group id: PATTERNS flags: (ordered)
-		        nodes: ((block id: DRUMS nodes: ((field from: DRUM)))
+		        nodes: ((block id: DRUMS nodes: ((repeat from: DRUM)))
 	                    (clone 2 (block id: CH
-					                    nodes: ((field from: NOTE)))))))
+					                    nodes: ((repeat from: NOTE)))))))
 
  ;; list of output elements
  output: ((asm file: "huby.asm")  ;; an asm node using an external file
