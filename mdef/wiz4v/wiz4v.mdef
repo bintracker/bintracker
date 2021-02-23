@@ -11,53 +11,58 @@
 		     flags: (enable-modifiers use-last-set is-note)
 		     keys: (make-dividers 263 16 0)
 		     default: rest)
-	    (command id: WAVE bits: 8 type: ukey
-		     flags: (use-last-set is-waveform)
-		     keys: ((tri . #x2)
-			    (rect . #x3)
-			    (saw . #x4)
-			    (noi . #x5))
-		     default: tri))
+	    (command id: WAVE bits: 8 type: reference reference-to: WAVETABLES
+		     default: 0 flags: (use-last-set is-waveform)
+		     description: "Select wavetable")
+	    (command id: SAMPLE bits: 6 type: uint default: 0
+		     flags: (use-last-set is-pcm-data)
+		     description: "6-bit unsigned sample value"))
 
  input: ((group id: PATTERNS flags: (ordered)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(clone 4 (block id: CH
 					nodes: ((field from: NOTE)
-						(field from: WAVE)))))))
+						(field from: WAVE))))))
+	 (group id: WAVETABLES block-length: 256
+	 	nodes: ((block id: WAVE nodes: ((field from: SAMPLE))))))
 
  output: ((asm file: "wiz4v.asm")
+	  (group id: WAVETABLES from: WAVETABLES nodes:
+		 ((block id: WT from: (WAVE)
+			 nodes: ((repeat bytes: 1 compose: ?SAMPLE)))))
+	  (symbol id: musicdata)
 	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
 	  (field bytes: 2 compose: 0)
 	  (group id: PATTERNS from: PATTERNS nodes:
-		 ((block id: CHANS from: (TEMPO CH1 CH2 CH3 CH4)
-			 nodes: ((repeat bytes: 1 compose:
-					 (+ (if (or ??NOTE1 ??WAVE1) 0 1)
-					    (if (or ??NOTE2 ??WAVE2) 0 #x80)
-					    (if (or ??NOTE3 ??WAVE3) 0 4)))
-				 (repeat bytes: 1 compose: ?TICKS)
-				 (repeat bytes: 2
-					 condition: (or ??NOTE1 ??WAVE1)
-					 compose: ?NOTE1)
-				 (repeat bytes: 2
-					 condition: (or ??NOTE1 ??WAVE1)
-					 compose: ?WAVE1)
-				 (repeat bytes: 2
-					 condition: (or ??NOTE2 ??WAVE2)
-					 compose: ?NOTE2)
-				 (repeat bytes: 2
-					 condition: (or ??NOTE2 ??WAVE2)
-					 compose: ?WAVE2)
-				 (repeat bytes: 2
-					 condition: (or ??NOTE3 ??WAVE3)
-					 compose: ?NOTE3)
-				 (repeat bytes: 2
-					 condition: (or ??NOTE3 ??WAVE3)
-					 compose: ?WAVE3)
-				 (repeat bytes: 2
-					 compose: (+ (if (or ??NOTE4 ??WAVE4)
-							 0 1)
-						     (* #x100 ?WAVE4)))
-				 (repeat bytes: 2
-					 condition: (or ??NOTE4 ??WAVE4)
-					 compose: ?NOTE4)
-				 (after bytes: 1 compose: #x40)))))))
+	  	 ((block id: CHANS from: (TEMPO CH1 CH2 CH3 CH4)
+	  		 nodes: ((repeat bytes: 1 compose:
+	  				 (+ (if (or ??NOTE1 ??WAVE1) 0 1)
+	  				    (if (or ??NOTE2 ??WAVE2) 0 #x80)
+	  				    (if (or ??NOTE3 ??WAVE3) 0 4)))
+	  			 (repeat bytes: 1 compose: ?TICKS)
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE1 ??WAVE1)
+	  				 compose: ?NOTE1)
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE1 ??WAVE1)
+	  				 compose: (msb ?WAVE1))
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE2 ??WAVE2)
+	  				 compose: ?NOTE2)
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE2 ??WAVE2)
+	  				 compose: (msb ?WAVE2))
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE3 ??WAVE3)
+	  				 compose: ?NOTE3)
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE3 ??WAVE3)
+	  				 compose: (msb ?WAVE3))
+	  			 (repeat bytes: 2
+	  				 compose: (+ (if (or ??NOTE4 ??WAVE4)
+	  						 0 1)
+	  					     ?WAVE4))
+	  			 (repeat bytes: 2
+	  				 condition: (or ??NOTE4 ??WAVE4)
+	  				 compose: ?NOTE4)
+	  			 (after bytes: 1 compose: #x40)))))))

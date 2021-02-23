@@ -139,36 +139,36 @@ oldsp .equ .(+ 1 current-origin)
 
     .align $100
 wavetab
-triangle
-    .(string-append " .db "
-                    (string-intersperse
-                     (map (o number->string inexact->exact round)
-                          (iota 128 0 0.5))
-                     ", ")
-                    "\n .db "
-                    (string-intersperse
-                     (map (o number->string inexact->exact round)
-                          (iota 128 63 -0.5))
-                     ", "))
-rect
-    .ds 128,0
-    .ds 128,56
+;; triangle
+;;     .(string-append " .db "
+;;                     (string-intersperse
+;;                      (map (o number->string inexact->exact round)
+;;                           (iota 128 0 0.5))
+;;                      ", ")
+;;                     "\n .db "
+;;                     (string-intersperse
+;;                      (map (o number->string inexact->exact round)
+;;                           (iota 128 63 -0.5))
+;;                      ", "))
+;; rect
+;;     .ds 128,0
+;;     .ds 128,56
 
-saw
-    .(string-append " .db "
-                    (string-intersperse
-                     (map (o number->string inexact->exact round)
-                          (iota 256 0 0.25))
-                     ", "))
+;; saw
+;;     .(string-append " .db "
+;;                     (string-intersperse
+;;                      (map (o number->string inexact->exact round)
+;;                           (iota 256 0 0.25))
+;;                      ", "))
 
-noise
-    .db 0
-    .(string-append " .db "
-                    (string-intersperse
-                     (map (lambda (x)
-                           (number->string (pseudo-random-integer 57)))
-                          (make-list 255 0))
-                     ", "))
+;; noise
+;;     .db 0
+;;     .(string-append " .db "
+;;                     (string-intersperse
+;;                      (map (lambda (x)
+;;                            (number->string (pseudo-random-integer 57)))
+;;                           (make-list 255 0))
+;;                      ", "))
 
-musicdata
+;; musicdata
     ;; len*256+ctrl1, freq1, wave1, freq2, wave2, freq3, wave3, wave4*256+ctrl2, freq4
