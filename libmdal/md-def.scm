@@ -47,6 +47,7 @@
      mmod-mdef-id
      mdef-command-ref
      mdef-inode-ref
+     mdef-group-ordered?
      mdef-get-target-endianness
      mdef-get-parent-node-id
      mdef-get-parent-node-type
@@ -274,6 +275,10 @@
   (define (mdef-inode-ref id cfg)
     (hash-table-ref/default (mdef-inodes cfg) id #f))
 
+  ;;; Predicate to check if the group inode ID is has the `ordered` flag.
+  (define (mdef-group-ordered? id def)
+    (memv 'ordered (inode-config-flags (mdef-inode-ref id def))))
+
   ;;; Returns the endianness of the configuration's target platform.
   (define (mdef-get-target-endianness cfg)
     ((o cpu-endianness target-platform-cpu mdef-target) cfg))
@@ -446,9 +451,7 @@
       ((field) (list (or id from)))
       ((block) (list id (get-subnodes-itree nodes)))
       ((group) (list id (append (get-subnodes-itree nodes)
-				(if (and flags (memv 'ordered flags))
-				    (list (generate-order-tree id nodes))
-				    '()))))
+				(list (generate-order-tree id nodes)))))
       (else (mdal-abort (string-append "unknown inode type "
 				       (->string node-type))))))
 
@@ -570,7 +573,7 @@
 	     (let* ((subnodes
 		     (if nodes (get-mdef-inodes nodes commands type) '()))
 		    (order-nodes
-		     (if (and (list? flags) (memq 'ordered flags))
+		     (if (eqv? type 'group)
 			 (make-order-config-nodes id subnodes)
 			 '()))
 		    (modifier-node
@@ -1566,6 +1569,25 @@
 				      (cdr sizes)
 				      (+ origin (car sizes))))))
 
+  ;;; Helper for make-oblock. Construct assembly output for oblock data, where
+  ;;; PARENT-ID is the parent ogroup node ID, BLOCK-ID is the ID of the oblock
+  ;;; node ID, INST-IDs is a list of block instance ids, and data blocks is a
+  ;;; list of raw block data.
+  (define (block-data->asm parent-id block-id inst-ids data-blocks)
+    (string-intersperse
+     (map (lambda (inst-id block-data)
+	    (string-append "mdal__group_"
+			   (symbol->string parent-id)
+			   "_"
+			   (symbol->string block-id)
+			   "_b"
+			   (number->string inst-id #x10)
+			   "\n"
+			   (bytes->asm (flatten block-data))))
+	  inst-ids
+	  data-blocks)
+     "\n"))
+
   ;;; Oblock compilation works as follows:
   ;;; 1. The parent inode instance contents are resized if necessary, and a new
   ;;;    order is generated.
@@ -1598,6 +1620,7 @@
 		 nodes)))
       (make-onode
        type: 'block
+       ;; TODO: (mdef-group-ordered? parent-inode-id proto-mdef)
        fn: (lambda (onode parent-inode mdef current-org md-symbols
 			  output-asm)
 	     (let* ((parent (if (inode-config-block-length
@@ -1621,20 +1644,10 @@
 		      type: 'block
 		      size: (length (flatten (car result)))
 		      val: (if output-asm
-			       (string-intersperse
-				(map (lambda (inst-id block-data)
-				       (string-append
-					"mdal__group_"
-					(symbol->string parent-inode-id)
-					"_"
-					(symbol->string id)
-					"_b"
-					(number->string inst-id #x10)
-					"\n"
-					(bytes->asm (flatten block-data))))
-				     (map car order-alist)
-				     (car result))
-				"\n")
+			       (block-data->asm parent-inode-id
+						id
+						(map car order-alist)
+						(car result))
 			       (car result)))
 		     (cadr result)
 		     (let ((output-sizes (map (o length flatten)
@@ -1647,6 +1660,7 @@
 					       (symbol->string parent-inode-id)
 					       "_")
 				;; TODO this obv won't work for unordered groups
+				;; shouldn't this be unique-order-combinations
  				(map car order-alist)
 				output-sizes
 				current-org)

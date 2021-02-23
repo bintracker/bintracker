@@ -16,7 +16,7 @@
      mod-get-block-values
      mod-get-group-instance-order
      mod-get-order-values
-     get-ordered-group-length
+     ;; get-ordered-group-length
      node-set!
      node-remove!
      node-insert!
@@ -266,29 +266,29 @@
 	   (mod-get-row-values group-instance (cdr order-pos) pos mdef))
 	 (iota (car order-pos))))
 
-  ;;; Returns the group instance's order node (instance 0)
+  ;;; Returns the group instance's order node (instance 0).
   (define (mod-get-group-instance-order igroup-instance igroup-id)
-    (cadr (subnode-ref (symbol-append igroup-id '_ORDER) igroup-instance)))
+    (cadr (subnode-ref (symbol-append igroup-id '_ORDER)
+		       igroup-instance)))
 
-  ;; TODO swap argument order
   ;;; Returns the values of all order fields as a list of row value sets.
   ;;; Values are normalized, ie. empty positions are replaced with repeated
   ;;; values from an earlier row.
-  (define (mod-get-order-values group-id group-instance)
-    (let ((order-contents (cddr (mod-get-group-instance-order group-instance
-							      group-id))))
-      (repeat-block-row-values (cons (map (lambda (field)
-					    (if (null? field) 0 field))
-					  (car order-contents))
-				     (cdr order-contents)))))
+  (define (mod-get-order-values group-instance group-id mdef)
+    (let ((order (mod-get-group-instance-order group-instance group-id)))
+      (repeat-block-row-values
+       (cons (map (lambda (field)
+		    (if (null? field) 0 field))
+		  (caddr order))
+	     (cdddr order)))))
 
-  ;; TODO swap argument order
-  ;;; Returns the total number of all block rows in the given group node
-  ;;; instance. The containing group node must be ordered. The result is equal
-  ;;; to the length of the block nodes as if they were combined into a single
-  ;;; instance after being mapped onto the order node.
-  (define (get-ordered-group-length group-id group-instance)
-    (apply + (map car (mod-get-order-values group-id group-instance))))
+  ;; ;; TODO swap argument order
+  ;; ;;; Returns the total number of all block rows in the given group node
+  ;; ;;; instance. The containing group node must be ordered. The result is equal
+  ;; ;;; to the length of the block nodes as if they were combined into a single
+  ;; ;;; instance after being mapped onto the order node.
+  ;; (define (get-ordered-group-length group-id group-instance)
+  ;;   (apply + (map car (mod-get-order-values group-id group-instance))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -581,8 +581,9 @@
 	    (let ((block-ids (remove (cute eqv? <> order-id)
 				     (mdef-get-subnode-ids
 				      group-id (mdef-itree mdef))))
-		  (order-pos (list-ref (mod-get-order-values group-id
-							     node-instance)
+		  (order-pos (list-ref (mod-get-order-values node-instance
+							     group-id
+							     mdef)
 				       order-pos)))
 	      (append
 	       (take node-instance 2)

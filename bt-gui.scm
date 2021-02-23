@@ -489,23 +489,29 @@
   	   (display-size (value-display-size command-config)))
       (cond ((not val) (list->string (make-list display-size #\.)))
   	    ((null? val) (list->string (make-list display-size #\space)))
-  	    (else (case (command-type command-config)
-  		    ((int uint reference)
-  		     (string-pad (number->string val (settings 'number-base))
-  				 display-size
-				 #\0))
-		    ((modifier)
-		     (let ((symstr (symbol->string val)))
-		       (string-append (string-take-right symstr 1)
-				      (string-pad (string-drop-right symstr 1)
-						  (sub1 display-size)
-						  #\0))))
-  		    ((key ukey) (if (memq 'is-note
-  					  (command-flags command-config))
-  				    (normalize-note-name val)
-  				    val))
-  		    ((trigger) "x")
-  		    ((string) val))))))
+  	    (command-config
+	     (case (command-type command-config)
+  	       ((int uint reference)
+  		(string-pad (number->string val (settings 'number-base))
+  			    display-size
+			    #\0))
+	       ((modifier)
+		(let ((symstr (symbol->string val)))
+		  (string-append (string-take-right symstr 1)
+				 (string-pad (string-drop-right symstr 1)
+					     (sub1 display-size)
+					     #\0))))
+  	       ((key ukey) (if (memq 'is-note
+  				     (command-flags command-config))
+  			       (normalize-note-name val)
+  			       val))
+  	       ((trigger) "x")
+  	       ((string) val)))
+	    (else (error 'normalize-field-value
+			 (string-append "No command configuration found "
+					"for field \""
+					(symbol->string field-id)
+					"\""))))))
 
   ;;; Get the color tag asscociated with the field's command type.
   (define (get-field-color-tag field-id mdef)
@@ -2853,14 +2859,14 @@
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
-  ;;; corresponds to a row of fields. For order nodes, there is only one element
-  ;;; at the first nesting level.
+  ;;; corresponds to a row of fields.
   (define-method (ui-blockview-get-item-list primary: (buf <ui-block-view>))
     (let* ((group-id (slot-value buf 'group-id))
-  	   (group-instance (ui-blockview-parent-instance buf)))
+  	   (group-instance (ui-blockview-parent-instance buf))
+	   (mdef (ui-metastate buf 'mdef)))
       (map (cut mod-get-block-values group-instance <>
   		(ui-metastate buf 'mdef))
-  	   (mod-get-order-values group-id group-instance))))
+	   (mod-get-order-values group-instance group-id mdef))))
 
   ;;; Returns the chunk from the item cache that the cursor is currently on.
   (define-method (ui-blockview-get-current-chunk primary:
@@ -2875,8 +2881,9 @@
   			      (ui-blockview-get-current-block-id buf)))
     (list-ref (list-ref (map cdr
   			     (mod-get-order-values
+  			      (ui-blockview-parent-instance buf)
   			      (slot-value buf 'group-id)
-  			      (ui-blockview-parent-instance buf)))
+			      (ui-metastate buf 'mdef)))
   			(ui-blockview-get-current-order-pos buf))
   	      (list-index (lambda (block-id)
   			    (eq? block-id current-block-id))
@@ -2908,9 +2915,11 @@
   	   (parent-instance-path (slot-value buf 'parent-instance-path))
   	   (parent-instance ((node-path parent-instance-path)
   	   		     (mmod-global-node (ui-metastate buf 'mmod))))
+	   (mdef (ui-metastate buf 'mdef))
   	   (block-instance-ids
-  	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
-  						 parent-instance)
+  	    (cdr (list-ref (mod-get-order-values parent-instance
+  						 (slot-value buf 'group-id)
+						 mdef)
   			   (ui-blockview-get-current-order-pos buf)))))
       (ui-blockview-perform-edit
        buf
@@ -2923,9 +2932,8 @@
   			     (,current-row
   			      ,(make-list
   				(length (mdef-get-subnode-ids
-  					 block-id
-  					 (mdef-itree (ui-metastate buf
-  								   'mdef))))
+					 block-id
+  					 (mdef-itree mdef)))
   				'()))))))
   		  (slot-value buf 'block-ids)
   		  block-instance-ids)))
@@ -2938,8 +2946,9 @@
   	   (parent-instance ((node-path parent-instance-path)
   	   		     (mmod-global-node mod)))
   	   (block-instance-ids
-  	    (cdr (list-ref (mod-get-order-values (slot-value buf 'group-id)
-  						 parent-instance)
+  	    (cdr (list-ref (mod-get-order-values parent-instance
+  						 (slot-value buf 'group-id)
+						 (mmod-mdef mod))
   			   (ui-blockview-get-current-order-pos buf)))))
       (ui-blockview-perform-edit
        buf
@@ -2984,7 +2993,8 @@
 	   (parent-instance ((node-path parent-instance-path)
   	   		     (mmod-global-node (ui-metastate buf 'mmod))))
 	   (group-id (slot-value buf 'group-id))
-	   (order (mod-get-order-values group-id parent-instance))
+	   (mdef (ui-metastate buf 'mdef))
+	   (order (mod-get-order-values parent-instance group-id mdef))
 	   (all-field-ids (slot-value buf 'field-ids))
 	   (field-index (lambda (id)
 			  (list-index (cute eqv? <> id) all-field-ids)))
@@ -2992,7 +3002,7 @@
 			    (field-index (cdr start))))
 	   (block-ids (map (lambda (field-id)
 			     (mdef-get-parent-node-id
-			      field-id (mdef-itree (ui-metastate buf 'mdef))))
+			      field-id (mdef-itree mdef)))
 			   field-ids))
 	   (actions
 	    (concatenate
@@ -3010,8 +3020,10 @@
 			(block-inst-id
 			 (list-ref
 			  (list-ref
-			   (mod-get-order-values group-id
-						 parent-instance)
+			   ;; TODO just use `order` from above?
+			   (mod-get-order-values parent-instance
+						 group-id
+						 mdef)
 			   (ui-blockview-cursor-row->order-pos buf row))
 			  (mdef-get-block-field-index
 			   (symbol-append group-id '_ORDER)
@@ -3040,11 +3052,12 @@
   (define-method (ui-blockview-blockcut primary: (buf <ui-block-view>)
 					contents start end)
     (let* ((mod (ui-metastate buf 'mmod))
+	   (mdef (mmod-mdef mod))
 	   (parent-instance-path (slot-value buf 'parent-instance-path))
 	   (parent-instance ((node-path parent-instance-path)
   	   		     (mmod-global-node mod)))
 	   (group-id (slot-value buf 'group-id))
-	   (order (mod-get-order-values group-id parent-instance))
+	   (order (mod-get-order-values parent-instance group-id mdef))
 	   (all-field-ids (slot-value buf 'field-ids))
 	   (field-index (lambda (id)
 			  (list-index (cute eqv? <> id) all-field-ids)))
@@ -3052,7 +3065,7 @@
 			    (field-index (cdr start))))
 	   (block-ids (map (lambda (field-id)
 			     (mdef-get-parent-node-id
-			      field-id (mdef-itree (ui-metastate buf 'mdef))))
+			      field-id (mdef-itree mdef)))
 			   field-ids))
 	   (actions
 	    (concatenate
@@ -3063,8 +3076,10 @@
 		   (let ((block-inst-id
 			  (list-ref
 			   (list-ref
-			    (mod-get-order-values group-id
-						  parent-instance)
+			    ;; TODO just use `order` from above?
+			    (mod-get-order-values parent-instance
+						  group-id
+						  mdef)
 			    (ui-blockview-cursor-row->order-pos buf row))
 			   (mdef-get-block-field-index
 			    (symbol-append group-id '_ORDER)
@@ -3360,13 +3375,12 @@
   ;;; corresponds to a row of fields. For order nodes, there is only one element
   ;;; at the first nesting level.
   (define-method (ui-blockview-get-item-list primary: (buf <ui-order-view>))
-    (let ((group-id (slot-value buf 'group-id)))
-      (list (mod-get-order-values group-id
-      				  (ui-blockview-parent-instance buf)))))
+    (list (mod-get-order-values (ui-blockview-parent-instance buf)
+      				(slot-value buf 'group-id)
+				(ui-metastate buf 'mdef))))
 
   ;;; Returns the chunk from the item cache that the cursor is currently on.
-  (define-method (ui-blockview-get-current-chunk primary:
-  						 (buf <ui-order-view>))
+  (define-method (ui-blockview-get-current-chunk primary: (buf <ui-order-view>))
     (car (slot-value buf 'item-cache)))
 
   ;;; Update the blockview row numbers according to the current item cache.
@@ -3487,9 +3501,10 @@
   			   (sub1 (length (slot-value buf 'field-ids)))
   			   0))
   		    (list-ref (mod-get-order-values
-  			       (slot-value buf 'group-id)
   			       ((node-path parent-instance-path)
-  				(mmod-global-node (ui-metastate buf 'mmod))))
+  				(mmod-global-node (ui-metastate buf 'mmod)))
+  			       (slot-value buf 'group-id)
+			       (ui-metastate buf 'mdef))
   			      (sub1 current-row)))))
   	   (block-id (symbol-append (slot-value buf 'group-id)
   				    '_ORDER)))
@@ -3509,9 +3524,10 @@
   	     (parent-instance-path (slot-value buf 'parent-instance-path))
   	     (current-row-values
   	      (list-ref (mod-get-order-values
-  			 (slot-value buf 'group-id)
   			 ((node-path parent-instance-path)
-  			  (mmod-global-node (ui-metastate buf 'mmod))))
+  			  (mmod-global-node (ui-metastate buf 'mmod)))
+  			 (slot-value buf 'group-id)
+			 (ui-metastate buf 'mdef))
   			current-row))
   	     (block-id (symbol-append (slot-value buf 'group-id) '_ORDER)))
   	(unless (zero? current-row)
@@ -3577,7 +3593,9 @@
 	   (parent-instance ((node-path parent-instance-path)
   	   		     (mmod-global-node (ui-metastate buf 'mmod))))
 	   (group-id (slot-value buf 'group-id))
-	   (order (mod-get-order-values group-id parent-instance))
+	   (order (mod-get-order-values parent-instance
+					group-id
+					(ui-metastate buf 'mdef)))
 	   (all-field-ids (slot-value buf 'field-ids))
 	   (field-index (lambda (id)
 			  (list-index (cute eqv? <> id) all-field-ids)))
@@ -3694,7 +3712,8 @@
   				  ,(slot-value buf 'parent-instance-path)
   				  metastate-accessor
   				  ,(slot-value buf 'metastate-accessor)))
-    (multibuffer-add buf `(order #t 1 ,<ui-order-view>
+    (multibuffer-add buf `(order #t 1
+				 ,<ui-order-view>
   				 group-id ,(slot-value buf 'group-id)
   				 parent-instance-path
   				 ,(slot-value buf 'parent-instance-path)
