@@ -9,6 +9,28 @@
   (import scheme (chicken base) (chicken string)
 	  srfi-1)
 
+  ;;; Scale the list of FIELD-VALUES to fit into the integer range AMIN,AMAX.
+  (define (scale-values field-values amin amax)
+    (let ((rmin (min amin amax))
+	  (rmax (max amin amax)))
+      (if (every null? field-values)
+	  field-values
+	  (let ((minval (apply min (remove null? field-values)))
+		(maxval (apply max (remove null? field-values))))
+	    (map (lambda (x)
+		   (if (null? x)
+		       '()
+		       (if (= minval maxval)
+			   (cond
+			    ((< x rmin) minval)
+			    ((> x rmax) maxval)
+			    (else x))
+			   (inexact->exact (round (+ (/ (* (- rmax rmin)
+							   (- x minval))
+							(- maxval minval))
+						     rmin))))))
+		 field-values)))))
+
   ;;; Interpolate the list of integer values VALS. The input list may contain
   ;;; `null` values. By default, linear interpolation is used. This may be
   ;;; overridden by specifying TYPE. Currently, the only other available

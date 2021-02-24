@@ -25,8 +25,7 @@
      generate-new-mmod
      derive-single-row-mmod
      derive-single-pattern-mmod
-     transpose-notes
-     scale-values)
+     transpose-notes)
 
   (import scheme (chicken base) (chicken module) (chicken pretty-print)
 	  (chicken format) (chicken string) (chicken bitwise) (chicken sort)
@@ -680,26 +679,5 @@
 		       'rest
 		       (car (list-ref notes (+ current-idx offset)))))))
 	   field-values)))
-
-  (define (scale-values field-values amin amax)
-    (let ((rmin (min amin amax))
-	  (rmax (max amin amax)))
-      (if (every null? field-values)
-	  field-values
-	  (let ((minval (apply min (remove null? field-values)))
-		(maxval (apply max (remove null? field-values))))
-	    (map (lambda (x)
-		   (if (null? x)
-		       '()
-		       (if (= minval maxval)
-			   (cond
-			    ((< x rmin) minval)
-			    ((> x rmax) maxval)
-			    (else x))
-			   (inexact->exact (round (+ (/ (* (- rmax rmin)
-							   (- x minval))
-							(- maxval minval))
-						     rmin))))))
-		 field-values)))))
 
   ) ;; end module mdal
