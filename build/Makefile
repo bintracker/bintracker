@@ -63,7 +63,7 @@ bt-emulation.import.so: bt-emulation.so
 	$(CSC) $(IMPORTFLAGS) bt-emulation.import.scm
 
 bt-gui.so: $(BT_SRC)bt-gui.scm bt-state.import.so bt-types.import.so bt-db.import.so\
- bt-emulation.import.so bt-gui-lolevel.import.so mdal.so
+ bt-maths.import.so bt-emulation.import.so bt-gui-lolevel.import.so mdal.so
 	$(CSC) $(LIBFLAGS) $< -j bt-gui -emit-types-file bt-gui.types -o $@
 
 bt-gui.import.so: bt-gui.so
