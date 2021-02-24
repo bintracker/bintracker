@@ -211,7 +211,7 @@
 
   ;;; Returns a UI focus controller, which is a closure that manages the user
   ;;; input focus of a window
-  ;;; (eg. a [Tk toplevel](https://www.tcl.tk/man/tcl8.6/TkCmd/toplevel.htm)). A
+  ;;; (ie. a [Tk toplevel](https://www.tcl.tk/man/tcl8.6/TkCmd/toplevel.htm)). A
   ;;; UI buffer within a window is focussed if the buffer's specific event
   ;;; bindings (keypresses etc.) are active. In other words, the buffer that
   ;;; the user currently interacts with that buffer has focus.
@@ -276,7 +276,7 @@
   ;;; `(FC 'suspend)`
   ;;;
   ;;; Temporarily disable the focus controller. Unfocusses the currently active
-  ;;; entry. U
+  ;;; entry.
   ;;;
   ;;; `(FC 'resume)`
   ;;;
