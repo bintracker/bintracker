@@ -2832,6 +2832,12 @@
       (textgrid-add-tags header 'active 1)
       (ui-blockview-add-type-tags buf 1 (slot-value buf 'block-header))))
 
+  ;;; Retrieve the `<ui-order-view>` buffer that is linked to BUF.
+  (define-method (ui-blockview-get-sibling primary: (buf <ui-block-view>))
+    (ui-ref (ui-ref (ui-metastate buf 'group-ref (slot-value buf 'group-id))
+		    'blocks)
+	    'order))
+
   ;;; Returns the order position that the vertical cursor position ROW
   ;;; belongs to.
   (define-method (ui-blockview-cursor-row->order-pos
@@ -3155,10 +3161,7 @@
   ;;; Set the cursor of the associated order view.
   (define-method (ui-blockview-set-sibling-cursor primary:
 						  (buf <ui-block-view>))
-    (let ((ov (ui-ref (ui-ref (ui-metastate buf 'group-ref
-					    (slot-value buf 'group-id))
-			      'blocks)
-		      'order)))
+    (let ((ov (ui-blockview-get-sibling buf)))
       (ui-blockview-set-cursor
        ov
        (ui-blockview-get-current-order-pos buf)
@@ -3350,6 +3353,12 @@
       (textgrid-add-tags header 'active 0)
       (ui-blockview-add-type-tags buf 0 (slot-value buf 'block-header))))
 
+  ;;; Retrieve the `<ui-block-view>` buffer that is linked to BUF.
+  (define-method (ui-blockview-get-sibling primary: (buf <ui-order-view>))
+    (ui-ref (ui-ref (ui-metastate buf 'group-ref (slot-value buf 'group-id))
+		    'blocks)
+	    'blocks))
+
   ;;; Returns the corresponding group order position for the chunk currently
   ;;; under cursor. Alias for `ui-blockview-get-current-row`.
   (define-method (ui-blockview-get-current-order-pos primary:
@@ -3417,10 +3426,7 @@
   ;;; Set the cursor of the associated blockview.
   (define-method (ui-blockview-set-sibling-cursor primary:
 						  (buf <ui-order-view>))
-    (let ((bv (ui-ref (ui-ref (ui-metastate buf 'group-ref
-					    (slot-value buf 'group-id))
-			      'blocks)
-		      'blocks)))
+    (let ((bv (ui-blockview-get-sibling buf)))
       (ui-blockview-set-cursor
        bv
        (car (list-ref (ui-blockview-start+end-positions bv)
@@ -3451,7 +3457,7 @@
   		  (make-reverse-action action (ui-metastate buf 'mmod)))
     (ui-metastate buf 'apply-edit action)
     (ui-update buf)
-    (ui-update (current 'blockview))
+    (ui-update (ui-blockview-get-sibling buf))
     (ui-metastate buf 'modified #t)
     (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
       (ui-blockview-show-cursor buf)))
@@ -3478,8 +3484,7 @@
   		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
       (ui-update buf)
-      ;; TODO should use a safer method for determining associated block-view
-      (ui-update (current 'blockview))
+      (ui-update (ui-blockview-get-sibling buf))
       (ui-metastate buf 'modified #t)
       (unless (zero? (ui-metastate buf 'edit-step))
   	(ui-blockview-move-cursor buf 'Down))))
@@ -3495,8 +3500,10 @@
   	   (new-row-values
   	    (or row
   		(if (zero? current-row)
-  		    ;; TODO honor node restrictions
-  		    (cons (settings 'default-block-length)
+  		    (cons (or (inode-config-block-length
+			       (mdef-inode-ref (slot-value buf 'group-id)
+					       (ui-metastate buf 'mdef)))
+			      (settings 'default-block-length))
   			  (make-list
   			   (sub1 (length (slot-value buf 'field-ids)))
   			   0))
@@ -3512,7 +3519,7 @@
        buf
        (list 'block-row-insert parent-instance-path block-id
   	     `((0 (,current-row ,new-row-values)))))
-      (ui-update (current 'blockview))
+      (ui-update (ui-blockview-get-sibling buf))
       (when (memv (slot-value buf 'ui-zone) (focus 'list))
 	(ui-blockview-show-cursor buf))))
 
@@ -3538,8 +3545,7 @@
   	       parent-instance-path
   	       block-id
   	       `((0 (,current-row ,current-row-values)))))
-  	;; TODO properly determine block view
-  	(ui-update (current 'blockview))
+  	(ui-update (ui-blockview-get-sibling buf))
 	(when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))
   	(ui-blockview-show-cursor buf))))
@@ -3583,7 +3589,7 @@
 		     field-ids))))
       (unless (null? action)
 	(ui-blockview-perform-edit buf (cons 'compound action))
-	(ui-update (current 'blockview))
+	(ui-update (ui-blockview-get-sibling buf))
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
@@ -3619,7 +3625,7 @@
 	      field-ids))))
       (unless (null? actions)
 	(ui-blockview-perform-edit buf (cons 'compound actions))
-	(ui-update (current 'blockview))
+	(ui-update (ui-blockview-get-sibling buf))
 	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
 	  (ui-blockview-show-cursor buf)))))
 
