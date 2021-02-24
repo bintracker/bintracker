@@ -1812,7 +1812,7 @@
 					  kv-alist)
 				     (lambda (x y)
 				       (< (cdr x) (cdr y))))))
-		       (scale-values column
+		       (fit-to-range column
 				     (apply min (map cdr kv-alist))
 				     (apply max (map cdr kv-alist)))))
 		column))
@@ -1831,7 +1831,7 @@
 				 (in-range? x range)))
 			   column)
 		    column
-		    (scale-values column (range-min range) (range-max range)))))
+		    (fit-to-range column (range-min range) (range-max range)))))
 	     ((every (lambda (x) (or (null? x) (symbol? x)))
 		     column)
 	      (or (and-let* ((range (or (command-range command)
@@ -1840,7 +1840,7 @@
 					 (eqv? 'int (command-type command)))))
 			     (source-command (guess-source-command column))
 			     (cmd-keys (command-keys source-command)))
-		    (scale-values (map (lambda (x)
+		    (fit-to-range (map (lambda (x)
 					 (if (null? x)
 					     x
 					     (hash-table-ref/default

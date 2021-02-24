@@ -9,7 +9,8 @@
   (import scheme (chicken base) (chicken string)
 	  srfi-1)
 
-  ;;; Scale the list of FIELD-VALUES to fit into the integer range AMIN,AMAX.
+  ;;; Scale the list of FIELD-VALUES to fill the integer range AMIN,AMAX. See
+  ;;; also `fit-to-range`.
   (define (scale-values field-values amin amax)
     (let ((rmin (min amin amax))
 	  (rmax (max amin amax)))
@@ -30,6 +31,17 @@
 							(- maxval minval))
 						     rmin))))))
 		 field-values)))))
+
+  ;;; Scale down the list of FIELD-VALUES so that its contents fit into the
+  ;;; range AMIN,AMAX. Unlike `scale-values`, this only scales down so that all
+  ;;; values fit into the range, it does not increase spread, eg:
+  ;;;
+  ;;; (scale-values '(63 64) 0 63) => '(0 63)
+  ;;; (fit-to-range '(64 64) 0 63) => '(62 63)
+  (define (fit-to-range field-values amin amax)
+    (cddr (scale-values (cons amin (cons amax field-values))
+			amin
+			amax)))
 
   ;;; Interpolate the list of integer values VALS. The input list may contain
   ;;; `null` values. By default, linear interpolation is used. This may be
