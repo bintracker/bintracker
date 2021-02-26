@@ -3778,7 +3778,8 @@
 		 (letrec ((get-selected
 			   (lambda ()
 			     (let ((response ((slot-value buf 'tabs) 'select)))
-			       (if (and (not (string-null? response))
+			       (if (and (string? response)
+					(not (string-null? response))
 					(= 1 (length (string-split response))))
 				   response
 				   (get-selected))))))
