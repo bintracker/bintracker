@@ -15,8 +15,8 @@ Key              | Function
                  |
 `Ctrl q`         | Quit Bintracker
                  |
-`Ctrl Tab`       | Focus next buffer
-`Ctrl Shift Tab` | Focus previous buffer
+`Ctrl f`         | Focus next buffer
+`Ctrl b`         | Focus previous buffer
                  |
 `F1`             | Launch help in browser
 
@@ -30,6 +30,14 @@ Key              | Function
 `F5`             | Play from start
 `F7`             | Play pattern
 `F8`             | Stop playback
+
+### Movement
+
+Key              | Function
+-----------------|----------------------------------------
+`Tab`            | toggle focus between block view and order view
+`Ctrl Tab`       | Go to next subgroup tab
+`Ctrl Shift Tab` | Go to previous subgroup tab
 
 ### Selection
 
@@ -100,7 +108,6 @@ In the following image, a number in the top right corner of a key represents the
 Key                 | Function
 --------------------|----------------------------------------
 `.`                 | repeat last set value
-`Tab`               | toggle focus between block view and order view
 
 Numeric columns accept any number that is valid for the given command, using the radix (number base) set in `(settings 'number-base)`. Trigger commands accept any of the piano keys.
 

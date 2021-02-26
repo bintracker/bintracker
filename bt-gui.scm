@@ -2668,7 +2668,15 @@
 
   ;;; Bind common event handlers for the blockview BUF.
   (define-method (ui-blockview-bind-events primary: (buf <ui-basic-block-view>))
-    (let ((grid (slot-value buf 'block-content)))
+    (let ((grid (slot-value buf 'block-content))
+	  (subgroup-parent
+	   (and (not (eqv? (slot-value buf 'group-id) 'GLOBAL))
+		(ui-ref (ui-metastate buf
+				      'group-ref
+				      (mdef-get-parent-node-id
+				       (slot-value buf 'group-id)
+				       (mdef-itree (ui-metastate buf 'mdef))))
+			'subgroups))))
       (for-each
        (lambda (event-spec)
   	 (tk/bind grid (car event-spec)
@@ -2682,7 +2690,15 @@
   			    (cddr event-spec))
   		      (lambda ()
 			(tk-with-lock (cdr event-spec))))))
-       `((<<BlockMotion>> ,(lambda (keysym)
+       `((<<FocusNextSubgroup>>
+	  .
+	  ,(lambda ()
+	     (and subgroup-parent (ui-focus-next-tab subgroup-parent))))
+	 (<<FocusPreviousSubgroup>>
+	  .
+	  ,(lambda ()
+	     (and subgroup-parent (ui-focus-previous-tab subgroup-parent))))
+	 (<<BlockMotion>> ,(lambda (keysym)
   			     (begin
   			       (ui-cancel-selection buf)
   			       (ui-blockview-move-cursor buf keysym)))
@@ -3775,20 +3791,12 @@
 	     '<<NotebookTabChanged>> ;; will also trigger on ui-show
 	     (lambda ()
 	       (when (slot-value buf 'tab-ids)
-		 (letrec ((get-selected
-			   (lambda ()
-			     (let ((response ((slot-value buf 'tabs) 'select)))
-			       (if (and (string? response)
-					(not (string-null? response))
-					(= 1 (length (string-split response))))
-				   response
-				   (get-selected))))))
-		   (ui-set-focus buf
-				 (car (list-ref
-				       (slot-value buf 'subgroups)
-				       (list-index
-					(cut string= <> (get-selected))
-					(slot-value buf 'tab-ids)))))))))
+		 (ui-set-focus buf
+			       (car (list-ref
+				     (slot-value buf 'subgroups)
+				     (list-index
+				      (cut string= <> (ui-get-selected-tab buf))
+				      (slot-value buf 'tab-ids))))))))
     (set! (slot-value buf 'subgroups)
       (map (lambda (id)
   	     (cons id (make <ui-group>
@@ -3839,6 +3847,39 @@
       (map (cut focus-controller 'unhide <>) active-zones)
       (if (memv (car (focus-controller 'which)) all-zones)
 	  (focus-controller 'set (car active-zones)))))
+
+  ;;; Get the Tk ID of the currently active subgroup tab.
+  (define-method (ui-get-selected-tab primary: (buf <ui-subgroups>))
+    (let ((response ((slot-value buf 'tabs) 'select)))
+      ;; keep querying Tk until we have a valid response
+      (if (and (string? response)
+	       (not (string-null? response))
+	       (> (string-length response) 4)
+	       (= 1 (length (string-split response))))
+	  response
+	  (ui-get-selected-tab buf))))
+
+  ;;; Focus the next subgroup tab.
+  (define-method (ui-focus-next-tab primary: (buf <ui-subgroups>))
+    (let* ((tab-ids (slot-value buf 'tab-ids))
+	   (current-tab (ui-get-selected-tab buf))
+	   (tab-index (list-index (cut string= <> current-tab)
+				  tab-ids)))
+      ((slot-value buf 'tabs) 'select
+       (if (= (+ 1 tab-index) (length tab-ids))
+	   (car tab-ids)
+	   (list-ref tab-ids (+ 1 tab-index))))))
+
+  ;;; Focus the next subgroup tab.
+  (define-method (ui-focus-previous-tab primary: (buf <ui-subgroups>))
+    (let* ((tab-ids (slot-value buf 'tab-ids))
+	   (current-tab (ui-get-selected-tab buf))
+	   (tab-index (list-index (cut string= <> current-tab)
+				  tab-ids)))
+      ((slot-value buf 'tabs) 'select
+       (if (zero? tab-index)
+	   (last tab-ids)
+	   (list-ref tab-ids (sub1 tab-index))))))
 
   ;; TODO instance 0 may not exist.
   ;;; A widget class suitable for displaying an MDAL group node.
@@ -4239,11 +4280,13 @@
 					      (slot-value subgroups-buf
 							  'subgroups))
 				   'subgroups))))))
-	   (find-by-id (reverse
-			(mdef-get-node-ancestors-ids
-			 (cadr args)
-			 (mdef-itree (car (slot-value buf 'mmod)))))
-		       (alist-ref 'subgroups (ui-children buf)))))
+	   (if (eqv? 'GLOBAL (cadr args))
+	       buf
+	       (find-by-id (reverse
+			    (mdef-get-node-ancestors-ids
+			     (cadr args)
+			     (mdef-itree (car (slot-value buf 'mmod)))))
+			   (alist-ref 'subgroups (ui-children buf))))))
   	(else (error 'metastate (string-append "invalid command "
   					       (->string args)))))))
 

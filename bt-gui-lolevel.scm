@@ -480,6 +480,10 @@
 				      <Key-d> <Key-e> <Key-f>
 				      <plus> <minus> <asterisk>
 				      <slash> <percent> <ampersand>)))
+    (tk/event 'add '<<FocusNextSubgroup>>
+	      (inverse-key-binding 'edit 'focus-next-subgroup))
+    (tk/event 'add '<<FocusPreviousSubgroup>>
+	      (inverse-key-binding 'edit 'focus-previous-subgroup))
     (tk/event 'add '<<BlockMotion>>
 	      '<Up> '<Down> '<Left> '<Right> '<Home> '<End>)
     (tk/event 'add '<<BlockSelect>>
