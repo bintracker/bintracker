@@ -269,9 +269,21 @@
   ;;;
   ;;; Pass input focus control to the previous entry in the ring.
   ;;;
-  ;;; `(FC 'set ID)`
+  ;;; `(FC 'set ID [FORCE?])`
   ;;;
-  ;;; Pass input focus control to control entry ID.
+  ;;; Pass input focus control to control entry ID. Hidden entries are ignored
+  ;;; unless FORCE? is `#t`.
+  ;;;
+  ;;; `(FC 'hide ID)`<br>
+  ;;; `(FC 'unhide ID)`
+  ;;;
+  ;;; Hide or unhide the given entry. A hidden entry is ignored by the `next`
+  ;;; and `previous` actions, and `set` actions require the `force?` flag to be
+  ;;; effective.
+  ;;;
+  ;;; `(FC 'visible? ID)`
+  ;;;
+  ;;; Returns `#t` if the given entry is not hidden.
   ;;;
   ;;; `(FC 'suspend)`
   ;;;
@@ -295,31 +307,64 @@
   ;;;
   ;;; List the current entries in the ring, with the active one as the first
   ;;; element.
-  (define (make-focus-control #!optional (zones '()))
+  (define (make-focus-control #!optional (zones '()) (hidden '()))
     (let* ((zones zones)
+	   (hidden hidden)
 	   ;; TODO calling suspend/resume regardless of whether the zone has
 	   ;; focus or not is inefficient as it leads to many redundant calls
-	   (suspend (lambda ()
-			      (unless (null? zones) ((caddar zones)))))
-	   (resume (lambda ()
-			    (unless (null? zones) ((cadar zones))))))
+	   (suspend
+	    (lambda ()
+	      (unless (null? zones) ((caddar zones)))))
+	   (resume
+	    (lambda ()
+	      (unless (null? zones) ((cadar zones))))))
       (lambda args
 	(case (car args)
 	  ((suspend) (suspend))
 	  ((resume) (resume))
-	  ((next) (unless (null? zones)
+	  ((hide)
+	   (unless (memv (cadr args) hidden)
+	     (set! hidden (cons (cadr args) hidden))))
+	  ((unhide)
+	   (when (memv (cadr args) hidden)
+	     (set! hidden (remove (cut eqv? <> (cadr args)) hidden))))
+	  ((visible?)
+	   (not (memv (cadr args) hidden)))
+	  ((next) (unless (or (null? zones)
+			      (<= (- (length zones) (length hidden))
+				  1))
 		    (suspend)
-		    (set! zones
-		      (append (cdr zones) (list (car zones))))
+		    (letrec ((rotate-to-next-visible
+			      (lambda (lst)
+				(if (not (memv (caar lst) hidden))
+				    lst
+				    (rotate-to-next-visible
+				     (append (cdr lst) (list (car lst))))))))
+		      (set! zones
+			(rotate-to-next-visible (append (cdr zones)
+							(list (car zones))))))
 		    (resume)))
 	  ((previous) (unless (null? zones)
 			(suspend)
-			(set! zones
-			  (cons (last zones) (drop-right zones 1)))
+			(letrec ((rotate-to-prev-visible
+				  (lambda (lst)
+				    (if (not (memv (car lst) hidden))
+					lst
+					(rotate-to-prev-visible
+					 (cons (last zones)
+					       (drop-right zones 1)))))))
+			  (set! zones
+			    (rotate-to-prev-visible
+			     (cons (last zones) (drop-right zones 1)))))
 			(resume)))
 	  ((set) (when (and (alist-ref (cadr args) zones)
-			    (not (eqv? (caar zones) (cadr args))))
+			    (not (eqv? (caar zones) (cadr args)))
+			    (or (not (memv (cadr args) hidden))
+				;; force hidden buffer
+				(and (> (length args) 2) (caddr args))))
 		   (suspend)
+		   (when (memv (cadr args) hidden)
+		     (set! hidden (remove (cut eqv? <> (cadr args)) hidden)))
 		   (let ((not-target-zone? (lambda (zone)
 					     (not (eqv? (car zone)
 							(cadr args))))))
@@ -328,7 +373,6 @@
 			       (take-while not-target-zone? zones))))
 		   (resume)))
 	  ((add)
-	   (print "focus add " (cdr args))
 	   (unless (alist-ref (cadr args) zones)
 	     (set! zones
 	       (or (and-let* (((not (null? zones)))
@@ -336,7 +380,8 @@
 			      ((eqv? 'after (sixth args)))
 			      ((alist-ref (seventh args) zones))
 			      (after-id (alist-ref (seventh args) zones))
-			      (after-id-index (+ 1 (list-index after-id zones))))
+			      (after-id-index (+ 1 (list-index after-id
+							       zones))))
 		     (append (take zones after-id-index)
 			     (list (take (cdr args) 4))
 			     (drop zones after-id-index)))
@@ -344,6 +389,8 @@
 	  ((remove)
 	   (suspend)
 	   (set! zones (alist-delete (cadr args) zones))
+	   (set! hidden (remove (cut eqv? <> (cadr args))
+				hidden))
 	   (resume))
 	  ((which) (car zones))
 	  ((assoc) (and (alist-ref (cadr args) zones)

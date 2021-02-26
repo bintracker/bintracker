@@ -710,12 +710,16 @@
 			       ((list-ref (slot-value buf 'commands) idx)))))
 		  (map cdr buttons)
 		  (iota (length buttons))))
-      (set! (slot-value buf 'initialized) #t))
-    ((slot-value buf 'focus-controller)
-     'add (slot-value buf 'ui-zone)
-     (lambda () (ui-focus buf))
-     (lambda () #t)
-     buf))
+      (set! (slot-value buf 'initialized) #t)
+      ((slot-value buf 'focus-controller)
+       'add (slot-value buf 'ui-zone)
+       (lambda () (ui-focus buf))
+       (lambda () #t)
+       buf))
+    ((slot-value buf 'focus-controller) 'unhide (slot-value buf 'ui-zone)))
+
+  (define-method (ui-hide after: (buf <ui-welcome-buffer>))
+    ((slot-value buf 'focus-controller) 'hide (slot-value buf 'ui-zone)))
 
   (define-method (ui-focus primary: (buf <ui-welcome-buffer>))
     (tk/focus (cdar (slot-value buf 'buttons))))
@@ -1182,6 +1186,9 @@
   (define-method (ui-metastate primary: (buf <ui-group-fields>)
   			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
+
+  (define-method (ui-get-focus-zones primary: (buf <ui-group-fields>))
+    (list (slot-value buf 'ui-zone)))
 
   (define-method (ui-show after: (buf <ui-group-fields>))
     ((slot-value buf 'focus-controller) 'add
@@ -3732,6 +3739,11 @@
   			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
 
+  (define-method (ui-get-focus-zones primary: (buf <ui-blocks>))
+    (map (lambda (child)
+	   (slot-value (cdr child) 'ui-zone))
+	 (ui-children buf)))
+
   ;;; A widget class suitable for displaying an MDAL group node's subgroups.
   ;;;
   ;;; ```Scheme
@@ -3751,6 +3763,7 @@
      (parent-instance-path (error '|make <ui-subgroups>|
   				  "Missing 'parent-instance-path."))
      tabs
+     (tab-ids #f)
      subgroups
      (metastate-accessor (error '|make <ui-subgroup>|
   				"Missing 'metastate-accessor."))))
@@ -3758,6 +3771,23 @@
   (define-method (initialize-instance after: (buf <ui-subgroups>))
     (set! (slot-value buf 'tabs)
       ((slot-value buf 'content-box) 'create-widget 'notebook))
+    (tk/bind (slot-value buf 'tabs)
+	     '<<NotebookTabChanged>> ;; will also trigger on ui-show
+	     (lambda ()
+	       (when (slot-value buf 'tab-ids)
+		 (letrec ((get-selected
+			   (lambda ()
+			     (let ((response ((slot-value buf 'tabs) 'select)))
+			       (if (and (not (string-null? response))
+					(= 1 (length (string-split response))))
+				   response
+				   (get-selected))))))
+		   (ui-set-focus buf
+				 (car (list-ref
+				       (slot-value buf 'subgroups)
+				       (list-index
+					(cut string= <> (get-selected))
+					(slot-value buf 'tab-ids)))))))))
     (set! (slot-value buf 'subgroups)
       (map (lambda (id)
   	     (cons id (make <ui-group>
@@ -3776,6 +3806,14 @@
   		((slot-value buf 'tabs) 'add (ui-box (cdr subgroup))
   		 text: (symbol->string (car subgroup))))
   	      (slot-value buf 'subgroups))
+    (letrec ((get-ids (lambda ()
+			(let ((response ((slot-value buf 'tabs) 'tabs)))
+			  (if (and string? (not (string-null? response)))
+			      (string-split response)
+			      (get-ids))))))
+      (set! (slot-value buf 'tab-ids)
+	(get-ids)))
+    (ui-set-focus buf (caar (slot-value buf 'subgroups)))
     (tk/pack (slot-value buf 'tabs) expand: 1 fill: 'both))
 
   (define-method (ui-destroy before: (buf <ui-subgroups>))
@@ -3784,6 +3822,22 @@
   (define-method (ui-metastate primary: (buf <ui-subgroups>)
   			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
+
+  (define-method (ui-get-focus-zones primary: (buf <ui-subgroups>))
+    (flatten (map (lambda (group)
+		    (ui-get-focus-zones (cdr group)))
+		  (slot-value buf 'subgroups))))
+
+  (define-method (ui-set-focus primary: (buf <ui-subgroups>) subgroup-id)
+    ;; TODO detect actual focus controller
+    (let ((focus-controller focus)
+	  (all-zones (ui-get-focus-zones buf))
+	  (active-zones (ui-get-focus-zones
+			 (alist-ref subgroup-id (slot-value buf 'subgroups)))))
+      (map (cut focus-controller 'hide <>) all-zones)
+      (map (cut focus-controller 'unhide <>) active-zones)
+      (if (memv (car (focus-controller 'which)) all-zones)
+	  (focus-controller 'set (car active-zones)))))
 
   ;; TODO instance 0 may not exist.
   ;;; A widget class suitable for displaying an MDAL group node.
@@ -3840,6 +3894,11 @@
   (define-method (ui-metastate primary: (buf <ui-group>)
   			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))
+
+  (define-method (ui-get-focus-zones primary: (buf <ui-group>))
+    (flatten (map (lambda (child)
+		    (ui-get-focus-zones (cdr child)))
+		  (ui-children buf))))
 
   (define-method (ui-ref-by-zone-id primary: (buf <ui-group>)
   				    zone-id)
