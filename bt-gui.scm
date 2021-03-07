@@ -563,11 +563,17 @@
   	    (else (command-type command-config))))))
 
 
-  ;;; Generate an abbrevation of `len` characters from the given MDAL inode
-  ;;; identifier `id`. Returns the abbrevation as a string. The string is
-  ;;; padded to `len` characters if necessary.
-  (define (node-id-abbreviate id len)
-    (let ((chars (string->list (symbol->string id))))
+  ;;; Generate an abbrevation of LEN characters from the given MDAL inode
+  ;;; identifier ID, where GROUP-ID is the parent group node identifier.
+  ;;; Returns the abbrevation as a string. The string is padded to LEN
+  ;;; characters if necessary.
+  (define (node-id-abbreviate id len group-id)
+    (let* ((id-string (symbol->string id))
+	   (chars (string->list (if (eqv? id (symbol-append group-id '_LENGTH))
+				    "ROWS"
+				    (if (string-prefix? "R_" id-string)
+					(string-drop id-string 2)
+					id-string)))))
       (if (>= len (length chars))
   	  (string-pad-right (list->string chars)
   			    len)
@@ -599,7 +605,6 @@
   (defstruct bv-field-config
     (type-tag : symbol)
     (width : fixnum)
-    (start : fixnum)
     (cursor-width : fixnum)
     (cursor-digits : fixnum))
 
@@ -626,41 +631,15 @@
 
   ;;; Generate the alist of bv-field-configs.
   (define (blockview-make-field-configs block-ids field-ids mdef)
-    (letrec* ((type-tags (map (cute get-command-type-tag <> mdef) field-ids))
-  	      (sizes (map (lambda (id)
-  	      		    (value-display-size
-  			     (mdef-get-inode-source-command id mdef)))
-  	      		  field-ids))
-  	      (cursor-widths (map (cute field-id->cursor-size <> mdef)
-  				  field-ids))
-  	      (cursor-ds (map (cute field-id->cursor-digits <> mdef)
-  			      field-ids))
-  	      (tail-fields
-  	       (map (lambda (id)
-  	      	      (car (reverse (mdef-get-subnode-ids
-  				     id (mdef-itree mdef)))))
-  	      	    (drop-right block-ids 1)))
-  	      (convert-sizes
-  	       (lambda (sizes start)
-  		 (if (null-list? sizes)
-  		     '()
-  		     (cons start
-  			   (convert-sizes (cdr sizes)
-  					  (+ start (car sizes)))))))
-  	      (start-positions (convert-sizes
-  	      			(map (lambda (id size)
-  	      			       (if (memq id tail-fields)
-  	      				   (+ size 2)
-  	      				   (+ size 1)))
-  	      			     field-ids sizes)
-  	      			0)))
-      (map (lambda (field-id type-tag size start c-width c-digits)
-  	     (list field-id (make-bv-field-config type-tag: type-tag
-  						  width: size start: start
-  						  cursor-width: c-width
-  						  cursor-digits: c-digits)))
-  	   field-ids type-tags sizes start-positions cursor-widths
-  	   cursor-ds)))
+    (map (lambda (field-id)
+  	   (list field-id
+		 (make-bv-field-config
+		  type-tag: (get-command-type-tag field-id mdef)
+  		  width: (value-display-size
+			  (mdef-get-inode-source-command field-id mdef))
+  		  cursor-width: (field-id->cursor-size field-id mdef)
+  		  cursor-digits: (field-id->cursor-digits field-id mdef))))
+  	 field-ids))
 
 
   ;; ---------------------------------------------------------------------------
@@ -1234,8 +1213,8 @@
   ;;; Abstract base class for `<ui-block-view>` and `<ui-order-view>`,
   ;;; implementing shared code for these two classes. You most likely do not
   ;;; need to construct an instance of this class directly. However, consider
-  ;;; from this class if you want to implement an alternative representation
-  ;;; of the block node members of an MDAL group node.
+  ;;; deriving from this class if you want to implement an alternative
+  ;;; representation of the block node members of an MDAL group node.
   (define-class <ui-basic-block-view> (<ui-buffer> <ui-selectable>)
     (ui-zone
      (focus-controller focus)
@@ -1246,6 +1225,7 @@
   				"Missing 'metastate-accessor."))
      field-ids
      field-configs
+     (hidden-fields '())
      header-frame
      content-frame
      rownum-frame
@@ -1359,26 +1339,33 @@
     ((node-path (slot-value buf 'parent-instance-path))
      (mmod-global-node (ui-metastate buf 'mmod))))
 
-  ;;; Generic procedure for mapping tags to the field columns of a textgrid.
+  ;;; Map type tags to the field columns of a textgrid.
   ;;; This can be used either on `block-header`, or on `block-content` slots.
-  (define-method (ui-blockview-add-column-tags
-  		  primary: (buf <ui-basic-block-view>) textgrid row taglist)
-    (for-each (lambda (tag field-config)
-  		(let ((start (bv-field-config-start field-config)))
-  		  (textgrid-add-tags textgrid tag row start
-  				     (+ start
-  					(bv-field-config-width field-config)))))
-  	      taglist
-  	      (map cadr (slot-value buf 'field-configs))))
-
-  ;;; Add type tags to the given row in TEXTGRID. If TEXTGRID is not
-  ;;; given, it defaults to the blockview's `block-content` slot.
   (define-method (ui-blockview-add-type-tags
   		  primary: (buf <ui-basic-block-view>)
-  		  row #!optional (textgrid (slot-value buf 'block-content)))
-    (ui-blockview-add-column-tags buf textgrid row
-  				  (map (o bv-field-config-type-tag cadr)
-  				       (slot-value buf 'field-configs))))
+		  row
+		  #!optional (textgrid (slot-value buf 'block-content)))
+    (for-each (lambda (field-config)
+  		(let ((start (field-id->cursor-start buf (car field-config))))
+  		  (textgrid-add-tags textgrid
+				     (bv-field-config-type-tag
+				      (cadr field-config))
+				     row
+				     start
+  				     (+ start (bv-field-config-width
+					       (cadr field-config))))))
+  	      (remove (lambda (fc)
+			(memv (car fc) (slot-value buf 'hidden-fields)))
+		      (slot-value buf 'field-configs))))
+
+  ;; ;;; Add type tags to the given row in TEXTGRID. If TEXTGRID is not
+  ;; ;;; given, it defaults to the blockview's `block-content` slot.
+  ;; (define-method (ui-blockview-add-type-tags
+  ;; 		  primary: (buf <ui-basic-block-view>)
+  ;; 		  row #!optional (textgrid (slot-value buf 'block-content)))
+  ;;   (ui-blockview-add-column-tags buf textgrid row
+  ;; 				  (map (o bv-field-config-type-tag cadr)
+  ;; 				       (slot-value buf 'field-configs))))
 
   ;;; Convert the list of row VALUES into a string that can be inserted into
   ;;; the blockview's content-grid or header-grid. Each entry in VALUES must
@@ -1393,13 +1380,19 @@
   			   (string-append
   			    str
   			    (list->string
-  			     (make-list (- (bv-field-config-start (car configs))
+  			     (make-list (- (field-id->cursor-start
+					    buf (caar configs))
   					   (string-length str))
   					#\space))
   			    (->string (car vals)))))
   		      (construct-string next-chunk (cdr vals)
   					(cdr configs)))))))
-      (construct-string "" values (map cadr (slot-value buf 'field-configs)))))
+      (construct-string ""
+			values
+			(remove (lambda (fc)
+				  (memv (car fc)
+					(slot-value buf 'hidden-fields)))
+				(slot-value buf 'field-configs)))))
 
   ;;; Returns the position of the Tk text widget MARK as a list containing the
   ;;; row in car, and the character position in cadr. Row position is adjusted
@@ -1433,14 +1426,17 @@
   (define-method (ui-blockview-get-current-field-id primary:
   						    (buf <ui-basic-block-view>))
     (let ((char-pos (cadr (ui-blockview-get-cursor-position buf))))
-      (list-ref (slot-value buf 'field-ids)
+      (list-ref (remove (cute memv <> (slot-value buf 'hidden-fields))
+			(slot-value buf 'field-ids))
   		(list-index
   		 (lambda (cfg)
-  		   (and (>= char-pos (bv-field-config-start (cadr cfg)))
-  			(> (+ (bv-field-config-start (cadr cfg))
+  		   (and (>= char-pos (field-id->cursor-start buf (car cfg)))
+  			(> (+ (field-id->cursor-start buf (car cfg))
   			      (bv-field-config-width (cadr cfg)))
   			   char-pos)))
-  		 (slot-value buf 'field-configs)))))
+  		 (remove (lambda (fc)
+			   (memv (car fc) (slot-value buf 'hidden-fields)))
+			 (slot-value buf 'field-configs))))))
 
   ;;; Returns the ID of the parent block node if the field that the cursor is
   ;;; currently on.
@@ -1463,7 +1459,10 @@
   		  primary: (buf <ui-basic-block-view>))
     (let* ((cursor-char-pos (cadr (ui-blockview-get-cursor-position buf)))
   	   (field-config (ui-blockview-get-current-field-config buf))
-  	   (offset (- cursor-char-pos (bv-field-config-start field-config))))
+  	   (offset (- cursor-char-pos
+		      (field-id->cursor-start
+		       buf
+		       (ui-blockview-get-current-field-id buf)))))
       (sub1 (- (bv-field-config-cursor-digits field-config) offset))))
 
   ;;; Returns the MDAL command config for the field that the cursor is
@@ -1563,10 +1562,12 @@
       (map (lambda (row)
   	     (ui-blockview-values->string
   	      buf
-  	      (map (lambda (val id)
-  		     (normalize-field-value
-  		      val id (ui-metastate buf 'mdef)))
-  		   row (slot-value buf 'field-ids))))
+  	      (filter-map
+	       (lambda (val id)
+		 (and (not (memv id (slot-value buf 'hidden-fields)))
+  		      (normalize-field-value val id (ui-metastate buf 'mdef))))
+  	       row
+	       (slot-value buf 'field-ids))))
   	   (concatenate (slot-value buf 'item-cache)))
       "\n")))
 
@@ -1591,10 +1592,15 @@
   			   (minor-hl? (memq 'rowhl-minor tags)))
   		      (grid 'replace start end
   			    (ui-blockview-values->string
-  			     buf (map (lambda (val id)
-  					(normalize-field-value
-  					 val id (ui-metastate buf 'mdef)))
-  				      new-row (slot-value buf 'field-ids))))
+  			     buf
+			     (filter-map
+			      (lambda (val id)
+				(and (not (memv id (slot-value buf
+							       'hidden-fields)))
+  				     (normalize-field-value
+  				      val id (ui-metastate buf 'mdef))))
+  			      new-row
+			      (slot-value buf 'field-ids))))
   		      (when major-hl?
   			(grid 'tag 'add 'rowhl-major start end))
   		      (when minor-hl?
@@ -1612,14 +1618,20 @@
   ;;; assume.
   (define-method (ui-blockview-cursor-x-positions primary:
   						  (buf <ui-basic-block-view>))
-    (flatten (map (lambda (field-cfg)
-  		    (map (cute + <> (bv-field-config-start field-cfg))
-  			 (iota (bv-field-config-cursor-digits field-cfg))))
-  		  (map cadr (slot-value buf 'field-configs)))))
+    (flatten
+     (map (lambda (field-cfg)
+  	    (map (cute + <> (field-id->cursor-start buf (car field-cfg)))
+  		 (iota (bv-field-config-cursor-digits (cadr field-cfg)))))
+  	  (remove (lambda (fc)
+		    (memv (car fc) (slot-value buf 'hidden-fields)))
+		  (slot-value buf 'field-configs)))))
 
   (define-method (ui-blockview-column-x-positions primary:
 						  (buf <ui-basic-block-view>))
-    (map bv-field-config-start (map cadr (slot-value buf 'field-configs))))
+    (filter-map (lambda (fc)
+		  (and (not (memv (car fc) (slot-value buf 'hidden-fields)))
+		       (field-id->cursor-start buf (car fc))))
+		(slot-value buf 'field-configs)))
 
   ;;; Show or hide the blockview's cursor. ACTION shall be `'add` or
   ;;; `'remove`.
@@ -2117,18 +2129,22 @@
   (define-method (ui-blockview-tag-selection
   		  primary: (buf <ui-basic-block-view>))
     (let* ((selection (ui-selection buf))
-  	   (field-ids (slot-value buf 'field-ids))
+  	   (field-ids (remove (cute memv <> (slot-value buf 'hidden-fields))
+			      (slot-value buf 'field-ids)))
+	   (field-configs
+	    (remove (lambda (fc)
+		      (memv (car fc) (slot-value buf 'hidden-fields)))
+		    (slot-value buf 'field-configs)))
   	   (y1 (car selection))
   	   (x1 (list-index (cute eqv? <> (cadr selection)) field-ids))
   	   (y2 (caddr selection))
   	   (x2 (list-index (cute eqv? <> (cadddr selection)) field-ids))
-	   (fc2 (cadr (list-ref (slot-value buf 'field-configs)
-  				(max x1 x2))))
-	   (x-end (+ (bv-field-config-start fc2)
-  		     (bv-field-config-width fc2)))
-	   (x-start (bv-field-config-start
-		     (cadr (list-ref (slot-value buf 'field-configs)
-  				     (min x1 x2)))))
+	   (fc2 (list-ref field-configs (max x1 x2)))
+	   (x-end (+ (field-id->cursor-start buf (car fc2))
+  		     (bv-field-config-width (cadr fc2))))
+	   (x-start (field-id->cursor-start
+		     buf
+		     (car (list-ref field-configs (min x1 x2)))))
 	   (end-index (string-append (number->string (+ 1 (max y1 y2)))
 				     "."
 				     (number->string (+ 1 x-end)))))
@@ -2150,9 +2166,9 @@
   		   (slot-value buf 'block-content)
   		   'selected
   		   row
-  		   (bv-field-config-start
-  		    (cadr (list-ref (slot-value buf 'field-configs)
-  				    (min x1 x2))))
+  		   (field-id->cursor-start
+		    buf
+  		    (car (list-ref field-configs (min x1 x2))))
 		   x-end))
   		(iota (+ 1 (abs (- y2 y1)))
   		      (min y1 y2)))))
@@ -2205,18 +2221,21 @@
 					     ypos))
 	   (local-start
 	    (list (car mouse-pos)
-		  (list-ref (slot-value buf 'field-ids)
-  		(list-index
-  		 (lambda (cfg)
-  		   (and (>= (cadr mouse-pos)
-			    (bv-field-config-start (cadr cfg)))
-
-  			(> (+ (bv-field-config-start (cadr cfg))
-  			      (bv-field-config-width (cadr cfg))
-			      ;; ignore spacing between fields
-			      2)
-  			   (cadr mouse-pos))))
-  		 (slot-value buf 'field-configs))))))
+		  (list-ref
+		   (remove (cute memv <> (slot-value buf 'hidden-fields))
+			   (slot-value buf 'field-ids))
+  		   (list-index
+  		    (lambda (cfg)
+  		      (and (>= (cadr mouse-pos)
+			       (field-id->cursor-start buf (car cfg)))
+  			   (> (+ (field-id->cursor-start buf (car cfg))
+  				 (bv-field-config-width (cadr cfg))
+				 ;; ignore spacing between fields
+				 2)
+  			      (cadr mouse-pos))))
+  		    (remove (lambda (fc)
+			      (memv (car fc) (slot-value buf 'hidden-fields)))
+			    (slot-value buf 'field-configs)))))))
       (set! (ui-selection buf)
   	(append (if (ui-selection buf)
   		    (take (ui-selection buf) 2)
@@ -2822,10 +2841,34 @@
   	 (slot-value buf 'field-ids)
   	 (ui-metastate buf 'mdef)))))
 
+  ;;; Return the first cursor x-position for the field ID in the block-view
+  ;;; buffer BUF. It is an error to call this on a hidden field.
+  (define-method (field-id->cursor-start primary: (buf <ui-block-view>) id)
+    (let ((tail-fields
+  	   (map (lambda (id)
+  	      	  (car (reverse (mdef-get-subnode-ids
+				 id (mdef-itree (ui-metastate buf 'mdef))))))
+  	      	(drop-right (slot-value buf 'block-ids) 1))))
+      (apply +
+	     (map (lambda (fc)
+		    (+ (bv-field-config-width (cadr fc))
+		       (if (memv (car fc) tail-fields) 2 1)))
+		  (take (remove (lambda (fc)
+				  (memv (car fc)
+					(slot-value buf 'hidden-fields)))
+				(slot-value buf 'field-configs))
+			(list-index
+			 (cute eqv? <> id)
+			 (remove (cute memv <> (slot-value buf 'hidden-fields))
+				 (slot-value buf 'field-ids))))))))
+
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-block-view>))
     (let ((header (slot-value buf 'block-header))
-  	  (field-ids (slot-value buf 'field-ids)))
+	  (visible-field-configs
+	   (remove (lambda (fc)
+		     (memv (car fc) (slot-value buf 'hidden-fields)))
+		   (slot-value buf 'field-configs))))
       (header
        'insert 'end
        (string-append/shared
@@ -2841,17 +2884,20 @@
   				      (mdef-get-subnode-ids
   				       id (mdef-itree
   					   (ui-metastate buf 'mdef)))))
-  			      (slot-value buf 'field-configs))))))
+			      visible-field-configs)))
+		 (slot-value buf 'group-id)))
   	      (slot-value buf 'block-ids)))
   	"\n"))
       (textgrid-add-tags header '(active txt) 0)
       (header 'insert 'end
   	      (ui-blockview-values->string
   	       buf
-  	       (map node-id-abbreviate
-  		    field-ids
-  		    (map (o bv-field-config-width cadr)
-  			 (slot-value buf 'field-configs)))))
+  	       (map
+		(lambda (id width)
+		  (node-id-abbreviate id width (slot-value buf 'group-id)))
+  		(remove (cute memv <> (slot-value buf 'hidden-fields))
+			(slot-value buf 'field-ids))
+  		(map (o bv-field-config-width cadr) visible-field-configs))))
       (textgrid-add-tags header 'active 1)
       (ui-blockview-add-type-tags buf 1 (slot-value buf 'block-header))))
 
@@ -3335,10 +3381,16 @@
 	     (cut-row ,ui-blockview-cut-row)))))
 
   (define-method (initialize-instance after: (buf <ui-order-view>))
-    (let ((group-id (slot-value buf 'group-id)))
+    (let ((group-id (slot-value buf 'group-id))
+	  (mdef (ui-metastate buf 'mdef)))
       (set! (slot-value buf 'field-ids)
   	(mdef-get-subnode-ids (symbol-append group-id '_ORDER)
-  			      (mdef-itree (ui-metastate buf 'mdef))))
+  			      (mdef-itree mdef)))
+      ;; hide ROWS field if block length is fixed
+      (when (inode-config-block-length (mdef-inode-ref group-id mdef))
+	(set! (slot-value buf 'hidden-fields)
+	  (cons (symbol-append group-id '_LENGTH)
+		(slot-value buf 'hidden-fields))))
       (set! (slot-value buf 'field-configs)
   	(blockview-make-field-configs
   	 (list (symbol-append group-id '_ORDER))
@@ -3358,21 +3410,35 @@
 	 		   (cdr group))))
 	      (order-view-toolbar 'callbacks))))))
 
+  ;;; Return the first cursor x-position for the field ID in the block-view
+  ;;; buffer BUF.
+  (define-method (field-id->cursor-start primary: (buf <ui-order-view>) id)
+    (apply +
+	   (map (lambda (fc)
+		  (+ 1 (bv-field-config-width (cadr fc))))
+		(take (remove (lambda (fc)
+				(memv (car fc) (slot-value buf 'hidden-fields)))
+			      (slot-value buf 'field-configs))
+		      (list-index
+		       (cute eqv? <> id)
+		       (remove (cute memv <> (slot-value buf 'hidden-fields))
+			       (slot-value buf 'field-ids)))))))
+
   ;;; Set up the column and block header display.
   (define-method (ui-init-content-header primary: (buf <ui-order-view>))
-    (let ((header (slot-value buf 'block-header))
-  	  (field-ids (slot-value buf 'field-ids)))
+    (let ((header (slot-value buf 'block-header)))
       (header 'insert 'end
   	      (ui-blockview-values->string
   	       buf
-  	       (map node-id-abbreviate
-  		    (cons 'ROWS
-  			  (map (lambda (id)
-  				 (string->symbol
-  				  (string-drop (symbol->string id) 2)))
-  			       (cdr field-ids)))
-  		    (map (o bv-field-config-width cadr)
-  			 (slot-value buf 'field-configs)))))
+  	       (filter-map
+		(lambda (id width)
+		  (and (not (memv id (slot-value buf 'hidden-fields)))
+		       (node-id-abbreviate id
+					   width
+					   (slot-value buf 'group-id))))
+  		(slot-value buf 'field-ids)
+  		(map (o bv-field-config-width cadr)
+  		     (slot-value buf 'field-configs)))))
       (textgrid-add-tags header 'active 0)
       (ui-blockview-add-type-tags buf 0 (slot-value buf 'block-header))))
 
