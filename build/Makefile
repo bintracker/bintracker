@@ -81,6 +81,9 @@ mdal.so: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-def.import.so\
 	$(CSC) $(LIBFLAGS) $< -j mdal -emit-types-file mdal.types -o $@
 	$(CSC) $(IMPORTFLAGS) mdal.import.scm
 
+mdal.import.so: mdal.so
+	$(CSC) $(IMPORTFLAGS) mdal.import.scm
+
 md-helpers.so: $(MDAL_SRC)md-helpers.scm
 	$(CSC) $(LIBFLAGS) $< -j md-helpers -emit-types-file md-helpers.types -o $@
 
