@@ -14,7 +14,7 @@
 	  (chicken condition) (chicken port) (chicken time posix)
 	  (chicken platform)
 	  srfi-1 srfi-13 srfi-69
-	  coops typed-records simple-exceptions pstk list-utils stack
+	  coops typed-records pstk list-utils stack
 	  bt-types bt-db bt-emulation mdal)
 
   (define *bintracker-version* "0.2.0")
