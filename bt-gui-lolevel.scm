@@ -317,13 +317,13 @@
 	    	   "-padding 0"))
 	    "" ,(string-intersperse
 	    	 '("    ttk::style configure TNotebook.Tab"
-	    	   "-background $colors(-highlight-minor)"
+	    	   "-background $colors(-background)"
 	    	   "-bordercolor $colors(-text)"
 	    	   "-padding 4"))
-	    ;; "" ,(string-intersperse
-	    ;; 	   '("    ttk::style map TNotebook"
-	    ;; 	     "-background [list selected $colors(-highlight-minor)"
-	    ;; 	     "active $colors(-highlight-minor)]"))
+	    "" ,(string-intersperse
+	    	   '("    ttk::style map TNotebook.Tab"
+	    	     "-background [list selected $colors(-highlight-minor)"
+	    	     "active $colors(-highlight-minor)]"))
 	    "" ,(string-intersperse
 		 '("    ttk::style configure Tooltip.TLabel"
 		   "-font BTFont"
@@ -1127,6 +1127,7 @@
   				     expand: 0 fill: 'x))))
       (when (and (slot-value d 'toolbar)
   		 (settings 'show-toolbars))
+	(pack-separator)
   	(ui-show (slot-value d 'toolbar))
   	(pack-separator))
       (when (slot-value d 'settings-bar)
