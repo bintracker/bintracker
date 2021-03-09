@@ -500,9 +500,13 @@
     (tk/event 'add '<<BVPorousPasteOver>>
 	      (inverse-key-binding 'edit 'porous-paste-over))
     (tk/event 'add '<<ClearCurrent>> (inverse-key-binding 'edit 'clear))
-    (tk/event 'add '<<DeleteCurrent>> (inverse-key-binding 'edit 'delete))
+    (tk/event 'add '<<ClearStep>> (inverse-key-binding 'edit 'clear-step))
     (tk/event 'add '<<CutRow>> (inverse-key-binding 'edit 'cut-row))
+    (tk/event 'add '<<CutPreviousRow>>
+	      (inverse-key-binding 'edit 'cut-previous-row))
     (tk/event 'add '<<CutStep>> (inverse-key-binding 'edit 'cut-step))
+    (tk/event 'add '<<CutPreviousStep>>
+	      (inverse-key-binding 'edit 'cut-previous-step))
     (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step))
     (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
     (tk/event 'add '<<InsertFromClipboard>>

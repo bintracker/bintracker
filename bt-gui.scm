@@ -1769,6 +1769,16 @@
   	   (ui-blockview-get-current-field-id buf)
   	   `((,(ui-blockview-get-current-field-instance buf))))))
 
+  ;;; Delete the field node instance that corresponds to row directly above the
+  ;;; current cursor position, and insert an empty node at the end of the block
+  ;;; instead.
+  (define-method (ui-blockview-cut-previous-cell primary:
+  						 (buf <ui-basic-block-view>))
+    (unless (zero? (ui-blockview-get-current-field-instance buf))
+      (ui-blockview-move-cursor buf 'Up)
+      (ui-blockview-cut-current-cell buf)))
+
+
   ;;; Insert an empty cell into the field column currently under cursor,
   ;;; shifting the following node instances down and dropping the last instance.
   (define-method (ui-blockview-insert-cell primary:
@@ -2760,15 +2770,21 @@
 	     (edit buf 'current 'clear)
 	     (when (slot-value buf 'selection)
 	       (ui-blockview-tag-selection buf))))
-	 (<<DeleteCurrent>> . ,(lambda ()
-				 (edit buf 'current 'clear)
-				 (ui-cancel-selection buf)))
+	 (<<ClearStep>> . ,(lambda ()
+			      (edit buf 'cursor 'clear)
+			      (ui-blockview-move-cursor buf 'Down)))
   	 (<<CutStep>> . ,(lambda ()
 			   (ui-blockview-cut-current-cell buf)
 			   (ui-metastate buf 'clear-redo)))
+	 (<<CutPreviousStep>> . ,(lambda ()
+				   (ui-blockview-cut-previous-cell buf)
+				   (ui-metastate buf 'clear-redo)))
   	 (<<CutRow>> . ,(lambda ()
 			  (ui-blockview-cut-row buf)
 			  (ui-metastate buf 'clear-redo)))
+	 (<<CutPreviousRow>> . ,(lambda ()
+				  (ui-blockview-cut-previous-row buf)
+				  (ui-metastate buf 'clear-redo)))
   	 (<<InsertRow>> . ,(lambda ()
 			     (ui-blockview-insert-row buf)
 			     (ui-metastate buf 'clear-redo)))
@@ -3078,6 +3094,13 @@
   		  (slot-value buf 'block-ids)
   		  block-instance-ids)))
       (ui-blockview-show-cursor buf)))
+
+  ;;; Provides inuitive behaviour for Ctrl+Backspace (cut row), by cutting the
+  ;;; row above the cursor.
+  (define-method (ui-blockview-cut-previous-row primary: (buf <ui-block-view>))
+    (unless (zero? (ui-blockview-get-current-field-instance buf))
+      (ui-blockview-move-cursor buf 'Up)
+      (ui-blockview-cut-row buf)))
 
   ;;; Low-level interface for `edit`. You most likely do not want to call this
   ;;; directly. CONTENTS must be a list of lists, where each sublist represents
@@ -3665,6 +3688,14 @@
 	(when (memv (slot-value buf 'ui-zone) (focus 'list))
 	  (ui-blockview-show-cursor buf))
   	(ui-blockview-show-cursor buf))))
+
+  ;;; Provides inuitive behaviour for Ctrl+Backspace (cut row), by cutting the
+  ;;; row above the cursor.
+  (define-method (ui-blockview-cut-previous-row primary: (buf <ui-order-view>))
+    (let ((current-row (ui-blockview-get-current-row buf)))
+      (unless (zero? current-row)
+	(ui-blockview-move-cursor buf 'Up)
+	(ui-blockview-cut-row buf))))
 
   ;;; Low-level interface for `edit`. You most likely do not want to call this
   ;;; directly. CONTENTS must be a list of lists, where each sublist represents

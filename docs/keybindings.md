@@ -51,11 +51,12 @@ Key                        | Function
 
 Key                 | Function
 --------------------|----------------------------------------
+`Space`             | Clear value under cursor (no shift)
 `Insert`            | Insert step in current block column
-`Delete`            | Clear value under cursor (no shift)
-`Backspace`         | Cut step from current block column (with shift)
-`Control Insert`    | Insert row across block(s), (with shift)
-`Control Backsapce` | Cut row across block(s), (with shift)
+`Delete`            | Cut current step from current block column (with shift)
+`Backspace`         | Cut previous step from current block column (with shift)
+`Control Insert`    | Insert row across block(s) (with shift)
+`Control Backsapce` | Cut row across block(s) (with shift)
                     |
 `Ctrl c`            | Copy selection (if any) or value under cursor
 `Ctrl x`            | Clear selection (if any) or value under cursor (no shift)
