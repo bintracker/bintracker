@@ -2824,6 +2824,18 @@
     ((ui-zone (gensym 'block-view))
      block-ids))
 
+  ;;; (procedure (block-view-toolbar ARGS...))
+  ;;; Toolbar set for the block view toolbar. Callback procedures will be
+  ;;; wrapped in a lambda, which calls the actual callback with the order view
+  ;;; object as its first and only argument. So specifying a callback procedure
+  ;;; `foo` will result in the effective callback `(lambda () (foo BLOCK-BUF))`.
+  (define block-view-toolbar
+    (create-toolbar-set
+     '((edit (insert-row "Insert a new step" "insert-row.png" enabled)
+  	     (cut-row "Delete step" "delete-row.png" enabled)))
+     '((edit (insert-row ui-blockview-insert-row)
+	     (cut-row ui-blockview-cut-row)))))
+
   (define-method (initialize-instance after: (buf <ui-block-view>))
     (let ((group-id (slot-value buf 'group-id)))
       (set! (slot-value buf 'block-ids)
@@ -2839,7 +2851,20 @@
   	(blockview-make-field-configs
   	 (slot-value buf 'block-ids)
   	 (slot-value buf 'field-ids)
-  	 (ui-metastate buf 'mdef)))))
+  	 (ui-metastate buf 'mdef)))
+      (when (settings 'show-toolbars)
+  	(set! (slot-value buf 'toolbar)
+  	  (make <ui-toolbar> 'parent (ui-box buf)
+		'setup (block-view-toolbar 'groups)))
+	(ui-set-callbacks
+	 (slot-value buf 'toolbar)
+	 (map (lambda (group)
+	 	(cons (car group)
+	 	      (map (lambda (button)
+	 		     (list (car button)
+	 			   (lambda () ((eval (cadr button)) buf))))
+	 		   (cdr group))))
+	      (block-view-toolbar 'callbacks))))))
 
   ;;; Return the first cursor x-position for the field ID in the block-view
   ;;; buffer BUF. It is an error to call this on a hidden field.
@@ -3374,7 +3399,9 @@
   (define order-view-toolbar
     (create-toolbar-set
      '((edit (insert-row "Insert a new step" "insert-row.png" enabled)
-  	     (cut-row "Delete step" "delete-row.png" enabled))
+  	     (cut-row "Delete step" "delete-row.png" enabled)
+	     (add-row "Increase length" "add1.png")
+	     (sub-row "Decrease length" "sub1.png"))
        (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
   		      (simple "Simplified sequence" "seq-simple.png")))
      `((edit (insert-row ,ui-blockview-insert-row)
