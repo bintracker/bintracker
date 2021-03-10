@@ -902,7 +902,7 @@
   	   (box (ui-box buf))
   	   (spinbox (box 'create-widget 'spinbox from: from to: to
   			 width: 4 state: 'enabled validate: 'none
-  			 font: 'BTFont.bold))
+  			 font: 'BTFont.bold justify: 'right))
   	   (validate-new-value
   	    (lambda (new-val)
   	      (if (and (integer? new-val)
