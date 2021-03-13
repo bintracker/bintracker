@@ -2542,7 +2542,7 @@
 		  (let ((cmd-type
 			 (command-type (car commands)))
 			(have-modifiers
-			 (and (>= 2 (length columns))
+			 (and (>= (length columns) 2)
 			      (memv 'enable-modifiers
 				    (command-flags (car commands))))))
 		    (if have-modifiers
