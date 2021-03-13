@@ -3612,10 +3612,14 @@
   		  (path #t)
   		  (field-id (ui-blockview-get-current-field-id buf))
   		  (block-row (ui-blockview-get-current-field-instance buf)))
-    (and-let* ((validated-value (validate-field-value (ui-metastate buf 'mdef)
-  						      field-id
-  						      new-value
-  						      #t))
+    (and-let* ((mdef (ui-metastate buf 'mdef))
+	       (group-id (slot-value buf 'group-id))
+	       (_ (mdef-group-order-editable? group-id mdef))
+	       (_ (not (and (symbol-contains field-id "_LENGTH")
+			    (inode-config-block-length
+			     (mdef-inode-ref group-id mdef)))))
+	       (validated-value
+		(validate-field-value mdef field-id new-value #t))
   	       (action `(set ,(ui-blockview-get-current-block-instance-path buf)
   			     ,field-id
   			     ((,block-row ,validated-value)))))
@@ -3706,75 +3710,79 @@
   ;;; This updates the journal and the display.
   (define-method (ui-blockview-blockedit primary: (buf <ui-order-view>)
 					 contents start end action-type)
-    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
-	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
-	   (group-id (slot-value buf 'group-id))
-	   (all-field-ids (slot-value buf 'field-ids))
-	   (field-index (lambda (id)
-			  (list-index (cute eqv? <> id) all-field-ids)))
-	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
-			    (field-index (cdr start))))
-	   (action (concatenate
-		    (map
-		     (lambda (field field-id)
-		       (filter-map
-			(lambda (row val)
-			  (and (validate-field-value (ui-metastate buf 'mdef)
-						     field-id val #t)
-			       (list action-type
-				     (string-append parent-instance-path
-						    (->string group-id)
-						    "_ORDER/0")
-				     field-id
-				     `((,row ,val)))))
-			(iota (- (+ 1 (car end))
-				 (car start))
-			      (car start))
-			field))
-		     contents
-		     field-ids))))
-      (unless (null? action)
-	(ui-blockview-perform-edit buf (cons 'compound action))
-	(ui-update (ui-blockview-get-sibling buf))
-	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
-	  (ui-blockview-show-cursor buf)))))
+    (when (mdef-group-order-editable? (slot-value buf 'group-id)
+				      (ui-metastate buf 'mdef))
+      (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	     (parent-instance ((node-path parent-instance-path)
+  	   		       (mmod-global-node (ui-metastate buf 'mmod))))
+	     (group-id (slot-value buf 'group-id))
+	     (all-field-ids (slot-value buf 'field-ids))
+	     (field-index (lambda (id)
+			    (list-index (cute eqv? <> id) all-field-ids)))
+	     (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
+			      (field-index (cdr start))))
+	     (action (concatenate
+		      (map
+		       (lambda (field field-id)
+			 (filter-map
+			  (lambda (row val)
+			    (and (validate-field-value (ui-metastate buf 'mdef)
+						       field-id val #t)
+				 (list action-type
+				       (string-append parent-instance-path
+						      (->string group-id)
+						      "_ORDER/0")
+				       field-id
+				       `((,row ,val)))))
+			  (iota (- (+ 1 (car end))
+				   (car start))
+				(car start))
+			  field))
+		       contents
+		       field-ids))))
+	(unless (null? action)
+	  (ui-blockview-perform-edit buf (cons 'compound action))
+	  (ui-update (ui-blockview-get-sibling buf))
+	  (when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
+	    (ui-blockview-show-cursor buf))))))
 
   (define-method (ui-blockview-blockcut primary: (buf <ui-order-view>)
 					contents start end)
-    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
-	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
-	   (group-id (slot-value buf 'group-id))
-	   (order (mod-get-order-values parent-instance
-					group-id
-					(ui-metastate buf 'mdef)))
-	   (all-field-ids (slot-value buf 'field-ids))
-	   (field-index (lambda (id)
-			  (list-index (cute eqv? <> id) all-field-ids)))
-	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
-			    (field-index (cdr start))))
-	   (actions
-	    (concatenate
-	     (map
-	      (lambda (field-id)
-		(map
-		 (lambda (row)
-		   (list 'remove
-			 (string-append parent-instance-path
-					(->string group-id)
-					"_ORDER/0")
-			 field-id
-			 `((,(car start) ()))))
-		 (iota (- (+ 1 (car end))
-			  (car start))
-		       (car start))))
-	      field-ids))))
-      (unless (null? actions)
-	(ui-blockview-perform-edit buf (cons 'compound actions))
-	(ui-update (ui-blockview-get-sibling buf))
-	(when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
-	  (ui-blockview-show-cursor buf)))))
+    (when (mdef-group-order-editable? (slot-value buf 'group-id)
+				      (ui-metastate buf 'mdef))
+      (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	     (parent-instance ((node-path parent-instance-path)
+  	   		       (mmod-global-node (ui-metastate buf 'mmod))))
+	     (group-id (slot-value buf 'group-id))
+	     (order (mod-get-order-values parent-instance
+					  group-id
+					  (ui-metastate buf 'mdef)))
+	     (all-field-ids (slot-value buf 'field-ids))
+	     (field-index (lambda (id)
+			    (list-index (cute eqv? <> id) all-field-ids)))
+	     (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
+			      (field-index (cdr start))))
+	     (actions
+	      (concatenate
+	       (map
+		(lambda (field-id)
+		  (map
+		   (lambda (row)
+		     (list 'remove
+			   (string-append parent-instance-path
+					  (->string group-id)
+					  "_ORDER/0")
+			   field-id
+			   `((,(car start) ()))))
+		   (iota (- (+ 1 (car end))
+			    (car start))
+			 (car start))))
+		field-ids))))
+	(unless (null? actions)
+	  (ui-blockview-perform-edit buf (cons 'compound actions))
+	  (ui-update (ui-blockview-get-sibling buf))
+	  (when (memv (slot-value buf 'ui-zone) (map car (focus 'list)))
+	    (ui-blockview-show-cursor buf))))))
 
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
   ;; the insert mark to move if stuff is being inserted above it.

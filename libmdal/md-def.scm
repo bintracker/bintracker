@@ -48,6 +48,7 @@
      mdef-command-ref
      mdef-inode-ref
      mdef-group-ordered?
+     mdef-group-order-editable?
      mdef-get-target-endianness
      mdef-get-parent-node-id
      mdef-get-parent-node-type
@@ -278,6 +279,16 @@
   ;;; Predicate to check if the group inode ID is has the `ordered` flag.
   (define (mdef-group-ordered? id def)
     (memv 'ordered (inode-config-flags (mdef-inode-ref id def))))
+
+  ;;; Predicate to determine if the order of the group inode ID may be edited.
+  ;;; Orders are editable except when the group is unordered, has a fixed block
+  ;;; length, and contains exactly 2 fields (the length field, and a single
+  ;;; reference field).
+  (define (mdef-group-order-editable? id def)
+    (not (and (not (mdef-group-ordered? id def))
+	      (inode-config-block-length (mdef-inode-ref id def))
+	      (= 2 (length (mdef-get-subnode-ids (symbol-append id '_ORDER)
+						 (mdef-itree def)))))))
 
   ;;; Returns the endianness of the configuration's target platform.
   (define (mdef-get-target-endianness cfg)
