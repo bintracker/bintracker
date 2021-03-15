@@ -34,6 +34,8 @@
 	(<Control-BackSpace> cut-previous-row)
 	(<Control-Insert> insert-row)
 	(<Insert> insert-step)
+	(<Control-plus> add-order-row)
+	(<Control-minus> sub-order-row)
 	(<Control-c> copy)
 	(<Control-V> insert-from-clipboard)
 	(<Control-X> cut-selection)

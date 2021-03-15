@@ -509,6 +509,8 @@
 	      (inverse-key-binding 'edit 'cut-previous-step))
     (tk/event 'add '<<InsertStep>> (inverse-key-binding 'edit 'insert-step))
     (tk/event 'add '<<InsertRow>> (inverse-key-binding 'edit 'insert-row))
+    (tk/event 'add '<<AddOrderRow>> (inverse-key-binding 'edit 'add-order-row))
+    (tk/event 'add '<<SubOrderRow>> (inverse-key-binding 'edit 'sub-order-row))
     (tk/event 'add '<<InsertFromClipboard>>
 	      (inverse-key-binding 'edit 'insert-from-clipboard))
     (tk/event 'add '<<CutSelection>>

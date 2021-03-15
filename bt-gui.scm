@@ -3425,16 +3425,30 @@
     (create-toolbar-set
      '((edit (insert-row "Insert a new step" "insert-row.png" enabled)
   	     (cut-row "Delete step" "delete-row.png" enabled)
-	     (add-row "Increase length" "add1.png")
-	     (sub-row "Decrease length" "sub1.png"))
+	     (add-row "Increase length" "add1.png" enabled)
+	     (sub-row "Decrease length" "sub1.png" enabled))
        (sequence-type (matrix "Low-level sequence" "seq-matrix.png")
   		      (simple "Simplified sequence" "seq-simple.png")))
-     `((edit (insert-row ,ui-blockview-insert-row)
-	     (cut-row ,ui-blockview-cut-row)))))
+     '((edit (insert-row ui-blockview-insert-row)
+	     (cut-row ui-blockview-cut-row)
+	     (add-row ui-order-add-row)
+	     (sub-row ui-order-sub-row)))))
+
+  ;;; Like `order-view-toolbar`, but only contains buttons for add-row/sub-row.
+  ;;; Used on non-editable orders.
+  (define order-view-minimal-toolbar
+    (create-toolbar-set
+     '((edit (add-row "Increase length" "add1.png" enabled)
+	     (sub-row "Decrease length" "sub1.png" enabled)))
+     '((edit (add-row ui-order-add-row)
+	     (sub-row ui-order-sub-row)))))
 
   (define-method (initialize-instance after: (buf <ui-order-view>))
-    (let ((group-id (slot-value buf 'group-id))
-	  (mdef (ui-metastate buf 'mdef)))
+    (let* ((group-id (slot-value buf 'group-id))
+	   (mdef (ui-metastate buf 'mdef))
+	   (toolbar (if (mdef-group-order-editable? group-id mdef)
+			order-view-toolbar
+			order-view-minimal-toolbar)))
       (set! (slot-value buf 'field-ids)
   	(mdef-get-subnode-ids (symbol-append group-id '_ORDER)
   			      (mdef-itree mdef)))
@@ -3450,17 +3464,16 @@
   	 (ui-metastate buf 'mdef)))
       (when (settings 'show-toolbars)
   	(set! (slot-value buf 'toolbar)
-  	  (make <ui-toolbar> 'parent (ui-box buf)
-		'setup (order-view-toolbar 'groups)))
+  	  (make <ui-toolbar> 'parent (ui-box buf) 'setup (toolbar 'groups)))
 	(ui-set-callbacks
 	 (slot-value buf 'toolbar)
 	 (map (lambda (group)
 	 	(cons (car group)
 	 	      (map (lambda (button)
 	 		     (list (car button)
-	 			   (lambda () ((cadr button) buf))))
+	 			   (lambda () ((eval (cadr button)) buf))))
 	 		   (cdr group))))
-	      (order-view-toolbar 'callbacks))))))
+	      (toolbar 'callbacks))))))
 
   ;;; Return the first cursor x-position for the field ID in the block-view
   ;;; buffer BUF.
@@ -3615,14 +3628,17 @@
   ;;; Insert a new row at the current cursor position. If ROW is omitted, the
   ;;; current row is cloned, or an empty row is created if the cursor is on row
   ;;; 0. If ROW is given, it must be a list of row values, which may not contain
-  ;;; empty nodes.
-  (define-method (ui-blockview-insert-row primary: (buf <ui-order-view>)
-  					  #!optional row)
-    (let* ((current-row (ui-blockview-get-current-row buf))
-  	   (parent-instance-path (slot-value buf 'parent-instance-path))
+  ;;; empty nodes. INSERT-POS may be the index of the row to insert (defaults to
+  ;;; the current cursor position if omitted).
+  (define-method (ui-blockview-insert-row
+		  primary: (buf <ui-order-view>)
+  		  #!optional
+		  row
+		  (insert-pos (ui-blockview-get-current-row buf)))
+    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
   	   (new-row-values
   	    (or row
-  		(if (zero? current-row)
+  		(if (zero? insert-pos)
   		    (cons (or (inode-config-block-length
 			       (mdef-inode-ref (slot-value buf 'group-id)
 					       (ui-metastate buf 'mdef)))
@@ -3635,43 +3651,44 @@
   				(mmod-global-node (ui-metastate buf 'mmod)))
   			       (slot-value buf 'group-id)
 			       (ui-metastate buf 'mdef))
-  			      (sub1 current-row)))))
+  			      (sub1 insert-pos)))))
   	   (block-id (symbol-append (slot-value buf 'group-id)
   				    '_ORDER)))
       (ui-blockview-perform-edit
        buf
        (list 'block-row-insert parent-instance-path block-id
-  	     `((0 (,current-row ,new-row-values)))))
+  	     `((0 (,insert-pos ,new-row-values)))))
       (ui-update (ui-blockview-get-sibling buf))
-      (when (memv (slot-value buf 'ui-zone) (focus 'list))
+      (when (eqv? (slot-value buf 'ui-zone) (focus 'which))
 	(ui-blockview-show-cursor buf))))
 
   ;; TODO allow deleting multiple rows and rows currently not under cursor.
   ;;; Cut (remove) the row currently under cursor.
-  (define-method (ui-blockview-cut-row primary: (buf <ui-order-view>))
+  (define-method (ui-blockview-cut-row
+		  primary: (buf <ui-order-view>)
+		  #!optional (position (ui-blockview-get-current-row buf)))
     (when (> (length (car (ui-blockview-get-item-list buf))) 1)
-      (let* ((current-row (ui-blockview-get-current-row buf))
-  	     (parent-instance-path (slot-value buf 'parent-instance-path))
+      (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
   	     (current-row-values
   	      (list-ref (mod-get-order-values
   			 ((node-path parent-instance-path)
   			  (mmod-global-node (ui-metastate buf 'mmod)))
   			 (slot-value buf 'group-id)
 			 (ui-metastate buf 'mdef))
-  			current-row))
+  			position))
   	     (block-id (symbol-append (slot-value buf 'group-id) '_ORDER)))
-  	(unless (zero? current-row)
+  	(unless (or (zero? position)
+		    (not (= position (ui-blockview-get-current-row buf))))
   	  (ui-blockview-move-cursor buf 'Up))
   	(ui-blockview-perform-edit
   	 buf
   	 (list 'block-row-remove
   	       parent-instance-path
   	       block-id
-  	       `((0 (,current-row ,current-row-values)))))
+  	       `((0 (,position ,current-row-values)))))
   	(ui-update (ui-blockview-get-sibling buf))
-	(when (memv (slot-value buf 'ui-zone) (focus 'list))
-	  (ui-blockview-show-cursor buf))
-  	(ui-blockview-show-cursor buf))))
+	(when (eqv? (slot-value buf 'ui-zone) (focus 'which))
+	  (ui-blockview-show-cursor buf)))))
 
   ;;; Provides inuitive behaviour for Ctrl+Backspace (cut row), by cutting the
   ;;; row above the cursor.
@@ -3680,6 +3697,24 @@
       (unless (zero? current-row)
 	(ui-blockview-move-cursor buf 'Up)
 	(ui-blockview-cut-row buf))))
+
+  ;;; Increase order length.
+  (define-method (ui-order-add-row primary: (buf <ui-order-view>))
+    (ui-blockview-insert-row
+     buf
+     (and (not (mdef-group-order-editable? (slot-value buf 'group-id)
+					   (ui-metastate buf 'mdef)))
+	  (list (inode-config-block-length
+		 (mdef-inode-ref (slot-value buf 'group-id)
+				 (ui-metastate buf 'mdef)))
+		(ui-blockview-get-total-length buf)))
+     (ui-blockview-get-total-length buf)))
+
+  ;;; Decrease order length.
+  (define-method (ui-order-sub-row primary: (buf <ui-order-view>))
+    (let ((total-length (ui-blockview-get-total-length buf)))
+      (and (> total-length 1)
+	   (ui-blockview-cut-row buf (sub1 total-length)))))
 
   ;;; Low-level interface for `edit`. You most likely do not want to call this
   ;;; directly. CONTENTS must be a list of lists, where each sublist represents
@@ -3820,7 +3855,13 @@
   (define-method (ui-blockview-bind-events after: (buf <ui-order-view>))
     (tk/bind (slot-value buf 'block-content)
 	     '<Tab>
-	     (lambda () (tk-with-lock (lambda () (focus 'previous))))))
+	     (lambda () (tk-with-lock (lambda () (focus 'previous)))))
+    (tk/bind (slot-value buf 'block-content)
+	     '<<AddOrderRow>>
+	     (lambda () (tk-with-lock (lambda () (ui-order-add-row buf)))))
+    (tk/bind (slot-value buf 'block-content)
+	     '<<SubOrderRow>>
+	     (lambda () (tk-with-lock (lambda () (ui-order-sub-row buf))))))
 
   ;;; A widget class suitable for displaying an MDAL group node's block members.
   ;;; It is a wrapper around a <ui-block-view> and the associated

@@ -58,6 +58,9 @@ Key                 | Function
 `Control Insert`    | Insert row across block(s) (with shift)
 `Control Backsapce` | Cut row across block(s) (with shift)
                     |
+`Control +`         | Increase order length
+`Control -`         | Decrease order length
+                    |
 `Ctrl c`            | Copy selection (if any) or value under cursor
 `Ctrl x`            | Clear selection (if any) or value under cursor (no shift)
 `Ctrl Shift x`      | Cut selection (with shift)
