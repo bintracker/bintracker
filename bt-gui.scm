@@ -1758,6 +1758,22 @@
     (when (slot-value buf 'modeline)
       (ui-modeline-set (slot-value buf 'modeline) 'active-field "")))
 
+  ;;; Update the blockview row numbers according to the current item cache.
+  (define-method (ui-blockview-update-row-numbers-common
+		  primary: (buf <ui-basic-block-view>) padding)
+    ((slot-value buf 'rownums) 'replace "0.0" 'end
+     (string-intersperse
+      (flatten
+       (map (lambda (chunk)
+  	      (map (lambda (i)
+  		     (string-pad-right
+  		      (string-pad (number->string i (settings 'number-base))
+  				  padding #\0)
+  		      (+ 2 padding)))
+  		   (iota (length chunk))))
+  	    (slot-value buf 'item-cache)))
+      "\n")))
+
   ;;; Delete the field node instance that corresponds to the current cursor
   ;;; position, and insert an empty node at the end of the block instead.
   (define-method (ui-blockview-cut-current-cell primary:
@@ -2002,6 +2018,19 @@
   (define-method (ui-blockview-blockinsert primary: (buf <ui-basic-block-view>)
 					   contents start end)
     (ui-blockview-blockedit buf contents start end 'insert))
+
+  ;; TODO this should be a hook-set.
+  ;;; The low level interface to blockview editing. ACTION shall be an edit
+  ;;; action specifier as described in the `ui-metastate` documentation.
+  (define-method (ui-blockview-perform-edit
+  		  primary: (buf <ui-basic-block-view>) action)
+    (ui-metastate buf 'push-undo
+  		  (make-reverse-action action (ui-metastate buf 'mmod)))
+    (ui-metastate buf 'apply-edit action)
+    (ui-update buf)
+    (ui-metastate buf 'modified #t)
+    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
+      (ui-blockview-show-cursor buf)))
 
   ;; TODO also allow 'current, which defaults to 'selection if there is one, or
   ;; 'cursor if there isn't.
@@ -3013,18 +3042,37 @@
   		   "/" (->string
   			(ui-blockview-get-current-block-instance buf))))
 
-  ;; TODO this should be a hook-set.
-  ;;; The low level interface to blockview editing. ACTION shall be an edit
-  ;;; action specifier as described in the `ui-metastate` documentation.
-  (define-method (ui-blockview-perform-edit
-  		  primary: (buf <ui-block-view>) action)
-    (ui-metastate buf 'push-undo
-  		  (make-reverse-action action (ui-metastate buf 'mmod)))
-    (ui-metastate buf 'apply-edit action)
-    (ui-update buf)
-    (ui-metastate buf 'modified #t)
-    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
-      (ui-blockview-show-cursor buf)))
+  ;;; **deprecated**, use (edit BUF 'cursor VALUE) instead
+  ;;; Set the field node instance that corresponds to the current cursor
+  ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
+  ;;; accordingly.
+  (define-method (ui-blockview-edit-cell
+  		  primary: (buf <ui-block-view>)
+  		  new-value
+  		  #!key
+  		  (field-id (ui-blockview-get-current-field-id buf))
+  		  (block-row (ui-blockview-get-current-field-instance buf))
+  		  (path (ui-blockview-get-current-block-instance-path buf))
+  		  (play-row #f))
+    (and-let* ((validated-value
+  		(validate-field-value (ui-metastate buf 'mdef)
+  				      field-id new-value #t))
+  	       (action `(set ,path ,field-id ((,block-row ,new-value)))))
+      (ui-metastate buf 'push-undo
+  		    (make-reverse-action action (ui-metastate buf 'mmod)))
+      (ui-metastate buf 'apply-edit action)
+      (when (and (ui-metastate buf 'emulator)
+		 play-row
+  		 (settings 'enable-row-play)
+      		 (not (null? new-value)))
+      	(ui-metastate buf 'emulator 'play-row
+      		      (slot-value buf 'group-id)
+      		      (ui-blockview-get-current-order-pos buf)
+      		      (ui-blockview-get-current-field-instance buf)))
+      (ui-update buf)
+      (unless (zero? (ui-metastate buf 'edit-step))
+  	(ui-blockview-move-cursor buf 'Down))
+      (ui-metastate buf 'modified #t)))
 
   (define-method (ui-blockview-insert-row primary: (buf <ui-block-view>))
     (let* ((current-row (ui-blockview-get-current-field-instance buf))
@@ -3235,23 +3283,10 @@
       (unless (null? actions)
 	(ui-blockview-perform-edit buf (cons 'compound actions)))))
 
-  ;; TODO unify with specialization on ui-order-view
   ;;; Update the blockview row numbers according to the current item cache.
   (define-method (ui-blockview-update-row-numbers primary:
   						  (buf <ui-block-view>))
-    (let ((padding 4))
-      ((slot-value buf 'rownums) 'replace "0.0" 'end
-       (string-intersperse
-  	(flatten
-  	 (map (lambda (chunk)
-  		(map (lambda (i)
-  		       (string-pad-right
-  			(string-pad (number->string i (settings 'number-base))
-  				    padding #\0)
-  			(+ 2 padding)))
-  		     (iota (length chunk))))
-  	      (slot-value buf 'item-cache)))
-  	"\n"))))
+    (ui-blockview-update-row-numbers-common buf 4))
 
   ;;; Apply type tags and the `'active` tag to the current active zone of the
   ;;; blockview BUF.
@@ -3296,39 +3331,6 @@
 				       selecting)
       (unless (= active-first-row (car (ui-blockview-get-active-zone buf)))
 	(ui-blockview-set-sibling-cursor buf))))
-
-  ;; TODO unify with specialization on ui-order-view?
-  ;;; **deprecated**, use (edit BUF 'cursor VALUE) instead
-  ;;; Set the field node instance that corresponds to the current cursor
-  ;;; position to NEW-VALUE, and update the display and the undo/redo stacks
-  ;;; accordingly.
-  (define-method (ui-blockview-edit-cell
-  		  primary: (buf <ui-block-view>)
-  		  new-value
-  		  #!key
-  		  (field-id (ui-blockview-get-current-field-id buf))
-  		  (block-row (ui-blockview-get-current-field-instance buf))
-  		  (path (ui-blockview-get-current-block-instance-path buf))
-  		  (play-row #f))
-    (and-let* ((validated-value
-  		(validate-field-value (ui-metastate buf 'mdef)
-  				      field-id new-value #t))
-  	       (action `(set ,path ,field-id ((,block-row ,new-value)))))
-      (ui-metastate buf 'push-undo
-  		    (make-reverse-action action (ui-metastate buf 'mmod)))
-      (ui-metastate buf 'apply-edit action)
-      (when (and (ui-metastate buf 'emulator)
-		 play-row
-  		 (settings 'enable-row-play)
-      		 (not (null? new-value)))
-      	(ui-metastate buf 'emulator 'play-row
-      		      (slot-value buf 'group-id)
-      		      (ui-blockview-get-current-order-pos buf)
-      		      (ui-blockview-get-current-field-instance buf)))
-      (ui-update buf)
-      (unless (zero? (ui-metastate buf 'edit-step))
-  	(ui-blockview-move-cursor buf 'Down))
-      (ui-metastate buf 'modified #t)))
 
   ;; TODO unify with specialization on ui-order-view
   ;; TODO storing/restoring insert mark position is a cludge. Generally we want
@@ -3534,19 +3536,7 @@
   ;;; Update the blockview row numbers according to the current item cache.
   (define-method (ui-blockview-update-row-numbers primary:
   						  (buf <ui-order-view>))
-    (let ((padding 3))
-      ((slot-value buf 'rownums) 'replace "0.0" 'end
-       (string-intersperse
-  	(flatten
-  	 (map (lambda (chunk)
-  		(map (lambda (i)
-  		       (string-pad-right
-  			(string-pad (number->string i (settings 'number-base))
-  				    padding #\0)
-  			(+ 2 padding)))
-  		     (iota (length chunk))))
-  	      (slot-value buf 'item-cache)))
-  	"\n"))))
+    (ui-blockview-update-row-numbers-common buf 3))
 
   ;;; Apply type tags and the `'active` tag to the current active zone of the
   ;;; order view BUF.
@@ -3587,19 +3577,9 @@
   		   (symbol->string (ui-blockview-get-current-block-id buf))
   		   "/0"))
 
-  ;; TODO this should be a hook-set.
-  ;;; The low level interface to blockview editing. ACTION shall be an edit
-  ;;; action specifier as described in the `ui-metastate` documentation.
-  (define-method (ui-blockview-perform-edit
-  		  primary: (buf <ui-order-view>) action)
-    (ui-metastate buf 'push-undo
-  		  (make-reverse-action action (ui-metastate buf 'mmod)))
-    (ui-metastate buf 'apply-edit action)
-    (ui-update buf)
-    (ui-update (ui-blockview-get-sibling buf))
-    (ui-metastate buf 'modified #t)
-    (when (eqv? (slot-value buf 'ui-zone) (car (focus 'which)))
-      (ui-blockview-show-cursor buf)))
+  ;;; Update the sibling blockview after an edit to the order.
+  (define-method (ui-blockview-perform-edit after: (buf <ui-order-view>) action)
+    (ui-update (ui-blockview-get-sibling buf)))
 
   ;;; **deprecated**
   ;;; Set the field node instance that corresponds to the current cursor
