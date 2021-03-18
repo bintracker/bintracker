@@ -1545,6 +1545,8 @@
   		    start-positions))))
   	   (rownums (slot-value buf 'rownums))
   	   (content (slot-value buf 'block-content)))
+      (textgrid-remove-tags-globally rownums '(rowhl-minor rowhl-major))
+      (textgrid-remove-tags-globally content '(rowhl-minor rowhl-major))
       (for-each (lambda (row)
       		  (textgrid-add-tags rownums 'rowhl-minor row)
       		  (textgrid-add-tags content 'rowhl-minor row))
