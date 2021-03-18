@@ -3072,8 +3072,9 @@
       		      (ui-blockview-get-current-order-pos buf)
       		      (ui-blockview-get-current-field-instance buf)))
       (ui-update buf)
-      (unless (zero? (ui-metastate buf 'edit-step))
-  	(ui-blockview-move-cursor buf 'Down))
+      (if (zero? (ui-metastate buf 'edit-step))
+	  (ui-blockview-show-cursor buf)
+  	  (ui-blockview-move-cursor buf 'Down))
       (ui-metastate buf 'modified #t)))
 
   (define-method (ui-blockview-insert-row primary: (buf <ui-block-view>))
@@ -3624,8 +3625,9 @@
       (ui-update buf)
       (ui-update (ui-blockview-get-sibling buf))
       (ui-metastate buf 'modified #t)
-      (unless (zero? (ui-metastate buf 'edit-step))
-  	(ui-blockview-move-cursor buf 'Down))))
+      (if (zero? (ui-metastate buf 'edit-step))
+	  (ui-blockview-show-cursor buf)
+  	  (ui-blockview-move-cursor buf 'Down))))
 
   ;;; Insert a new row at the current cursor position. If ROW is omitted, the
   ;;; current row is cloned, or an empty row is created if the cursor is on row
