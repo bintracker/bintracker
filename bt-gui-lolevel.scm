@@ -916,21 +916,22 @@
       (set! (slot-value buf 'label)
   	(box 'create-widget 'label text: (car setup)
   	     foreground: (colors 'text)))
-      ;; (tk/bind* spinbox '<<Increment>>
-      ;; 	  (lambda ()
-      ;; 	     (validate-new-value
-      ;;               (add1 (string->number (spinbox 'get))))))
-      ;; (tk/bind* spinbox '<<Decrement>>
-      ;; 	  (lambda ()
-      ;; 	     (validate-new-value
-      ;;               (sub1 (string->number (spinbox 'get))))))
+      (tk/bind spinbox '<<Increment>>
+      	       (lambda ()
+		 (tk-with-lock
+		  (lambda ()
+      		    (validate-new-value (add1 (string->number (spinbox 'get))))))
+		 (focus 'resume)))
+      (tk/bind spinbox '<<Decrement>>
+      	       (lambda ()
+		 (tk-with-lock
+		  (lambda ()
+      		    (validate-new-value (sub1 (string->number (spinbox 'get))))))
+      		 (focus 'resume)))
       (tk/bind* spinbox '<Return>
   		(lambda ()
   		  (validate-new-value (string->number (spinbox 'get)))
   		  (focus 'resume)))
-      (tk/bind* spinbox '<FocusOut>
-  		(lambda ()
-  		  (validate-new-value (string->number (spinbox 'get)))))
       (set! (slot-value buf 'spinbox) spinbox)
       (tk/pack (slot-value buf 'label) side: 'left padx: 5)
       (tk/pack spinbox side: 'left)
