@@ -4682,7 +4682,9 @@
     (let ((find-module-element
 	   (lambda (partial-id)
 	     (and-let* ((mv (current 'module-view))
-  			(zone-id (find (cute symbol-contains <> partial-id)
+  			(zone-id (find (lambda (id)
+					 (and (symbol-contains id partial-id)
+					      (focus 'visible? id)))
   				       (map car (focus 'list)))))
 	       (ui-ref-by-zone-id mv zone-id)))))
       (case what
