@@ -192,7 +192,8 @@
 		      (hash-table-ref/default
 		       (command-keys command-config)
 		       field-value #f)))
-		((trigger (and field-value (boolean? field-value))))
+		((trigger)
+		 (and field-value (boolean? field-value)))
 		((modifier)
 		 (and (symbol? field-value)
 		      (memq (last (string->list (symbol->string field-value)))
