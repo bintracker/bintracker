@@ -817,11 +817,11 @@
 			 raw-field-val))
 		    (actual-mod-val
 		     (if (null? raw-mod-val)
-			 (if (command-has-flag? command-config 'use-last-set)
-			     (or (backtrace-block-fields block-instance
-							 row
-							 (+ 1 field-index))
-				 '0+)
+			 (or (and (command-has-flag? command-config
+						     'use-last-set)
+				  (backtrace-block-fields block-instance
+							  row
+							  (+ 1 field-index)))
 			     '0+)
 			 raw-mod-val)))
 		(eval-effective-field-val actual-field-val
