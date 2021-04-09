@@ -584,18 +584,6 @@
   					(list #\. (car (reverse chars))))))))))
 
 
-  ;; (define (select-next-field fields-widget)
-  ;;   (let ((current-index (bt-fields-widget-active-index fields-widget)))
-  ;;     (unfocus-fields-widget fields-widget)
-  ;;     (bt-fields-widget-active-index-set!
-  ;;      fields-widget
-  ;;      (if (< current-index (sub1 (length (bt-fields-widget-fields
-  ;; 					   fields-widget))))
-  ;; 	   (add1 current-index)
-  ;; 	   0))
-  ;;     (focus-fields-widget fields-widget)))
-
-
   ;; ---------------------------------------------------------------------------
   ;;; ### Block View Field Configurations
   ;; ---------------------------------------------------------------------------
@@ -1358,15 +1346,6 @@
 			(memv (car fc) (slot-value buf 'hidden-fields)))
 		      (slot-value buf 'field-configs))))
 
-  ;; ;;; Add type tags to the given row in TEXTGRID. If TEXTGRID is not
-  ;; ;;; given, it defaults to the blockview's `block-content` slot.
-  ;; (define-method (ui-blockview-add-type-tags
-  ;; 		  primary: (buf <ui-basic-block-view>)
-  ;; 		  row #!optional (textgrid (slot-value buf 'block-content)))
-  ;;   (ui-blockview-add-column-tags buf textgrid row
-  ;; 				  (map (o bv-field-config-type-tag cadr)
-  ;; 				       (slot-value buf 'field-configs))))
-
   ;;; Convert the list of row VALUES into a string that can be inserted into
   ;;; the blockview's content-grid or header-grid. Each entry in VALUES must
   ;;; correspond to a field column in the blockview's content-grid.
@@ -1813,15 +1792,6 @@
   		  field-id
   		  `((,(ui-blockview-get-current-field-instance buf)
   		     ,validated-value)))))))
-
-  ;; TODO using this on ui-blockview-enter-note/trigger would be much better
-  ;; but this causes latency because display is then updated first.
-  ;; (define-method (ui-blockview-maybe-play-row buf)
-  ;;   (when (settings 'enable-row-play)
-  ;;     (ui-metastate buf 'emulator 'play-row
-  ;; 		    (slot-value buf 'group-id)
-  ;; 		    (ui-blockview-get-current-order-pos buf)
-  ;; 		    (ui-blockview-get-current-field-instance buf))))
 
   ;;; Do-what-I-mean adjust normalized edit buffer values (as provided by
   ;;; `normalize-edit-parameters` so they better match the target fields.

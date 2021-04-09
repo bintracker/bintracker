@@ -16,7 +16,6 @@
      mod-get-block-values
      mod-get-group-instance-order
      mod-get-order-values
-     ;; get-ordered-group-length
      node-set!
      node-remove!
      node-insert!
@@ -280,15 +279,6 @@
 		    (if (null? field) 0 field))
 		  (caddr order))
 	     (cdddr order)))))
-
-  ;; ;; TODO swap argument order
-  ;; ;;; Returns the total number of all block rows in the given group node
-  ;; ;;; instance. The containing group node must be ordered. The result is equal
-  ;; ;;; to the length of the block nodes as if they were combined into a single
-  ;; ;;; instance after being mapped onto the order node.
-  ;; (define (get-ordered-group-length group-id group-instance)
-  ;;   (apply + (map car (mod-get-order-values group-id group-instance))))
-
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Inode mutators
