@@ -44,7 +44,7 @@
 
   ;;; check if the given command CMD has the given FLAG
   (define (command-has-flag? cmd flag)
-    (and (memq flag (command-flags cmd)) #t))
+    (and (memv flag (command-flags cmd)) #t))
 
   ;;; check if the given command CMD has any flags
   (define (command-has-flags? cmd)
@@ -89,7 +89,7 @@
   ;;; basic error checks for mdalconfig command specification
   (define (check-command-spec id type bits default reference-to
 			      keys range flags)
-    (unless (and id type (or default (eqv? type 'trigger)))
+    (unless (and id type (or default (memv type '(trigger label))))
       (mdal-abort "missing id, type, and/or default specifier"))
     (when (and (memv type '(int uint key ukey reference modifier))
 	       (not bits))

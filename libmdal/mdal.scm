@@ -259,10 +259,14 @@
   ;;; instances in the given `group-instance`, as a list of row value sets.
   ;;; Effectively calls md-mod-get-row-values on each row of the relevant
   ;;; blocks.
-  (define (mod-get-block-values group-instance order-pos mdef)
-    (map (lambda (pos)
-	   (mod-get-row-values group-instance (cdr order-pos) pos mdef))
-	 (iota (car order-pos))))
+  (define (mod-get-block-values group-instance order-pos group-id mdef)
+    (let ((base-fields (filter-map (lambda (field used?)
+				     (and used? field))
+				   order-pos
+				   (mdef-get-order-base-fields group-id mdef))))
+      (map (lambda (pos)
+	     (mod-get-row-values group-instance (cdr base-fields) pos mdef))
+	   (iota (car base-fields)))))
 
   ;;; Returns the group instance's order node (instance 0).
   (define (mod-get-group-instance-order igroup-instance igroup-id)
@@ -271,14 +275,23 @@
 
   ;;; Returns the values of all order fields as a list of row value sets.
   ;;; Values are normalized, ie. empty positions are replaced with repeated
-  ;;; values from an earlier row.
-  (define (mod-get-order-values group-instance group-id mdef)
-    (let ((order (mod-get-group-instance-order group-instance group-id)))
+  ;;; values from an earlier row. If ONLY-BASE-FIELDS is given and `#t`, returns
+  ;;; only the Length and block reference fields.
+  (define (mod-get-order-values group-instance group-id mdef
+				#!key only-base-fields)
+    (let* ((order (mod-get-group-instance-order group-instance group-id))
+	   ;; raw order values, with unset fields in first row replaced with
+	   ;; default values
+	   (base-matrix (cons (map (lambda (field)
+				     (if (null? field) 0 field))
+				   (caddr order))
+			      (cdddr order))))
       (repeat-block-row-values
-       (cons (map (lambda (field)
-		    (if (null? field) 0 field))
-		  (caddr order))
-	     (cdddr order)))))
+       (if only-base-fields
+	   (transpose (filter-map (lambda (column id) (and id column))
+				  (transpose base-matrix)
+				  (mdef-get-order-base-fields group-id mdef)))
+	   base-matrix))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Inode mutators
@@ -530,11 +543,13 @@
 					 node-id mdef)))
 	      ((block)
 	       (if (symbol-contains node-id "_ORDER")
-		   (list (cons block-length
-			       (make-list
-				(sub1 (length (mdef-get-subnode-ids
-					       node-id (mdef-itree mdef))))
-				0)))
+		   (list (map (lambda (id)
+				(cond
+				 ((symbol-contains id "_LOOP") #t)
+				 ((symbol-contains id "_LENGTH") block-length)
+				 (else (command-default
+					(mdef-command-ref id mdef)))))
+			      (mdef-get-subnode-ids node-id (mdef-itree mdef))))
 		   (make-list block-length
 			      (make-list
 			       (length (mdef-get-subnode-ids
@@ -555,8 +570,8 @@
   ;;; instances are generated with length BLOCK-LENGTH by default, unless other
   ;;; constraints apply from the mdef.
   (define (generate-new-mmod mdef block-length)
-    (cons mdef `(GLOBAL ,(generate-new-inode-instance
-			  mdef 'GLOBAL block-length))))
+    (cons mdef
+	  `(GLOBAL ,(generate-new-inode-instance mdef 'GLOBAL block-length))))
 
   ;;; Derive a new MDAL module from the module MOD, which contains a single
   ;;; row of block data in the group with GROUP-ID. The row is composed from
@@ -573,24 +588,32 @@
 		  (order-pos (list-ref (mod-get-order-values node-instance
 							     group-id
 							     mdef)
-				       order-pos)))
+				       order-pos))
+		  (order-ids (mdef-get-subnode-ids order-id (mdef-itree mdef))))
 	      (append
 	       (take node-instance 2)
 	       (map (lambda (subnode)
 		      (if (eqv? order-id (car subnode))
 			  `(,order-id
-			    (0 #f ,(cons 1 (make-list (sub1 (length order-pos))
-						      0))))
+			    (0 #f
+			       ,(map (lambda (id)
+				       (if (symbol-contains id "_LENGTH")
+					   1
+					   (command-default
+					    (mdef-get-inode-source-command
+					     id mdef))))
+				     order-ids)))
 			  `(,(car subnode)
 			    (0 #f
 			       ,(let* ((raw-contents
 					(cddr (inode-instance-ref
 					       (list-ref
 						order-pos
-						(+ 1 (list-index
-						      (cute eqv? <>
-							    (car subnode))
-						      block-ids)))
+						(list-index
+						 (cute eqv? <>
+						       (symbol-append
+							'R_ (car subnode)))
+						 order-ids))
 					       subnode)))
 				       (empty-row (make-list
 						   (length

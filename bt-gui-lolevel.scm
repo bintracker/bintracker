@@ -574,6 +574,7 @@
   ;;; of blocks or order lists. A number of abstractions are provided to
   ;;; facilitate this.
 
+  ;; TODO This doesn't belong in bt-gui-lolevel.
   ;;; Configure TextGrid widget tags.
   (define (textgrid-configure-tags tg)
     (tg 'tag 'configure 'rowhl-minor background: (colors 'row-highlight-minor))
@@ -586,6 +587,7 @@
     (tg 'tag 'configure 'key foreground: (colors 'text-3))
     (tg 'tag 'configure 'reference foreground: (colors 'text-4))
     (tg 'tag 'configure 'trigger foreground: (colors 'text-5))
+    (tg 'tag 'configure 'label foreground: (colors 'text-5))
     (tg 'tag 'configure 'string foreground: (colors 'text-6))
     (tg 'tag 'configure 'modifier foreground: (colors 'text-7))
     (tg 'tag 'configure 'active font: (list (settings 'font-mono)

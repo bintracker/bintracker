@@ -418,7 +418,7 @@
   			    (log (settings 'number-base)))))))
       ((reference) (if (>= 16 (settings 'number-base))
   		       2 3))
-      ((trigger) 1)
+      ((trigger label) 1)
       ((string) 32)))
 
   ;;; Takes the Tk keypress symbol KEYSYM and interprets it as a digit taking
@@ -505,7 +505,7 @@
   				     (command-flags command-config))
   			       (normalize-note-name val)
   			       val))
-  	       ((trigger) "x")
+  	       ((trigger label) "x")
   	       ((string) val)))
 	    (else (error 'normalize-field-value
 			 (string-append "No command configuration found "
@@ -522,7 +522,7 @@
   	    ((int uint) 'text-2)
   	    ((key ukey) 'text-3)
   	    ((reference) 'text-4)
-  	    ((trigger) 'text-5)
+  	    ((trigger label) 'text-5)
   	    ((string) 'text-6)
   	    ((modifier) 'text-7)
   	    (else 'text)))))
@@ -569,11 +569,12 @@
   ;;; characters if necessary.
   (define (node-id-abbreviate id len group-id)
     (let* ((id-string (symbol->string id))
-	   (chars (string->list (if (eqv? id (symbol-append group-id '_LENGTH))
-				    "ROWS"
-				    (if (string-prefix? "R_" id-string)
-					(string-drop id-string 2)
-					id-string)))))
+	   (chars (string->list
+		   (cond
+		    ((eqv? id (symbol-append group-id '_LENGTH)) "ROWS")
+		    ((eqv? id (symbol-append group-id '_LOOP)) "L")
+		    ((string-prefix? "R_" id-string) (string-drop id-string 2))
+		    (else id-string)))))
       (if (>= len (length chars))
   	  (string-pad-right (list->string chars)
   			    len)
@@ -1039,7 +1040,7 @@
 	     (case cmd-type
 	       ((int uint) (string->number new-val (settings 'number-base)))
 	       ((string) new-val)
-	       ((trigger) #t)
+	       ((trigger label) #t)
 	       ((key ukey) (string->symbol new-val))
 	       (else #f))
 	     #t)))
@@ -2978,11 +2979,10 @@
   ;;; nesting level corresponds to an order position. The second nesting level
   ;;; corresponds to a row of fields.
   (define-method (ui-blockview-get-item-list primary: (buf <ui-block-view>))
-    (let* ((group-id (slot-value buf 'group-id))
-  	   (group-instance (ui-blockview-parent-instance buf))
-	   (mdef (ui-metastate buf 'mdef)))
-      (map (cut mod-get-block-values group-instance <>
-  		(ui-metastate buf 'mdef))
+    (let ((group-id (slot-value buf 'group-id))
+  	  (group-instance (ui-blockview-parent-instance buf))
+	  (mdef (ui-metastate buf 'mdef)))
+      (map (cut mod-get-block-values group-instance <> group-id mdef)
 	   (mod-get-order-values group-instance group-id mdef))))
 
   ;;; Returns the chunk from the item cache that the cursor is currently on.

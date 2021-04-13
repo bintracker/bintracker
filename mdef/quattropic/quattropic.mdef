@@ -4,8 +4,7 @@
  and slides. By utz 2015."
  default-origin: #x8000
 
- commands: (;; (command id: SPEED bits: 8 type: uint default: 6)
-	    (command id: TICKS bits: 5 type: uint default: 6
+ commands: ((command id: TICKS bits: 5 type: uint default: 6
 		     flags: (use-last-set is-ticks)
 		     description: "Ticks per row")
 	    (command id: NOTE bits: 16 type: ukey
@@ -22,8 +21,7 @@
 		     flags: (use-last-set)
 		     description: "Enable or disable fast Slide Down"))
 
- input: (;; (field from: SPEED)
-	 (group id: PATTERNS flags: (ordered)
+ input: ((group id: PATTERNS flags: (ordered looped)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(clone 2 (block id: CH
 					nodes: ((field from: NOTE)
