@@ -28,8 +28,8 @@
 
  output: ((asm file: "wiz4v.asm")
 	  (group id: WAVETABLES from: WAVETABLES nodes:
-		 ((block id: WT from: (WAVE)
-			 nodes: ((repeat bytes: 1 compose: ?SAMPLE)))))
+	  	 ((block id: WT from: (WAVE)
+	  		 nodes: ((repeat bytes: 1 compose: ?SAMPLE)))))
 	  (symbol id: musicdata)
 	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
 	  (field bytes: 2 compose: 0)
