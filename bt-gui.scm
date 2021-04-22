@@ -3036,7 +3036,8 @@
       (when (and (ui-metastate buf 'emulator)
 		 play-row
   		 (settings 'enable-row-play)
-      		 (not (null? new-value)))
+      		 (not (null? new-value))
+		 (not (eqv? 'rest new-value)))
       	(ui-metastate buf 'emulator 'play-row
       		      (slot-value buf 'group-id)
       		      (ui-blockview-get-current-order-pos buf)
