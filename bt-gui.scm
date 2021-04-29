@@ -2833,7 +2833,7 @@
 	       (edit buf 'current 'insert (clipboard)))))
 	 (<<CutSelection>> . ,(lambda ()
 				(edit buf 'current 'cut)
-				(ui-cancel-selection 'buf)))
+				(ui-cancel-selection buf)))
 	 (<<SwapSelection>> . ,(lambda () (ui-swap buf)))
   	 (<<BlockEntry>> ,(lambda (keysym)
   			    (ui-blockview-dispatch-entry-event buf keysym))
