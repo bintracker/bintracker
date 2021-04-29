@@ -3223,8 +3223,7 @@
 		 (lambda (row val)
 		   (and-let*
 		       ((pre-validated-val
-			 (validate-field-value (ui-metastate buf 'mdef)
-					       field-id val #t))
+			 (validate-field-value mdef field-id val #t))
 			(validated-val
 			 (or pre-validated-val
 			     (and (eqv? action-type 'insert) '())))
@@ -3232,14 +3231,13 @@
 			 (list-ref
 			  (list-ref
 			   ;; TODO just use `order` from above?
-			   (mod-get-order-values parent-instance
-						 group-id
-						 mdef)
+			   (mod-get-order-values
+			    parent-instance group-id mdef)
 			   (ui-blockview-cursor-row->order-pos buf row))
 			  (mdef-get-block-field-index
 			   (symbol-append group-id '_ORDER)
 			   (symbol-append 'R_ block-id)
-			   (ui-metastate buf 'mdef)))))
+			   mdef))))
 		     (list action-type
 			   (string-append parent-instance-path
 					  (->string block-id)
@@ -3247,8 +3245,7 @@
 					  (number->string block-inst-id))
 			   field-id
 			   `((,(- row
-				  (car (ui-blockview-get-active-zone
-					buf row)))
+				  (car (ui-blockview-get-active-zone buf row)))
 			      ,validated-val)))))
 		 (iota (- (+ 1 (car end))
 			  (car start))
@@ -3284,37 +3281,45 @@
 	      (lambda (field-id block-id)
 		(map
 		 (lambda (row)
-		   (let ((block-inst-id
-			  (list-ref
+		   (let* ((block-inst-id
 			   (list-ref
-			    ;; TODO just use `order` from above?
-			    (mod-get-order-values parent-instance
-						  group-id
-						  mdef)
-			    (ui-blockview-cursor-row->order-pos buf row))
-			   (mdef-get-block-field-index
-			    (symbol-append group-id '_ORDER)
-			    (symbol-append 'R_ block-id)
-			    (ui-metastate buf 'mdef)))))
-		     (list 'remove
+			    (list-ref
+			     order
+			     (ui-blockview-cursor-row->order-pos buf row))
+			    (mdef-get-block-field-index
+			     (symbol-append group-id '_ORDER)
+			     (symbol-append 'R_ block-id)
+			     mdef)))
+			  (block-instance-path
 			   (string-append parent-instance-path
 					  (->string block-id)
 					  "/"
-					  (number->string block-inst-id))
-			   field-id
-			   `((,(car start)
-			      ,(mod-get-block-field-value
-				((node-path (string-append
-					     parent-instance-path
-					     "/"
-					     (symbol->string block-id)
-					     "/"
-					     (number->string block-inst-id)
-					     "/"))
-				 (mmod-global-node mod))
-				row
-				field-id
-				(car mod)))))))
+					  (number->string block-inst-id)))
+			  (current-field-val
+			   (mod-get-block-field-value
+			    ((node-path block-instance-path)
+			     (mmod-global-node mod))
+			    row
+			    field-id
+			    mdef))
+			  (base-action
+			   (list 'remove
+				 block-instance-path
+				 field-id
+				 ;; TODO is current-field-val still necessary?
+				 `((,(car start) ,current-field-val)))))
+		     (if (and (eqv? 'label
+				    (command-type
+				     (mdef-get-inode-source-command field-id
+								    mdef)))
+			      (not (null? current-field-val)))
+			 (cons 'compound
+			       (append base-action
+				       (list 'set
+					     block-instance-path
+					     field-id
+					     '((0 #t)))))
+			 base-action)))
 		 (iota (- (+ 1 (car end))
 			  (car start))
 		       (car start))))
@@ -3880,33 +3885,42 @@
 					contents start end)
     (when (mdef-group-order-editable? (slot-value buf 'group-id)
 				      (ui-metastate buf 'mdef))
-      (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+      (let* ((mdef (ui-metastate buf 'mdef))
+	     (parent-instance-path (slot-value buf 'parent-instance-path))
 	     (parent-instance ((node-path parent-instance-path)
   	   		       (mmod-global-node (ui-metastate buf 'mmod))))
 	     (group-id (slot-value buf 'group-id))
-	     (order (mod-get-order-values parent-instance
-					  group-id
-					  (ui-metastate buf 'mdef)))
+	     (order (mod-get-order-values parent-instance group-id mdef))
 	     (all-field-ids (slot-value buf 'field-ids))
 	     (field-index (lambda (id)
 			    (list-index (cute eqv? <> id) all-field-ids)))
 	     (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
 			      (field-index (cdr start))))
+	     (order-path (string-append parent-instance-path
+					(->string group-id)
+					"_ORDER/0"))
 	     (actions
-	      (concatenate
-	       (map
+	      (append
+	       (concatenate
+		(map (lambda (field-id)
+		       (map (lambda (row)
+			      (list 'remove
+				    order-path
+				    field-id
+				    `((,(car start) ()))))
+			    (iota (- (+ 1 (car end))
+				     (car start))
+				  (car start))))
+		     field-ids))
+	       (filter-map
 		(lambda (field-id)
-		  (map
-		   (lambda (row)
-		     (list 'remove
-			   (string-append parent-instance-path
-					  (->string group-id)
-					  "_ORDER/0")
-			   field-id
-			   `((,(car start) ()))))
-		   (iota (- (+ 1 (car end))
-			    (car start))
-			 (car start))))
+		  (and (eqv? 'label
+			     (command-type
+			      (mdef-get-inode-source-command field-id mdef)))
+		       (any (lambda (row)
+			      (list-ref row (field-index field-id)))
+			    (drop (take order (+ end 1)) start))
+		       (list 'set order-path field-id '((0 #t)))))
 		field-ids))))
 	(unless (null? actions)
 	  (ui-blockview-perform-edit buf (cons 'compound actions))
