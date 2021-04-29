@@ -1794,6 +1794,39 @@
   		  `((,(ui-blockview-get-current-field-instance buf)
   		     ,validated-value)))))))
 
+  ;;; Helper function for `ui-blockview-edit-cell`. Creates an edit action
+  ;;; for a blockview cell edit. Returns `#f` if NEW-VALUE does not validate, or
+  ;;; if the edit is otherwise invalid (eg. deleting a label on row 0).
+  ;;;
+  ;;; There is normally no reason to call this procedure directly.
+  (define-method (ui-blockview-make-cell-edit-action
+		  primary: (buf <ui-basic-block-view>)
+		  new-value field-id block-row path)
+    (and-let* ((validated-value
+		(validate-field-value (ui-metastate buf 'mdef)
+				      field-id new-value #t)))
+      (if (eqv? 'label
+		(command-type (ui-blockview-get-current-field-command buf)))
+	  (and-let* ((field-idx (ui-blockview-get-current-field-index buf))
+		     (current-label-row
+		      (mod-get-current-label-row
+		       ((node-path path)
+			(mmod-global-node (ui-metastate buf 'mmod)))
+		       field-id
+		       (ui-metastate buf 'mdef)))
+		     ;; TODO can be improved to avoid more unneccessary edits
+		     (_ (or (and (not (null? validated-value))
+				 ;; don't create an edit action if the edit
+				 ;; does not change the position of the label
+				 (not (= block-row current-label-row)))
+			    (and (not (zero? block-row))
+				 (not (zero? current-label-row))))))
+	    (list 'set path field-id
+		  (if (null? validated-value)
+		      `((0 #t) (,block-row ()))
+		      `((,current-label-row ()) (,block-row #t)))))
+	  (list 'set path field-id `((,block-row ,validated-value))))))
+
   ;;; Do-what-I-mean adjust normalized edit buffer values (as provided by
   ;;; `normalize-edit-parameters` so they better match the target fields.
   ;;; If the target field uses a key/ukey MDAL command, then incoming numeric
@@ -2040,8 +2073,8 @@
       (when note-val (ui-blockview-edit-cell buf note-val play-row: #t))))
 
   ;;; Perform an edit action at cursor, assuming that the cursor points to a
-  ;;; field that represents a note command.
-  (define-method (ui-blockview-enter-trigger primary:
+  ;;; field that represents a trigger or label command.
+  (define-method (ui-blockview-enter-boolean primary:
   					     (buf <ui-basic-block-view>))
     (ui-blockview-edit-cell buf #t play-row: #t))
 
@@ -2131,7 +2164,7 @@
   	(if (command-has-flag? cmd 'is-note)
   	    (ui-blockview-enter-note buf keysym)
   	    (case (command-type cmd)
-  	      ((trigger) (ui-blockview-enter-trigger buf))
+  	      ((trigger label) (ui-blockview-enter-boolean buf))
   	      ((int uint reference) (ui-blockview-enter-numeric buf keysym))
   	      ((key ukey) (ui-blockview-enter-key buf keysym))
   	      ((string) (ui-blockview-enter-string buf keysym))
@@ -3026,12 +3059,10 @@
   		  (block-row (ui-blockview-get-current-field-instance buf))
   		  (path (ui-blockview-get-current-block-instance-path buf))
   		  (play-row #f))
-    (and-let* ((validated-value
-  		(validate-field-value (ui-metastate buf 'mdef)
-  				      field-id new-value #t))
-  	       (action `(set ,path ,field-id ((,block-row ,new-value)))))
+    (and-let* ((action (ui-blockview-make-cell-edit-action
+			buf new-value field-id block-row path)))
       (ui-metastate buf 'push-undo
-  		    (make-reverse-action action (ui-metastate buf 'mmod)))
+		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
       (when (and (ui-metastate buf 'emulator)
 		 play-row
@@ -3041,7 +3072,7 @@
       	(ui-metastate buf 'emulator 'play-row
       		      (slot-value buf 'group-id)
       		      (ui-blockview-get-current-order-pos buf)
-      		      (ui-blockview-get-current-field-instance buf)))
+		      block-row))
       (ui-update buf)
       (if (zero? (ui-metastate buf 'edit-step))
 	  (ui-blockview-show-cursor buf)
@@ -3057,7 +3088,8 @@
   	   (block-instance-ids
   	    (cdr (list-ref (mod-get-order-values parent-instance
   						 (slot-value buf 'group-id)
-						 mdef)
+						 mdef
+						 only-base-fields: #t)
   			   (ui-blockview-get-current-order-pos buf)))))
       (ui-blockview-perform-edit
        buf
@@ -3079,6 +3111,7 @@
 
   (define-method (ui-blockview-cut-row primary: (buf <ui-block-view>))
     (let* ((mod (ui-metastate buf 'mmod))
+	   (mdef (mmod-mdef mod))
 	   (current-row (ui-blockview-get-current-field-instance buf))
   	   (parent-instance-path (slot-value buf 'parent-instance-path))
   	   (parent-instance ((node-path parent-instance-path)
@@ -3086,33 +3119,66 @@
   	   (block-instance-ids
   	    (cdr (list-ref (mod-get-order-values parent-instance
   						 (slot-value buf 'group-id)
-						 (mmod-mdef mod))
+						 mdef
+						 only-base-fields: #t)
   			   (ui-blockview-get-current-order-pos buf)))))
       (ui-blockview-perform-edit
        buf
        (cons 'compound
   	     (map (lambda (block-id instance-id)
-  		    (list 'block-row-remove
-  			  parent-instance-path
-  			  block-id
-  			  `((,instance-id
-  			     (,current-row
-			      ,(map (lambda (field-id)
-				      (mod-get-block-field-value
-				       ((node-path (string-append
-						    parent-instance-path
-						    "/"
-						    (symbol->string block-id)
-						    "/"
-						    (number->string instance-id)
-						    "/"))
-					(mmod-global-node mod))
-				       current-row
-				       field-id
-				       (car mod)))
-				   (mdef-get-subnode-ids
-  				    block-id
-  				    (mdef-itree (ui-metastate buf 'mdef)))))))))
+		    (let* ((block-instance-path
+			    (string-append parent-instance-path
+					   (symbol->string block-id)
+					   "/"
+					   (number->string instance-id)))
+			   (block-instance
+			    ((node-path block-instance-path)
+			     (mmod-global-node mod)))
+			   (field-ids
+			    (mdef-get-subnode-ids block-id (mdef-itree mdef)))
+			   (label-field-mask
+			    (map (lambda (field-id)
+				   (eqv? 'label
+					 (command-type
+					  (mdef-get-inode-source-command
+					   field-id mdef))))
+				 field-ids))
+			   (current-row-values
+			    (map (lambda (field-id)
+				   (mod-get-block-field-value
+				    block-instance current-row field-id mdef))
+				 field-ids))
+			   (base-action
+  			    (list 'block-row-remove
+  				  parent-instance-path
+  				  block-id
+  				  `((,instance-id
+  				     (,current-row ,current-row-values))))))
+		      (if (any (lambda (field-val is-label?)
+				 (and is-label? (not (null? field-val))))
+			       current-row-values
+			       label-field-mask)
+			  ;; TODO untested
+			  (let ((target-row
+				 (if (= current-row
+					(sub1 (length (cddr block-instance))))
+				     (sub1 current-row)
+				     (add1 current-row))))
+			    (cons 'compound
+				  (append
+				   (filter-map
+				    (lambda (field-val is-label? field-id)
+				      (and is-label?
+					   (not (null? field-val))
+					   (list 'set
+						 block-instance-path
+						 field-id
+						 `((,target-row #t)))))
+				    current-row-values
+				    label-field-mask
+				    field-ids)
+				   (list base-action))))
+			  base-action)))
   		  (slot-value buf 'block-ids)
   		  block-instance-ids)))
       (ui-blockview-show-cursor buf)))
@@ -3499,13 +3565,16 @@
   		  primary: (buf <ui-order-view>))
     (when (slot-value buf 'modeline)
       (let ((current-field-id (ui-blockview-get-current-field-id buf)))
-  	(ui-modeline-set (slot-value buf 'modeline) 'active-field
-  			 (if (symbol-contains current-field-id "_LENGTH")
-  			     "Step Length"
-  			     (string-append "Channel "
-  					    (string-drop (symbol->string
-  							  current-field-id)
-  							 2)))))))
+  	(ui-modeline-set
+	 (slot-value buf 'modeline)
+	 'active-field
+	 (cond
+	  ((symbol-contains current-field-id "_LENGTH")
+	   "Step Length")
+	  ((string-prefix? "R_" (symbol->string current-field-id))
+	   (string-append "Channel "
+  			  (string-drop (symbol->string current-field-id) 2)))
+	  (else (symbol->string current-field-id)))))))
 
   ;;; Get the up-to-date list of items to display. The list is nested. The first
   ;;; nesting level corresponds to an order position. The second nesting level
@@ -3580,18 +3649,16 @@
   		  (field-id (ui-blockview-get-current-field-id buf))
   		  (block-row (ui-blockview-get-current-field-instance buf)))
     (and-let* ((mdef (ui-metastate buf 'mdef))
+	       (path (ui-blockview-get-current-block-instance-path buf))
 	       (group-id (slot-value buf 'group-id))
 	       (_ (mdef-group-order-editable? group-id mdef))
 	       (_ (not (and (symbol-contains field-id "_LENGTH")
 			    (inode-config-block-length
 			     (mdef-inode-ref group-id mdef)))))
-	       (validated-value
-		(validate-field-value mdef field-id new-value #t))
-  	       (action `(set ,(ui-blockview-get-current-block-instance-path buf)
-  			     ,field-id
-  			     ((,block-row ,validated-value)))))
+  	       (action (ui-blockview-make-cell-edit-action
+			buf new-value field-id block-row path)))
       (ui-metastate buf 'push-undo
-  		    (make-reverse-action action (ui-metastate buf 'mmod)))
+		    (make-reverse-action action (ui-metastate buf 'mmod)))
       (ui-metastate buf 'apply-edit action)
       (ui-update buf)
       (ui-update (ui-blockview-get-sibling buf))
@@ -3611,28 +3678,68 @@
 		  row
 		  (insert-pos (ui-blockview-get-current-row buf)))
     (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+	   (mdef (ui-metastate buf 'mdef))
+	   (mmod (ui-metastate buf 'mmod))
+	   (field-ids (slot-value buf 'field-ids))
+	   (label-field-mask
+	    (map (lambda (field-id)
+		   (eqv? 'label
+			 (command-type (mdef-get-inode-source-command field-id
+								      mdef))))
+		 field-ids))
   	   (new-row-values
   	    (or row
   		(if (zero? insert-pos)
-  		    (cons (or (inode-config-block-length
-			       (mdef-inode-ref (slot-value buf 'group-id)
-					       (ui-metastate buf 'mdef)))
-			      (settings 'default-block-length))
-  			  (make-list
-  			   (sub1 (length (slot-value buf 'field-ids)))
-  			   0))
-  		    (list-ref (mod-get-order-values
-  			       ((node-path parent-instance-path)
-  				(mmod-global-node (ui-metastate buf 'mmod)))
-  			       (slot-value buf 'group-id)
-			       (ui-metastate buf 'mdef))
-  			      (sub1 insert-pos)))))
-  	   (block-id (symbol-append (slot-value buf 'group-id)
-  				    '_ORDER)))
+		    (map (lambda (field-id)
+			   (cond
+			    ((symbol-contains field-id "_LENGTH")
+			     (or (inode-config-block-length
+				  (mdef-inode-ref (slot-value buf 'group-id)
+						  mdef))
+				 (settings 'default-block-length)))
+			    ((string-prefix? "R_" (symbol->string field-id)) 0)
+			    (else '())))
+			 field-ids)
+		    (map (lambda (field is-label?)
+			   (if is-label? '() field))
+  			 (list-ref (mod-get-order-values
+  				    ((node-path parent-instance-path)
+  				     (mmod-global-node mmod))
+  				    (slot-value buf 'group-id)
+				    mdef)
+  				   (sub1 insert-pos))
+			 label-field-mask))))
+  	   (block-id (symbol-append (slot-value buf 'group-id) '_ORDER))
+	   (base-action (list 'block-row-insert parent-instance-path block-id
+  			      `((0 (,insert-pos ,new-row-values))))))
       (ui-blockview-perform-edit
        buf
-       (list 'block-row-insert parent-instance-path block-id
-  	     `((0 (,insert-pos ,new-row-values)))))
+       (if (any (lambda (field-val is-label?)
+		  (and is-label? (not (null? field-val))))
+		new-row-values
+		label-field-mask)
+	   (cons 'compound
+		 (append
+		  (filter-map (lambda (new-row-field field-id is-label?)
+				(let ((order-path
+				       (string-append parent-instance-path
+						      (symbol->string block-id)
+						      "/0")))
+				  (and is-label?
+				       (not (null? new-row-field))
+				       (list 'set
+					     order-path
+					     field-id
+					     `((,(mod-get-current-label-row
+						  ((node-path order-path)
+						   (mmod-global-node mmod))
+						  field-id)
+						()))))))
+			      new-row-values
+			      field-ids
+			      label-field-mask)
+		  base-action))
+	   base-action))
       (ui-update (ui-blockview-get-sibling buf))
       (when (eqv? (slot-value buf 'ui-zone) (focus 'which))
 	(ui-blockview-show-cursor buf))))
@@ -3643,24 +3750,57 @@
 		  primary: (buf <ui-order-view>)
 		  #!optional (position (ui-blockview-get-current-row buf)))
     (when (> (length (car (ui-blockview-get-item-list buf))) 1)
-      (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+      (let* ((mdef (ui-metastate buf 'mdef))
+	     (parent-instance-path (slot-value buf 'parent-instance-path))
+	     (field-ids (slot-value buf 'field-ids))
+	     (label-field-mask
+	      (map (lambda (field-id)
+		     (eqv? 'label
+			   (command-type (mdef-get-inode-source-command field-id
+									mdef))))
+		   field-ids))
   	     (current-row-values
   	      (list-ref (mod-get-order-values
   			 ((node-path parent-instance-path)
   			  (mmod-global-node (ui-metastate buf 'mmod)))
   			 (slot-value buf 'group-id)
-			 (ui-metastate buf 'mdef))
+			 mdef)
   			position))
-  	     (block-id (symbol-append (slot-value buf 'group-id) '_ORDER)))
+  	     (block-id (symbol-append (slot-value buf 'group-id) '_ORDER))
+	     (base-action (list 'block-row-remove
+  				parent-instance-path
+  				block-id
+  				`((0 (,position ,current-row-values))))))
   	(unless (or (zero? position)
 		    (not (= position (ui-blockview-get-current-row buf))))
   	  (ui-blockview-move-cursor buf 'Up))
   	(ui-blockview-perform-edit
   	 buf
-  	 (list 'block-row-remove
-  	       parent-instance-path
-  	       block-id
-  	       `((0 (,position ,current-row-values)))))
+	 (if (any (lambda (field-val is-label?)
+		    (and is-label? (not (null? field-val))))
+		  current-row-values
+		  label-field-mask)
+	     (let ((order-path (string-append parent-instance-path
+					      (symbol->string block-id)
+					      "/0"))
+		   (label-target-row
+		    (if (= position (sub1 (ui-blockview-get-total-length buf)))
+			(sub1 position)
+			(add1 position))))
+	       (cons 'compound
+		     (append
+		      (filter-map (lambda (field-val is-label? field-id)
+				    (and is-label?
+					 (not (null? field-val))
+					 (list 'set
+					       order-path
+					       field-id
+					       `((,label-target-row #t)))))
+				  current-row-values
+				  label-field-mask
+				  field-ids)
+		      (list base-action))))
+	     base-action))
   	(ui-update (ui-blockview-get-sibling buf))
 	(when (eqv? (slot-value buf 'ui-zone) (focus 'which))
 	  (ui-blockview-show-cursor buf)))))

@@ -11,6 +11,7 @@
      mod-export-bin
      mod-get-group-instance-blocks
      mod-get-block-field-value
+     mod-get-current-label-row
      md-command-info
      mod-get-row-values
      mod-get-block-values
@@ -199,6 +200,17 @@
 					      field-id mdef))
 	'()))
 
+  ;;; Get the row of BLOCK-INSTANCE that has the label field FIELD-ID set.
+  (define (mod-get-current-label-row block-instance field-id mdef)
+    (let* ((itree (mdef-itree mdef))
+	   (field-idx
+	    (list-index (cute eqv? <> field-id)
+			(mdef-get-subnode-ids
+			 (mdef-get-parent-node-id field-id itree)
+			 itree))))
+      (list-index (lambda (row) (not (null? (list-ref row field-idx))))
+		  (cddr block-instance))))
+
   ;;; Set the active MD command info string from the given mdef config-inode
   ;;; FIELD-ID.
   (define (md-command-info field-id mdef)
@@ -280,18 +292,29 @@
   (define (mod-get-order-values group-instance group-id mdef
 				#!key only-base-fields)
     (let* ((order (mod-get-group-instance-order group-instance group-id))
+	   (base-field-map (mdef-get-order-base-fields group-id mdef))
 	   ;; raw order values, with unset fields in first row replaced with
 	   ;; default values
-	   (base-matrix (cons (map (lambda (field)
-				     (if (null? field) 0 field))
-				   (caddr order))
+	   (base-matrix (cons (map (lambda (field is-base?)
+				     (if (and is-base? (null? field)) 0 field))
+				   (caddr order)
+				   base-field-map)
 			      (cdddr order))))
-      (repeat-block-row-values
-       (if only-base-fields
-	   (transpose (filter-map (lambda (column id) (and id column))
-				  (transpose base-matrix)
-				  (mdef-get-order-base-fields group-id mdef)))
-	   base-matrix))))
+      (map (lambda (base-row rep-row)
+	     (map (lambda (base-field field is-base?)
+		    (if is-base?
+			field
+			(if (null? base-field) #f base-field)))
+		  base-row
+		  rep-row
+		  base-field-map))
+	   base-matrix
+	   (repeat-block-row-values
+	    (if only-base-fields
+		(transpose (filter-map (lambda (column id) (and id column))
+				       (transpose base-matrix)
+				       base-field-map))
+		base-matrix)))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Inode mutators
