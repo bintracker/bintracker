@@ -1874,9 +1874,9 @@
 	     ((every (lambda (x) (or (null? x) (integer? x)))
 		     column)
 	      (let ((range (or (command-range command)
-			       `(bits->range
-				 (command-bits command)
-				 (eqv? 'int (command-type command))))))
+			       (bits->range
+				(command-bits command)
+				(eqv? 'int (command-type command))))))
 		(if (every (lambda (x)
 			     (or (null? x)
 				 (in-range? x range)))
