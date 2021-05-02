@@ -1998,15 +1998,34 @@
 		    (let ((circular-contents
 			   (apply circular-list
 				  (map (cute apply circular-list <>)
-				       pre-normalized-contents))))
-		      (map (lambda (field)
-			     (take field
-				   (+ 1 (- (car normalized-end)
-					   (car normalized-start)))))
+				       pre-normalized-contents)))
+			  (mdef (ui-metastate buf 'mdef)))
+		      (map (lambda (field field-id)
+			     (let ((raw-values
+				    (take field
+					  (+ 1 (- (car normalized-end)
+						  (car normalized-start))))))
+			       ;; ensure label fields are set at most once
+			       (if (and (eqv? 'label
+					      (command-type
+					       (mdef-get-inode-source-command
+						field-id mdef)))
+					(> (length (remove null? raw-values))
+					   1))
+				   (let ((first-label-index
+					  (+ 1 (list-index (lambda (x)
+							     (not (null? x)))
+							   raw-values))))
+				     (append (take raw-values first-label-index)
+					     (map (lambda (x) '())
+						  (drop raw-values
+							first-label-index))))
+				   raw-values)))
 			   (take circular-contents
 				 (+ 1 (- (field-index (cdr normalized-end))
-					 (field-index
-					  (cdr normalized-start)))))))))))
+					 (field-index (cdr normalized-start)))))
+			   (get-affected-fields (cdr normalized-start)
+						(cdr normalized-end))))))))
       (list (if (and (settings 'dwim-module-edit)
 		     (not (memv what '(cut clear))))
 		(dwim-adjust-edit-contents buf normalized-contents
@@ -3200,11 +3219,11 @@
   (define-method (ui-blockview-blockedit primary: (buf <ui-block-view>)
 					 contents start end action-type)
     ;; (print "ui-blockview-blockedit " start " " end " " action-type)
-    (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
-	   (parent-instance ((node-path parent-instance-path)
-  	   		     (mmod-global-node (ui-metastate buf 'mmod))))
-	   (group-id (slot-value buf 'group-id))
+    (let* ((global-node (mmod-global-node (ui-metastate buf 'mmod)))
 	   (mdef (ui-metastate buf 'mdef))
+	   (parent-instance-path (slot-value buf 'parent-instance-path))
+	   (parent-instance ((node-path parent-instance-path) global-node))
+	   (group-id (slot-value buf 'group-id))
 	   (order (mod-get-order-values parent-instance group-id mdef))
 	   (all-field-ids (slot-value buf 'field-ids))
 	   (field-index (lambda (id)
@@ -3212,45 +3231,75 @@
 	   (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
 			    (field-index (cdr start))))
 	   (block-ids (map (lambda (field-id)
-			     (mdef-get-parent-node-id
-			      field-id (mdef-itree mdef)))
+			     (mdef-get-parent-node-id field-id
+						      (mdef-itree mdef)))
 			   field-ids))
+	   (is-label? (lambda (field-id)
+			(eqv? 'label
+			      (command-type (mdef-get-inode-source-command
+					     field-id mdef)))))
 	   (actions
 	    (concatenate
 	     (map
 	      (lambda (field field-id block-id)
-		(filter-map
-		 (lambda (row val)
-		   (and-let*
-		       ((pre-validated-val
-			 (validate-field-value mdef field-id val #t))
-			(validated-val
-			 (or pre-validated-val
-			     (and (eqv? action-type 'insert) '())))
-			(block-inst-id
-			 (list-ref
-			  (list-ref
-			   ;; TODO just use `order` from above?
-			   (mod-get-order-values
-			    parent-instance group-id mdef)
-			   (ui-blockview-cursor-row->order-pos buf row))
-			  (mdef-get-block-field-index
-			   (symbol-append group-id '_ORDER)
-			   (symbol-append 'R_ block-id)
-			   mdef))))
-		     (list action-type
-			   (string-append parent-instance-path
-					  (->string block-id)
-					  "/"
-					  (number->string block-inst-id))
-			   field-id
-			   `((,(- row
-				  (car (ui-blockview-get-active-zone buf row)))
-			      ,validated-val)))))
-		 (iota (- (+ 1 (car end))
-			  (car start))
-		       (car start))
-		 field))
+		(concatenate
+		 (filter-map
+		  (lambda (row val)
+		    (let* ((validated-val
+			    (or (validate-field-value mdef field-id val #t)
+				(and (eqv? action-type 'insert) '())))
+			   (block-inst-id
+			    (list-ref
+			     (list-ref
+			      order
+			      (ui-blockview-cursor-row->order-pos buf row))
+			     (mdef-get-block-field-index
+			      (symbol-append group-id '_ORDER)
+			      (symbol-append 'R_ block-id)
+			      mdef)))
+			   (block-instance-path
+			    (string-append parent-instance-path
+					   (symbol->string block-id)
+					   "/"
+					   (number->string block-inst-id)))
+			   (current-label-row
+			    (and (is-label? field-id)
+				 (mod-get-current-label-row
+				  ((node-path block-instance-path) global-node)
+				  field-id
+				  mdef))))
+		      (append
+		       ;; delete current label if inserted data sets a new
+		       ;; one, or pasted data sets a new one and current
+		       ;; label is outside target zone
+		       (if (and (is-label? field-id)
+				(not (null? val))
+				(and (eqv? 'set action-type)
+				     (or (< current-label-row row)
+					 (> current-label-row row))))
+			   `((set ,block-instance-path
+				  ,field-id
+				  ((,current-label-row ()))))
+			   '())
+		       `((,action-type
+			  ,block-instance-path
+			  ,field-id
+			  ((,(- row
+				(car (ui-blockview-get-active-zone buf row)))
+			    ,validated-val))))
+		       ;; move label when orig data has one, but pasted
+		       ;; data does not
+		       (if (and (eqv? 'set action-type)
+				(is-label? field-id)
+				(every null? field)
+				(>= current-label-row row)
+				(<= current-label-row row))
+			   `((set ,block-instance-path ,field-id ((0 #t))))
+			   '()))))
+		  (iota (- (+ 1 (car end))
+			   (car start))
+			(car start))
+		  field)))
 	      contents
 	      field-ids
 	      block-ids))))
@@ -3847,32 +3896,69 @@
 					 contents start end action-type)
     (when (mdef-group-order-editable? (slot-value buf 'group-id)
 				      (ui-metastate buf 'mdef))
-      (let* ((parent-instance-path (slot-value buf 'parent-instance-path))
+      (let* ((global-node (mmod-global-node (ui-metastate buf 'mmod)))
+	     (mdef (ui-metastate buf 'mdef))
+	     (parent-instance-path (slot-value buf 'parent-instance-path))
 	     (parent-instance ((node-path parent-instance-path)
-  	   		       (mmod-global-node (ui-metastate buf 'mmod))))
+  	   		       global-node))
 	     (group-id (slot-value buf 'group-id))
 	     (all-field-ids (slot-value buf 'field-ids))
 	     (field-index (lambda (id)
 			    (list-index (cute eqv? <> id) all-field-ids)))
 	     (field-ids (drop (take all-field-ids (+ 1 (field-index (cdr end))))
 			      (field-index (cdr start))))
+	     (order-path (string-append parent-instance-path
+					(symbol->string group-id)
+					"_ORDER/0"))
+	     (is-label? (lambda (field-id)
+			  (eqv? 'label
+				(command-type (mdef-get-inode-source-command
+					       field-id mdef)))))
 	     (action (concatenate
 		      (map
 		       (lambda (field field-id)
-			 (filter-map
-			  (lambda (row val)
-			    (and (validate-field-value (ui-metastate buf 'mdef)
-						       field-id val #t)
-				 (list action-type
-				       (string-append parent-instance-path
-						      (->string group-id)
-						      "_ORDER/0")
-				       field-id
-				       `((,row ,val)))))
-			  (iota (- (+ 1 (car end))
+			 (let ((current-label-row
+				(and (is-label? field-id)
+				     (mod-get-current-label-row
+				      ((node-path order-path) global-node)
+				      field-id
+				      mdef))))
+			   (append
+			    ;; delete current label if inserted data sets a new
+			    ;; one, or pasted data sets a new one and current
+			    ;; label is outside target zone
+			    (if (and (is-label? field-id)
+				     (any (complement null?) field)
+				     (or (eqv? 'insert action-type)
+					 (and (eqv? 'set action-type)
+					      (or (< current-label-row
+						     (car start))
+						  (> current-label-row
+						     (car end))))))
+				`((set ,order-path
+				       ,field-id
+				       ((,current-label-row ()))))
+				'())
+			    (filter-map
+			     (lambda (row val)
+			       (and (validate-field-value mdef field-id val #t)
+				    (list action-type
+					  order-path
+					  field-id
+					  `((,row ,val)))))
+			     (iota (- (+ 1 (car end))
+				      (car start))
 				   (car start))
-				(car start))
-			  field))
+			     field)
+			    ;; move label when orig data has one, but pasted
+			    ;; data does not
+			    (if (and (eqv? 'set action-type)
+				     (is-label? field-id)
+				     (every null? field)
+				     (>= current-label-row (car start))
+				     (<= current-label-row (car end)))
+				`((set ,order-path ,field-id ((0 #t))))
+				'()))))
 		       contents
 		       field-ids))))
 	(unless (null? action)

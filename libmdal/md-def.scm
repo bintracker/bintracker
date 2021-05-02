@@ -59,6 +59,7 @@
      mdef-get-inode-source-command
      mdef-get-node-default
      mdef-get-order-base-fields
+     mdef-order-base-field?
      make-onode
      onode-type
      onode-size
@@ -341,7 +342,7 @@
 
   ;;; Return the list of ancestor IDs of the given inode in the given inode tree
   ;;; The returned list is sorted from the closest ancestor to the most distant.
-  (define  (mdef-get-node-ancestors-ids inode-id itree)
+  (define (mdef-get-node-ancestors-ids inode-id itree)
     (let ((parent (mdef-get-parent-node-id inode-id itree)))
       (if (not parent)
 	  '()
@@ -388,7 +389,6 @@
     (let ((node-cmd (mdef-get-inode-source-command node-id mdef)))
       (and node-cmd (command-default node-cmd))))
 
-
   ;;; Returns a list that matches the length of a row in the order block of
   ;;; the group GROUP-ID, where values are either `#t` or `#f` depending on
   ;;; whether the matching order field is a base field or not. Fields are
@@ -400,6 +400,14 @@
 	       (eqv? id (symbol-append group-id '_LENGTH))))
 	 (mdef-get-subnode-ids (symbol-append group-id '_ORDER)
 			       (mdef-itree mdef))))
+
+  ;;; Returns `#t` if the field node FIELD-ID is a base field of an order node.
+  (define (mdef-order-base-field? field-id mdef)
+    (let ((ancestors (mdef-get-node-ancestors-ids field-id (mdef-itree mdef))))
+      (and (eqv? (car ancestors) (symbol-append (cadr ancestors) '_ORDER))
+	   (or (string-prefix? "R_" (symbol->string field-id))
+	       (eqv? field-id (symbol-append (cadr ancestors) '_LENGTH))))))
+
   ;; ---------------------------------------------------------------------------
   ;;; ## MMOD: OUTPUT NODES
   ;; ---------------------------------------------------------------------------

@@ -387,7 +387,7 @@
 	     row)
       (let* ((columns (transpose (cddr block-instance)))
 	     (block-id (mdef-get-parent-node-id field-id (mdef-itree mdef)))
-	     (is-order? (symbol-contains block-id "_ORDER"))
+	     (is-order-base-field? (mdef-order-base-field? field-id mdef))
 	     (field-index (mdef-get-block-field-index block-id field-id mdef)))
 	(transpose
 	 (map (lambda (column index)
@@ -396,12 +396,12 @@
 			    (if (> (length column) 1)
 				(let ((column-head (drop column (+ 1 row))))
 				  (append column-head
-					  (if is-order?
+					  (if is-order-base-field?
 					      (list (if (null? column-head)
 							0
 							(last column-head)))
 					      '(()))))
-				(if is-order? '(0) '(()))))
+				(if is-order-base-field? '(0) '(()))))
 		    column))
 	      columns (iota (length columns)))))))
 
@@ -421,21 +421,24 @@
 							block-id
 							(mdef-itree mdef)))
 					       '()))))))
-	   (field-index (mdef-get-block-field-index block-id field-id mdef)))
-      (let ((res (transpose
-		  (map (lambda (column index)
-			 (if (= index field-index)
-			     (let ((column-head (take column row)))
-			       (append column-head
-				       (list (if (and is-order? (null? value))
-						 (if (null? column-head)
-						     0
-						     (last column-head))
-						 value))
-				       (drop column row)))
-			     (append column '(()))))
-		       columns (iota (length columns))))))
-	(if is-order? (drop-right res 1) res))))
+	   (field-index (mdef-get-block-field-index block-id field-id mdef))
+	   (res (transpose
+		 (map (lambda (column index)
+			(if (= index field-index)
+			    (let ((column-head (take column row)))
+			      (append column-head
+				      (list (if (and (mdef-order-base-field?
+						      field-id mdef)
+						     (null? value))
+						(if (null? column-head)
+						    0
+						    (last column-head))
+						value))
+				      (drop column row)))
+			    (append column '(()))))
+		      columns
+		      (iota (length columns))))))
+      (if is-order? (drop-right res 1) res)))
 
   ;;; Delete one or more INSTANCES from the node with NODE-ID.
   (define (node-remove! parent-instance-path node-id instances mod)
