@@ -168,9 +168,14 @@
   ;;; Display the "About Bintracker" message.
   (define (about-message)
     (tk/message-box* title: "About"
-		     message: (string-append "Bintracker\nversion "
+		     message: (string-append "Bintracker "
 					     *bintracker-version*)
-		     detail: "Dedicated to Ján Deák"
+		     detail: (string-append "by utz/irrlicht project\n\n"
+					    "Supported by:\n"
+					    "Catskull Electronics, "
+					    "Denis Perevalov, "
+					    "Radian "
+					    "\n\nDedicated to Ján Deák")
 		     type: 'ok))
 
   ;;; Display a message box for the given EXN, and output a summary of the
