@@ -4035,13 +4035,13 @@
   		(ui-blockview-update-content-grid buf)
   		(ui-blockview-update-row-numbers buf)
   		((slot-value buf 'block-content)
-  		 'mark 'set 'insert current-mark-pos)
-  		(ui-blockview-tag-active-zone buf))
+  		 'mark 'set 'insert current-mark-pos))
   	      (begin
   		(ui-blockview-update-content-rows buf new-item-list)
   		((slot-value buf 'block-content)
   		 'mark 'set 'insert current-mark-pos)
-  		(set! (slot-value buf 'item-cache) new-item-list)))))))
+  		(set! (slot-value buf 'item-cache) new-item-list)))
+	  (ui-blockview-tag-active-zone buf)))))
 
   (define-method (ui-show before: (buf <ui-order-view>))
     (unless (slot-value buf 'initialized)
