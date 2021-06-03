@@ -27,6 +27,7 @@ extra:
     - scheme
 
 plugins:
+  - search
   - localsearch
 
 extra_javascript:
