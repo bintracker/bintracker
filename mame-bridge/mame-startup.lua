@@ -80,7 +80,7 @@ local print_machine_info = function ()
    print("\nMachine devices [machine_manager.devices]")
    for k,_ in pairs(machine_manager.devices) do print(k) end
    print("\nMachine options")
-   for k,v in pairs(machine_manager:options().entries) do
+   for k,v in pairs(machine_manager.options.entries) do
       print(k, "=", v:value())
    end
    print("\nCPU State Registers\nState:")
@@ -97,9 +97,9 @@ local print_machine_info = function ()
       for k,_ in pairs(cartslot.spaces) do print(k) end
    end
    print("\nShares all:\n")
-   for k,_ in pairs(machine_manager:memory().shares) do print (k) end
+   for k,_ in pairs(machine_manager.memory.shares) do print (k) end
    print("\nRegions all:\n")
-   for k,_ in pairs(machine_manager:memory().regions) do print (k) end
+   for k,_ in pairs(machine_manager.memory.regions) do print (k) end
 end
 
 local machine_set_pc = function (addr)
@@ -114,7 +114,7 @@ local machine_load_bin = function (addr, data)
       mem = machine_cpu.spaces["program"]
    else
       do
-	 mem = machine_manager:memory().regions[":cartslot:cart:rom"]
+	 mem = machine_manager.memory.regions[":cartslot:cart:rom"]
 	 local_addr = 0
       end
    end
