@@ -1,7 +1,7 @@
 CSC = csc
 DOCGEN = scm2wiki
 BASEDEPS = md-helpers.import.so md-types.import.so
-LIBFLAGS = -s -d3 -specialize #-profile-name $@.PROFILE
+LIBFLAGS = -s -d3 #-profile-name $@.PROFILE
 ifdef RELEASE
  LIBFLAGS += -O3
 endif
