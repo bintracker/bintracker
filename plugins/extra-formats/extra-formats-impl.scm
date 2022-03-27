@@ -11,7 +11,7 @@
 	  bt-state bt-types bt-gui mdal schemta)
 
   (define (int->ascii n #!optional (endianness 'little-endian))
-    (map char->integer (int->bytes n 2 endianness)))
+    (int->bytes n 2 endianness))
 
   (define (show-export-dialog export-proc title #!optional (features '()))
     (letrec
@@ -189,7 +189,8 @@
   		'())
   	    (map integer->char
   		 (zx-tap-block-header 'code "" (length bin) param1: origin))
-  	    (int->bytes (+ 2 (length bin)) 2 'little-endian)
+  	    (map integer->char
+		 (int->bytes (+ 2 (length bin)) 2 'little-endian))
   	    (cons (integer->char #xff) bin)
   	    (list (integer->char (apply bitwise-xor
   					(cons #xff (map char->integer bin)))))))

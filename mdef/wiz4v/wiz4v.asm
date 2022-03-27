@@ -30,7 +30,7 @@ seqptr .equ .(+ 1 current-origin)
     ld a,h
     or l
     jr nz,_skip
-    .(if (symbol-ref 'row-play)
+    .(if (defined? 'row-play)
          " halt"
          " jr readseq0")
 

@@ -30,7 +30,7 @@ readPos
 	inc hl
 	or a
 	;; ret z					;if it is zero, it is the end of the song
-    .(if (symbol-ref 'row-play)
+    .(if (defined? 'row-play)
          " jr nz,skip\n di\n halt\n"
          " jr z,begin\n")
 skip
@@ -120,7 +120,7 @@ _l4
 	jr z,readPos			;if no key was pressed, continue
 
     ;; 	ret
-    .(if (symbol-ref 'row-play)
+    .(if (defined? 'row-play)
          " di\n halt\n"
          " ret")
 

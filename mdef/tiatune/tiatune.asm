@@ -244,7 +244,7 @@ continue_ch2 .equ .(+ #x80 (- current-origin (symbol-ref 'playercode)))
 	bne playerCode
 
 	;; jmp rdPtn		;3
-        .(if (symbol-ref 'row-play)
+        .(if (defined? 'row-play)
              " hlt"
              " jmp rdPtn")
 

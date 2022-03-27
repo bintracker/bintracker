@@ -57,6 +57,7 @@
   (define current-origin #f)
   (define symbol #f)
   (define symbol-ref #f)
+  (define defined? #f)
 
   ;; ---------------------------------------------------------------------------
   ;; Assembler primitives
@@ -79,6 +80,20 @@
   (: msw (fixnum --> fixnum))
   (define (msw n) (bitwise-and #xffff (quotient n #x10000)))
 
+  ;;; Convert the integer I into a list of bytes, capped at NUMBER-OF-BYTES
+  ;;; and respecting ENDIANness.
+  (define (int->bytes i number-of-bytes endian)
+    (letrec* ((make-bytes (lambda (restval remaining-bytes)
+			    (if (zero? remaining-bytes)
+				'()
+				(cons (bitwise-and #xff restval)
+				      (make-bytes (arithmetic-shift restval -8)
+						  (sub1 remaining-bytes))))))
+	      (byte-list (make-bytes i number-of-bytes)))
+      (if (eq? 'little-endian endian)
+	  byte-list
+	  (reverse byte-list))))
+
   ;; ---------------------------------------------------------------------------
   ;;; ## Instruction Parser
   ;; ---------------------------------------------------------------------------
@@ -88,7 +103,7 @@
   ;;; Get the list of symbols needed to resolve the s-expression directive
   ;;; EXPR.
   (define (required-symbols expr)
-    (flatten (cond ((or (not (pair? expr)) (null? expr)) '())
+    (flatten (cond ((atom? expr) '())
 		   ((pair? (car expr)) (cons (required-symbols (car expr))
 					     (required-symbols (cdr expr))))
 		   ((eq? 'symbol-ref (car expr))
@@ -190,6 +205,8 @@
 				  (in (char-set-difference
 				       (char-set-union char-set:graphic
 						       horizontal-whitespace)
+				       ;; TODO for some reason this line fails
+				       ;; when emitting a .types file.
 				       (->char-set #\")))))
 			 (is #\"))))
 
@@ -299,7 +316,7 @@
     (sequence* ((_ (zero-or-more (in horizontal-whitespace)))
 		(_ (is #\.))
 		(sexp a-sexp))
-	       (result (list 'sexp-directive sexp))))
+	       (result (list 'sexp-directive sexp (required-symbols sexp)))))
 
   (define a-sexp-directive-string
     (sequence* ((_ (zero-or-more (in horizontal-whitespace)))
@@ -532,6 +549,18 @@
   			(state 'symbols)))
   	   required-symbols))
 
+  ;; Generic symbol lookup, provides the backend for asm procedures `symbol-ref`
+  ;; and `defined?`
+  (define (symbol-lookup s state default)
+    (alist-ref
+     (if (is-local-symbol? s)
+  	 (symbol-append (state 'local-namespace)
+			(string->symbol (string-downcase (symbol->string s))))
+  	 (string->symbol (string-downcase (symbol->string s))))
+     (state 'symbols)
+     eqv?
+     default))
+
   (define (eval-operand op state)
     ;; (print "eval-operand " op)
     (if (pair? op)
@@ -565,17 +594,7 @@
 		     (lambda (what)
 		       (car (alist-ref what (asm-target-extra target)))))
 		    (current-origin (state 'current-origin))
-		    (symbol-ref
-		     (lambda (s)
-		       (alist-ref
-			(if (is-local-symbol? s)
-  			    (symbol-append (state 'local-namespace)
-					   (string->symbol
-					    (string-downcase
-					     (symbol->string s))))
-  			    (string->symbol
-			     (string-downcase (symbol->string s))))
-  			(state 'symbols)))))
+		    (symbol-ref (lambda (s) (symbol-lookup s state #f))))
 		 (let ((require-current-org (memv 'current-origin
 						  (flatten (last node))))
 		       (org (state 'current-origin))
@@ -764,30 +783,65 @@
 
   ;;; Execute a sexp-directive
   (define (do-sexp-directive node state)
-    (if (and (or (and (list? (cadr node))
-		      (memv 'current-origin (flatten (cadr node))))
-		 (eqv? 'current-origin (cadr node)))
-	     (not (state 'current-origin)))
-	(begin (state 'done? #f) (list node))
+    ;; (print "do-sexp-directive " node)
+    (if (or (and (or (and (list? (cadr node))
+			  (memv 'current-origin (flatten (cadr node))))
+		     (eqv? 'current-origin (cadr node)))
+		 (not (state 'current-origin)))
+	    (not (have-all-symbols? (caddr node) state)))
+	(begin (state 'done? #f)
+	       ;; TODO this is a bit of a kludge. Should properly distinguish
+	       ;; between those situations that require updating current-origin
+	       ;; and those that do not.
+	       (when (and (state 'current-origin) (> (length node) 3))
+		 (state 'current-origin (+ (state 'current-origin)
+					   (cadddr node))))
+	       (list node))
 	(fluid-let ((current-origin (state 'current-origin))
-		    (symbol-ref
-		     (lambda (s)
-		       (alist-ref
-			(if (is-local-symbol? s)
-  			    (symbol-append (state 'local-namespace)
-					   (string->symbol
-					    (string-downcase
-					     (symbol->string s))))
-  			    (string->symbol
-			     (string-downcase (symbol->string s))))
-  			(state 'symbols)))))
+		    (symbol-ref (lambda (s) (symbol-lookup s state #f)))
+		    (defined?
+		      (lambda (s)
+			(not (eqv? 'undefined
+				   (symbol-lookup s state 'undefined))))))
 	  (let ((res (eval (cadr node))))
+	    ;; (print "sexp-directive, have res: " res)
 	    (cond
 	     ((string? res) (begin (state 'done? #f)
 				   (state 'current-origin #f)
 				   (parse-source res (state 'target))))
 	     ((number? res) res)
+	     ((pair? res)
+	      (if (every number? (flatten res))
+		  (begin
+		    (when (state 'current-origin)
+		      (state 'current-origin (+ (length (flatten res))
+						(state 'current-origin))))
+		    res)
+		  (begin (state 'done? #f)
+			 (state 'current-origin #f)
+			 res)))
 	     (else '()))))))
+
+  ;; Insert MDAL compiler result from a symbol definition.
+  (define (do-md-result node state)
+    (let ((res (alist-ref (caddr node) (state 'symbols))))
+      ;; TODO Always assuming there are unresolved references in result.
+      ;;      Should detect this instead, perhaps pass an additional flag from
+      ;;      MDAL compiler.
+      (state 'done #f)
+      (if res
+	  ;; Pass length as car of result list!
+	  (begin (when (state 'current-origin)
+		   (state 'current-origin (+ (state 'current-origin)
+					     (car res))))
+		 ;; (print "inserting from " node " " (cdr res))
+		 (cdr res))
+	  (begin (if (and (state 'current-origin)
+			  (cadr node))
+		     (state 'current-origin (+ (state 'current-origin)
+					       (cadr node)))
+		     (state 'current-origin #f))
+		 (list node)))))
 
   (define (do-swap-namespace node state)
     (state 'local-namespace (cadr node))
@@ -811,6 +865,7 @@
   	   ((local-label) do-local-label)
   	   ((directive) do-directive)
   	   ((sexp-directive) do-sexp-directive)
+	   ((md-result) do-md-result)
   	   ((swap-namespace) do-swap-namespace)
 	   ((swap-target) do-swap-target)
   	   (else (error 'schemta#assemble-node
@@ -1037,7 +1092,8 @@
   (define (make-assembly-copy _init-target _target _symbols _local-namespace
 			      _current-origin _ast _pass _done?
 			      initial-org)
-    (let* ((initial-target (the (struct asm-target) _init-target))
+    (let* ((base-origin (the integer initial-org))
+	   (initial-target (the (struct asm-target) _init-target))
 	   (target (the (struct asm-target) _target))
 	   (symbols (the list _symbols))
 	   (local-namespace (the symbol _local-namespace))
@@ -1047,7 +1103,7 @@
 	   (done? (the boolean _done?))
 	   (reset-state! (the (-> undefined)
 			      (lambda ()
-				(set! current-origin initial-org)
+				(set! current-origin base-origin)
 				(set! target initial-target)
 				(set! local-namespace '000__void)
 				(set! done? #t))))
@@ -1073,7 +1129,9 @@
 	    (error 'assembly "Missing command arguments")
 	    (case (car args)
 	      ((done?) done?)
-	      ((ast) ast)
+	      ((ast) (if (= 1 (length args))
+			 ast
+			 (set! ast (cadr args))))
 	      ((symbols) (if (= 2 (length args))
 			     (begin (for-each
 				     (lambda (sym)
@@ -1097,9 +1155,11 @@
 		 done?))
 	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
+	      ((set-base-origin) (when (zero? pass)
+				   (set! base-origin (cadr args))))
 	      ((copy) (make-assembly-copy initial-target target symbols
 					  local-namespace current-origin
-					  ast pass done? initial-org))
+					  ast pass done? base-origin))
 	      (else (error 'assembly (string-append "Invalid command "
 						    (->string args)))))))))
 
@@ -1114,9 +1174,10 @@
   ;;;
   ;;; Returns #t if no more passes are required to complete the assembly.
   ;;;
-  ;;; `(ASM 'ast)`
+  ;;; `(ASM 'ast [AST])`
   ;;;
-  ;;; Returns the current abstract syntax tree.
+  ;;; With no additional arguments, returns the current abstract syntax tree.
+  ;;; Otherwise, set the AST to the list of nodes given as the second argument.
   ;;;
   ;;; `(ASM 'local-namespace)`
   ;;;
@@ -1143,12 +1204,26 @@
   ;;; If no more passes are required, returns the assembled machine code as a
   ;;; list of integer values. Otherwise, returns #f.
   ;;;
+  ;;; `(ASM 'set-base-origin ADDRESS)`
+  ;;;
+  ;;; Change the base origin to ADDRESS. This is useful for parsing the source
+  ;;; without specifying an origin address. It has no effect once one or more
+  ;;; assembly passes have been performed.
+  ;;;
+  ;;; `(ASM 'symbols [SYMBOLS])`
+  ;;;
+  ;;; With no additional arguments, returns the list of currently defined
+  ;;; symbols. Otherwise, update the symbol table with the given alist of
+  ;;; SYMBOLS. Previously existing symbols will have their definition updated,
+  ;;; and new symbols are added to the table.
+  ;;;
   ;;; `(ASM 'copy)`
   ;;; Create a fresh copy of the assembly object in its current state.
   (define (make-assembly target-cpu source
 			 #!optional (org 0) (extra-symbols '()))
     ;; (print "make-assembly, source: " source)
-    (let* ((initial-target (the (struct asm-target) (make-target target-cpu)))
+    (let* ((base-origin (the integer org))
+	   (initial-target (the (struct asm-target) (make-target target-cpu)))
 	   (target (the (struct asm-target) initial-target))
 	   (symbols (the list extra-symbols))
 	   (local-namespace (the symbol '000__void))
@@ -1158,7 +1233,7 @@
 	   (done? (the boolean #f))
 	   (reset-state! (the (-> undefined)
 			      (lambda ()
-				(set! current-origin org)
+				(set! current-origin base-origin)
 				(set! target initial-target)
 				(set! local-namespace '000__void)
 				(set! done? #t))))
@@ -1179,12 +1254,15 @@
 				  ((local-namespace) (set! local-namespace
 						       (cadr args)))
 				  ((done?) (set! done? (cadr args)))))))))
+      ;; (print ast)
       (lambda args
 	(if (null? args)
 	    (error 'assembly "Missing command arguments")
 	    (case (car args)
 	      ((done?) done?)
-	      ((ast) ast)
+	      ((ast) (if (= 1 (length args))
+			 ast
+			 (set! ast (cadr args))))
 	      ((symbols) (if (= 2 (length args))
 			     (begin (for-each
 				     (lambda (sym)
@@ -1208,9 +1286,11 @@
 		 done?))
 	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
+	      ((set-base-origin) (when (zero? pass)
+				   (set! base-origin (cadr args))))
 	      ((copy) (make-assembly-copy initial-target target symbols
 					  local-namespace current-origin
-					  ast pass done? org))
+					  ast pass done? base-origin))
 	      (else (error 'assembly (string-append "Invalid command "
 						    (->string args)))))))))
 

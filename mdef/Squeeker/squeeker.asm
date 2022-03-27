@@ -34,7 +34,7 @@ seqpntr .equ .(+ 1 current-origin)
 	jr nz,rdptn0
 
 	;jp exit		;uncomment to disable looping
-        .(when (symbol-ref 'row-play)
+        .(when (defined? 'row-play)
            " halt")
 
 	ld sp,loop		;get loop point

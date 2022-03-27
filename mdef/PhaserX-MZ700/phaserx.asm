@@ -32,7 +32,7 @@ rdseq0
 	ld (seqpntr),sp
 	jr nz,rdptn0
 
-        .(if (symbol-ref 'row-play)
+        .(if (defined? 'row-play)
              " halt"
              ;; " ld sp,loop\n jr .(+ 3 (symbol-ref 'rdseq))"
              " ld sp,loop\n jr rdseq0")

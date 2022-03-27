@@ -14,8 +14,8 @@ AMP16K
 _CST_BorderLp .equ 63
 _CST_ScreenLp .equ 192
 _CST_IntVec .equ $28
-_CST_ISRDest .equ .(if (symbol-ref 'AMP16K_LOW_ISR) #x5c65 #x7e5c)
-_CST_IntVec .equ .(if (symbol-ref 'AMP16K_LOW_ISR) #x2b #x28)
+_CST_ISRDest .equ .(if (defined? 'AMP16K_LOW_ISR) #x5c65 #x7e5c)
+_CST_IntVec .equ .(if (defined? 'AMP16K_LOW_ISR) #x2b #x28)
 
         ld hl,musicdata
 	push iy
@@ -82,7 +82,7 @@ _LOC_PatternListPtr .equ .(+ 1 current-origin)
 	pop hl			;PTxx-PatternData
 	bit 7,h
 	jr z,_no_loop
-        .(if (symbol-ref 'row-play)
+        .(if (defined? 'row-play)
              " di\n halt"
              " add hl,sp\n ld sp,hl")
 	;; add hl,sp		;BIT 7 = 1: PatternListLoop-PatternData
@@ -108,7 +108,7 @@ _read_loop
 	dec a			;$-1: next pattern
 	jr z,_next_pattern
 _drum				;$-2~$-F: drum
-        .(if (symbol-ref 'AMP_NO_DRUMS)
+        .(if (defined? 'AMP_NO_DRUMS)
              " jr _no_drum"
 	     " di")
 	ld c,a
@@ -172,7 +172,7 @@ _LOC_Ch1Freq .equ .(+ 1 current-origin)
 _LOC_Ch2Freq .equ .(+ 1 current-origin)
 	ld bc,0
 	exx
-        .(unless (symbol-ref 'AMP_NO_DRUMS) " ei")
+        .(unless (defined? 'AMP_NO_DRUMS) " ei")
 _no_drum
 	ld a,(de)		;ptn row +1..+N: %p nnnnnnn, - Pulse width byte follows, Note
 	inc de
@@ -196,7 +196,7 @@ _no_ch1_pw
 	add hl,sp
 	ld sp,hl
 _ch1_rest
-        .(unless (symbol-ref 'AMP_NO_CH1)
+        .(unless (defined? 'AMP_NO_CH1)
            " ld (_LOC_Ch1Pw),a")
 	exx
 	pop de
@@ -220,7 +220,7 @@ _no_ch1_note
 	jr nc,_no_ch2_pw
 	ld a,(de)
 	inc de
-        .(unless (symbol-ref 'AMP_NO_CH2)
+        .(unless (defined? 'AMP_NO_CH2)
            " ld (_LOC_Ch2Pw),a")
 _no_ch2_pw
 	ld sp,_note_table
@@ -244,7 +244,7 @@ _LOC_Ch3Freq .equ .(+ 1 current-origin)
 	jr nc,_no_ch3_pw
 	ld a,(de)
 	inc de
-        .(unless (symbol-ref 'AMP_NO_CH3)
+        .(unless (defined? 'AMP_NO_CH3)
            " ld (_LOC_Ch3Pw),a")
 _no_ch3_pw
 	ld sp,_note_table
@@ -266,7 +266,7 @@ _LOC_Ch4Freq .equ .(+ 1 current-origin)
 	jr nc,_no_ch4_pw
 	ld a,(de)
 	inc de
-        .(unless (symbol-ref 'AMP_NO_CH4)
+        .(unless (defined? 'AMP_NO_CH4)
           " ld (_LOC_Ch4Pw),a")
 _no_ch4_pw
 	ld hl,_note_table

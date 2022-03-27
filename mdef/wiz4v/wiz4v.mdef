@@ -45,23 +45,26 @@
 	  				 compose: ?NOTE1)
 	  			 (repeat bytes: 2
 	  				 condition: (or ??NOTE1 ??WAVE1)
-	  				 compose: (msb ?WAVE1))
+	  				 compose:
+					 (msb (symbolic-ref WT ?WAVE1)))
 	  			 (repeat bytes: 2
 	  				 condition: (or ??NOTE2 ??WAVE2)
 	  				 compose: ?NOTE2)
 	  			 (repeat bytes: 2
 	  				 condition: (or ??NOTE2 ??WAVE2)
-	  				 compose: (msb ?WAVE2))
+	  				 compose:
+					 (msb (symbolic-ref WT ?WAVE2)))
 	  			 (repeat bytes: 2
 	  				 condition: (or ??NOTE3 ??WAVE3)
 	  				 compose: ?NOTE3)
 	  			 (repeat bytes: 2
 	  				 condition: (or ??NOTE3 ??WAVE3)
-	  				 compose: (msb ?WAVE3))
+	  				 compose:
+					 (msb (symbolic-ref WT ?WAVE3)))
 	  			 (repeat bytes: 2
 	  				 compose: (+ (if (or ??NOTE4 ??WAVE4)
 	  						 0 1)
-	  					     ?WAVE4))
+	  					     (symbolic-ref WT ?WAVE4)))
 	  			 (repeat bytes: 2
 	  				 condition: (or ??NOTE4 ??WAVE4)
 	  				 compose: ?NOTE4)

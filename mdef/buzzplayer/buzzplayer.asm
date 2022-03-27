@@ -69,7 +69,7 @@ curpat	ldx	#.(- (symbol-ref 'PATTERNS) 2)	;load pointer to patterns
 	leax	2,x		;bump pattern
 	cmpx	#.(+ (symbol-ref 'sequence-end) 2)	;end of patterns, time to loop
 nlhalt
-        .(if (symbol-ref 'row-play)
+        .(if (defined? 'row-play)
              (string-intersperse
                '(" lda #6"
                  " deca"

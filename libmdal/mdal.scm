@@ -129,13 +129,7 @@
   (define (mod->bin mod
 		    #!key (origin (mdef-default-origin (mmod-mdef mod)))
 		    (extra-symbols '()))
-    (flatten (map onode-val
-		  (remove (lambda (onode)
-			    (memq (onode-type onode)
-				  '(comment symbol)))
-			  (mod-compile mod
-				       origin
-				       extra-symbols: extra-symbols)))))
+    (mod-compile mod origin extra-symbols: extra-symbols))
 
   ;;; Transpile the MDAL module MOD into assembly source code. ORIGIN may
   ;;; specify the initial target memory address. If not given, the default
@@ -144,20 +138,7 @@
   (define (mod->asm mod
 		    #!key (origin (mdef-default-origin (mmod-mdef mod)))
 		    (extra-symbols '()))
-    (let ((otree (mod-compile mod
-			      origin
-			      output-asm: #t
-			      extra-symbols: extra-symbols)))
-      (string-intersperse
-       (append
-	(list (string-append "    .org $" (number->string origin #x10)))
-	(map (lambda (sym)
-	       (string-append (symbol->string (car sym))
-			      " .equ "
-			      (->string (cdr sym))))
-	     extra-symbols)
-	(map onode-val otree))
-       "\n\n")))
+    (mod-compile mod origin output-asm: #t extra-symbols: extra-symbols))
 
   ;;; Compile the given module to a binary file.
   (define (mod-export-asm filename mod

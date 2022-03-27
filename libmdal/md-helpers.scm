@@ -19,6 +19,16 @@
   (define (transpose matrix)
     (apply map list matrix))
 
+  ;;; Remove duplicates from the list LST, using TEST as comparator. If TEST is
+  ;;; not given, eqv? is used.
+  (define (remove-duplicates lst #!optional (test eqv?))
+    (if (null? lst)
+	'()
+	(cons (car lst)
+	      (remove-duplicates (remove (lambda (x) (test x (car lst)))
+					 (cdr lst))
+				 test))))
+
   ;;; Convert note names from MDAL's format to the conventional tracker naming
   ;;; scheme, eg. non-sharps are hyphenated, and "rest" is replaced with "===".
   (define (normalize-note-name n)
@@ -48,20 +58,6 @@
 				     2))
 		      max: (quotient umax 2))
 	  (make-range min: 0 max: umax))))
-
-  ;;; Convert the integer I into a list of bytes, capped at NUMBER-OF-BYTES
-  ;;; and respecting ENDIANness.
-  (define (int->bytes i number-of-bytes endian)
-    (letrec* ((make-bytes (lambda (restval remaining-bytes)
-			    (if (zero? remaining-bytes)
-				'()
-				(cons (integer->char (bitwise-and #xff restval))
-				      (make-bytes (arithmetic-shift restval -8)
-						  (sub1 remaining-bytes))))))
-	      (byte-list (make-bytes i number-of-bytes)))
-      (if (eq? 'little-endian endian)
-	  byte-list
-	  (reverse byte-list))))
 
   ;;; Convert a list of bytes to `.db` assembly statements.
   (define (bytes->asm bytes)
