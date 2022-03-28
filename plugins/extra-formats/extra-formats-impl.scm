@@ -191,8 +191,8 @@
   		 (zx-tap-block-header 'code "" (length bin) param1: origin))
   	    (map integer->char
 		 (int->bytes (+ 2 (length bin)) 2 'little-endian))
-  	    (cons (integer->char #xff) bin)
-  	    (list (integer->char (apply bitwise-xor
+	    (cons (integer->char #xff) bin)
+	    (list (integer->char (apply bitwise-xor
   					(cons #xff (map char->integer bin)))))))
 
   ;;; Compile the MDAL module MOD and write it to a ZX Spectrum .tap file.
@@ -204,11 +204,9 @@
   						      (mmod-mdef mod)))
   				       (loader #t)
   				       text)
-    (with-output-to-file filename
-      (lambda ()
-  	(write-string
-  	 (list->string
-  	  (extra-formats::zx-tap (mod->bin mod origin) origin loader text))))))
+    (let ((res (list->string (extra-formats::zx-tap
+			      (mod->bin mod origin) origin loader text))))
+      (with-output-to-file filename (lambda () (write-string res)))))
 
   ;;; Graphical interface for ZX Spectrum .tap export.
   (define (extra-formats::zx-tap-dialog)
