@@ -21,8 +21,9 @@
 					nodes: ((field from: NOTE)))))))
 
  output: ((asm file: "huby.asm")
-	  (comment "sequence")
+	  (comment "song speed")
 	  (field bytes: 2 compose: (quotient 1779661 ?BPM))
+	  (comment "sequence")
 	  (field bytes: 2 compose: (- $sequence_end 8))
 	  (order from: PATTERNS layout: shared-numeric-matrix
 		 element-size: 1 base-index: 1)
