@@ -2045,7 +2045,22 @@
   (define (make-compiler output-expr proto-mdef mdef-dir path-prefix)
     (let-values (((otree ast exports source-tree)
 		  (parse-onodes output-expr proto-mdef mdef-dir path-prefix)))
-      (let ((sorted-otree (sort-otree otree exports)))
+      (let* ((make-empty-assembly
+	      (lambda ()
+		(make-assembly (cpu-id (target-platform-cpu
+					(mdef-target proto-mdef)))
+			       ""
+			       (mdef-default-origin proto-mdef))))
+	     (make-cache
+	      (lambda (base-ast #!optional (extra-symbols '()))
+		(let ((asm (make-empty-assembly)))
+		  (asm 'ast base-ast)
+		  (asm 'symbols extra-symbols)
+		  (asm 'assemble 2)
+		  (list (asm 'ast) (asm 'symbols)))))
+	     (sorted-otree (sort-otree otree exports))
+	     (rowplay-cache (make-cache ast '((row-play . #t))))
+	     (default-cache (make-cache ast)))
 	(lambda (mod origin #!key output-asm (extra-symbols '()))
 	  (if output-asm
 	      (let ((res (compile-otree sorted-otree
@@ -2058,12 +2073,18 @@
 					 (cadr (mmod-global-node mod))
 					 (mmod-mdef mod)
 					 extra-symbols))
-		     (asm (make-assembly (cpu-id (target-platform-cpu
-						  (mdef-target proto-mdef)))
-					 ""
-					 (mdef-default-origin proto-mdef))))
-		(asm 'ast ast)
-		(asm 'symbols (append extra-symbols (cadr res)))
+		     (asm (make-empty-assembly)))
+		(if (alist-ref 'row-play extra-symbols)
+		    (begin
+		      (asm 'ast (car rowplay-cache))
+		      (asm 'symbols (append (cadr rowplay-cache)
+					    extra-symbols
+					    (cadr res))))
+		    (begin
+		      (asm 'ast (car default-cache))
+		      (asm 'symbols (append (cadr default-cache)
+					    extra-symbols
+					    (cadr res)))))
 		(asm 'assemble 4)
 		(or (asm 'result)
 		    (error 'mdal-compiler "Failed to compile module."))))))))
