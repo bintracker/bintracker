@@ -70,8 +70,7 @@ Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea,
 
 ## Schemta
 
-- **Rework Schemta to use local state** bound to a specific assembly process.
-- **Add more instruction sets.** At this point we should prioritize 6502, 6809, F8, and 68000.
+- **Add more instruction sets.** At this point we should prioritize Motorola 68000.
 
 
 ## Emulation
@@ -84,7 +83,7 @@ Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea,
 
 - **Set up a separate, "official" plugin repository.**
 - **Updates**
-- **Separate button sets from UI classes.** This will allow plugins to register their own buttons on eg. module-view related buffer types.
+
 
 ### Plugin Ideas
 

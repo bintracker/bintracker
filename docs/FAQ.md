@@ -8,11 +8,11 @@ The answer is probably yes, though it might not be convenient do to so (yet).
 
 ### Which platforms will be added next?
 
-Probably Atari VCS/2600, Fairchild Channel F, and Tandy CoCo/Dragon 32/64.
+Probably some Commodore computers.
 
 ### Will Bintracker support FM chips?
 
-Yes, this is planned, but will not happen soon. Especially OPL2/3 support will require a lot of work. In the meantime, consider [VGM Music Maker](https://battleofthebits.org/lyceum/View/Vgm+Music+Maker/), [Deflemask](http://www.deflemask.com), or [AdlibTracker II](http://www.adlibtracker.net).
+Yes, this is planned, but will not happen soon. Especially OPL2/3 support will require a lot of work. Meanwhile, consider [VGM Music Maker](https://battleofthebits.org/lyceum/View/Vgm+Music+Maker/), [Furnace](https://github.com/tildearrow/furnace), or [AdlibTracker II](http://www.adlibtracker.net).
 
 ### Any plans for Android/iOS support?
 
