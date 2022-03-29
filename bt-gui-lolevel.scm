@@ -8,7 +8,8 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  (chicken file) (chicken io) (chicken sort) (chicken process)
-	  coops list-utils typed-records srfi-1 srfi-13 pstk imlib2 web-colors
+	  coops list-utils typed-records srfi-1 srfi-4 srfi-13 pstk
+	  stb-image stb-image-write web-colors
 	  bt-state bt-types)
 
 
@@ -42,23 +43,23 @@
 				" +break")))))
 
   (define (recolor-png filename color)
-    (let ((img (image-load filename))
-	  (rgb (cdr (parse-web-color color))))
-      (for-each (lambda (x)
-		  (for-each (lambda (y)
-			      (let-values
-				  (((_ _ _ transparency)
-				    (image-pixel/rgba img x y)))
-				(image-draw-pixel img
-						  (color/rgba (car rgb)
-							      (cadr rgb)
-							      (caddr rgb)
-							      transparency)
-						  x y)))
-			    (iota (image-height img))))
-		(iota (image-width img)))
-      (image-save img (string-append filename
-				     "." (string-drop color 1) ".png"))))
+    (let-values (((pixels width height channels)
+		  (with-input-from-file filename read-image)))
+      (unless (= channels 2)
+	(error 'bt-gui-lolevel#recolor-png
+	       (string-append
+		"Failed to convert " filename ": not an grey+alpha png image")))
+      (let ((rgb (take (cdr (parse-web-color color)) 3)))
+	(with-output-to-file
+	    (string-append filename "." (string-drop color 1) ".png")
+	  (lambda ()
+	    (write-png (list->u8vector
+			(concatenate
+			 (map (lambda (px) (append rgb (cdr px)))
+			      (chop (u8vector->list pixels) 2))))
+		       width
+		       height
+		       4))))))
 
   ;;; Create a tk image resource from a given PNG file.
   (define (tk/icon filename #!optional (icon-color (colors 'text)))
