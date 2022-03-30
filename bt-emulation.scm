@@ -17,12 +17,14 @@
   ;;; Check if the executable PROGRAM-NAME exists in $PATH and user has the
   ;;; necessary permissions to run it.
   (define (executable-exists? program-name)
-    (find (lambda (dir)
-	    (let ((path (make-pathname dir program-name)))
-	      (and (file-exists? path)
-		   (file-executable? path))))
-	  (string-split (get-environment-variable "PATH")
-			(if (eqv? 'windows (software-type)) ";" ":"))))
+    (cond-expand
+      (windows (and (file-exists? program-name)
+		    (file-executable? program-name)))
+      (else (find (lambda (dir)
+		    (let ((path (make-pathname dir program-name)))
+		      (and (file-exists? path)
+			   (file-executable? path))))
+		  (string-split (get-environment-variable "PATH") ":")))))
 
   ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
   ;;; shall be a list of command line argument strings that are passed to
@@ -140,9 +142,12 @@
 		       `(,emulator ,startup-args))
 		     pf)))
 	   (emulator-args
-	    (let ((emul (or (alist-ref (car platform-config)
-				       (read (open-input-file
-					      "config/emulators.scm")))
+	    (let ((emul (or (alist-ref
+			     (car platform-config)
+			     (read (open-input-file
+				    (cond-expand
+				      (windows "config/emulators.windows.scm")
+				      (else "config/emulators.scm")))))
 			    (error (string-append "Unknown emulator "
 						  (car platform-config))))))
 	      (apply (lambda (#!key program-name (default-args '()))

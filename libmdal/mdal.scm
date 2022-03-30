@@ -154,7 +154,8 @@
 					      (mmod-mdef mod))))
     (call-with-output-file filename
       (lambda (port)
-	(write-string (list->string (mod->bin mod origin: origin)) #f port))))
+	(write-string (list->string (mod->bin mod origin: origin)) #f port))
+      #:binary))
 
 
   ;; ---------------------------------------------------------------------------

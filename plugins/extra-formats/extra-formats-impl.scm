@@ -206,7 +206,7 @@
   				       text)
     (let ((res (list->string (extra-formats::zx-tap
 			      (mod->bin mod origin) origin loader text))))
-      (with-output-to-file filename (lambda () (write-string res)))))
+      (with-output-to-file filename (lambda () (write-string res)) #:binary)))
 
   ;;; Graphical interface for ZX Spectrum .tap export.
   (define (extra-formats::zx-tap-dialog)

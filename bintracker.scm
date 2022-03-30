@@ -21,7 +21,9 @@
 ;; This must be done prior to defining anything that depends on Tk.
 
 (tk-throw-exceptions #t)
-(tk-start)
+(cond-expand
+  (windows (tk-start "3rdparty/tclkit.exe"))
+  (else (tk-start)))
 
 ;; disable "tearoff" style menus
 (tk-eval "option add *tearOff 0")

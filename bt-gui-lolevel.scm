@@ -43,8 +43,9 @@
 				" +break")))))
 
   (define (recolor-png filename color)
+    (print "calling recolor-png")
     (let-values (((pixels width height channels)
-		  (with-input-from-file filename read-image)))
+		  (with-input-from-file filename read-image #:binary)))
       (unless (= channels 2)
 	(error 'bt-gui-lolevel#recolor-png
 	       (string-append
@@ -59,15 +60,17 @@
 			      (chop (u8vector->list pixels) 2))))
 		       width
 		       height
-		       4))))))
+		       4))
+	  #:binary))))
 
   ;;; Create a tk image resource from a given PNG file.
   (define (tk/icon filename #!optional (icon-color (colors 'text)))
-    (let ((actual-filename
-	   (string-append "resources/icons/" filename
-			  "." (string-drop icon-color 1) ".png")))
+    (let* ((icon-path "resources/icons/")
+	   (actual-filename
+	    (string-append icon-path filename
+			   "." (string-drop icon-color 1) ".png")))
       (unless (file-exists? actual-filename)
-	(recolor-png (string-append "resources/icons/" filename)
+	(recolor-png (string-append icon-path filename)
 		     icon-color))
       (tk/image 'create 'photo format: "PNG" file: actual-filename)))
 
@@ -1508,7 +1511,9 @@
 	      (tl ((ui-parent d) 'create-widget 'toplevel
 		   background: (colors 'background))))
 	  (tk/wm 'transient tl)
-	  (tk/wm 'attributes tl topmost: 1 type: 'dialog)
+	  (cond-expand
+	    (windows (tk/wm 'attributes tl topmost: 1 toolwindow: 1))
+	    (else (tk/wm 'attributes tl topmost: 1 type: 'dialog)))
 	  (tk/wait 'visibility tl)
 	  (tk/wm 'withdraw tl)
 	  (tk/wm 'deiconify tl)
@@ -1547,7 +1552,9 @@
 				    (list (car (slot-value d 'traverse)))))
 			  (tk/focus
 			   (ui-ref d (car (slot-value d 'traverse))))))
-	       (tk/bind tl '<ISO_Left_Tab>
+	       (tk/bind tl
+			(cond-expand (windows '<Shift-Tab>)
+				     (else '<ISO_Left_Tab>))
 			(lambda ()
 			  (set! (slot-value d 'traverse)
 			    (cons (last (slot-value d 'traverse))

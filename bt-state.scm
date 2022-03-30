@@ -200,8 +200,23 @@
 							  name ".keymap")
 		       read)))
       (if (eq? 'keymap (car my-keymap))
-	  (settings 'keymap
-		    (apply make-app-keys (cdr my-keymap)))
+	  (settings
+	   'keymap
+	   (apply make-app-keys
+		  (cond-expand
+		    (windows
+		     (map (lambda (entry)
+			    (if (pair? entry)
+				(map (lambda (b)
+				       (list (if (eqv? '<Control-ISO_Left_Tab>
+						       (car b))
+						 '<Shift-Tab>
+						 (car b))
+					     (cadr b)))
+				     entry)
+				entry))
+			  (cdr my-keymap)))
+		    (else (cdr my-keymap)))))
 	  (error "Not a valid Bintracker keymap."))))
 
 
