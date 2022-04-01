@@ -1653,7 +1653,9 @@
 	(ui-blockview-show-cursor buf))
       (grid 'see 'insert)
       ((slot-value buf 'rownums) 'see
-       (textgrid-position->tk-index actual-row 0))))
+       (textgrid-position->tk-index actual-row 0))
+      ((slot-value buf 'block-header) 'see
+       (textgrid-position->tk-index 0 char))))
 
   ;;; Move the blockview's cursor in DIRECTION, which must be one of `Up`,
   ;;; `Down`, `Home`, `End`, `Left` or `Right`. If moving Down, STEP specifies
@@ -2967,21 +2969,23 @@
       (header
        'insert 'end
        (string-append/shared
-  	(string-intersperse
-  	 (map (lambda (id)
-  		(node-id-abbreviate
-  		 id
-  		 (apply +
-  			(map (o add1 bv-field-config-width cadr)
-  			     (filter
-  			      (lambda (field-config)
-  				(memq (car field-config)
-  				      (mdef-get-subnode-ids
-  				       id (mdef-itree
-  					   (ui-metastate buf 'mdef)))))
-			      visible-field-configs)))
-		 (slot-value buf 'group-id)))
-  	      (slot-value buf 'block-ids)))
+  	(string-drop-right
+	 (string-intersperse
+  	  (map (lambda (id)
+  		 (node-id-abbreviate
+  		  id
+  		  (apply +
+  			 (map (o add1 bv-field-config-width cadr)
+  			      (filter
+  			       (lambda (field-config)
+  				 (memq (car field-config)
+  				       (mdef-get-subnode-ids
+  					id (mdef-itree
+  					    (ui-metastate buf 'mdef)))))
+			       visible-field-configs)))
+		  (slot-value buf 'group-id)))
+  	       (slot-value buf 'block-ids)))
+	 1)
   	"\n"))
       (textgrid-add-tags header '(active txt) 0)
       (header 'insert 'end

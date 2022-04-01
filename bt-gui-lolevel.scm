@@ -669,6 +669,7 @@
       (textgrid-configure-tags tg)
       tg))
 
+  ;; TODO redundant, eliminate
   (define (textgrid-create parent)
     (textgrid-create-basic parent))
 
