@@ -792,7 +792,8 @@
 	(begin (state 'done? #f)
 	       ;; TODO this is a bit of a kludge. Should properly distinguish
 	       ;; between those situations that require updating current-origin
-	       ;; and those that do not.
+	       ;; and those that do not, and invalidate current-origin
+	       ;; accordingly.
 	       (when (and (state 'current-origin) (> (length node) 3))
 		 (state 'current-origin (+ (state 'current-origin)
 					   (cadddr node))))
@@ -828,7 +829,7 @@
       ;; TODO Always assuming there are unresolved references in result.
       ;;      Should detect this instead, perhaps pass an additional flag from
       ;;      MDAL compiler.
-      (state 'done #f)
+      (state 'done? #f)
       (if res
 	  ;; Pass length as car of result list!
 	  (begin (when (state 'current-origin)
