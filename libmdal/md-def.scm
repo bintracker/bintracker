@@ -97,13 +97,13 @@
   (define *supported-mmod-versions* (make-range min: 2 max: 2))
 
   ;; ---------------------------------------------------------------------------
-;;; ## MDEF: TARGETS
+  ;;; ## MDEF: TARGETS
   ;; ---------------------------------------------------------------------------
 
   (defstruct cpu
     id endianness)
 
-;;; Describe the target system of a sound driver.
+  ;;; Describe the target system of a sound driver.
   (defstruct target-platform
     id cpu clock-speed default-start-address exports)
 
@@ -131,14 +131,14 @@
       (printf "order node: ~S\n" (inode-config-order-id cfg)))
     (printf ">"))
 
-;;; Returns `#t` if the given INODE-CONFIG specifies that only one instance
-;;; of this inode may exist.
+  ;;; Returns `#t` if the given INODE-CONFIG specifies that only one instance
+  ;;; of this inode may exist.
   (define (single-instance-node? inode-config)
     (equal? (make-instance-range)
 	    (inode-config-instance-range inode-config)))
 
-;;; Clone a given inode tree AMOUNT times, post-fixing IDs of the *nth* clone
-;;; with *n*.
+  ;;; Clone a given inode tree AMOUNT times, post-fixing IDs of the *nth* clone
+  ;;; with *n*.
   (define (clone-inode-tree tree amount)
     (letrec*
   	((rename-lst (lambda (lst postfix)
@@ -156,8 +156,8 @@
   			(create-id-list-copies (+ beg 1) end l))))))
       (create-id-list-copies 1 amount tree)))
 
-;;; Generate a hash list of reference commands required by
-;;; auto-generated order inodes
+  ;;; Generate a hash list of reference commands required by
+  ;;; auto-generated order inodes
   (define (create-order-commands itree)
     (alist->hash-table
      (filter-map (lambda (id)
@@ -175,11 +175,11 @@
 			    (cons id (make-command type: 'label)))))
 		 (flatten itree))))
 
-;;; Verify that a parsed FIELD-VALUE is a legal input. Raises an exception
-;;; of type `illegal-value` on failure, otherwise returns the field value.
-;;; Note that for modifier, reference, and label commands, only a type check
-;;; is performed. If NO-EXN is provided and `#t`, then `#f` is returned on
-;;; validation failure, rather than raising an exception.
+  ;;; Verify that a parsed FIELD-VALUE is a legal input. Raises an exception
+  ;;; of type `illegal-value` on failure, otherwise returns the field value.
+  ;;; Note that for modifier, reference, and label commands, only a type check
+  ;;; is performed. If NO-EXN is provided and `#t`, then `#f` is returned on
+  ;;; validation failure, rather than raising an exception.
   (define (validate-field-value mdef field-id field-value
 				#!optional no-exn)
     (let ((command-config (mdef-command-ref
@@ -232,7 +232,7 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## MDEF: MASTER CONFIGURATION
+  ;;; ## MDEF: MASTER CONFIGURATION
   ;; ---------------------------------------------------------------------------
 
   ;; TODO: where to handle max-binsize?
@@ -240,24 +240,24 @@
   (defstruct engine-version
     major minor)
 
-;;; Check whether the MDEF engine-version AVAILABLE-VERSION is compatible
-;;; with REQUESTED-VERSION. Versions are considered compatible if the major
-;;; versions match, and the minor version argument of AVAILABLE-VERSION is
-;;; greater than or equal to the minor version argument of REQUESTED-VERSION.
+  ;;; Check whether the MDEF engine-version AVAILABLE-VERSION is compatible
+  ;;; with REQUESTED-VERSION. Versions are considered compatible if the major
+  ;;; versions match, and the minor version argument of AVAILABLE-VERSION is
+  ;;; greater than or equal to the minor version argument of REQUESTED-VERSION.
   (define (engine-versions-compatible? available-version requested-version)
     (and (= (engine-version-major available-version)
 	    (engine-version-major requested-version))
 	 (>= (engine-version-minor available-version)
 	     (engine-version-minor requested-version))))
 
-;;; Convert the engine-version struct VERSION to a real number.
+  ;;; Convert the engine-version struct VERSION to a real number.
   (define (engine-version->real version)
     (string->number
      (string-append (number->string (engine-version-major version))
 		    "."
 		    (number->string (engine-version-minor version)))))
 
-;;; The datatype that represents MDAL definitions internally.
+  ;;; The datatype that represents MDAL definitions internally.
   (defstruct mdef
     id target engine-version description commands
     itree inodes default-origin compiler)
@@ -271,36 +271,36 @@
 	      (map car (hash-table->alist (mdef-commands cfg))))
     (printf "\nINODE TREE:\n~S\n\n" (mdef-itree cfg)))
 
-;;; Return the configuration ID of the mmod M.
+  ;;; Return the configuration ID of the mmod M.
   (define (mmod-mdef-id m) (mdef-id (car m)))
 
-;;; Return the command config for the given ID.
+  ;;; Return the command config for the given ID.
   (define (mdef-command-ref id cfg)
     (hash-table-ref/default (mdef-commands cfg) id #f))
 
-;;; Return the inode config for the given ID.
+  ;;; Return the inode config for the given ID.
   (define (mdef-inode-ref id cfg)
     (hash-table-ref/default (mdef-inodes cfg) id #f))
 
-;;; Predicate to check if the group inode ID is has the `ordered` flag.
+  ;;; Predicate to check if the group inode ID is has the `ordered` flag.
   (define (mdef-group-ordered? id def)
     (memv 'ordered (inode-config-flags (mdef-inode-ref id def))))
 
-;;; Predicate to determine if the order of the group inode ID may be edited.
-;;; Orders are editable except when the group is unordered, has a fixed block
-;;; length, and contains exactly 2 fields (the length field, and a single
-;;; reference field).
+  ;;; Predicate to determine if the order of the group inode ID may be edited.
+  ;;; Orders are editable except when the group is unordered, has a fixed block
+  ;;; length, and contains exactly 2 fields (the length field, and a single
+  ;;; reference field).
   (define (mdef-group-order-editable? id def)
     (not (and (not (mdef-group-ordered? id def))
 	      (inode-config-block-length (mdef-inode-ref id def))
 	      (= 2 (length (mdef-get-subnode-ids (symbol-append id '_ORDER)
 						 (mdef-itree def)))))))
 
-;;; Returns the endianness of the configuration's target platform.
+  ;;; Returns the endianness of the configuration's target platform.
   (define (mdef-get-target-endianness cfg)
     ((o cpu-endianness target-platform-cpu mdef-target) cfg))
 
-;;; Create an target from a target config file
+  ;;; Create an target from a target config file
   (define (target-generator target-id path-prefix)
     (let* ((mk-target-decl
 	    (lambda (#!key id cpu clock-speed (default-start-address 0)
@@ -323,7 +323,7 @@
        default-start-address: (cadddr target-decl)
        exports: (fifth target-decl))))
 
-;;; Return the ID of the parent of the given inode in the given inode tree
+  ;;; Return the ID of the parent of the given inode in the given inode tree
   (define (mdef-get-parent-node-id inode-id itree)
     (cond ((not (memv inode-id (flatten (cdar itree)))) #f)
 	  ((member inode-id (map car (cadar itree))) (caar itree))
@@ -333,7 +333,7 @@
 			   (member inode-id (flatten node)))
 			 (cadar itree))))))
 
-;;; Return the inode type of the parent node of INODE-ID.
+  ;;; Return the inode type of the parent node of INODE-ID.
   (define (mdef-get-parent-node-type inode-id mdef)
     (and (not (eqv? inode-id 'GLOBAL))
 	 (inode-config-type
@@ -341,16 +341,16 @@
 						   (mdef-itree mdef))
 			  mdef))))
 
-;;; Return the list of ancestor IDs of the given inode in the given inode tree
-;;; The returned list is sorted from the closest ancestor to the most distant.
+  ;;; Return the list of ancestor IDs of the given inode in the given inode tree
+  ;;; The returned list is sorted from the closest ancestor to the most distant.
   (define (mdef-get-node-ancestors-ids inode-id itree)
     (let ((parent (mdef-get-parent-node-id inode-id itree)))
       (if (not parent)
 	  '()
 	  (cons parent (mdef-get-node-ancestors-ids parent itree)))))
 
-;;; Return the IDs of the direct child nodes of INODE-ID in the given
-;;; inode tree ITREE.
+  ;;; Return the IDs of the direct child nodes of INODE-ID in the given
+  ;;; inode tree ITREE.
   (define (mdef-get-subnode-ids inode-id itree)
     (let ((get-nodes (lambda (tree)
 		       (let ((nodes (alist-ref inode-id tree eq?)))
@@ -366,35 +366,35 @@
 
   ;; TODO inconsistent with other itree traversers as it accepts a mdef,
   ;; rather than an itree
-;;; return the IDs of the direct child nodes of a given parent inode ID
-;;; in the given mdef, filtered by type
+  ;;; return the IDs of the direct child nodes of a given parent inode ID
+  ;;; in the given mdef, filtered by type
   (define (mdef-get-subnode-type-ids inode-id mdef type)
     (filter (lambda (id)
 	      (eq? type (inode-config-type (mdef-inode-ref id mdef))))
 	    (mdef-get-subnode-ids inode-id (mdef-itree mdef))))
 
-;;; Returns the row index of the field subnode FIELD-ID in instances of
-;;; the block node BLOCK-ID.
+  ;;; Returns the row index of the field subnode FIELD-ID in instances of
+  ;;; the block node BLOCK-ID.
   (define (mdef-get-block-field-index block-id field-id mdef)
     (list-index (cute eqv? <> field-id)
 		(mdef-get-subnode-ids block-id (mdef-itree mdef))))
 
   ;; TODO rename to slighly more sane `mdef-get-inode-command`
-;;; Return the source command of a given inode
+  ;;; Return the source command of a given inode
   (define (mdef-get-inode-source-command node-id mdef)
     (mdef-command-ref (inode-config-cmd-id (mdef-inode-ref node-id mdef))
 		      mdef))
 
-;;; Get the default value of a given inode mdef
+  ;;; Get the default value of a given inode mdef
   (define (mdef-get-node-default node-id mdef)
     (let ((node-cmd (mdef-get-inode-source-command node-id mdef)))
       (and node-cmd (command-default node-cmd))))
 
-;;; Returns a list that matches the length of a row in the order block of
-;;; the group GROUP-ID, where values are either `#t` or `#f` depending on
-;;; whether the matching order field is a base field or not. Fields are
-;;; considered base fields if they are either a Length field, or a block
-;;; reference.
+  ;;; Returns a list that matches the length of a row in the order block of
+  ;;; the group GROUP-ID, where values are either `#t` or `#f` depending on
+  ;;; whether the matching order field is a base field or not. Fields are
+  ;;; considered base fields if they are either a Length field, or a block
+  ;;; reference.
   (define (mdef-get-order-base-fields group-id mdef)
     (map (lambda (id)
 	   (or (string-prefix? "R_" (symbol->string id))
@@ -402,7 +402,7 @@
 	 (mdef-get-subnode-ids (symbol-append group-id '_ORDER)
 			       (mdef-itree mdef))))
 
-;;; Returns `#t` if the field node FIELD-ID is a base field of an order node.
+  ;;; Returns `#t` if the field node FIELD-ID is a base field of an order node.
   (define (mdef-order-base-field? field-id mdef)
     (let ((ancestors (mdef-get-node-ancestors-ids field-id (mdef-itree mdef))))
       (and (eqv? (car ancestors) (symbol-append (cadr ancestors) '_ORDER))
@@ -410,7 +410,7 @@
 	       (eqv? field-id (symbol-append (cadr ancestors) '_LENGTH))))))
 
   ;; ---------------------------------------------------------------------------
-;;; ## MMOD: OUTPUT NODES
+  ;;; ## MMOD: OUTPUT NODES
   ;; ---------------------------------------------------------------------------
 
   (defstruct onode
@@ -424,10 +424,10 @@
 
 
   ;; ---------------------------------------------------------------------------
-;;; ## MDEF PARSER + COMPILER GENERATOR
+  ;;; ## MDEF PARSER + COMPILER GENERATOR
   ;; ---------------------------------------------------------------------------
 
-;;; Generate a local itree from the given list of inode config expressions.
+  ;;; Generate a local itree from the given list of inode config expressions.
   (define (get-subnodes-itree nodes)
     (let ((clone-itree (lambda (amount node)
 			 (clone-inode-tree (list (apply get-itree node))
@@ -440,8 +440,8 @@
 	      (cons (apply get-itree (car nodes))
 		    (get-subnodes-itree (cdr nodes)))))))
 
-;;; Helper for get-itree, generates the local itree for the order input
-;;; block node that will be auto-generated by the mdconf parser.
+  ;;; Helper for get-itree, generates the local itree for the order input
+  ;;; block node that will be auto-generated by the mdconf parser.
   (define (generate-order-tree id subnodes use-loop)
     (letrec
 	((do-subnodes
@@ -476,8 +476,8 @@
 		    (list (list (symbol-append id '_LENGTH)))
 		    (reverse (do-subnodes subnodes '()))))))
 
-;;; Generate the local itree for an inode. This procedure should be called by
-;;; `apply`ing it to an inode config expression.
+  ;;; Generate the local itree for an inode. This procedure should be called by
+  ;;; `apply`ing it to an inode config expression.
   (define (get-itree node-type #!key id from nodes (flags '()))
     (case node-type
       ((field)
@@ -493,15 +493,15 @@
       (else (mdal-abort (string-append "unknown inode type "
 				       (->string node-type))))))
 
-;;; Generate the global itree (nested list of inode IDs) from the list of
-;;; input node config expressions.
+  ;;; Generate the global itree (nested list of inode IDs) from the list of
+  ;;; input node config expressions.
   (define (eval-inode-tree global-nodes)
     (list (list 'GLOBAL
 		(append '((AUTHOR) (TITLE) (LICENSE))
 			(get-subnodes-itree global-nodes)))))
 
-;;; Insert required modifier node ids into ITREE, based on the list of
-;;; MODIFIER-NODE-IDS.
+  ;;; Insert required modifier node ids into ITREE, based on the list of
+  ;;; MODIFIER-NODE-IDS.
   (define (itree-add-modifier-nodes itree modifier-node-ids)
     (cond
      ((null? itree) '())
@@ -518,9 +518,9 @@
      (else (cons (itree-add-modifier-nodes (car itree) modifier-node-ids)
 		 (itree-add-modifier-nodes (cdr itree) modifier-node-ids)))))
 
-;;; Evaluate the list of command configuration expressions. The resulting
-;;; alit of commands does contain the required default commands, but not
-;;; the auto-generated order commands.
+  ;;; Evaluate the list of command configuration expressions. The resulting
+  ;;; alit of commands does contain the required default commands, but not
+  ;;; the auto-generated order commands.
   (define (get-mdef-base-commands commands path-prefix target)
     (let ((base-commands
 	   (map (lambda (cmd)
@@ -538,8 +538,8 @@
 	      base-commands
 	      (make-modifier-commands base-commands))))
 
-;;; Generate the input order node configurations for the given GROUP-ID
-;;; and the list of subnode configurations.
+  ;;; Generate the input order node configurations for the given GROUP-ID
+  ;;; and the list of subnode configurations.
   (define (make-order-config-nodes group-id subnodes looped?)
     (let ((make-field-config
 	   (lambda (id)
@@ -562,7 +562,7 @@
 		     (make-field-config (symbol-append 'R_ (car node)))))
 	      subnodes)))))
 
-;;; Preliminary error checks for inode config specifications.
+  ;;; Preliminary error checks for inode config specifications.
   (define (check-inode-spec type id from block-length flags nodes parent-type)
     (unless type (mdal-abort "missing type" "inode-definition"))
     (unless (list? flags)
@@ -589,7 +589,7 @@
 				 " may not be a child of a block inode")
 		  "inode-definition")))
 
-;;; Determine the instance range of an inode config.
+  ;;; Determine the instance range of an inode config.
   (define (get-inode-range type min max instances parent-type)
     (cond (instances
 	   (make-instance-range min: instances max: instances))
@@ -603,9 +603,9 @@
 	   (make-instance-range))
 	  (else (make-instance-range max: #f))))
 
-;;; Evaluate an input node config expression. PARENT-TYPE is the type of
-;;; the parent node. Returns an alist of the resulting inode config and its
-;;; subnode configs.
+  ;;; Evaluate an input node config expression. PARENT-TYPE is the type of
+  ;;; the parent node. Returns an alist of the resulting inode config and its
+  ;;; subnode configs.
   (define (eval-inode-config node-expr commands parent-type)
     (let ((eval-node
 	   (lambda (type #!key id from min-instances max-instances
@@ -642,8 +642,8 @@
 		     (or modifier-node (append subnodes order-nodes)))))))
       (apply eval-node node-expr)))
 
-;;; Evaluate an input "clone" config expression. Returns an alist of all
-;;; cloned inode configs and their subnode configs.
+  ;;; Evaluate an input "clone" config expression. Returns an alist of all
+  ;;; cloned inode configs and their subnode configs.
   (define (clone-inode-config clone-expr commands parent-type)
     (let ((amount (second clone-expr))
 	  (nodes (eval-inode-config (third clone-expr) commands parent-type)))
@@ -657,9 +657,9 @@
 			       (iota amount 1 1)))
 			nodes))))
 
-;;; Evaluate the input node configuration expressions. Returns an alist of
-;;; input nodes. The caller will probably want to convert the result into a
-;;; hash table.
+  ;;; Evaluate the input node configuration expressions. Returns an alist of
+  ;;; input nodes. The caller will probably want to convert the result into a
+  ;;; hash table.
   (define (get-mdef-inodes inode-configs commands #!optional parent-type)
     (if (null? inode-configs)
 	'()
@@ -672,8 +672,8 @@
 				       parent-type))
 		(get-mdef-inodes (cdr inode-configs) commands))))
 
-;;; Generate an alist of configurations for the default input nodes GLOBAL,
-;;; AUTHOR, TITLE, and LICENSE.
+  ;;; Generate an alist of configurations for the default input nodes GLOBAL,
+  ;;; AUTHOR, TITLE, and LICENSE.
   (define (make-default-inode-configs)
     `((GLOBAL . ,(make-inode-config type: 'group
 				    instance-range: (make-instance-range)))
@@ -689,75 +689,75 @@
 
 
   ;;----------------------------------------------------------------------------
-;;; ### The Compiler Generator
-;;;
-;;; Libmdal does not come with a default compiler for transforming MDAL
-;;; modules into the desired binary or asm output. Instead, a dedicated
-;;; compiler procedure is generated for each MDAL configuration. This
-;;; procedure takes as input an `mmod` structure and the current origin
-;;; (assembly start address) and produces a list of resolved output nodes
-;;; (onodes), which can be further processed into binary or assembly output.
-;;; The compiler procedure is stored in the mdef-compiler field of the
-;;; relevant mdef structure.
-;;;
-;;; The compiler function itself is generated as follows:
-;;; An AST for the Schemta assembler is generated, based on the specification
-;;; given in the MDEF configuration. Furthermore, for each element in the
-;;; specified list of output elements, an output node (onode, `onode` structure)
-;;; is generated.
-;;; Onodes are initially in an "unresolved" state, unless their output can be
-;;; evaluated at the time the compiler is generated.
-;;;
-;;; An onode consist of
-;;; - a type specifier (see below for available types)
-;;; - a value field, which is #f for unresolved nodes, and may hold a result
-;;;   once the onode is resolved
-;;; - an onode-fn field, which for **resolved** nodes is set to #f, and
-;;;   otherwise holds a procedure that, when applied to the onode, will
-;;;   attempt to resolve it.
-;;;
-;;; The main compiler repeatedly iterates over the list of onodes, applying
-;;; the onode-fn procedures, until all onodes are resolved, or a preset pass
-;;; limit is exceeded, in which case the compiler fails with an exception of
-;;; type `compiler-failed`. When an onode is resolved, it typically generates
-;;; new assembly level symbol bindings. Once all ondes are resolved, the
-;;; generated symbols are passed to the Schemta assembler, which will then
-;;; attempt to resolve the initial AST.
-;;;
-;;; The following onode types are permitted:
-;;; - `asm`: Takes some asm code as input and returns the assembled output.
-;;;          The compiler generator will attempt to resolve asm onodes
-;;;          immediately and cache the results.
-;;; - `comment`: An assembly level comment. Ignored in binary output.
-;;; - `field`: A single value, usually generated from a constant or an igroup
-;;;            ifield. Field specifications hold a "compose" expression, which
-;;;            is transformed into a procedure that generates the output.
-;;; - `block`: TODO
-;;; - `order`: TODO
-;;; - `symbol`: Produces an assembly level symbol, set to the current origin.
-;;;
-;;; Onodes may have an ID (which must be unique). Identified onodes may be
-;;; referenced by other onodes. This is almost always required for groups
-;;; and blocks.
-;;;
-;;; Onode-fn procedures have the signature
-;;; `(proc onode parent-inode mdef md-symbols)`
-;;; where `onode` is the onode itself, `parent-inode` is FIXME a misnomer,
-;;; it is the parent inode instance,
-;;; `mdef` is the module's `mdef` structure, and `md-symbols` is a list of
-;;; additional mdal symbols generated.
-;;; Onode-fns output a list containing the processed onode, and the updated list
-;;; of symbols.
+  ;;; ### The Compiler Generator
+  ;;;
+  ;;; Libmdal does not come with a default compiler for transforming MDAL
+  ;;; modules into the desired binary or asm output. Instead, a dedicated
+  ;;; compiler procedure is generated for each MDAL configuration. This
+  ;;; procedure takes as input an `mmod` structure and the current origin
+  ;;; (assembly start address) and produces a list of resolved output nodes
+  ;;; (onodes), which can be further processed into binary or assembly output.
+  ;;; The compiler procedure is stored in the mdef-compiler field of the
+  ;;; relevant mdef structure.
+  ;;;
+  ;;; The compiler function itself is generated as follows:
+  ;;; An AST for the Schemta assembler is generated, based on the specification
+  ;;; given in the MDEF configuration. Furthermore, for each element in the
+  ;;; specified list of output elements, an output node (onode, `onode` structure)
+  ;;; is generated.
+  ;;; Onodes are initially in an "unresolved" state, unless their output can be
+  ;;; evaluated at the time the compiler is generated.
+  ;;;
+  ;;; An onode consist of
+  ;;; - a type specifier (see below for available types)
+  ;;; - a value field, which is #f for unresolved nodes, and may hold a result
+  ;;;   once the onode is resolved
+  ;;; - an onode-fn field, which for **resolved** nodes is set to #f, and
+  ;;;   otherwise holds a procedure that, when applied to the onode, will
+  ;;;   attempt to resolve it.
+  ;;;
+  ;;; The main compiler repeatedly iterates over the list of onodes, applying
+  ;;; the onode-fn procedures, until all onodes are resolved, or a preset pass
+  ;;; limit is exceeded, in which case the compiler fails with an exception of
+  ;;; type `compiler-failed`. When an onode is resolved, it typically generates
+  ;;; new assembly level symbol bindings. Once all ondes are resolved, the
+  ;;; generated symbols are passed to the Schemta assembler, which will then
+  ;;; attempt to resolve the initial AST.
+  ;;;
+  ;;; The following onode types are permitted:
+  ;;; - `asm`: Takes some asm code as input and returns the assembled output.
+  ;;;          The compiler generator will attempt to resolve asm onodes
+  ;;;          immediately and cache the results.
+  ;;; - `comment`: An assembly level comment. Ignored in binary output.
+  ;;; - `field`: A single value, usually generated from a constant or an igroup
+  ;;;            ifield. Field specifications hold a "compose" expression, which
+  ;;;            is transformed into a procedure that generates the output.
+  ;;; - `block`: TODO
+  ;;; - `order`: TODO
+  ;;; - `symbol`: Produces an assembly level symbol, set to the current origin.
+  ;;;
+  ;;; Onodes may have an ID (which must be unique). Identified onodes may be
+  ;;; referenced by other onodes. This is almost always required for groups
+  ;;; and blocks.
+  ;;;
+  ;;; Onode-fn procedures have the signature
+  ;;; `(proc onode parent-inode mdef md-symbols)`
+  ;;; where `onode` is the onode itself, `parent-inode` is FIXME a misnomer,
+  ;;; it is the parent inode instance,
+  ;;; `mdef` is the module's `mdef` structure, and `md-symbols` is a list of
+  ;;; additional mdal symbols generated.
+  ;;; Onode-fns output a list containing the processed onode, and the updated list
+  ;;; of symbols.
 
-;;; Resolve a numeric reference to an intermediate AST representation. TO is
-;;; an oblock ID, and VAL is the integer result of evaluating a compose
-;;; (sub)expression.
+  ;;; Resolve a numeric reference to an intermediate AST representation. TO is
+  ;;; an oblock ID, and VAL is the integer result of evaluating a compose
+  ;;; (sub)expression.
   (define (numeric-ref to val)
     val)
 
-;;; Resolve a symbolic reference to an intermediate AST representation. TO is
-;;; an oblock ID, and VAL is the integer result of evaluating a compose
-;;; (sub)expression.
+  ;;; Resolve a symbolic reference to an intermediate AST representation. TO is
+  ;;; an oblock ID, and VAL is the integer result of evaluating a compose
+  ;;; (sub)expression.
   (define (symbolic-ref to val)
     `(symbol-ref
       ',(string->symbol (string-append "md__oblock_"
@@ -765,8 +765,8 @@
 				       "_"
 				       (number->string val)))))
 
-;;; Calculate the result of applying the modifier command value MODIFIER-VAL
-;;; to the integer value RAW-VAL.
+  ;;; Calculate the result of applying the modifier command value MODIFIER-VAL
+  ;;; to the integer value RAW-VAL.
   (define (eval-modifier raw-val modifier-val)
     (if (null? modifier-val)
 	raw-val
@@ -783,8 +783,8 @@
 			   (#\x . ,bitwise-xor)))
 	   raw-val num))))
 
-;;; Transform the field node instance value CURRENT-VAL according to
-;;; the given MDAL COMMAND-CONFIG.
+  ;;; Transform the field node instance value CURRENT-VAL according to
+  ;;; the given MDAL COMMAND-CONFIG.
   (define (eval-effective-field-val current-val command-config #!key modifier)
     (if (memv (command-type command-config)
 	      '(int uint string trigger reference))
@@ -795,9 +795,9 @@
 			   modifier)
 	    (hash-table-ref (command-keys command-config) current-val))))
 
-;;; Evaluate a group field node instance, resolving `key` and `ukey` values as
-;;; needed. This always returns the effective field value, ie. an empty node
-;;; instance returns the default value of the underlying command.
+  ;;; Evaluate a group field node instance, resolving `key` and `ukey` values as
+  ;;; needed. This always returns the effective field value, ie. an empty node
+  ;;; instance returns the default value of the underlying command.
   (define (eval-group-field field-node instance-id command-config)
     ;; TODO modifiers - should be done via eval-effective-field-val
     (let ((current-val (cddr (inode-instance-ref instance-id field-node))))
@@ -805,8 +805,8 @@
 	  (command-default command-config)
 	  current-val)))
 
-;;; Helper for 'eval-block-field`. Finds the last set field instance of the
-;;; field node at FIELD-INDEX before ROW in the BLOCK-INSTANCE.
+  ;;; Helper for 'eval-block-field`. Finds the last set field instance of the
+  ;;; field node at FIELD-INDEX before ROW in the BLOCK-INSTANCE.
   (define (backtrace-block-fields block-instance start-row field-index)
     (find (complement null?)
 	  (reverse (map (cute list-ref <> field-index)
@@ -816,11 +816,11 @@
 				  start-row))))))
 
   ;; TODO no-backtrace doesn't do what it's supposed to.
-;;; Evaluate the field in position FIELD-INDEX in ROW of the given
-;;; BLOCK-INSTANCE. Evaluation will backtrace if the field node
-;;; COMMAND-CONFIG has the `use-last-set` flag. Backtracing can be disabled
-;;; by passing NO-BACKTRACE as `#t`. This is useful for determining whether
-;;; a specific field instance is set.
+  ;;; Evaluate the field in position FIELD-INDEX in ROW of the given
+  ;;; BLOCK-INSTANCE. Evaluation will backtrace if the field node
+  ;;; COMMAND-CONFIG has the `use-last-set` flag. Backtracing can be disabled
+  ;;; by passing NO-BACKTRACE as `#t`. This is useful for determining whether
+  ;;; a specific field instance is set.
   (define (eval-block-field block-instance field-index row command-config
 			    #!key no-backtrace)
     ;; TODO this should be resolved during mdef evaluation
@@ -868,14 +868,14 @@
 		   raw-val)
 	       command-config)))))
 
-;;; Get the inode type of the parent of node NODE-ID.
+  ;;; Get the inode type of the parent of node NODE-ID.
   (define (get-parent-node-type node-id mdef)
     (inode-config-type
      (mdef-inode-ref (mdef-get-parent-node-id node-id (mdef-itree mdef))
 		     mdef)))
 
-;;; Helper for `transform-compose-expr`. Transforms an output field def
-;;; expresssion element into a resolver procedure call.
+  ;;; Helper for `transform-compose-expr`. Transforms an output field def
+  ;;; expresssion element into a resolver procedure call.
   (define (transform-compose-field field emdef #!optional field-list)
     (let* ((symbol-name (symbol->string field))
 	   (conditional? (string-prefix? "??" symbol-name))
@@ -1099,8 +1099,8 @@
 			  (quote ,expr))
 		       (quote ,required-symbols-plain)))))))
 
-;;; Transform an output field config expression into an actual resolver
-;;; procedure body.
+  ;;; Transform an output field config expression into an actual resolver
+  ;;; procedure body.
   (define (transform-compose-expr expr bytes mdef
 				  #!key field-list is-condition to-symbol)
     (let* ((flat-expr (flatten expr))
@@ -1126,8 +1126,8 @@
       (eval (append (list 'lambda '(instance-id parent-node mdef)
 			  transformer-body)))))
 
-;;; Generate an onode def of type `symbol`. Call this procedure by
-;;; `apply`ing it to an onode def expression.
+  ;;; Generate an onode def of type `symbol`. Call this procedure by
+  ;;; `apply`ing it to an onode def expression.
   (define (make-osymbol proto-mdef mdef-dir path-prefix
 			#!key id value compose)
     (unless id (mdal-abort "missing id" "onode-definition"))
@@ -1209,8 +1209,8 @@
 	   `((md-result ,id))))))
 
   ;; TODO loop points?
-;;; Returns a procedure that will transform a raw ref-matrix order (as
-;;; emitted by group onodes) into the desired LAYOUT.
+  ;;; Returns a procedure that will transform a raw ref-matrix order (as
+  ;;; emitted by group onodes) into the desired LAYOUT.
   (define (make-order-transformer layout base-index from)
     (case layout
       ((shared-numeric-matrix)
@@ -1299,7 +1299,7 @@
 			 (list (map transformer row block-id-strings)))))
 	   raw-order)))
 
-;;; Generate an onode of type `order`.
+  ;;; Generate an onode of type `order`.
   (define (make-oorder proto-mdef mdef-dir path-prefix #!key from layout
 		       element-size (base-index 0))
     (let* ((from (string->symbol (string-downcase (symbol->string from))))
@@ -1373,9 +1373,9 @@
        '()
        `((md-result ,order-symbol)))))
 
-;;; Helper for `split-block-instance-contents`. Backtrace on PREVIOUS-CHUNK
-;;; to replace values in the first row of CURRENT-CHUNK with the last set
-;;; value as specified by BACKTRACE-TARGETS.
+  ;;; Helper for `split-block-instance-contents`. Backtrace on PREVIOUS-CHUNK
+  ;;; to replace values in the first row of CURRENT-CHUNK with the last set
+  ;;; value as specified by BACKTRACE-TARGETS.
   (define (block-repeat-last-set current-chunk previous-chunk backtrace-targets)
     (if (any (lambda (x) (and x #t)) backtrace-targets)
 	(cons (map (lambda (backtrace? field field-index)
@@ -1391,11 +1391,11 @@
 	      (cdr current-chunk))
 	current-chunk))
 
-;;; Helper for `resize-block-instances`. Split the raw block instance
-;;; CONTENTS into consecutively numbered node instances of length SIZE.
-;;; Empty field instances in the first row of a block instance will be
-;;; replaced with the last set value if the field's command has the
-;;; `use-last-set` flag.
+  ;;; Helper for `resize-block-instances`. Split the raw block instance
+  ;;; CONTENTS into consecutively numbered node instances of length SIZE.
+  ;;; Empty field instances in the first row of a block instance will be
+  ;;; replaced with the last set value if the field's command has the
+  ;;; `use-last-set` flag.
   (define (split-block-instance-contents size block-id mdef contents)
     (let* ((field-ids (mdef-get-subnode-ids block-id (mdef-itree mdef)))
 	   (backtrace-targets
@@ -1455,8 +1455,8 @@
 	   raw-chunks
 	   (iota (length raw-chunks)))))
 
-;;; Resize instances of the given IBLOCK to SIZE by merging all
-;;; instances according to ORDER, then splitting into chunks.
+  ;;; Resize instances of the given IBLOCK to SIZE by merging all
+  ;;; instances according to ORDER, then splitting into chunks.
   (define (resize-block-instances iblock size order group-id mdef)
     (let* ((order-index
 	    (mdef-get-block-field-index (car order)
@@ -1490,9 +1490,9 @@
 	     mdef
 	     concat-blocks))))
 
-  ;; TODO must work for unordered groups as well
-;;; Resize all non-order blocks in the given igroup instance to
-;;; SIZE, and emit a new igroup instance with a new order.
+
+  ;;; Resize all non-order blocks in the given igroup instance to
+  ;;; SIZE, and emit a new igroup instance with a new order.
   (define (resize-blocks parent-inode-instance parent-inode-id size mdef)
     (let* ((order-id (symbol-append parent-inode-id '_ORDER))
 	   (order-subnode-ids (mdef-get-subnode-ids order-id (mdef-itree mdef)))
@@ -1531,7 +1531,7 @@
 	      (append original-fields+groups resized-blocks new-order))))
 
   ;; TODO in theory we do not need to emit md-symbols (see resolve-oblock)
-;;; Helper function for `make-oblock`.
+  ;;; Helper function for `make-oblock`.
   (define (make-oblock-rowfield proto-mdef parent-block-ids
 				#!key bytes condition compose)
     (let* ((subnode-ids (concatenate (map (cute mdef-get-subnode-ids
@@ -1556,10 +1556,10 @@
 		 (list (compose-proc instance-id parent-inode mdef)
 		       md-symbols))))))
 
-;;; Helper function for `make-oblock`.
-;;; Generate an alist where the keys represent the oblock's output order, and
-;;; the values represent the associated input order rows. Rows are sorted
-;;; according to how the required-fields are specified.
+  ;;; Helper function for `make-oblock`.
+  ;;; Generate an alist where the keys represent the oblock's output order, and
+  ;;; the values represent the associated input order rows. Rows are sorted
+  ;;; according to how the required-fields are specified.
   (define (make-order-alist order required-fields mdef)
     (let* ((order-instance (cadr order))
 	   (order-length (length (cddr order-instance)))
@@ -1590,8 +1590,8 @@
 			newkey+val)))
 		raw-order))))
 
-;;; Helper for `make-oblock`. Constructs pseudo iblock instances that contain
-;;; all the subnodes required by an oblock field.
+  ;;; Helper for `make-oblock`. Constructs pseudo iblock instances that contain
+  ;;; all the subnodes required by an oblock field.
   (define (make-pseudo-block-instances parent sources
 				       unique-order-combinations)
     (let ((make-subnode-list
@@ -1607,8 +1607,8 @@
 		     (make-subnode-list (cadr order-pos))))
 	   unique-order-combinations)))
 
-;;; Helper for `make-oblock`. Resolve the oblock node value.
-;;; Returns a list containing the oblock in car and updated origin in cadr.
+  ;;; Helper for `make-oblock`. Resolve the oblock node value.
+  ;;; Returns a list containing the oblock in car and updated origin in cadr.
   ;; Do not need to track symbols because oblock fields will not emit any. This
   ;; may change in the future though. TODO
   ;; TODO currently just returns the onode val
@@ -1657,28 +1657,28 @@
 			after-fields)))))
 	     iblock-instances)))
 
-;;; Helper for `make-oblock`.
-;;; Sort a list of oblock source node IDs to match the order in which the
-;;; module configuration provides them.
+  ;;; Helper for `make-oblock`.
+  ;;; Sort a list of oblock source node IDs to match the order in which the
+  ;;; module configuration provides them.
   (define (order-oblock-sources sources parent-node-id mdef)
     (filter-map (lambda (subnode-id)
 		  (and (memv subnode-id sources)
 		       subnode-id))
 		(mdef-get-subnode-ids parent-node-id (mdef-itree mdef))))
 
-;;; Oblock compilation works as follows:
-;;; 1. The parent inode instance contents are resized if necessary, and a new
-;;;    order is generated.
-;;; 2. An alist is created from the order, which assigns a key to each unique
-;;;    combination of required source iblocks.
-;;; 3. From the above alist, the output order is created, which is emitted as
-;;;    an md-symbol, with the key being 'mdal__order_ + the oblock id.
-;;; 4. From the order alist, an alist is derived with only unique key/value
-;;;    pairs.
-;;; 5. From the above alist, pseudo block instances are created, whose
-;;;    instance-val includes the combined field nodes of the required source
-;;;    iblock instances.
-;;; 6. The pseudo block instances are passed to the field evaluators.
+  ;;; Oblock compilation works as follows:
+  ;;; 1. The parent inode instance contents are resized if necessary, and a new
+  ;;;    order is generated.
+  ;;; 2. An alist is created from the order, which assigns a key to each unique
+  ;;;    combination of required source iblocks.
+  ;;; 3. From the above alist, the output order is created, which is emitted as
+  ;;;    an md-symbol, with the key being 'mdal__order_ + the oblock id.
+  ;;; 4. From the order alist, an alist is derived with only unique key/value
+  ;;;    pairs.
+  ;;; 5. From the above alist, pseudo block instances are created, whose
+  ;;;    instance-val includes the combined field nodes of the required source
+  ;;;    iblock instances.
+  ;;; 6. The pseudo block instances are passed to the field evaluators.
   (define (make-oblock proto-mdef mdef-dir path-prefix
 		       #!key id from resize nodes)
     (let* ((asm-id (string->symbol (string-downcase (symbol->string id))))
@@ -1727,7 +1727,7 @@
        '()
        `((md-result ,output-id)))))
 
-;;; Get the list of IDs of the oblock nodes from a list of ogroup subnodes
+  ;;; Get the list of IDs of the oblock nodes from a list of ogroup subnodes
   (define (get-oblock-ids group-nodes)
     (map (lambda (node)
 	   (apply (lambda (#!key id)
@@ -1736,16 +1736,16 @@
 	 (filter (lambda (node) (eqv? 'block (car node)))
 		 group-nodes)))
 
-;;; Determine the order related symbol names that will be emitted by an
-;;; ogroup's oblock members
+  ;;; Determine the order related symbol names that will be emitted by an
+  ;;; ogroup's oblock members
   (define (get-oblock-order-ids group-nodes prefix)
     (map (lambda (oid)
 	   (symbol-append prefix oid))
 	 (get-oblock-ids group-nodes)))
 
-;;; Given a list of resolved ogroup subnodes and a list of subnode output IDs,
-;;; generate a list of symbols and the corresponding AST nodes to be inserted
-;;; into the global symbol table (md-symbols).
+  ;;; Given a list of resolved ogroup subnodes and a list of subnode output IDs,
+  ;;; generate a list of symbols and the corresponding AST nodes to be inserted
+  ;;; into the global symbol table (md-symbols).
   (define (transform-ogroup-result onodes output-ids plain-numeric-output?)
     (map (lambda (onode output-id)
 	   (let ((result (onode-val onode)))
@@ -1881,8 +1881,8 @@
 	 (cons id (map onode-id otree))
 	 source-tree))))
 
-;;; Dispatch output note config expressions to the appropriate onode
-;;; generators
+  ;;; Dispatch output note config expressions to the appropriate onode
+  ;;; generators
   (define (dispatch-onode-expr expr proto-mdef mdef-dir path-prefix)
     (apply (case (car expr)
 	     ((comment) (lambda (proto-mdef mdef-dir p c)
@@ -1896,13 +1896,13 @@
 	     (else (error "unsupported output node type")))
 	   (append (list proto-mdef mdef-dir path-prefix) (cdr expr))))
 
-;;; Returns true if all onodes have been resolved, false otherwise
+  ;;; Returns true if all onodes have been resolved, false otherwise
   (define (mod-all-resolved? onodes)
     (not (any onode-fn onodes)))
 
-;;; Do a single compiler pass run over the given otree.
-;;; Returns a list containing the updated otree in the 1st slot, the updated
-;;; origin in the 2nd slot, and the updated list of symbols in the 3rd slot.
+  ;;; Do a single compiler pass run over the given otree.
+  ;;; Returns a list containing the updated otree in the 1st slot, the updated
+  ;;; origin in the 2nd slot, and the updated list of symbols in the 3rd slot.
   (define (do-compiler-pass otree parent-inode mdef md-symbols)
     (let* ((syms md-symbols)
 	   (resolve-node
@@ -1916,11 +1916,11 @@
 	   (new-tree (map-in-order resolve-node otree)))
       (list new-tree syms)))
 
-;;; Compile a local onode tree. Returns a list containing the resolved tree
-;;; in the first slot, the updated origin in the 2nd slot, and the updated
-;;; list of md-symbols in the 3rd slot.
-;;; Will throw an exception of type 'compiler-failed if the otree cannot
-;;; be resolved after 3 passes.
+  ;;; Compile a local onode tree. Returns a list containing the resolved tree
+  ;;; in the first slot, the updated origin in the 2nd slot, and the updated
+  ;;; list of md-symbols in the 3rd slot.
+  ;;; Will throw an exception of type 'compiler-failed if the otree cannot
+  ;;; be resolved after 3 passes.
   (define (compile-otree otree parent-inode mdef md-symbols)
     (letrec ((run-compiler
 	      (lambda (current-otree current-symbols passes)
@@ -2093,8 +2093,8 @@
   ;;; ### MDEF Parser
   ;; ---------------------------------------------------------------------------
 
-;;; Evaluate the engine-version keyword argument of an mdal-mdef expression.
-;;; Returns a `engine-version` struct.
+  ;;; Evaluate the engine-version keyword argument of an mdal-mdef expression.
+  ;;; Returns a `engine-version` struct.
   (define (read-mdef-engine-version version-arg)
     (unless (and (number? version-arg)
 		 (= 2 (length (string-split (number->string version-arg)
@@ -2105,8 +2105,8 @@
 					  "."))))
       (make-engine-version major: (car major/minor) minor: (cadr major/minor))))
 
-;;; Main mdalmdef s-expression evaluator. You probably want to call this
-;;; through `read-mdef`.
+  ;;; Main mdalmdef s-expression evaluator. You probably want to call this
+  ;;; through `read-mdef`.
   (define (eval-mdef id mdef-dir path-prefix
 		     #!key mdef-version engine-version target commands
 		     input output default-origin (description ""))
@@ -2154,7 +2154,7 @@
 		 compiler: (make-compiler output proto-mdef mdef-dir
 					  path-prefix))))
 
-;;; Evaluate the given `mdef` s-expression, and return a mdef record.
+  ;;; Evaluate the given `mdef` s-expression, and return a mdef record.
   (define (read-mdef mdef id mdef-dir path-prefix)
     (unless (and (pair? mdef) (eqv? 'mdal-definition (car mdef)))
       (mdal-abort "not an MDEF specification"))
@@ -2174,9 +2174,9 @@
     (apply eval-mdef (append (list id mdef-dir path-prefix)
 			     (cdr mdef))))
 
-;;; Generate an mdef struct from an .mdef file.
-;;; `parent-dir` is the file path to the parent directory of the directory
-;;; containing the .mdef file.
+  ;;; Generate an mdef struct from an .mdef file.
+  ;;; `parent-dir` is the file path to the parent directory of the directory
+  ;;; containing the .mdef file.
   (define (file->mdef parent-dir mdef-name #!optional (path-prefix ""))
     (let* ((mdef-dir (string-append parent-dir mdef-name "/"))
 	   (filepath (string-append mdef-dir mdef-name ".mdef")))
