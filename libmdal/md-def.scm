@@ -2057,7 +2057,7 @@
 		  (asm 'ast base-ast)
 		  (asm 'symbols extra-symbols)
 		  (asm 'assemble 2)
-		  (list (asm 'ast) (asm 'symbols)))))
+		  asm)))
 	     (sorted-otree (sort-otree otree exports))
 	     (rowplay-cache (make-cache ast '((row-play . #t))))
 	     (default-cache (make-cache ast)))
@@ -2073,19 +2073,12 @@
 					 (cadr (mmod-global-node mod))
 					 (mmod-mdef mod)
 					 extra-symbols))
-		     (asm (make-empty-assembly)))
-		(if (alist-ref 'row-play extra-symbols)
-		    (begin
-		      (asm 'ast (car rowplay-cache))
-		      (asm 'symbols (append (cadr rowplay-cache)
-					    extra-symbols
-					    (cadr res))))
-		    (begin
-		      (asm 'ast (car default-cache))
-		      (asm 'symbols (append (cadr default-cache)
-					    extra-symbols
-					    (cadr res)))))
-		(asm 'assemble 4)
+		     (asm (if (alist-ref 'row-play extra-symbols)
+			      (rowplay-cache 'copy)
+			      (default-cache 'copy))))
+		(asm 'symbols
+		     (append (asm 'symbols) extra-symbols (cadr res)))
+		(asm 'assemble 6)
 		(or (asm 'result)
 		    (error 'mdal-compiler "Failed to compile module."))))))))
 
