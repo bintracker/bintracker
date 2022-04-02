@@ -218,12 +218,7 @@ mdal-targets:
 
 # run unit tests
 .PHONY: tests
-tests: mdal-tests schemta-tests
-
-.PHONY: mdal-tests
-mdal-tests: mdal.o
-	cp -t ./ $(MDAL_SRC)unittests/unittests.scm && csi unittests.scm -e
-	-rm unittests.scm test.mmod
+tests: schemta-tests
 
 .PHONY: schemta-tests
 schemta-tests: m6502-tests m6809-tests
