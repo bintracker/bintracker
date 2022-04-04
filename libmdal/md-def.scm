@@ -1216,12 +1216,14 @@
       ((shared-numeric-matrix)
        (letrec ((transform-index
 		 (lambda (order-pos order-length column)
-		   (if (null? order-pos)
-		       '()
-		       (cons (+ base-index (* order-length column)
-				(car order-pos))
-			     (transform-index (cdr order-pos) order-length
-					      (+ 1 column)))))))
+		   (cond
+		    ((null? order-pos) '())
+		    ((eqv? 'loop-point order-pos) 'loop-point)
+		    (else
+		     (cons (+ base-index (* order-length column)
+			      (car order-pos))
+			   (transform-index (cdr order-pos) order-length
+					    (+ 1 column))))))))
 	 (lambda (symbols)
 	   (let ((raw-order (alist-ref (symbol-append 'mdal__base_order_ from)
 				       symbols)))
@@ -1282,7 +1284,7 @@
 	(else (error "unsupported order layout"))))))
 
   (define (raw-order->pointer-matrix raw-order element-size block-ids
-				     transformer)
+				     transformer loop-point-symbol)
     ;; TODO handle base-index
     (let ((directive (case element-size
 		       ((1) 'db)
@@ -1294,9 +1296,11 @@
 						  (symbol->string id)))
 				 block-ids)))
       (map (lambda (row)
-	     (cons 'directive
-		   (cons directive
-			 (list (map transformer row block-id-strings)))))
+	     (if (eqv? 'loop-point (car row))
+		 `(label ,loop-point-symbol)
+		 (cons 'directive
+		       (cons directive
+			     (list (map transformer row block-id-strings))))))
 	   raw-order)))
 
   ;;; Generate an onode of type `order`.
@@ -1315,29 +1319,42 @@
 				      base-index)))
 	   (base-order-symbol (symbol-append 'mdal__base_order_ from))
 	   (order-symbol (gensym (symbol-append 'mdal__order_ from)))
+	   (loop-point-symbol
+	    (case layout
+	      ((shared-numeric-matrix unique-numeric-matrix pointer-matrix)
+	       (symbol-append 'mdal__order_ from '_loop))
+	      ((pointer-matrix-hibyte)
+	       (symbol-append 'mdal__order_ from '_loop_hi))
+	      ((pointer-matrix-hibyte)
+	       (symbol-append 'mdal__order_ from '_loop_lo))))
 	   (group-symbol (symbol-append 'mdal__group_ from)))
       (list
        (make-onode
 	type: 'order
-	;; TODO debug
 	id: (symbol-append 'order_ from)
 	dependencies: (list from)
 	fn: (if (memq layout '(shared-numeric-matrix unique-numeric-matrix))
 		(lambda (onode parent-inode mdef md-symbols)
 		  ;; TODO this check is redundant now afaik
 		  (if (alist-ref base-order-symbol md-symbols)
-		      (let* ((output
-			      (flatten
-			       (map (cute int->bytes <> element-size
-					  (mdef-get-target-endianness mdef))
-				    (transformer-proc md-symbols))))
-			     (output-length (length output)))
+		      (let* ((raw-order (transformer-proc md-symbols))
+			     (output
+			      (map (lambda (x)
+				     ;; TODO loop point handling untested
+				     (if (eqv? x 'loop-point)
+					 `(label ,loop-point-symbol)
+					 (int->bytes
+					  x
+					  element-size
+					  (mdef-get-target-endianness mdef))))
+				   raw-order))
+			     (output-length (* element-size
+					       (length (flatten raw-order)))))
 			(if (alist-ref base-order-symbol md-symbols)
 			    (list (make-onode type: 'order val: output)
 				  ;; TODO can just cons instead of update now
 				  (alist-update order-symbol
-						(cons output-length
-						      (list output))
+						(cons output-length output)
 						md-symbols))
 			    (list onode md-symbols)))
 		      (list onode md-symbols)))
@@ -1354,7 +1371,8 @@
 					   md-symbols))
 			    (let ((output-length
 				   (* element-size
-				      (length (flatten raw-order)))))
+				      (length (remove (cute eqv? <> 'loop-point)
+						      (flatten raw-order))))))
 			      (list (make-onode type: 'order val: #t)
 				    (alist-update
 				     order-symbol
@@ -1365,7 +1383,8 @@
 					    (alist-ref (symbol-append
 							'mdal__oblock_ids_ from)
 						       md-symbols)
-					    pointer-transformer))
+					    pointer-transformer
+					    loop-point-symbol))
 				     md-symbols)))
 			    (list onode md-symbols))
 			(list onode md-symbols))))))
@@ -1392,61 +1411,69 @@
 	current-chunk))
 
   ;;; Helper for `resize-block-instances`. Split the raw block instance
-  ;;; CONTENTS into consecutively numbered node instances of length SIZE.
-  ;;; Empty field instances in the first row of a block instance will be
+  ;;; CONTENTS into consecutively numbered node instances according to the list
+  ;;; of SIZES. Empty field instances in the first row of a block instance are
   ;;; replaced with the last set value if the field's command has the
   ;;; `use-last-set` flag.
-  (define (split-block-instance-contents size block-id mdef contents)
-    (let* ((field-ids (mdef-get-subnode-ids block-id (mdef-itree mdef)))
-	   (backtrace-targets
-  	    (map (lambda (field-id)
-  		   (command-has-flag? (mdef-get-inode-source-command
-  				       field-id mdef)
-  				      'use-last-set))
-  		 field-ids))
-	   (need-backtrace (any (cute eq? #t <>) backtrace-targets))
-	   (length-adjusted-contents
-	    (cond ((null? (length contents))
-		   (make-list (length field-ids) '()))
-		  ((zero? (modulo (length contents) size))
-		   contents)
-		  (else
-		   (append
-		    contents
-		    (cons
-		     (map (lambda (field-cmd use-last-set?)
-			    (if (and use-last-set?
-				     (not (eqv? 'trigger
-						(command-type field-cmd))))
-				(command-default field-cmd)
-				'()))
-			  (map (cute mdef-get-inode-source-command <> mdef)
-  			       field-ids)
-			  backtrace-targets)
-		     (make-list (sub1 (- size (modulo (length contents)
-						      size)))
-				(make-list (length (car contents))
-					   '())))))))
-	   (raw-chunks (chop length-adjusted-contents size))
-	   (find-last-set
-	    (lambda (field-idx chunk-id)
-	      (let ((ls-row (find (lambda (row)
-				    (not (null? (list-ref row field-idx))))
-				  (reverse (take length-adjusted-contents
-						 (* size chunk-id))))))
-		(if ls-row
-		    (list-ref ls-row field-idx)
-		    '()))))
-	   (correct-chunk-start
-	    (lambda (chunk id)
-	      (cons (map (lambda (field field-idx use-last-set?)
-			   (if (and use-last-set? (null? field))
-			       (find-last-set field-idx id)
-			       field))
-			 (car chunk)
-			 (iota (length field-ids))
-			 backtrace-targets)
-		    (cdr chunk)))))
+  (define (split-block-instance-contents sizes block-id mdef contents)
+    (letrec* ((field-ids (mdef-get-subnode-ids block-id (mdef-itree mdef)))
+	      (backtrace-targets
+  	       (map (lambda (field-id)
+  		      (command-has-flag? (mdef-get-inode-source-command
+  					  field-id mdef)
+  					 'use-last-set))
+  		    field-ids))
+	      (need-backtrace (any (cute eq? #t <>) backtrace-targets))
+	      (length-adjusted-contents
+	       (cond ((null? (length contents))
+		      (make-list (length field-ids) '()))
+		     ((= (length contents) (apply + sizes))
+		      contents)
+		     (else
+		      (append
+		       contents
+		       (cons
+			(map (lambda (field-cmd use-last-set?)
+			       (if (and use-last-set?
+					(not (eqv? 'trigger
+						   (command-type field-cmd))))
+				   (command-default field-cmd)
+				   '()))
+			     (map (cute mdef-get-inode-source-command <> mdef)
+  				  field-ids)
+			     backtrace-targets)
+			(make-list (sub1 (- (apply + sizes) (length contents)))
+				   (make-list (length (car contents))
+					      '())))))))
+	      (chop-contents
+	       (lambda (contents sizes-lst)
+		 (if (null? contents)
+		     '()
+		     (cons (take contents (car sizes-lst))
+			   (chop-contents (drop contents (car sizes-lst))
+					  (cdr sizes-lst))))))
+	      (raw-chunks (chop-contents length-adjusted-contents sizes))
+	      (find-last-set
+	       (lambda (field-idx chunk-id)
+		 (let ((ls-row (find (lambda (row)
+				       (not (null? (list-ref row field-idx))))
+				     (reverse
+				      (take length-adjusted-contents
+					    (apply + (take sizes
+							   (+ 1 chunk-id))))))))
+		   (if ls-row
+		       (list-ref ls-row field-idx)
+		       '()))))
+	      (correct-chunk-start
+	       (lambda (chunk id)
+		 (cons (map (lambda (field field-idx use-last-set?)
+			      (if (and use-last-set? (null? field))
+				  (find-last-set field-idx id)
+				  field))
+			    (car chunk)
+			    (iota (length field-ids))
+			    backtrace-targets)
+		       (cdr chunk)))))
       (map (lambda (chunk id)
 	     (append (list id #f)
 		     (if (and need-backtrace (not (zero? id)))
@@ -1456,8 +1483,11 @@
 	   (iota (length raw-chunks)))))
 
   ;;; Resize instances of the given IBLOCK to SIZE by merging all
-  ;;; instances according to ORDER, then splitting into chunks.
-  (define (resize-block-instances iblock size order group-id mdef)
+  ;;; instances according to ORDER, then splitting into chunks. If SIZE is #f
+  ;;; then only a merge will be performed. If ORDER contains a loop point, the
+  ;;; iblock instances will additionally be split to facilitate said loop point.
+  ;;; The loop point is moved to the nearest multiple of SIZE if necessary.
+  (define (resize-block-instances iblock size order group-id mdef loop-offset)
     (let* ((order-index
 	    (mdef-get-block-field-index (car order)
 					(symbol-append 'R_ (car iblock)) mdef))
@@ -1481,18 +1511,54 @@
 				  (make-list (- requested-length actual-length)
 					     (make-list block-field-count '())))
 			  (take block-contents requested-length))))
-		  repeated-order-values))))
+		  repeated-order-values)))
+	   (total-length (apply + (map (cute list-ref <> length-index)
+				       repeated-order-values)))
+	   (target-lengths (if size
+			       (make-list (inexact->exact
+					   (ceiling (/ total-length size)))
+					  size)
+			       (if (and loop-offset (not (= 0 loop-offset)))
+				   (list loop-offset
+					 (- total-length loop-offset))
+				   (list total-length)))))
       (cons (car iblock)
 	    (split-block-instance-contents
-	     (or size (apply + (map (cute list-ref <> length-index)
-				    repeated-order-values)))
-	     (car iblock)
-	     mdef
-	     concat-blocks))))
+	     target-lengths (car iblock) mdef concat-blocks))))
 
+  ;; Helper for `resize-blocks`. Determines on which row the loop
+  ;; point occurs.
+  (define (get-loop-point-offset order mdef)
+    (and-let* ((order-field-ids (mdef-get-subnode-ids (car order)
+						      (mdef-itree mdef)))
+	       (loop-index (list-index (lambda (id)
+					 (symbol-contains id "_LOOP"))
+				       order-field-ids))
+	       (length-index (list-index (lambda (id)
+					  (symbol-contains id "_LENGTH"))
+					 order-field-ids)))
+      (letrec ((get-offset (lambda (order-rows init-offset)
+			     (if (not (null? (list-ref (car order-rows)
+						       loop-index)))
+				 init-offset
+				 (get-offset (cdr order-rows)
+					     (+ init-offset
+						(list-ref (car order-rows)
+							  length-index)))))))
+	(get-offset (cddadr order) 0))))
+
+  ;; helper for `resize-blocks`
+  (define (make-offset-list lengths init-offset)
+    (if (null? lengths)
+	'()
+	(cons init-offset
+	      (make-offset-list (cdr lengths) (+ init-offset (car lengths))))))
 
   ;;; Resize all non-order blocks in the given igroup instance to
-  ;;; SIZE, and emit a new igroup instance with a new order.
+  ;;; SIZE, and emit a new igroup instance with a new order. If SIZE is #f, then
+  ;;; all blocks will be merged. If the igroup is ordered and the order provides
+  ;;; a loop point, then blocks will be split accordingly. The loop point is
+  ;;; moved to the nearest multiple of SIZE if necessary.
   (define (resize-blocks parent-inode-instance parent-inode-id size mdef)
     (let* ((order-id (symbol-append parent-inode-id '_ORDER))
 	   (order-subnode-ids (mdef-get-subnode-ids order-id (mdef-itree mdef)))
@@ -1508,25 +1574,31 @@
 			   (not (eqv? order-id (car subnode)))))
 		    (cddr parent-inode-instance)))
 	   (original-order (subnode-ref order-id parent-inode-instance))
+	   (loop-offset (get-loop-point-offset original-order mdef))
 	   (resized-blocks
 	    (map (cute resize-block-instances <> size original-order
-		       parent-inode-id mdef)
+		       parent-inode-id mdef loop-offset)
 		 original-blocks))
+	   (resized-block-lengths (map (lambda (inst) (length (cddr inst)))
+				       (cdar resized-blocks)))
 	   (new-order
 	    (list
 	     (list order-id
 		   (append '(0 #f)
-			   (map (lambda (pos)
-				  ;; TODO actually handle loop points
+			   (map (lambda (pos len offset)
 				  (map (lambda (field-id)
 					 (cond
 					  ((symbol-contains field-id "_LOOP")
-					   #f)
+					   ;; TODO set to nearest possible
+					   ;; if fixed-size
+					   (= offset loop-offset))
 					  ((symbol-contains field-id "_LENGTH")
-					   size)
+					   len)
 					  (else pos)))
 				       order-subnode-ids))
-				(iota (length (cdar resized-blocks)))))))))
+				(iota (length (cdar resized-blocks)))
+				resized-block-lengths
+				(make-offset-list resized-block-lengths 0)))))))
       (append (list (car parent-inode-instance) #f)
 	      (append original-fields+groups resized-blocks new-order))))
 
@@ -1556,18 +1628,25 @@
 		 (list (compose-proc instance-id parent-inode mdef)
 		       md-symbols))))))
 
+  (define (get-loop-point-position order-instance loop-field-index)
+    (list-index (lambda (pos) (list-ref pos loop-field-index))
+		(cddr order-instance)))
+
   ;;; Helper function for `make-oblock`.
   ;;; Generate an alist where the keys represent the oblock's output order, and
-  ;;; the values represent the associated input order rows. Rows are sorted
+  ;;; the values represent the associated input order rows. Columns are sorted
   ;;; according to how the required-fields are specified.
-  (define (make-order-alist order required-fields mdef)
+  ;;; If LOOP-FIELD-ID is not #f, it must specify the index of the field
+  ;;; specifying the order loop point in the list of order subnodes.
+  (define (make-order-alist order required-fields mdef loop-field-index)
     (let* ((order-instance (cadr order))
 	   (order-length (length (cddr order-instance)))
+	   ;; TODO speed up by precalculating field-indices
 	   (required-field-ids (map (cute symbol-append 'R_ <>)
 				    required-fields))
 	   (order-fields (mdef-get-subnode-ids (car order)
 					       (mdef-itree mdef)))
-	   (raw-order
+	   (base-order
 	    (map (lambda (order-pos)
 		   (map (lambda (field-id)
 			  (eval-block-field
@@ -1579,16 +1658,26 @@
 			   no-ref: #t))
 			required-field-ids))
 		 (iota order-length)))
+	   (raw-order
+	    (if loop-field-index
+		(let ((loop-pos (get-loop-point-position order-instance
+							 loop-field-index)))
+		  (append (take base-order loop-pos)
+			  '(loop-point)
+			  (drop base-order loop-pos)))
+		base-order))
 	   (unique-combinations '()))
-      (map reverse
-	   (map (lambda (order-pos)
+      (map (lambda (order-pos)
+	     (if (eqv? order-pos 'loop-point)
+		 (list 'loop-point)
+		 (reverse
 		  (or (alist-ref order-pos unique-combinations)
-		      (let ((newkey+val (list order-pos
-					      (length unique-combinations))))
+		      (let ((newkey+val
+			     (list order-pos (length unique-combinations))))
 			(set! unique-combinations
 			  (cons newkey+val unique-combinations))
-			newkey+val)))
-		raw-order))))
+			newkey+val)))))
+	   raw-order)))
 
   ;;; Helper for `make-oblock`. Constructs pseudo iblock instances that contain
   ;;; all the subnodes required by an oblock field.
@@ -1685,10 +1774,15 @@
 	   (parent-inode-id (car (mdef-get-node-ancestors-ids
 				  (car from) (mdef-itree proto-mdef))))
 	   (order-id (symbol-append parent-inode-id '_ORDER))
+	   (order-loop-field-index
+	    (list-index (lambda (id)
+			  (eqv? id (symbol-append parent-inode-id '_LOOP)))
+			(mdef-get-subnode-ids order-id
+					      (mdef-itree proto-mdef))))
 	   (output-id (symbol-append 'md__oblock_ asm-id))
 	   (output-order-id (symbol-append 'mdal__order_ asm-id))
-	   (source-block-ids (order-oblock-sources from parent-inode-id
-						   proto-mdef))
+	   (source-block-ids
+	    (order-oblock-sources from parent-inode-id proto-mdef))
 	   ;; TODO repeat vs static
 	   (field-prototypes
 	    (map (lambda (node)
@@ -1711,8 +1805,12 @@
 						resize mdef)))
 		     (order-alist
 		      (make-order-alist (subnode-ref order-id parent)
-					source-block-ids mdef))
-		     (unique-order-combinations (delete-duplicates order-alist))
+					source-block-ids mdef
+					order-loop-field-index))
+		     (unique-order-combinations
+		      (delete-duplicates (remove (lambda (x)
+						   (eqv? 'loop-point (car x)))
+						 order-alist)))
 		     (result
 		      (resolve-oblock (make-pseudo-block-instances
 				       parent source-block-ids

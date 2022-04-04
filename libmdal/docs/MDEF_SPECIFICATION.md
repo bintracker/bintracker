@@ -251,9 +251,10 @@ Groups wrap logical units of input nodes, including other groups.
 ¹ It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-blocks) instead.
 
 
-| flag      | description                                                 |
-|-----------|-------------------------------------------------------------|
-| `ordered` | An order (sequence) node will be generated for this group.² |
+| flag      | description                                                    |
+|-----------|----------------------------------------------------------------|
+| `ordered` | An order (sequence) node will be generated for this group.²    |
+| `looped`  | The order specifies a loop point. Requires the `ordered` flag. |
 
 ² Internally, orders are always created, but the compiler treats orders differently depending on this flag. When the flag is set, the compiler merges and splits block instances according to each position in the order. Without the flag set, the compiler considers only unique order positions.
 
@@ -361,9 +362,15 @@ The following layouts are supported:
 
 | name                    | description                                                       |
 |-------------------------|-------------------------------------------------------------------|
-| `numeric-matrix`        | Numeric indices per channel. Indices are unique for each channel. |
+| `unique-numeric-matrix` | Numeric indices per channel. Indices are unique for each channel. |
 | `pointer-matrix`        | Pointers to addresses in memory.                                  |
+| `pointer-matrix-hibyte` | Most significant byte of 16-bit pointers to addresses in memory.  |
+| `pointer-matrix-lobyte` | Least significant byte of 16-bit pointers to addresses in memory. |
 | `shared-numeric-matrix` | Numeric indices per channel. Indices are shared across channels.  |
+
+#### Loop Point Symbol Naming
+
+If the input group that created the abstract order list has the `looped` flag set, then a loop point label will be emitted. The naming depends on the layout, as well as the ID of the output group. For numeric matrix and plain pointer matrix layouts, the loop symbol is named `mdal__order_`*output_group_id*`_loop`. For hibyte and lobyte pointer matrix layouts, the suffix `_hi` resp. `_lo` is added.
 
 
 ### Output `symbol`

@@ -29,7 +29,7 @@ rdseq0
         .(if (defined? 'row-play)
              " halt"
              ;; " ld sp,loop\n jr .(+ 3 (symbol-ref 'rdseq))"
-             " ld sp,loop\n jr rdseq0")
+             " ld sp,mdal__order_patterns_loop\n jr rdseq0")
 
 	;; ;jp exit		;uncomment to disable looping
 
@@ -239,5 +239,5 @@ hat1
 hat1end
 
 musicData
-loop
+;; loop
 	;; include "music.asm"

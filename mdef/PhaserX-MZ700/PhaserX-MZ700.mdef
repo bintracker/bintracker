@@ -48,7 +48,7 @@ By utz 2016. MZ-700 port by MooZ 2018."
 		     description: "Phase offset"
 		     flags: (use-last-set is-phase)))
 
- input: ((group id: PATTERNS flags: (ordered)
+ input: ((group id: PATTERNS flags: (ordered looped)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(block id: DRUMS nodes: ((field from: DRUM)))
 			(block id: MIXING nodes: ((field from: MIX)))

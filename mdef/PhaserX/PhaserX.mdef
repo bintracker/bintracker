@@ -49,7 +49,7 @@ By utz 2016."
 		     flags: (use-last-set is-phase)))
 
  input: ((field from: BORDER)
-	 (group id: PATTERNS flags: (ordered)
+	 (group id: PATTERNS flags: (ordered looped)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(block id: DRUMS nodes: ((field from: DRUM)))
 			(block id: MIXING nodes: ((field from: MIX)))

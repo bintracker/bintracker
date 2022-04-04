@@ -44,7 +44,7 @@ seqpntr .equ .(+ 1 current-origin)
 ;; halt -> jp exit
         .(if (defined? 'row-play)
              " halt\n"
-             " ld sp,loop\n jp .(+ 3 (symbol-ref 'rdseq))\n")
+             " ld sp,mdal__order_patterns_loop\n jp .(+ 3 (symbol-ref 'rdseq))\n")
 
 ;******************************************************************
 rdptn0
