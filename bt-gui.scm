@@ -3053,15 +3053,17 @@
   		  primary: (buf <ui-block-view>)
   		  #!optional (current-block-id
   			      (ui-blockview-get-current-block-id buf)))
-    (list-ref (list-ref (map cdr
-  			     (mod-get-order-values
-  			      (ui-blockview-parent-instance buf)
-  			      (slot-value buf 'group-id)
-			      (ui-metastate buf 'mdef)))
-  			(ui-blockview-get-current-order-pos buf))
-  	      (list-index (lambda (block-id)
-  			    (eq? block-id current-block-id))
-  			  (slot-value buf 'block-ids))))
+    (let ((group-id (slot-value buf 'group-id))
+	  (mdef (ui-metastate buf 'mdef)))
+      (list-ref (list-ref (mod-get-order-values
+			   (ui-blockview-parent-instance buf) group-id mdef)
+  			  (ui-blockview-get-current-order-pos buf))
+  		(list-index (lambda (block-id)
+  			      (eqv? block-id
+				    (symbol-append 'R_ current-block-id)))
+			    (mdef-get-subnode-ids (symbol-append group-id
+								 '_ORDER)
+						  (mdef-itree mdef))))))
 
   ;;; Return the MDAL node path string of the field currently under cursor.
   (define-method (ui-blockview-get-current-block-instance-path
