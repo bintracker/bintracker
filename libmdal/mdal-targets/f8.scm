@@ -3,7 +3,7 @@
  endian: big
 
  registers: ((dc 0) (is 0) (ku 0) (kl 1) (qu 2) (ql 3) (hu 10) (hl 11) (q #xe)
-	     (h #xf) (s 12) (i 13) (d 14) (a 0))
+	     (h #xf) (s 12) (i 13) (d 14) (a 0) (j 0) (w 0) (p 0))
 
  register-sets: ((rkq (ku kl qu ql))
 		 (rh (hu hl))
@@ -126,10 +126,10 @@
   (pi (1 ((numeric (#x28 (msb %op1) (lsb %op1))))))
   (pk (0 (#xc)))
   (pop (0 (#x1c)))
-  (sl (1 (((is #x1) (#x13))
-  	  ((is #x4) (#x15)))))
-  (sr (1 (((is #x1) (#x12))
-  	  ((is #x4) (#x14)))))
+  (sl (1 (((is #\1) (#x13))
+  	  ((is #\4) (#x15)))))
+  (sr (1 (((is #\1) (#x12))
+  	  ((is #\4) (#x14)))))
   (st (0 (#x17)))
   (xdc (0 (#x2c)))
   (xi (1 ((numeric (#x23 (lsb %op1))))))
