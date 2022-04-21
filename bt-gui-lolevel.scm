@@ -43,7 +43,6 @@
 				" +break")))))
 
   (define (recolor-png filename color)
-    (print "calling recolor-png")
     (let-values (((pixels width height channels)
 		  (with-input-from-file filename read-image #:binary)))
       (unless (= channels 2)
@@ -1509,7 +1508,9 @@
 	(let ((finalize (lambda (success)
 			  (when success ((slot-value d 'finalizers) 'execute))
 			  (ui-hide d)))
-	      (tl ((ui-parent d) 'create-widget 'toplevel
+	      ;; FIXME should call `(ui-parent d)` here instead of `tk`,
+	      ;; but this bugs out on windows for some reason
+	      (tl (tk 'create-widget 'toplevel
 		   background: (colors 'background))))
 	  (tk/wm 'transient tl)
 	  (cond-expand
