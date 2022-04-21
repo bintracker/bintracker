@@ -30,7 +30,7 @@ Next,install [Chicken Scheme](https://call-cc.org), version 5.0 or newer. Chicke
 After installing Chicken itself, you need to install the extensions required by Bintracker.
 
 ```sh
-$ chicken-install args base64 bitstring comparse coops git list-utils matchable pstk simple-md5 sqlite3 stb-image stb-image-write srfi-1 srfi-4 srfi-13 srfi-14 srfi-18 srfi-69 stack test typed-records web-colors
+$ chicken-install args base64 bitstring comparse coops list-utils matchable pstk simple-md5 sqlite3 stb-image stb-image-write srfi-1 srfi-4 srfi-13 srfi-14 srfi-18 srfi-69 stack test typed-records web-colors
 ```
 
 Note that in order to build the sqlite3 extension, you need an [sqlite3](https://sqlite.org) installation. Your system most likely will have one installed already, but if not, install it through your distro's package manager.
@@ -68,13 +68,67 @@ Once you've completed these steps, you can run the `bintracker` executable in th
 If you notice sound being choppy, you can try adding `"-nofilter" "-nomax"` and/or `"-autoframeskip"` to the list of MAME default-args in `config/emulators.scm`. Especially hard cases may be fixed with `"-video" "none"`. Newer versions of MAME will complain about the latter, but it nevertheless fixes most cases of bad audio.
 
 
+### Windows
 
-### MacOS, BSD, Windows
+Building Bintracker on Windows is rather messy, unfortunately. While there are several ways in which this could be done, we recommend building with [MSYS2](https://www.msys2.org) and [Chocolatey](https://chocolatey.org/).
+
+If you manage to build Bintracker on Windows by other means, please let us know how you did it, either by opening a [Github Issue](https://github.com/bintracker/bintracker/issues) or by [sending a message](https://bintracker.org/contact/).
+
+#### Step 1 - Set up the build system
+
+First, follow the instructions at https://chocolatey.org/install to set up Chocolatey. Next, in an admin Powershell, run
+
+```
+> choco install chicken
+```
+
+This will set up MSYS and MinGW (if you don't have it set up already), and install Chicken Scheme 5.2.0 in `C:\tools\chicken`. Next, install GMake with
+
+```
+> choco install make
+```
+
+#### Step 2 - Install Scheme libraries
+
+Launch `C:\tools\msys64\mingw64.exe` with administrator rights. First, install SQLite with
+
+```
+% pacman -S mingw-w64-x86_64-sqlite3
+```
+
+Next, install the srfi-18 egg with
+
+```
+% /c/tools/chicken/bin/chicken-install.exe srfi-18
+```
+
+Running this the first time will fail because of a problem with the build script. In `C:\Users\<your-username>\AppData\Local\chicken-install\srfi-18\build-srfi-18.bat`, replace `%CHICKEN_CSI%` with `csi` and `%CHICKEN_CSC%` with `csc`. Then, run the above install command again.
+
+Now, install the remaining dependencies with
+
+```
+% /c/tools/chicken/bin/chicken-install.exe args base64 bitstring comparse coops list-utils matchable pstk simple-md5 sqlite3 stb-image stb-image-write srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 shell stack test typed-records web-colors
+```
+
+#### Step 3 - Get source code and runtime dependencies
+
+Download the Bintracker [source code](https://github.com/bintracker/bintracker/archive/refs/heads/master.zip) and unpack it to a directory of your choice. Next, download Tclkit 8.6 for Windows 64-bit from https://tclkits.rkeene.org/fossil/wiki/Downloads . Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Then, download the latest MAME release from https://github.com/mamedev/mame/releases and unpack the self-extracting archive to `bintracker\3rdparty\mame`.
+
+#### Step 4 - Build Bintracker
+
+In a Powershell, navigate to `bintracker\build`, and run
+
+```
+> make -f .\Makefile.msys
+```
+
+Finally, copy `C:\tools\msys64\usr\bin\msys-2.0.dll` to `bintracker\build`. That's all. Unfortunately, building the documentation on Windows is not supported, just use the [online documentation](https://bintracker.org/documentation) instead.
+
+
+### MacOS, BSD
 
 So far nobody has tried to build Bintracker on any of these platforms. By all means, please try!
 
 Building on MacOS and BSD shouldn't be too hard. The main complication you may run into is that the Makefile currently uses a few bash/GNUmake specific features. Also, the latest MacOS versions apparently do not ship Tcl/Tk anymore, so you will need to install that first.
 
-Building on Windows will be much more difficult, and may require some changes to the source code. You will need either MSYS or MinGW to build Chicken Scheme and Bintracker itself. The mid-term plan is to ship with a [Tclkit](https://tclkits.rkeene.org), so you might try that.
-
-If you succeed at building Bintracker on a non-Linux platform, please get in touch and let us know how you did it.
+If you succeed at building Bintracker on a non-Linux platform, please please let us know how you did it, either by opening a [Github Issue](https://github.com/bintracker/bintracker/issues) or by [sending a message](https://bintracker.org/contact/).

@@ -22,7 +22,7 @@
 
 (tk-throw-exceptions #t)
 (cond-expand
-  (windows (tk-start "3rdparty/tclkit.exe"))
+  (windows (tk-start "3rdparty\\tclkit.exe"))
   (else (tk-start)))
 
 ;; disable "tearoff" style menus

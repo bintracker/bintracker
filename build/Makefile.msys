@@ -1,7 +1,7 @@
-CSC = $(CHICKENS)/5.3.0.cross/bin/mingw-csc
+CSC = csc
 DOCGEN = scm2wiki
-BASEDEPS = md-helpers.o md-types.o
-LIBFLAGS = -d3 -static -c -feature windows -Wl,-lsqlite3
+BASEDEPS = md-helpers.obj md-types.obj
+LIBFLAGS = -d3 -static -c -feature windows -Wl,
 ifdef RELEASE
  LIBFLAGS += -O3
 endif
@@ -12,82 +12,82 @@ ifdef ETAGS
  DO_TAGS = TAGS
 endif
 
-bintracker: $(BT_SRC)bintracker.scm bintracker-core.o\
+bintracker.exe: $(BT_SRC)bintracker.scm bintracker-core.obj\
  mame-bridge config roms plugins resources aux-files\
  mdal-targets 3rdparty
-	$(CSC) $< -d3 -O2 -static -compile-syntax -feature windows -Wl,-lsqlite3\
- -link bintracker-core -o $@
+	$(CSC) $< -d3 -O2 -static -compile-syntax -feature windows -Wl,-v,-lsqlite3\
+ -link bintracker-core,bt-state,bt-types,bt-gui,bt-gui-lolevel,bt-db,bt-emulation,bt-maths,mdal,md-def,md-command,md-helpers,md-types,md-parser,md-note-table,md-audio -o $@
 
-bintracker-core.o: $(BT_SRC)bintracker-core.scm bt-state.o\
- bt-maths.o bt-types.o bt-gui.o bt-db.o\
- bt-emulation.o\
- mdal.o $(DO_TAGS)
+bintracker-core.obj: $(BT_SRC)bintracker-core.scm bt-state.obj\
+ bt-maths.obj bt-types.obj bt-gui.obj bt-db.obj\
+ bt-emulation.obj\
+ mdal.obj $(DO_TAGS)
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bintracker-core.types\
  -uses bt-state -uses bt-maths -uses bt-types -uses bt-gui -uses bt-db -uses bt-emulation\
  -uses mdal -unit bintracker-core -o $@
 
-bt-maths.o: $(BT_SRC)bt-maths.scm
+bt-maths.obj: $(BT_SRC)bt-maths.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-maths.types -unit bt-maths -o $@
 
-bt-types.o: $(BT_SRC)bt-types.scm
+bt-types.obj: $(BT_SRC)bt-types.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-types.types -unit bt-types -o $@
 
-bt-state.o: $(BT_SRC)bt-state.scm bt-types.o bt-db.o\
- bt-emulation.o mdal.o
+bt-state.obj: $(BT_SRC)bt-state.scm bt-types.obj bt-db.obj\
+ bt-emulation.obj mdal.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-state.types\
  -uses bt-types -uses bt-db -uses bt-emulation -unit bt-state -o $@
 
-bt-db.o: $(BT_SRC)bt-db.scm mdal.o
+bt-db.obj: $(BT_SRC)bt-db.scm mdal.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-db.types -uses mdal -unit bt-db -o $@
 
-bt-emulation.o: $(BT_SRC)bt-emulation.scm
+bt-emulation.obj: $(BT_SRC)bt-emulation.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-emulation.types -unit bt-emulation -o $@
 
-bt-gui.o: $(BT_SRC)bt-gui.scm bt-state.o bt-types.o bt-db.o\
- bt-maths.o bt-emulation.o bt-gui-lolevel.o mdal.o
+bt-gui.obj: $(BT_SRC)bt-gui.scm bt-state.obj bt-types.obj bt-db.obj\
+ bt-maths.obj bt-emulation.obj bt-gui-lolevel.obj mdal.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-gui.types\
  -uses bt-state -uses bt-types -uses bt-db -uses bt-maths -uses bt-emulation\
  -uses bt-gui-lolevel -uses mdal -unit bt-gui -o $@
 
-bt-gui-lolevel.o: $(BT_SRC)bt-gui-lolevel.scm bt-state.o\
- bt-types.o bt-emulation.o
+bt-gui-lolevel.obj: $(BT_SRC)bt-gui-lolevel.scm bt-state.obj\
+ bt-types.obj bt-emulation.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file bt-gui-lolevel.types\
  -uses bt-state -uses bt-types -unit bt-gui-lolevel -o $@
 
-mdal.o: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-def.o\
- md-parser.o schemta.o
+mdal.obj: $(MDAL_SRC)mdal.scm $(BASEDEPS) md-def.obj\
+ md-parser.obj schemta.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file mdal.types\
  -uses md-def -uses md-parser -uses schemta -unit mdal -o $@
 
-md-helpers.o: $(MDAL_SRC)md-helpers.scm
+md-helpers.obj: $(MDAL_SRC)md-helpers.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-helpers.types -unit md-helpers -o $@
 
-md-types.o: $(MDAL_SRC)md-types.scm md-helpers.o
+md-types.obj: $(MDAL_SRC)md-types.scm md-helpers.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-types.types -unit md-types -uses md-helpers -o $@
 
-md-note-table.o: $(MDAL_SRC)utils/md-note-table.scm
+md-note-table.obj: $(MDAL_SRC)utils/md-note-table.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-note-table.types -unit md-note-table -o $@
 
-md-audio.o: $(MDAL_SRC)utils/md-audio.scm
+md-audio.obj: $(MDAL_SRC)utils/md-audio.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-audio.types -unit md-audio -o $@
 
-md-command.o: $(MDAL_SRC)md-command.scm md-helpers.o
+md-command.obj: $(MDAL_SRC)md-command.scm md-helpers.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-command.types\
  -uses md-helpers -unit md-command -o $@
 
-md-def.o: $(MDAL_SRC)md-def.scm $(BASEDEPS) md-command.o\
- md-note-table.o md-audio.o schemta.o
+md-def.obj: $(MDAL_SRC)md-def.scm $(BASEDEPS) md-command.obj\
+ md-note-table.obj md-audio.obj schemta.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-def.types\
  -uses md-command -uses md-audio -uses md-note-table -unit md-def -o $@
 
-md-parser.o: $(MDAL_SRC)md-parser.scm $(BASEDEPS) md-def.o
+md-parser.obj: $(MDAL_SRC)md-parser.scm $(BASEDEPS) md-def.obj
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file md-parser.types -unit md-parser -o $@
 
-schemta.o: $(MDAL_SRC)schemta.scm
+schemta.obj: $(MDAL_SRC)schemta.scm
 	$(CSC) $(LIBFLAGS) $< -J -emit-types-file schemta.types -unit schemta -o $@
 
 # Schemta standalone executable
-schemta.exe: $(MDAL_SRC)schemta-exe.scm schemta.o
+schemta.exe: $(MDAL_SRC)schemta-exe.scm schemta.obj
 	$(CSC) $< -b -O3 -compile-syntax -uses schemta -o $@
 
 # generate documentation
@@ -172,22 +172,19 @@ TAGS: $(BT_SRC)bt-types.scm\
 
 .PHONY: mame-bridge
 mame-bridge:
-	cp -r $(BT_SRC)mame-bridge ./
+	copy ..\\mame-bridge mame-bridge
 
 .PHONY: config
 config:
-	cp -r $(BT_SRC)config/ .
+	xcopy /y /s /i ..\\config config
 
 .PHONY: roms
 roms:
-	cp -r $(BT_SRC)roms/ .
-ifneq (,$(wildcard roms/spectrum.rom))
-	mv roms/spectrum/opense.rom roms/spectrum/spectrum.rom
-endif
+	xcopy /y /s /i ..\\roms roms
 
 .PHONY: plugins
 plugins:
-	cp -r $(BT_SRC)plugins .
+	xcopy /y /s /i ..\\plugins plugins
 
 .PHONY: plugin-docs
 plugin-docs:
@@ -200,21 +197,20 @@ plugin-docs:
 
 .PHONY: resources
 resources:
-	mkdir -p resources/
-	cp -r $(BT_SRC)resources/icons resources/
+	xcopy /y /s /i ..\\resources\icons resources\
 
 .PHONY: aux-files
 aux-files:
-	cp -r ../mdef .
-	cp -r ../tunes .
+	xcopy /y /s /i ..\mdef mdef
+	xcopy /y /s /i ..\tunes tunes
 
 .PHONY: mdal-targets
 mdal-targets:
-	cp -r $(MDAL_SRC)mdal-targets .
+	xcopy /y /s /i ..\\libmdal\\mdal-targets mdal-targets
 
 .PHONY: 3rdparty
 3rdparty:
-	cp -r $(BT_SRC)3rdparty .
+	xcopy /y /s /i ..\\3rdparty 3rdparty
 
 # run unit tests
 .PHONY: tests
@@ -235,6 +231,8 @@ m6502-tests: schemta-exe mdal-targets
 
 .PHONY: clean
 clean:
-	-rm *.o *.import.scm *.import *.link *.types bintracker.exe schemta.exe bt.db
-	-rm -rf docs plugins mame-bridge config roms mdef tunes mdal-targets\
- gendoc documentation tclkit #resources
+	-del *.obj *.import.scm *.import *.link *.types bintracker.exe schemta.exe bt.db
+	-del /f /q /s docs plugins mame-bridge config roms mdef tunes mdal-targets\
+ gendoc documentation tclkit resources
+	-rmdir /q /s docs plugins mame-bridge config roms mdef tunes mdal-targets\
+ gendoc documentation tclkit resources

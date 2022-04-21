@@ -29,10 +29,16 @@
 (module bt-db
     *
 
-  (import scheme (chicken base) (chicken sort) (chicken condition)
-	  (only (chicken file) directory)
-	  (only (chicken file posix) directory?)
-	  srfi-1 srfi-13 sqlite3 simple-md5 mdal)
+  (cond-expand
+    (windows (import scheme (chicken base) (chicken sort) (chicken condition)
+		     (only (chicken file posix) directory?)
+		     (only (chicken string) string-split)
+		     (only shell capture)
+		     srfi-1 srfi-13 sqlite3 simple-md5 mdal))
+    (else (import scheme (chicken base) (chicken sort) (chicken condition)
+		  (only (chicken file) directory)
+		  (only (chicken file posix) directory?)
+		  srfi-1 srfi-13 sqlite3 simple-md5 mdal)))
 
   (define btdb #f)
 
@@ -53,7 +59,9 @@
   (define (get-mdef-dir-subdirs)
     (filter (lambda (file)
 	      (directory? (string-append mdal-mdef-dir file)))
-	    (directory mdal-mdef-dir)))
+	    (cond-expand
+	      (windows (string-split (capture "dir /b mdef") "\n"))
+	      (else (directory mdal-mdef-dir)))))
 
   ;; (define (bt-db-get-mdef-hash mdef-id)
   ;;   '())

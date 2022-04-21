@@ -11,7 +11,7 @@ roms/*
 roms/spectrum/spectrum.rom
 build/*
 !build/Makefile
-!build/Makefile.mingw
+!build/Makefile.msys
 resources/icons/*.png.*.png
 resources/bt-theme.tcl
 *.swp
