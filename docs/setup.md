@@ -131,4 +131,4 @@ So far nobody has tried to build Bintracker on any of these platforms. By all me
 
 Building on MacOS and BSD shouldn't be too hard. The main complication you may run into is that the Makefile currently uses a few bash/GNUmake specific features. Also, the latest MacOS versions apparently do not ship Tcl/Tk anymore, so you will need to install that first.
 
-If you succeed at building Bintracker on a non-Linux platform, please please let us know how you did it, either by opening a [Github Issue](https://github.com/bintracker/bintracker/issues) or by [sending a message](https://bintracker.org/contact/).
+If you succeed at building Bintracker on a non-Linux platform, please let us know how you did it, either by opening a [Github Issue](https://github.com/bintracker/bintracker/issues) or by [sending a message](https://bintracker.org/contact/).
