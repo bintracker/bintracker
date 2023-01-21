@@ -1,16 +1,16 @@
 ;; This file is part of Bintracker.
-;; Copyright (c) utz/irrlicht project 2019-2020
+;; Copyright (c) utz/irrlicht project 2019-2023
 ;; See LICENSE for license details.
 
 (module bt-emulation
     *
-  (import scheme (chicken base) (chicken file posix)
-	  (chicken process) (chicken string) (chicken condition)
-	  (only (chicken file) file-exists? file-executable?)
-	  (only (chicken process-context) get-environment-variable)
-	  (only (chicken pathname) make-pathname)
-	  (only (chicken platform) software-type)
-	  srfi-1 srfi-13 srfi-18 base64)
+  (import scheme (chicken base) (chicken file posix) (chicken io) (chicken tcp)
+		  (chicken process) (chicken string) (chicken condition)
+		  (only (chicken file) file-exists? file-executable?)
+		  (only (chicken process-context) get-environment-variable)
+		  (only (chicken pathname) make-pathname)
+		  (only (chicken platform) software-type)
+		  srfi-1 srfi-13 srfi-18 base64)
 
   ;;;
 
@@ -55,43 +55,47 @@
 	      (emul-input-port #f)
 	      (emul-output-port #f)
 	      (emul-pid #f)
-	      (emul-thread #f)
-	      (emul-input-chars '())
-	      (emul-initialized #f)
+	      (tcp-listener-thread #f)
+	      (tcp-listener #f)
+
+	      (run-tcp-listener
+	       (lambda ()
+		 (let ((read-result (read-line emul-input-port)))
+		   (unless (eof-object? read-result)
+		     (print read-result))
+		   (unless (eqv? 'stop (thread-specific (current-thread)))
+		     (run-tcp-listener)))))
 
 	      (launch-emul-process
 	       (lambda ()
-		 (call-with-values
-		     (lambda () (process program program-args))
-		   (lambda (in out pid)
-		     (set! emul-input-port in)
-		     (set! emul-output-port out)
-		     (set! emul-pid pid)))))
-
-	      (emul-event-loop
-	       (lambda ()
-		 (let ((read-result (read-char emul-input-port)))
-		   (unless (eof-object? read-result)
-		     (if (eqv? read-result #\newline)
-			 (begin
-			   (display (list->string (reverse emul-input-chars)))
-			   (newline)
-			   (set! emul-input-chars '()))
-			 (set! emul-input-chars
-			   (cons read-result emul-input-chars)))
-		     (emul-event-loop)))))
+		 (cond-expand
+		   (windows (let ((pid (process-spawn spawn/nowait
+						      program
+						      program-args
+						      '()
+						      #t)))
+			      (when (= -1 pid)
+				(error 'emulator "failed to start emulator"))
+			      (set! emul-pid pid)))
+		   (else (call-with-values
+			     (lambda () (process program program-args))
+			   (lambda (in out pid)
+			     (set! emul-pid pid)))))))
 
 	      (send-command (lambda (cmd)
 			      (when emul-started
-				(display cmd emul-output-port)
-				(newline emul-output-port))))
+				(write-line cmd emul-output-port))))
 
 	      (start-emul (lambda ()
-			    (set! emul-thread
-			      (make-thread (lambda ()
-					     (launch-emul-process)
-					     (emul-event-loop))))
-			    (thread-start! emul-thread)
+			    (launch-emul-process)
+			    (sleep 1)
+			    (let-values (((in out)
+					  (tcp-connect "localhost" 4321)))
+				    (set! emul-output-port out)
+				    (set! emul-input-port in))
+			    (set! tcp-listener-thread
+			      (make-thread run-tcp-listener))
+			    (thread-start! tcp-listener-thread)
 			    (set! emul-started #t))))
       (lambda args
 	(case (car args)
@@ -99,23 +103,25 @@
 	  ((start) (unless emul-started (start-emul)))
 	  ((quit) (when emul-started
 		    (send-command "q")
-		    (call-with-values
-			(lambda () (process-wait emul-pid))
-		      (lambda args
-			(unless (cadr args)
-			  (warning "Emulator process exited abnormally"))))
+		    ;; (call-with-values
+		    ;; 	(lambda () (process-wait emul-pid))
+		    ;;   (lambda args
+		    ;; 	(unless (cadr args)
+		    ;; 	  (warning "Emulator process exited abnormally"))))
 		    ;; TODO exn handling
-		    (thread-join! emul-thread)
+		    (thread-specific-set! tcp-listener-thread 'stop)
+		    (thread-join! tcp-listener-thread)
+		    (close-input-port emul-input-port)
+		    (close-output-port emul-output-port)
+		    (set! emul-input-port #f)
+		    (set! emul-output-port #f)
 		    (set! emul-started #f)))
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
-	  ((run) (begin
-		   (unless emul-initialized
-		     (set! emul-initialized #t))
-		   (send-command
-			 (string-append "b" (number->string (cadr args))
-					"%" (base64-encode
-					     (list->string (caddr args)))))))
+	  ((run) (send-command
+		  (string-append "b" (number->string (cadr args))
+				 "%" (base64-encode
+				      (list->string (caddr args))))))
 	  ((reset) (send-command (if (and (not (null? (cdr args)))
 					  (eqv? 'hard (cadr args)))
 				     "rh" "rs")))

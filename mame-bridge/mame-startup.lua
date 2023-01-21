@@ -1,7 +1,14 @@
 -- This file is part of Bintracker.
--- Copyright (c) utz/irrlicht project 2019-2021
+-- Copyright (c) utz/irrlicht project 2019-2023
 -- See LICENSE for license details.
 
+-- Set up tcp server
+local tcp_in = emu.file("", 'rwc')
+tcp_in:open("socket.127.0.0.1:4321")
+
+local rprint = function (str)
+   tcp_in:write(str .. "\n")
+end
 
 -- Ensure backwards compatibility with MAME <= 0.226
 local machine_manager
@@ -75,31 +82,31 @@ local default_run_address = machine_specific.default_run_address
 local post_load_actions = machine_specific.post_load_actions
 
 local print_machine_info = function ()
-   print("System: ", emu.gamename())
-   print("driver: ", emu.romname())
-   print("\nMachine devices [machine_manager.devices]")
-   for k,_ in pairs(machine_manager.devices) do print(k) end
-   print("\nMachine options")
+   rprint("System: " .. emu.gamename())
+   rprint("driver: " .. emu.romname())
+   rprint("\nMachine devices [machine_manager.devices]")
+   for k,_ in pairs(machine_manager.devices) do rprint(k) end
+   rprint("\nMachine options")
    for k,v in pairs(machine_manager.options.entries) do
-      print(k, "=", v:value())
+      rprint(k .. "=" .. tostring(v:value()))
    end
-   print("\nCPU State Registers\nState:")
-   for k,v in pairs(machine_cpu.state) do print(k, v.value) end
-   -- print("\nSpaces:")
-   -- for k,v in pairs(machine_cpu.spaces) do print(k) end
-   -- print("\nItems:")
-   -- for k,v in pairs(machine_cpu.items) do print(k) end
-   print("\nMemory layout")
-   for k,_ in pairs(machine_cpu.spaces) do print(k) end
+   rprint("\nCPU State Registers\nState:")
+   for k,v in pairs(machine_cpu.state) do rprint(k .. v.value) end
+   -- rprint("\nSpaces:")
+   -- for k,v in pairs(machine_cpu.spaces) do rprint(k) end
+   -- rprint("\nItems:")
+   -- for k,v in pairs(machine_cpu.items) do rprint(k) end
+   rprint("\nMemory layout")
+   for k,_ in pairs(machine_cpu.spaces) do rprint(k) end
    if machine_manager.devices[":cartslot"] ~= nil then
       local cartslot = machine_manager.devices[":cartslot"]
-      print("\nCartridge:");
-      for k,_ in pairs(cartslot.spaces) do print(k) end
+      rprint("\nCartridge:");
+      for k,_ in pairs(cartslot.spaces) do rprint(k) end
    end
-   print("\nShares all:\n")
-   for k,_ in pairs(machine_manager.memory.shares) do print (k) end
-   print("\nRegions all:\n")
-   for k,_ in pairs(machine_manager.memory.regions) do print (k) end
+   rprint("\nShares all:\n")
+   for k,_ in pairs(machine_manager.memory.shares) do rprint (k) end
+   rprint("\nRegions all:\n")
+   for k,_ in pairs(machine_manager.memory.regions) do rprint (k) end
 end
 
 local machine_set_pc = function (addr)
@@ -200,33 +207,21 @@ local remote_commands = {
    ["x"] = function (argstr) loadstring(argstr)() end
 }
 
--- Attempt to destructure and run the remote command `cmd`. Takes the first
--- letter of `cmd` as key and looks up the associated function in
--- `remote_commands`. When successful, runs the function with the remainder of
--- `cmd` as argument.
-local dispatch_remote_command = function(cmd)
-   -- print("got command: ", cmd)
-   local exec_cmd = remote_commands[string.sub(cmd, 1, 1)]
-   if exec_cmd then exec_cmd(string.sub(cmd, 2)) end
-end
-
-local listener = emu.thread()
-local started = false
-
--- Register a period callback from the main emulation thread. On first run, it
--- starts a thread that listens to stdin, and returns the received input once it
--- receives a newline. The callback procedure attempts to run the input from the
--- listener as a remote command, then restarts the listener thread.
+-- Listen on tcp port and dispatch incoming remote commands.
 emu.register_periodic(
    function()
-      if listener.busy then
-	 return
-      elseif listener.yield then
-	 return
-      elseif started then
-	 dispatch_remote_command(listener.result)
-      end
-      listener:start([[ return io.stdin:read() ]])
-      started = true
+      local data = ""
+
+      repeat
+	 local read = tcp_in:read(100)
+	 data = data .. read
+      until #read == 0
+
+      if #data == 0 then return end
+
+      -- dispatch remote command
+      -- rprint("got command: " .. data)
+      local exec_cmd = remote_commands[string.sub(data, 1, 1)]
+      if exec_cmd then exec_cmd(string.sub(data, 2)) end
    end
 )
