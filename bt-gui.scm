@@ -94,7 +94,7 @@
     (when (close-file)
       ;; TODO not sure if not using tk/safe-dialogue is a good idea here, keep
       ;; an eye on it
-      (print) ;; work-around for freeze-up after closing current module view
+      (sleep 1) ;; work-around for freeze-up after closing current module view
       (let ((filename (tk/get-open-file
   		       filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}})))
 	(unless (string-null? filename)
