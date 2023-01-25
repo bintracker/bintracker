@@ -161,7 +161,7 @@
   			(map (lambda (line)
   			       (append '(#xf5 #x22) ; PRINT "
   				       (map char->integer (string->list line))
-  				       '(#x22))) ; "
+  				       '(#x22 #x3a))) ; ":
   			     (string-split text "\n"))
   			'())
   		    ;; RANDOMIZE USR VAL "nnnnn"
