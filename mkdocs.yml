@@ -12,26 +12,35 @@ theme:
   favicon: 'assets/images/favicon.png'
   language: en
   palette:
-    primary: teal
-    accent: cyan
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   logo: 'assets/images/logo.svg'
-  feature:
-    tabs: false
+  features:
+    - navigation.footer
   include_search_page: false
   search_index_only: true
   static_templates:
     - 404.html
 
-extra:
-  hljs_languages:
-    - scheme
+# extra:
+#   hljs_languages:
+#     - scheme
 
 plugins:
   - search
-  - localsearch
-
-extra_javascript:
-  - search/search_index.js
+  - offline
 
 site_dir: 'build/documentation'
 
@@ -89,6 +98,10 @@ nav:
   - "Fan Art": fanart.md
 
 markdown_extensions:
-  - codehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 
-use_directory_urls: False
+use_directory_urls: false
