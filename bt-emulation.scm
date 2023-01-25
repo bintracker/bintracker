@@ -82,40 +82,48 @@
 			   (lambda (in out pid)
 			     (set! emul-pid pid)))))))
 
-	      (send-command (lambda (cmd)
-			      (when emul-started
-				(write-line cmd emul-output-port))))
+	      (shutdown-emul-process
+	       (lambda ()
+		 (when emul-started
+		   (thread-specific-set! tcp-listener-thread 'stop)
+		   (thread-join! tcp-listener-thread)
+		   (close-input-port emul-input-port)
+		   (close-output-port emul-output-port)
+		   (set! emul-input-port #f)
+		   (set! emul-output-port #f)
+		   (set! emul-started #f))))
 
-	      (start-emul (lambda ()
-			    (launch-emul-process)
-			    (sleep 1)
-			    (let-values (((in out)
-					  (tcp-connect "localhost" 4321)))
-				    (set! emul-output-port out)
-				    (set! emul-input-port in))
-			    (set! tcp-listener-thread
-			      (make-thread run-tcp-listener))
-			    (thread-start! tcp-listener-thread)
-			    (set! emul-started #t))))
+	      (send-command
+	       (lambda (cmd)
+		 (when emul-started
+		   (condition-case (write-line cmd emul-output-port)
+		     (exn (exn i/o net)
+			  (begin
+			    (print-error-message
+			     exn
+			     (current-output-port)
+			     "Error: Connection to emulator lost")
+			    (shutdown-emul-process)))))))
+
+	      (start-emul
+	       (lambda ()
+		 (launch-emul-process)
+		 (sleep 1)
+		 (let-values (((in out)
+			       (tcp-connect "localhost" 4321)))
+		   (set! emul-output-port out)
+		   (set! emul-input-port in))
+		 (set! tcp-listener-thread (make-thread run-tcp-listener))
+		 (thread-start! tcp-listener-thread)
+		 (set! emul-started #t))))
+
       (lambda args
 	(case (car args)
 	  ((info) (send-command "i"))
 	  ((start) (unless emul-started (start-emul)))
 	  ((quit) (when emul-started
 		    (send-command "q")
-		    ;; (call-with-values
-		    ;; 	(lambda () (process-wait emul-pid))
-		    ;;   (lambda args
-		    ;; 	(unless (cadr args)
-		    ;; 	  (warning "Emulator process exited abnormally"))))
-		    ;; TODO exn handling
-		    (thread-specific-set! tcp-listener-thread 'stop)
-		    (thread-join! tcp-listener-thread)
-		    (close-input-port emul-input-port)
-		    (close-output-port emul-output-port)
-		    (set! emul-input-port #f)
-		    (set! emul-output-port #f)
-		    (set! emul-started #f)))
+		    (shutdown-emul-process)))
 	  ((pause) (send-command "p"))
 	  ((unpause) (send-command "u"))
 	  ((run) (send-command
