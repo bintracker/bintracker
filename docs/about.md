@@ -50,7 +50,7 @@ Bintracker does not handle emulation itself. Instead, it relies on [MAME™](htt
 
 ## Security Advice
 
- Bintracker is by not a *safe* tool, due to incorporating a fully featured programming language interpreter. If you are concerned about system integrity, you should consider running Bintracker in a container or virtual machine.
+Bintracker is an *unsafe* tool, due to incorporating a fully featured programming language interpreter. If you are concerned about system integrity, you should consider running Bintracker in a container or virtual machine.
 
 
 
