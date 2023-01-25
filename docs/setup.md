@@ -1,5 +1,28 @@
 # Setup
 
+## Installation
+
+Currently, binaries are only provided for Windows. Linux and MacOS users need to [compile Bintracker from source](#compiling-from-source).
+
+### Windows
+
+#### Full Package
+
+The full package contains all the required dependencies to run Bintracker, except the ROM files for MAME emulation.
+
+Simply extract `bintracker-win64-full.zip` to a directory of your choice. Next, add ROM files for all the machines you want to use to `bintracker\roms`. ROMs for each machine go into a subfolder named exactly as the machine is named on MAME (so, `spectrum` for ZX Spectrum 48k, `a2600` for Atari 2600/VCS, and so forth). You can check the names and find the list of required ROM files in the [Arcade Database](http://adb.arcadeitalia.net/).
+
+Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
+
+#### Core Package
+
+The core package contains only Bintracker itself, without the MAME emulator and the Tclkit utility. Use this if you already have MAME installed.
+
+Extract `bintracker-win64-core.zip` to a directory of your choice. Download [Tclkit 8.6 for Windows 64-bit](https://tclkits.rkeene.org/fossil/wiki/Downloads). Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Now, adjust `bintracker\config\emulators.windows.scm`, where `program-name` is the path to your `mame.exe` and `"roms"` is the path to your MAME ROM directory.
+
+Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
+
+
 ## Compiling from Source
 
 Currently the only verified way to run Bintracker is to build it from the source code.
@@ -16,7 +39,7 @@ The following dependencies are required to build Bintracker:
 
 To build the Bintracker documentation, the following additonal dependencies are required:
 
-- Mkdocs + Mkdocs-material + Mkdocs-localsearch
+- Mkdocs + Mkdocs-material
 - scm2wiki
 
 First, obtain the source:
@@ -25,7 +48,7 @@ First, obtain the source:
 $ git clone https://github.com/bintracker/bintracker.git
 ```
 
-Next,install [Chicken Scheme](https://call-cc.org), version 5.0 or newer. Chicken is available through most distro package repositories. However, for advanced users we recommend to build it from source and do a user install.
+Next, install [Chicken Scheme](https://call-cc.org), version 5.0 or newer. Chicken is available through most distro package repositories. However, for advanced users we recommend to build it from source and do a user install.
 
 After installing Chicken itself, you need to install the extensions required by Bintracker.
 
@@ -34,14 +57,13 @@ $ chicken-install args base64 bitstring comparse coops list-utils matchable pstk
 ```
 
 Note that in order to build the sqlite3 extension, you need an [sqlite3](https://sqlite.org) installation. Your system most likely will have one installed already, but if not, install it through your distro's package manager.
-
-To build the Bintracker documentation, you will need [scm2wiki](https://github.com/utz82/scm2wiki), [MkDocs](https://www.mkdocs.org/), the [mkdocs-material](https://github.com/squidfunk/mkdocs-material) theme, and the [mkdocs-localsearch](https://github.com/wilhelmer/mkdocs-localsearch) extension.
+To build the Bintracker documentation, you will need [scm2wiki](https://github.com/utz82/scm2wiki), [MkDocs](https://www.mkdocs.org/), and the [mkdocs-material](https://github.com/squidfunk/mkdocs-material) theme.
 
 ```sh
 git clone https://github.com/utz82/scm2wiki.git
 cd scm2wiki
 chicken-install
-$ pip install --user mkdocs mkdocs-material mkdocs-localsearch==0.5.0
+$ pip install --user mkdocs mkdocs-material
 ```
 
 
@@ -104,15 +126,367 @@ Next, install the srfi-18 egg with
 
 Running this the first time will fail because of a problem with the build script. In `C:\Users\<your-username>\AppData\Local\chicken-install\srfi-18\build-srfi-18.bat`, replace `%CHICKEN_CSI%` with `csi` and `%CHICKEN_CSC%` with `csc`. Then, run the above install command again.
 
+Next, install the check-errors egg with
+
+```
+% /c/tools/chicken/bin/chicken-install.exe check-errors
+```
+
+This will likely crash near the end, breaking `chicken-install` in the process. To fix this, create a file named `check-errors.egg-info` in `C:\tools\chicken\lib\chicken\11`, and paste the following contents into it:
+
+```
+((installed-files
+   "C:/tools/chicken/lib/chicken/11/check-errors.sys.obj"
+   "C:/tools/chicken/lib/chicken/11/check-errors.sys.link"
+   "C:/tools/chicken/lib/chicken/11/check-errors.sys.so"
+   "C:/tools/chicken/lib/chicken/11/check-errors.sys.types"
+   "C:/tools/chicken/lib/chicken/11/check-errors.sys.inline"
+   "C:/tools/chicken/lib/chicken/11/check-errors.sys.import.so"
+   "C:/tools/chicken/lib/chicken/11/check-errors.obj"
+   "C:/tools/chicken/lib/chicken/11/check-errors.link"
+   "C:/tools/chicken/lib/chicken/11/check-errors.so"
+   "C:/tools/chicken/lib/chicken/11/check-errors.types"
+   "C:/tools/chicken/lib/chicken/11/check-errors.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors.import.so"
+   "C:/tools/chicken/lib/chicken/11/check-errors.basic.obj"
+   "C:/tools/chicken/lib/chicken/11/check-errors.basic.link"
+   "C:/tools/chicken/lib/chicken/11/check-errors.basic.so"
+   "C:/tools/chicken/lib/chicken/11/check-errors.basic.types"
+   "C:/tools/chicken/lib/chicken/11/check-errors.basic.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-basic.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-basic.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-basic.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-basic.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-basic.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-basic.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-basic.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-basic.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-basic.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-basic.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-atoms.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-atoms.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-atoms.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-atoms.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-atoms.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-atoms.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-atoms.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-atoms.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-atoms.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-atoms.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.interval.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.interval.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.interval.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.interval.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.interval.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.interval.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.interval.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.interval.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.interval.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.interval.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.scheme.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.scheme.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.scheme.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.scheme.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.scheme.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.scheme.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.scheme.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.scheme.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.scheme.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.scheme.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.number.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.number.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.number.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.number.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.number.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.number.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.number.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.number.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.number.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.number.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.fixnum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.fixnum.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.fixnum.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.fixnum.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.fixnum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.fixnum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.fixnum.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.fixnum.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.fixnum.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.fixnum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.integer.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.integer.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.integer.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.integer.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.integer.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.integer.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.integer.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.integer.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.integer.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.integer.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.bignum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.bignum.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.bignum.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.bignum.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.bignum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.bignum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.bignum.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.bignum.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.bignum.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.bignum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.ratnum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.ratnum.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.ratnum.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.ratnum.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.ratnum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.ratnum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.ratnum.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.ratnum.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.ratnum.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.ratnum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.flonum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.flonum.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.flonum.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.flonum.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.flonum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.flonum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.flonum.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.flonum.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.flonum.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.flonum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.cplxnum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.cplxnum.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.cplxnum.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.cplxnum.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-numbers.cplxnum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.cplxnum.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.cplxnum.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.cplxnum.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.cplxnum.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-numbers.cplxnum.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-structured.obj"
+   "C:/tools/chicken/lib/chicken/11/type-checks-structured.link"
+   "C:/tools/chicken/lib/chicken/11/type-checks-structured.so"
+   "C:/tools/chicken/lib/chicken/11/type-checks-structured.types"
+   "C:/tools/chicken/lib/chicken/11/type-checks-structured.import.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-structured.obj"
+   "C:/tools/chicken/lib/chicken/11/type-errors-structured.link"
+   "C:/tools/chicken/lib/chicken/11/type-errors-structured.so"
+   "C:/tools/chicken/lib/chicken/11/type-errors-structured.types"
+   "C:/tools/chicken/lib/chicken/11/type-errors-structured.import.so"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-checks.obj"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-checks.link"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-checks.so"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-checks.types"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-checks.import.so"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-errors.obj"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-errors.link"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-errors.so"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-errors.types"
+   "C:/tools/chicken/lib/chicken/11/srfi-4-errors.import.so")
+ (version "3.6.1")
+ (synopsis "Argument checks & errors")
+ (version "3.6.1")
+ (category misc)
+ (license "BSD")
+ (author "Kon Lovett")
+ (test-dependencies test)
+ (component-options
+   (csc-options
+     "-O3"
+     "-d1"
+     "-strict-types"
+     "-no-procedure-checks"
+     "-no-bound-checks"))
+ (components
+   (extension check-errors.sys (types-file) (inline-file))
+   (extension
+     check-errors
+     (types-file)
+     (component-dependencies type-checks srfi-4-checks))
+   (extension
+     type-checks
+     (types-file)
+     (component-dependencies
+       type-errors
+       type-checks-basic
+       type-checks-atoms
+       type-checks-structured))
+   (extension
+     type-errors
+     (types-file)
+     (component-dependencies
+       type-errors-basic
+       type-errors-atoms
+       type-errors-structured))
+   (extension
+     check-errors.basic
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-basic))
+   (extension
+     type-checks-basic
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension type-errors-basic (types-file))
+   (extension
+     type-checks-atoms
+     (types-file)
+     (component-dependencies
+       type-checks-basic
+       type-checks-numbers
+       type-errors-atoms))
+   (extension
+     type-errors-atoms
+     (types-file)
+     (component-dependencies type-errors-basic type-errors-numbers))
+   (extension
+     type-checks-numbers
+     (types-file)
+     (component-dependencies
+       type-checks-basic
+       type-errors-numbers
+       type-checks-numbers.interval
+       type-checks-numbers.scheme
+       type-checks-numbers.number
+       type-checks-numbers.fixnum
+       type-checks-numbers.integer
+       type-checks-numbers.bignum
+       type-checks-numbers.ratnum
+       type-checks-numbers.flonum
+       type-checks-numbers.cplxnum))
+   (extension
+     type-errors-numbers
+     (types-file)
+     (component-dependencies
+       type-errors-basic
+       type-errors-numbers.interval
+       type-errors-numbers.scheme
+       type-errors-numbers.number
+       type-errors-numbers.fixnum
+       type-errors-numbers.integer
+       type-errors-numbers.bignum
+       type-errors-numbers.ratnum
+       type-errors-numbers.flonum
+       type-errors-numbers.cplxnum))
+   (extension
+     type-checks-numbers.interval
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.interval))
+   (extension
+     type-errors-numbers.interval
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.scheme
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.scheme))
+   (extension
+     type-errors-numbers.scheme
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.number
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.number))
+   (extension
+     type-errors-numbers.number
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.fixnum
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.fixnum))
+   (extension
+     type-errors-numbers.fixnum
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.integer
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.integer))
+   (extension
+     type-errors-numbers.integer
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.bignum
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.bignum))
+   (extension
+     type-errors-numbers.bignum
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.ratnum
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.ratnum))
+   (extension
+     type-errors-numbers.ratnum
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.flonum
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.flonum))
+   (extension
+     type-errors-numbers.flonum
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-numbers.cplxnum
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-numbers.cplxnum))
+   (extension
+     type-errors-numbers.cplxnum
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     type-checks-structured
+     (types-file)
+     (component-dependencies type-checks-basic type-errors-structured))
+   (extension
+     type-errors-structured
+     (types-file)
+     (component-dependencies type-errors-basic))
+   (extension
+     srfi-4-checks
+     (types-file)
+     (component-dependencies type-checks-basic srfi-4-errors))
+   (extension
+     srfi-4-errors
+     (types-file)
+     (component-dependencies type-errors-basic))))
+```
+
 Now, install the remaining dependencies with
 
 ```
 % /c/tools/chicken/bin/chicken-install.exe args base64 bitstring comparse coops list-utils matchable pstk simple-md5 sqlite3 stb-image stb-image-write srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 shell stack test typed-records web-colors
 ```
 
+
 #### Step 3 - Get source code and runtime dependencies
 
 Download the Bintracker [source code](https://github.com/bintracker/bintracker/archive/refs/heads/master.zip) and unpack it to a directory of your choice. Next, download Tclkit 8.6 for Windows 64-bit from https://tclkits.rkeene.org/fossil/wiki/Downloads . Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Then, download the latest MAME release from https://github.com/mamedev/mame/releases and unpack the self-extracting archive to `bintracker\3rdparty\mame`.
+
 
 #### Step 4 - Build Bintracker
 
@@ -122,7 +496,7 @@ In a Powershell, navigate to `bintracker\build`, and run
 > make -f .\Makefile.msys
 ```
 
-Finally, copy `C:\tools\msys64\usr\bin\msys-2.0.dll` to `bintracker\build`. That's all. Unfortunately, building the documentation on Windows is not supported, just use the [online documentation](https://bintracker.org/documentation) instead.
+Finally, copy `C:\tools\msys64\usr\bin\msys-2.0.dll` and `C:\tools\msys64\usr\bin\libsqlite3-0.dll` to `bintracker\build` in order to package an executable release from the build directory. That's all. Building the documentation on Windows is untested, but should work in the same way as on Linux. Otherwise just use the [online documentation](https://bintracker.org/documentation) instead.
 
 
 ### MacOS, BSD
