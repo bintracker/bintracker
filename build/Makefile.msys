@@ -172,7 +172,7 @@ TAGS: $(BT_SRC)bt-types.scm\
 
 .PHONY: mame-bridge
 mame-bridge:
-	copy ..\\mame-bridge mame-bridge
+	xcopy /y /s /i ..\\mame-bridge mame-bridge
 
 .PHONY: config
 config:
@@ -197,7 +197,7 @@ plugin-docs:
 
 .PHONY: resources
 resources:
-	xcopy /y /s /i ..\\resources\icons resources\
+	xcopy /y /s /i ..\\resources\icons resources\icons\
 
 .PHONY: aux-files
 aux-files:
