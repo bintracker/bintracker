@@ -105,17 +105,32 @@
 			     "Error: Connection to emulator lost")
 			    (shutdown-emul-process)))))))
 
+	      (connect-emul
+	       (lambda (#!optional (tries 1))
+		 (if (= tries 3)
+		     (warning "Could not connect to emulator")
+		     (condition-case
+			 (begin
+			   (let-values (((in out)
+					 (tcp-connect "localhost" 4321)))
+			     (set! emul-output-port out)
+			     (set! emul-input-port in))
+			   (set! tcp-listener-thread
+			     (make-thread run-tcp-listener))
+			   (thread-start! tcp-listener-thread)
+			   (set! emul-started #t))
+		       ((exn i/o net)
+			(begin
+			  (print
+			   "Attempt " tries ": Failed to connect to emulator")
+			  (sleep 1)
+			  (connect-emul (+ tries 1))))))))
+
 	      (start-emul
 	       (lambda ()
 		 (launch-emul-process)
 		 (sleep 1)
-		 (let-values (((in out)
-			       (tcp-connect "localhost" 4321)))
-		   (set! emul-output-port out)
-		   (set! emul-input-port in))
-		 (set! tcp-listener-thread (make-thread run-tcp-listener))
-		 (thread-start! tcp-listener-thread)
-		 (set! emul-started #t))))
+		 (connect-emul))))
 
       (lambda args
 	(case (car args)
