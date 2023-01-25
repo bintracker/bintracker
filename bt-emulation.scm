@@ -116,7 +116,13 @@
 			     (set! emul-output-port out)
 			     (set! emul-input-port in))
 			   (set! tcp-listener-thread
-			     (make-thread run-tcp-listener))
+			     (make-thread
+			      (lambda ()
+				;; tcp-read-timeout is thread local, and tcp
+				;; shutdown is managed from outside this thread
+				;; so disabling timeouts should be safe
+				(tcp-read-timeout #f)
+				run-tcp-listener)))
 			   (thread-start! tcp-listener-thread)
 			   (set! emul-started #t))
 		       ((exn i/o net)
