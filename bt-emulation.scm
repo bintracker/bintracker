@@ -106,7 +106,7 @@
 			    (shutdown-emul-process)))))))
 
 	      (connect-emul
-	       (lambda (#!optional (tries 1))
+	       (lambda (#!optional (tries 0))
 		 (if (= tries 3)
 		     (warning "Could not connect to emulator")
 		     (condition-case
@@ -127,8 +127,9 @@
 			   (set! emul-started #t))
 		       ((exn i/o net)
 			(begin
-			  (print
-			   "Attempt " tries ": Failed to connect to emulator")
+			  (print "Attempt "
+				 (+ 1 tries)
+				 ": Failed to connect to emulator")
 			  (sleep 1)
 			  (connect-emul (+ tries 1))))))))
 
