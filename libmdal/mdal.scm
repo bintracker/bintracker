@@ -4,6 +4,7 @@
 
 (module mdal
     (mmod->file
+     write-mmod
      mod-compile
      mod->asm
      mod->bin
@@ -100,19 +101,21 @@
 		    ((group) (mod-group-instance-contents->node-expr
 			      node-id (cddr instance) mdef))))))
 
+  (define (write-mmod mod #!optional (port (current-output-port)))
+    (pp (append (list 'mdal-module 'version: mdal-version
+		      'mdef: (mmod-mdef-id mod)
+		      'engine-version:
+		      (engine-version->real
+		       (mdef-engine-version (car mod))))
+		(mod-group-instance-contents->node-expr
+		 'GLOBAL (cddr (cadr (mmod-global-node mod)))
+		 (mmod-mdef mod)))
+	port))
+
   ;;; Write the MDAL module MOD to an .mdal file.
   (define (mmod->file mod filename)
-    (call-with-output-file filename
-      (lambda (port)
-	(pp (append (list 'mdal-module 'version: mdal-version
-			  'mdef: (mmod-mdef-id mod)
-			  'engine-version:
-			  (engine-version->real
-			   (mdef-engine-version (car mod))))
-		    (mod-group-instance-contents->node-expr
-		     'GLOBAL (cddr (cadr (mmod-global-node mod)))
-		     (mmod-mdef mod)))
-	    port))))
+    (with-output-to-file filename
+      (lambda () (write-mmod mod))))
 
   ;;; Compile a module to an onode tree.
   (define (mod-compile mod origin #!key output-asm (extra-symbols '()))

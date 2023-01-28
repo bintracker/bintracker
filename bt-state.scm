@@ -545,22 +545,26 @@
   ;;; Return a string representing a human-readable representation of the
   ;;; exception object EXN.
   (define (exn->message exn)
-    (string-append (->string exn)
-		   (with-output-to-string
-		     (lambda () (print-error-message exn)))))
+    (with-output-to-string
+      (lambda () (print-error-message exn))))
 
   ;;; Write a log file with information on the current crash. Returns the
   ;;; filename of the log file.
-  (define (write-crash-log exn)
+  (define (write-crash-log exn #!key stack-trace mmod-dump)
     (let ((filename (string-append "crash-" (now) ".log")))
       (with-output-to-file
 	  filename
 	(lambda ()
-	  (print (exn->message exn)
+	  (print "\nBintracker version: " *bintracker-version*
 		 "\nOS: " (software-version)
 		 "\nArchitecture: " (machine-type)
 		 "\nChicken version: " (chicken-version #t)
-		 "\n\n")))
+		 "\n\n"
+		 (exn->message exn)
+		 "\n"
+		 (or stack-trace "")
+		 "\n"
+		 (or mmod-dump ""))))
       filename))
 
   ) ;; end module bt-state

@@ -83,7 +83,7 @@
 
   (import scheme (chicken base) (chicken string) (chicken format)
 	  (chicken io) (chicken platform) (chicken module) (chicken bitwise)
-	  (chicken condition) (chicken sort)
+	  (chicken condition) (chicken sort) (chicken port)
 	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 typed-records
 	  md-helpers md-types md-command md-note-table md-audio schemta)
   (reexport md-command md-note-table md-audio schemta)
@@ -2178,7 +2178,14 @@
 		     (append (asm 'symbols) extra-symbols (cadr res)))
 		(asm 'assemble 6)
 		(or (asm 'result)
-		    (error 'mdal-compiler "Failed to compile module."))))))))
+		    (abort (make-property-condition
+			    'exn
+			    'location
+			    'mdal-compiler
+			    'message
+			    "Failed to compile module"
+			    'stack
+			    (with-output-to-string print-call-chain))))))))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### MDEF Parser

@@ -8,7 +8,7 @@
 
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
-	  (chicken file) (chicken random) (chicken condition)
+	  (chicken file) (chicken random) (chicken condition) (chicken port)
 	  srfi-1 srfi-13 srfi-14 srfi-18 srfi-69
 	  pstk typed-records matchable list-utils comparse coops sqlite3
 	  bitstring
@@ -18,7 +18,7 @@
   (reexport mdal pstk bt-maths bt-types bt-state bt-db bt-emulation bt-gui
 	    (chicken base) (chicken string) (chicken module) (chicken bitwise)
 	    (chicken file) (chicken platform) (chicken random) (chicken io)
-	    (chicken condition)
+	    (chicken condition) (chicken port)
   	    srfi-1 srfi-13 srfi-14 srfi-18 srfi-69 coops list-utils
 	    bitstring comparse
 	    (only sqlite3 execute))

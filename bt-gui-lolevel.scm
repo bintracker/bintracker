@@ -185,11 +185,12 @@
   ;;; error on the active text-to-speech utility, if any. PROLOGUE will be
   ;;; prepended to the exception message.
   (define (report-exception exn prologue)
-    (text-to-speech
-     (string-append prologue ": " (sanitize-string-for-speech (->string exn))))
-    (tk/message-box* title: "Error"
-      		     detail: (string-append prologue ":\n\n" (exn->message exn))
-      		     type: 'ok))
+    (let ((message (exn->message exn)))
+      (text-to-speech
+       (string-append prologue ": " (sanitize-string-for-speech message)))
+      (tk/message-box* title: "Error"
+      		       detail: (string-append prologue "\n\n" message)
+      		       type: 'ok)))
 
   ;;; Display a message box that asks the user whether to save unsaved changes
   ;;; before exiting or closing. EXIT-OR-CLOSING should be the string
