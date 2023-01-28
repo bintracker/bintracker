@@ -1,6 +1,6 @@
 # Quickstart Tutorial
 
-In this tutorial, we will create a simple track for the Quattropic 1-bit engine for the ZX Spectrum beeper. We will only touch on some very basic features of Bintracker. For a deeper dive, refer to the [User Manual](about.md).
+In this tutorial, we will create a simple track for the Quattropic 1-bit engine for the ZX Spectrum beeper. We will only touch on some basic features of Bintracker. For a deeper dive, refer to the remainder of this [User Manual](about.md).
 
 ## Words of Caution
 
@@ -21,7 +21,7 @@ There is currently no easy path to setting up Bintracker. For now, you'll have t
 
 ## Startup
 
-Launch Bintracker by double-clicking the `bintracker` executable in the `build` directory, or launch it from the command line. The second option will allow you to see debug messages and low level errors, which is helpful when you're trying to figure out why Bintracker crashes.
+Launch Bintracker by double-clicking the `bintracker` executable, or launch it from the command line. The second option will allow you to see debug messages and low level errors, which is helpful when you're trying to figure out why Bintracker crashes.
 
 On startup, Bintracker greets you with this welcome screen:
 

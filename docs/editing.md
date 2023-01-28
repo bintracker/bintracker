@@ -1,5 +1,7 @@
 # Editing Modules
 
+**TODO** This chapter is incomplete, and does not contain much useful information yet. For the time being, refer to the [Quickstart Tutorial](quickstart.md) instead.
+
 
 ## Preface
 
@@ -7,7 +9,7 @@
 
 At a basic level, Bintracker is quite similar to other chiptune trackers. If you have used any modern tracker like Famitracker, OpenMPT, or TIAtracker, you will probably feel right at home. There are, however, a few notable differences.
 
-- Bintracker is a meta-tracker, meaning it supports different sound engines on various platforms. How the Bintracker interface looks depends largely on the sound engine you use. Some engines may have a very unusual layout that is not very tracker-like.
+- Bintracker is a meta-tracker, meaning it supports different sound engines on various platforms. How the Bintracker interface looks depends largely on the sound engine you use. Some engines may have an unusual layout that is not very tracker-like.
 
 - The concept of "pattern length", eg. the idea of a pattern consisting of a given number of rows, does not exist in Bintracker. Patterns (as well as any other block types such as effects tables) are endless by default. You use the sequence to control pattern lengths.
 
@@ -17,8 +19,7 @@ At a basic level, Bintracker is quite similar to other chiptune trackers. If you
 
 - Conceptually, there is no distinction between patterns, effects tables, samples, or other structures that hold recurring data. However, this has few practical consequences. Most importantly, this means that copying data between different structures is always possible in Bintracker, as long as the source and target use a compatible atomic datatype. For example, you can freely copy data from patterns to effects tables and vice versa. You can even do crazy things like copying data from a sample to a sequence.
 
-- Bintracker auto-optimizes the song data, which means you do not need to worry about optimizing for size. In fact, it most likely will not have the intended effect: The MDAL module structure is virtual, which means there is no 1:1 correspondence between what you see in Bintracker, and what the target sound engine uses.
-
+- Bintracker auto-optimizes the song data, which means you do not need to worry about optimizing for size. In fact, it most likely will not have the intended effect: The MDAL module structure is virtual, which means there is no 1:1 correspondence between what you see in Bintracker, and what the target sound engine uses. **TODO** Auto-optimization is not implemented yet.
 
 ### Security Advice
 

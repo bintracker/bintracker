@@ -7,7 +7,7 @@ Making music on sound chips is a process strongly shaped by limitations. Bintrac
 
 ### Comprehensive Platform Support
 
-Bintracker aims to be a Swiss Army Knife of Chipmusic, allowing musicians to utilize a wide range of platforms and music engines through a single tool. This means providing support for as many 8- and 16-bit computers and consoles as possible, and supporting various different sound drivers on these platforms. The range of supported chiptune drivers and target platforms can be easily extended. Eventually, Bintracker will extend support beyond the home computer era to include historical mainframe and minicomputers, as well as modern micro-controllers. A special place is reserved for "underdog" platforms, that is, uncommon platforms that are not supported by any other modern music editor.
+Bintracker aims to be a Swiss Army Knife of Chipmusic, allowing musicians to utilize a wide range of platforms and music engines through a single tool. This means providing support for as many 8- and 16-bit computers and consoles as possible, and multiple different sound drivers on these platforms. The range of supported chiptune drivers and target platforms can be easily extended. Eventually, Bintracker will extend support beyond the home computer era to include historical mainframe and minicomputers, as well as modern micro-controllers. A special place is reserved for "underdog" platforms, that is, uncommon platforms that are not supported by any other modern music editor.
 
 
 ### A Power Tool for Chipmusic Composers
@@ -17,7 +17,7 @@ While Bintracker should be easy enough to pick up even for chipmusic beginners, 
 
 ### Tracker Evolution
 
-Bintracker is not a tracker, it is a live programming environment running a tracker application by default. It is also a laboratory for experimenting with the core elements of trackers interfaces and trying out new ideas and concepts.
+Bintracker is not a tracker, it is a live programming environment running a tracker application by default. It is also a laboratory for experimenting with tracker interfaces and trying out new ideas and concepts.
 
 
 ### Digital History Exploration

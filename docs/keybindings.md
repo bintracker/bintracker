@@ -124,10 +124,10 @@ Key              | Function
 -----------------|----------------------------------------
 `Return`         | Evaluate command
                  |
-`Ctrl-L`         | Clear REPL
+`Ctrl l`         | Clear REPL
                  |
-`Alt-P`          | Get previous command from history
-`Alt-N`          | Get next command from history
+`Alt p`          | Get previous command from history
+`Alt n`          | Get next command from history
 
 There are a number of bindings that are not yet configurable. These are mostly standard shortcuts used by any modern text editor, ie. `Shift` + arrow keys selects, `Ctrl-C`/`Ctrl-X`/`Ctrl-V` copies/cuts/pastes, and so on.
 
@@ -137,5 +137,5 @@ These bindings assume you have a screen reader enabled in [`config.scm`](configu
 
 Key              | Function
 -----------------|----------------------------------------
-`Alt-W`          | Report value under cursor (what?)
-`Alt-Shift-W`    | Report location of cursor (where?)
+`Alt w`          | Report value under cursor (what?)
+`Alt Shift w`    | Report location of cursor (where?)

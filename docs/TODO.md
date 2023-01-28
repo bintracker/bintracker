@@ -18,7 +18,7 @@ This list may be out of date. As a general rule of thumb, check back with us bef
 ### Discovery
 
 - **Display favorite MDEFs and recently used MMODs in welcome buffer**
-- **Internal documentation system**. The plan is to make the `info` command the central entry point to the internal help/documentation system. Internal documentation will draw from various sources (Bintracker source, keybinding info, MDEFs, plugins...). The internal doc system should be extensible, so plugins could collect further documentation from external sources (CPU instruction sets, hardware specifications, etc.)
+- **Internal documentation system**. The plan is to make the `info` command the central entry point to the internal help/documentation system. Internal documentation will draw from various sources (Bintracker source, keybinding info, MDEFs, plugins...). The internal doc system should be extendable, so plugins could collect further documentation from external sources (CPU instruction sets, hardware specifications, etc.)
 
 ### Design
 
@@ -29,7 +29,7 @@ This list may be out of date. As a general rule of thumb, check back with us bef
 - Porous Paste Over (like Paste Over, but do not paste the empty steps, ie. if there is no value on a given row in the data that's pasted, then the old data is preserved)
 - Porous Paste Under (the inverse version of Porous Paste Over - paste over the old data, but only paste on rows that are empty in the old data).
 
-Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea, OpenIconic) won't be of any help either, if anything they're even less complete. So there are basically two options: Either derive the missing icons from existing Material Design ones, or design a completely new, custom set of icons.
+Other icon sets we've looked into so far (Feather, FontAwesome, IonIcons, Linea, OpenIconic) won't be of any help either, if anything they're even more lacking. So there are basically two options: Either derive the missing icons from existing Material Design ones, or design a completely new, custom set of icons.
 
 
 ### Accessibility

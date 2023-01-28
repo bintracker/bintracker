@@ -16,16 +16,10 @@ theme:
       scheme: slate
       primary: teal
       accent: deep purple
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: teal
       accent: deep purple
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
   logo: 'assets/images/logo.svg'
   features:
     - navigation.footer
@@ -33,10 +27,6 @@ theme:
   search_index_only: true
   static_templates:
     - 404.html
-
-# extra:
-#   hljs_languages:
-#     - scheme
 
 plugins:
   - search
@@ -46,9 +36,9 @@ site_dir: 'build/documentation'
 
 nav:
   - Main: index.md
-  - Quickstart: quickstart.md
   - User Manual:
       - Introduction: about.md
+      - Quickstart: quickstart.md
       - Setup: setup.md
       - Configuration: configuration.md
       - "Key Bindings": keybindings.md
