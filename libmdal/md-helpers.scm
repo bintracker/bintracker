@@ -107,6 +107,7 @@
   ;;; Abort with an exception of kind `mdal`. WHERE is a string specifying
   ;;; a libmdal component, and MESSAGE is the error message to display.
   (define (mdal-abort message #!optional (where ""))
-    (abort (condition `(mdal where ,where message ,message))))
+    (abort (condition `(mdal where ,where message ,message)
+		      `(exn location ,where message message))))
 
   ) ;; end module md-helpers
