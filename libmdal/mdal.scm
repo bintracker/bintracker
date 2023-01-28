@@ -613,7 +613,18 @@
 				     order-ids)))
 			  `(,(car subnode)
 			    (0 #f
-			       ,(let* ((raw-contents
+			       ,(let* ((subnode-ids
+					(mdef-get-subnode-ids
+					 (car subnode)
+					 (mdef-itree mdef)))
+				       (repeat-mask
+					(map (lambda (id)
+					       (command-has-flag?
+						(mdef-get-inode-source-command
+						 id mdef)
+						'use-last-set))
+					     subnode-ids))
+				       (raw-contents
 					(cddr (inode-instance-ref
 					       (list-ref
 						order-pos
@@ -624,16 +635,13 @@
 						 order-ids))
 					       subnode)))
 				       (empty-row (make-list
-						   (length
-						    (mdef-get-subnode-ids
-						     (car subnode)
-						     (mdef-itree mdef)))
+						   (length subnode-ids)
 						   '()))
 				       (contents (if (null? raw-contents)
 						     (list empty-row)
 						     raw-contents))
 				       (rows (repeat-block-row-values
-					      contents)))
+					      contents repeat-mask)))
 				  (if (> (length rows) row)
 				      (list-ref rows row)
 				      empty-row))))))

@@ -102,15 +102,19 @@
   ;;; Given the contents of a block instance, return the contents such that
   ;;; empty fields are replaced with the last set value.
   ;;; Helper for `mod-get-order-values` and `derive-single-row-mmod`.
-  (define (repeat-block-row-values rows)
+  (define (repeat-block-row-values
+	   rows #!optional (repeat-mask (make-list (length (car rows)) #t)))
     (letrec ((repeat-values
 	      (lambda (rows previous-row)
 		(if (null-list? rows)
   		    '()
-		    (let ((new-row (map (lambda (pos previous-pos)
-  					  (if (null? pos)
-  					      previous-pos pos))
-  					(car rows) previous-row)))
+		    (let ((new-row (map (lambda (pos previous-pos do-repeat?)
+  					  (if (and do-repeat? (null? pos))
+  					      previous-pos
+					      pos))
+  					(car rows)
+					previous-row
+					repeat-mask)))
   		      (cons new-row (repeat-values (cdr rows) new-row)))))))
       (repeat-values rows (make-list (length (car rows))
 				     '()))))
