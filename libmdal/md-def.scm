@@ -1769,7 +1769,7 @@
   ;;;    iblock instances.
   ;;; 6. The pseudo block instances are passed to the field evaluators.
   (define (make-oblock proto-mdef mdef-dir path-prefix
-		       #!key id from resize nodes)
+		       #!key id from (resize #t) nodes)
     (let* ((asm-id (string->symbol (string-downcase (symbol->string id))))
 	   (parent-inode-id (car (mdef-get-node-ancestors-ids
 				  (car from) (mdef-itree proto-mdef))))
@@ -1797,12 +1797,16 @@
 	id: id
 	;; TODO: (mdef-group-ordered? parent-inode-id proto-mdef)
 	fn: (lambda (onode parent-inode mdef md-symbols)
-	      (let* ((parent (if (inode-config-block-length
-				  (mdef-inode-ref parent-inode-id mdef))
+	      (let* ((parent (if (or (not resize)
+				     (inode-config-block-length
+				      (mdef-inode-ref parent-inode-id mdef)))
 				 ;; do not resize if input block length is fixed
 				 parent-inode
-				 (resize-blocks parent-inode parent-inode-id
-						resize mdef)))
+				 (resize-blocks
+				  parent-inode
+				  parent-inode-id
+				  (and (fixnum? resize) resize)
+				  mdef)))
 		     (order-alist
 		      (make-order-alist (subnode-ref order-id parent)
 					source-block-ids mdef

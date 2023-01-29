@@ -281,12 +281,12 @@ MDEF defines the output element types [`asm`](#output-asm), [`field`](#output-fi
 
 Blocks wrap repeated occurances of their `field` subnodes. The set of subnodes is generated for each row of each instance the corresponding input blocks, taking into account the order of it's group parent.
 
-| keyword   | description                                                          |
-|-----------|----------------------------------------------------------------------|
-| `from:`   | A list of input block identifiers.                                   |
-| `id:`     | A unique identifier naming the symbol node.                          |
-| `resize:` | An integer specifying the size of the output data in rows. Optional. |
-| `nodes:`  | A list of child nodes.                                               |
+| keyword   | description                                                                                       |
+|-----------|---------------------------------------------------------------------------------------------------|
+| `from:`   | A list of input block identifiers.                                                                |
+| `id:`     | A unique identifier naming the symbol node.                                                       |
+| `resize:` | An integer specifying the size of the output data in rows, or `#f` to disable automatic resizing. |
+| `nodes:`  | A list of child nodes.                                                                            |
 
 Block child nodes are output `fields`, but instead of the `field` specifier, different specifiers are used to determine in which situation the field data is emitted.
 
