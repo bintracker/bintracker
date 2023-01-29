@@ -2132,6 +2132,27 @@
 	    source-tree)))
      "\n\n"))
 
+  ;;; Hacky solution for handling unresolved block references.
+  ;;; Check for block instances that are referenced but have not been defined.
+  ;;; Returns a list of dummy symbols that resolve these references.
+  (define (resolve-void-block-references symbols)
+    (let ((available-syms (map car symbols))
+	  (required-syms (delete-duplicates
+			  (filter (lambda (elem)
+				    (string-prefix? "md__oblock_"
+						    (->string elem)))
+				  (flatten symbols))
+			  eqv?)))
+      (filter-map (lambda (sym)
+		    (and (not (memv sym available-syms))
+			 (begin
+			   (warning (string-append "Unresolved reference to "
+						   (->string sym)))
+			   #t)
+			 `(,sym . 0)))
+		  required-syms)))
+
+
   ;;; Generate a compiler from the given output config expression.
   ;;; `proto-mdef` must be a mdef struct with all fields resolved
   ;;; except the mdef-comiler itself.
@@ -2174,18 +2195,24 @@
 		     (asm (if (alist-ref 'row-play extra-symbols)
 			      (rowplay-cache 'copy)
 			      (default-cache 'copy))))
-		(asm 'symbols
-		     (append (asm 'symbols) extra-symbols (cadr res)))
-		(asm 'assemble 6)
+		(asm 'symbols (append (asm 'symbols) extra-symbols (cadr res)))
+		(asm 'assemble 4)
+		(unless (asm 'result)
+		  (asm 'symbols
+		       (append (asm 'symbols)
+			       (resolve-void-block-references (asm 'symbols))))
+		  (asm 'assemble 3))
 		(or (asm 'result)
-		    (abort (make-property-condition
-			    'exn
-			    'location
-			    'mdal-compiler
-			    'message
-			    "Failed to compile module"
-			    'stack
-			    (with-output-to-string print-call-chain))))))))))
+		    (begin
+		      (print (asm 'symbols))
+		      (abort (make-property-condition
+			      'exn
+			      'location
+			      'mdal-compiler
+			      'message
+			      "Failed to compile module"
+			      'stack
+			      (with-output-to-string print-call-chain)))))))))))
 
   ;; ---------------------------------------------------------------------------
   ;;; ### MDEF Parser
