@@ -1,0 +1,134 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.0 target: channelf
+ description: "A four-channel music routine for the Channel F, with Squeeker-type synthesis, variable duty cycles and duty sweep, optional noise mode for channel 4, and interrupting, user-definable PWM drums.
+By utz 2019-2022."
+ default-origin: #x800
+
+ commands: ((command id: TICKS bits: 8 type: uint default: 4
+		     flags: (use-last-set is-ticks)
+		     description: "Ticks per row")
+	    (command id: DUTY bits: 6 type: uint default: #x10
+		     flags: (use-last-set is-duty)
+		     description: "Duty cycle (6-bit)")
+	    (command id: DMOD bits: 6 type: uint default: 0
+		     flags: (use-last-set)
+		     description: "Duty sweep speed (6-bit)")
+	    (command id: NOTE bits: 16 type: ukey
+		     flags: (enable-modifiers use-last-set is-note)
+		     keys: (make-dividers 480 16 0)
+		     default: rest)
+	    (command id: NOISE bits: 1 type: uint default: 0
+		     flags: (use-last-set)
+		     description: "Noise mode: 0 = disable, 1 = enable")
+	    (command id: DRUM bits: 4 type: reference reference-to: PERCUSSION
+		     default: 0 flags: (is-percussion)
+		     description: "Drum sample")
+	    (command id: DLEN bits: 8 type: uint default: 4
+		     flags: (use-last-set)
+		     description: "Drum length in ticks")
+	    (command id: PWM bits: 8 type: uint default: 0
+		     flags: (is-pwm-data)
+		     description: "PWM sample data"))
+
+ input: ((group id: PATTERNS flags: (ordered looped)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(block id: DRUMS nodes: ((field from: DRUM)
+						 (field from: DLEN)))
+			(clone 3 (block id: CH nodes: ((field from: NOTE)
+						       (field from: DUTY)
+						       (field from: DMOD))))
+			(block id: CH4 nodes: ((field id: NOTE4 from: NOTE)
+					       (field id: DUTY4 from: DUTY)
+					       (field id: DMOD4 from: DMOD)
+					       (field from: NOISE)))))
+	 (group id: PERCUSSION
+		nodes: ((block id: SAMPLES nodes: ((field from: PWM))))))
+
+ output: ((asm file: "sleizsa4.asm")
+	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
+	  (field bytes: 1 compose: 0)
+	  (field bytes: 2 compose: $mdal__order_patterns_loop)
+	  (group id: PATTERNS from: PATTERNS
+		 nodes: ((block id: CHANS from: (TEMPO DRUMS CH1 CH2 CH3 CH4)
+				nodes:
+				((repeat bytes: 1
+					 compose: (+ #x10
+						     (if ??NOTE1 1 0)
+						     (if ??NOTE2 2 0)
+						     (if ??NOTE3 4 0)
+						     (if ??NOTE4 8 0)))
+				 (repeat bytes: 1 condition: ??NOTE1
+					 compose: (lsb ?NOTE1))
+				 (repeat bytes: 1 condition: ??NOTE1
+					 compose: (msb ?NOTE1))
+				 (repeat bytes: 1 condition: ??NOTE2
+					 compose: (lsb ?NOTE2))
+				 (repeat bytes: 1 condition: ??NOTE2
+					 compose: (msb ?NOTE2))
+				 (repeat bytes: 1 condition: ??NOTE3
+					 compose: (lsb ?NOTE3))
+				 (repeat bytes: 1 condition: ??NOTE3
+					 compose: (msb ?NOTE3))
+				 (repeat bytes: 1 condition: ??NOTE4
+					 compose: (lsb ?NOTE4))
+				 (repeat bytes: 1 condition: ??NOTE4
+					 compose: (msb ?NOTE4))
+				 (repeat bytes: 1 condition: ??NOTE4
+					 compose: (if (= 1 ?NOISE) #xff 0))
+				 (repeat
+				  bytes: 1 compose:
+				  (+ (if (or pattern-start? ??DUTY1 ??DMOD1)
+					 1 0)
+				     (if (or pattern-start? ??DUTY2 ??DMOD2)
+					 2 0)
+				     (if (or pattern-start? ??DUTY3 ??DMOD3)
+					 4 0)
+				     (if (or pattern-start? ??DUTY4 ??DMOD4)
+					 8 0)))
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DUTY1 ??DMOD1)
+					 compose: ?DUTY1)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DMOD1 ??DUTY1)
+					 compose: ?DMOD1)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DUTY2 ??DMOD2)
+					 compose: ?DUTY2)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DMOD2 ??DUTY2)
+					 compose: ?DMOD2)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DUTY3 ??DMOD3)
+					 compose: ?DUTY3)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DMOD3 ??DUTY3)
+					 compose: ?DMOD3)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DUTY4 ??DMOD4)
+					 compose: ?DUTY4)
+				 (repeat bytes: 1
+					 condition:
+					 (or pattern-start? ??DMOD4 ??DUTY4)
+					 compose: ?DMOD4)
+				 (repeat bytes: 1 condition: ??DRUM
+					 compose: 0)
+				 (repeat bytes: 1 condition: ??DRUM
+					 compose:
+					 (if (< ?DLEN (* 2 ?TICKS))
+					     (lsb (- 0 ?DLEN))
+					     (lsb (sub1 (* 2 ?TICKS)))))
+				 (repeat bytes: 2 condition: ??DRUM
+					 compose: (symbolic-ref PWM ?DRUM))
+				 (repeat bytes: 1 compose: ?TICKS)
+				 (after bytes: 1 compose: 0)))))
+	  (group id: DRUMS from: PERCUSSION
+		 nodes: ((block id: PWM from: (SAMPLES) resize: #f
+				nodes: ((repeat bytes: 1 compose: ?PWM)
+					(after bytes: 1 compose: 0)))))))
