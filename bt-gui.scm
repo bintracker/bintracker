@@ -4162,16 +4162,16 @@
   (define-method (initialize-instance after: (buf <ui-subgroups>))
     (set! (slot-value buf 'tabs)
       ((slot-value buf 'content-box) 'create-widget 'notebook))
-    (tk/bind (slot-value buf 'tabs)
-	     '<<NotebookTabChanged>> ;; will also trigger on ui-show
-	     (lambda ()
-	       (when (slot-value buf 'tab-ids)
-		 (ui-set-focus buf
-			       (car (list-ref
-				     (slot-value buf 'subgroups)
-				     (list-index
-				      (cut string= <> (ui-get-selected-tab buf))
-				      (slot-value buf 'tab-ids))))))))
+    (tk/bind* (slot-value buf 'tabs)
+	      '<<NotebookTabChanged>> ;; will also trigger on ui-show
+	      (lambda ()
+		(when (slot-value buf 'tab-ids)
+		  (ui-set-focus
+		   buf
+		   (car (list-ref (slot-value buf 'subgroups)
+				  (list-index
+				   (cut string= <> (ui-get-selected-tab buf))
+				   (slot-value buf 'tab-ids))))))))
     (set! (slot-value buf 'subgroups)
       (map (lambda (id)
   	     (cons id (make <ui-group>
@@ -4220,8 +4220,8 @@
 			 (alist-ref subgroup-id (slot-value buf 'subgroups)))))
       (map (cut focus-controller 'hide <>) all-zones)
       (map (cut focus-controller 'unhide <>) active-zones)
-      (if (memv (car (focus-controller 'which)) all-zones)
-	  (focus-controller 'set (car active-zones)))))
+      (when (memv (car (focus-controller 'which)) all-zones)
+	(focus-controller 'set (car active-zones)))))
 
   ;;; Get the Tk ID of the currently active subgroup tab.
   (define-method (ui-get-selected-tab primary: (buf <ui-subgroups>))
