@@ -43,7 +43,16 @@ local machine_features = {
    coco3 = {},
    dragon32 = {},
    kc85_4 = {},
-   mz700 = {},
+   mz700 = {
+      post_load_actions = function ()
+	 -- set stack pointer to a safe address
+	 -- machine_manager.devices[":maincpu"].state["SP"].value = 0xfffe
+	 -- unfreeze Z80 emulation after halt instruction on newer MAME versions
+	 if machine_manager.devices[":maincpu"].state["HALT"] ~= nil then
+	    machine_manager.devices[":maincpu"].state["HALT"].value = 0
+	 end
+      end
+   },
    spectrum = {
       post_load_actions = function ()
 	 -- set stack pointer to a safe address
