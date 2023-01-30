@@ -8,9 +8,7 @@ Currently, binaries are only provided for Windows. Linux and MacOS users need to
 
 #### Full Package
 
-The full package contains all the required dependencies to run Bintracker, except the ROM files for MAME emulation.
-
-Simply extract `bintracker-win64-full.zip` to a directory of your choice. Next, add ROM files for all the machines you want to use to `bintracker\roms`. ROMs for each machine go into a subfolder named exactly as the machine is named on MAME (so, `spectrum` for ZX Spectrum 48k, `a2600` for Atari 2600/VCS, and so forth). You can check the names and find the list of required ROM files in the [Arcade Database](http://adb.arcadeitalia.net/).
+The full package contains all the required dependencies to run Bintracker, except the ROM files for MAME emulation. Simply extract `bintracker-win64-full.zip` to a directory of your choice. Next, [add ROM files](#adding-rom-files) for all the machines you want to use.
 
 Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
 
@@ -83,7 +81,7 @@ You can do a parallel build (`make -jX`), however time savings will be minimal. 
 
 If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame64` is in your search path. If your MAME executable is not named "mame64", edit the file `config/emulators.scm` accordingly.
 
-For most target systems you want to emulate, you will also need to obtain ROM files. Bintracker itself does not ship ROM files except for a handful of open source replacement ROMs. Copy ROM files to `roms/MACHINE/`, where MACHINE is MAME's target system identifier string. MAME is very peculiar about the names of ROM files. The [Arcade Database](http://adb.arcadeitalia.net/) is a good source of information regarding this.
+For most target systems you want to emulate, you will also need to obtain ROM files. See [Adding ROM Files](#adding-rom-files) for details on how to add ROMs to MAME for use in Bintracker.
 
 Once you've completed these steps, you can run the `bintracker` executable in the `build` directory.
 
@@ -506,3 +504,10 @@ So far nobody has tried to build Bintracker on any of these platforms. By all me
 Building on MacOS and BSD shouldn't be too hard. The main complication you may run into is that the Makefile currently uses a few bash/GNUmake specific features. Also, the latest MacOS versions apparently do not ship Tcl/Tk anymore, so you will need to install that first.
 
 If you succeed at building Bintracker on a non-Linux platform, please let us know how you did it, either by opening a [Github Issue](https://github.com/bintracker/bintracker/issues) or by [sending a message](https://bintracker.org/contact/).
+
+
+## Adding ROM Files
+
+For legal reasons, Bintracker does not ship any of the ROM files required by MAME. They are usually easy to come by on the web, though (pro-tip: [archive.org](https://archive.org) is your friend). The tricky part is figuring out exactly which files MAME expects. The [Arcade Database](http://adb.arcadeitalia.net/) lists these details for every system supported in MAME.
+
+ROM files go into `bintracker/roms/*`, or whatever you specified as your ROM path in `config/emulators[.windows].scm`. Create a subfolder for each machine, named exactly as the machine is named on MAME (so, `spectrum` for ZX Spectrum 48k, `a2600` for Atari 2600/VCS, and so forth). The Arcade Database also list the official names.
