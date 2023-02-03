@@ -1238,15 +1238,16 @@
      ((symbol? base-index)
       (case layout
 	((pointer-matrix)
-	 ;; TODO untested
-	 (lambda (pos id)
-	   `(sexp-directive (- (symbol-ref ',(string->symbol
-					      (string-append
-					       id "_" (number->string pos))))
-			       (symbol-ref ',base-index))
-			    (,(string->symbol
-			       (string-append id "_" (number->string pos)))
-			     ,base-index))))
+	 (let ((asm-symbol (string->symbol
+			    (string-drop (symbol->string base-index) 1))))
+	   (lambda (pos id)
+	     `(sexp-directive (- (symbol-ref ',(string->symbol
+						(string-append
+						 id "_" (number->string pos))))
+				 (symbol-ref ',asm-symbol))
+			      (,(string->symbol
+				 (string-append id "_" (number->string pos)))
+			       ,asm-symbol)))))
 	(else (error "unsupported order layout"))))
      ((= base-index 0)
       (case layout
@@ -1363,30 +1364,23 @@
 		  (let ((raw-order (alist-ref base-order-symbol md-symbols)))
 		    ;; TODO redundant, raw-order should always exist
 		    (if raw-order
-			(if (or (number? base-index)
-				(alist-ref (string->symbol
-					    (string-drop
-					     (symbol->string base-index)
-					     1))
-					   md-symbols))
-			    (let ((output-length
-				   (* element-size
-				      (length (remove (cute eqv? <> 'loop-point)
-						      (flatten raw-order))))))
-			      (list (make-onode type: 'order val: #t)
-				    (alist-update
-				     order-symbol
-				     (cons output-length
-					   (raw-order->pointer-matrix
-					    raw-order
-					    element-size
-					    (alist-ref (symbol-append
-							'mdal__oblock_ids_ from)
-						       md-symbols)
-					    pointer-transformer
-					    loop-point-symbol))
-				     md-symbols)))
-			    (list onode md-symbols))
+			(let ((output-length
+			       (* element-size
+				  (length (remove (cute eqv? <> 'loop-point)
+						  (flatten raw-order))))))
+			  (list (make-onode type: 'order val: #t)
+				(alist-update
+				 order-symbol
+				 (cons output-length
+				       (raw-order->pointer-matrix
+					raw-order
+					element-size
+					(alist-ref (symbol-append
+						    'mdal__oblock_ids_ from)
+						   md-symbols)
+					pointer-transformer
+					loop-point-symbol))
+				 md-symbols)))
 			(list onode md-symbols))))))
        `((md-result #f ,order-symbol))
        '()
@@ -2208,7 +2202,7 @@
 		  (asm 'assemble 3))
 		(or (asm 'result)
 		    (begin
-		      (print (asm 'symbols))
+		      (print (asm 'ast))
 		      (abort (make-property-condition
 			      'exn
 			      'location
