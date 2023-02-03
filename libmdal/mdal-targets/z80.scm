@@ -138,7 +138,7 @@
   			   ((address 'memory-indirect) (#xdb (lsb %op2)))))
   	  ((char-seq "f") (((char-seq "(c)") (#xed #x70))))
   	  ((register 'r8) (((char-seq "(c)")
-  			    (#xed (* 8 (register-value %op1)))))))))
+  			    (#xed (+ #x40 (* 8 (register-value %op1))))))))))
   (inc (1 (((register 'r8) ((+ #x04 (* 8 (register-value %op1)))))
   	   ((register 'i8) (((extras 'get-prefix) %op1)
   			    (+ #x04 (* 8 (register-value %op1)))))
