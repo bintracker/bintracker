@@ -13,7 +13,6 @@
 AMP16K
 _CST_BorderLp .equ 63
 _CST_ScreenLp .equ 192
-_CST_IntVec .equ $28
 _CST_ISRDest .equ .(if (defined? 'AMP16K_LOW_ISR) #x5c65 #x7e5c)
 _CST_IntVec .equ .(if (defined? 'AMP16K_LOW_ISR) #x2b #x28)
 

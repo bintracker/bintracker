@@ -8,7 +8,7 @@ By Hikaru/Intense 2020."
 
  default-origin: #x8000
 
- commands: ((command id: DUTY bits: 3 type: uint default: #x2 flags: (is-duty)
+ commands: ((command id: DUTY bits: 3 type: uint default: #x1 flags: (is-duty)
 		     description: "Channel duty setting")
 	    (command id: TEMPO bits: 5 type: uint default: 6
 		     flags: (use-last-set is-ticks)
@@ -31,44 +31,57 @@ By Hikaru/Intense 2020."
 	  (field bytes: 2 compose: (- $pattern-data $pattern-list))
 	  (symbol id: pattern-list)
 	  (order from: PATTERNS layout: pointer-matrix element-size: 2
-		 base-index: $pattern-data)
+		 base-index: $pattern-data-real)
 	  (symbol id: pattern-list-end)
 	  (field bytes: 2 compose: (- $pattern-list $pattern-list-end 2))
 	  (symbol id: pattern-data)
+	  ; TODO per pattern tempos
+	  (field bytes: 1 compose: ?TEMPO)
+	  (symbol id: pattern-data-real)
 	  (group id: PATTERNS from: PATTERNS nodes:
 		 ((block id: CHANS
 			 from: (DRUMS CH1 CH2 CH3 CH4)
 			 nodes:
-			 ;; TODO: (per-pattern) tempo
-			 ((before bytes: 1 compose: 6)
-			  (repeat bytes: 1 compose:
+			 ((repeat bytes: 1 compose:
 				  (+ (if ??DRUM (+ 2 ?DRUM) 0)
-				     (if (or ??NOTE1 ??DUTY1) #x80 0)
-				     (if (or ??NOTE2 ??DUTY2) #x40 0)
-				     (if (or ??NOTE3 ??DUTY3) #x20 0)
-				     (if (or ??NOTE4 ??DUTY4) #x10 0)))
+				     (if (or pattern-start? ??NOTE1 ??DUTY1)
+					 #x80 0)
+				     (if (or pattern-start? ??NOTE2 ??DUTY2)
+					 #x40 0)
+				     (if (or pattern-start? ??NOTE3 ??DUTY3)
+					 #x20 0)
+				     (if (or pattern-start? ??NOTE4 ??DUTY4)
+					 #x10 0)))
 			  (repeat bytes: 1
-				  condition: (or ??NOTE1 ??DUTY1)
-				  compose: (+ ?NOTE1 (if ??DUTY1 #x80 0)))
+				  condition: (or pattern-start? ??NOTE1 ??DUTY1)
+				  compose: (+ ?NOTE1
+					      (if (or pattern-start? ??DUTY1)
+						  #x80 0)))
 			  (repeat bytes: 1
-				  condition: ??DUTY1
-				  compose: ?DUTY1)
+				  condition: (or pattern-start? ??DUTY1)
+				  compose: (sub1 (expt 2 ?DUTY1)))
 			  (repeat bytes: 1
-				  condition: (or ??NOTE2 ??DUTY2)
-				  compose: (+ ?NOTE2 (if ??DUTY2 #x80 0)))
+				  condition: (or pattern-start? ??NOTE2 ??DUTY2)
+				  compose: (+ ?NOTE2
+					      (if (or pattern-start? ??DUTY2)
+						  #x80 0)))
 			  (repeat bytes: 1
-				  condition: ??DUTY2
-				  compose: ?DUTY2)
+				  condition: (or pattern-start? ??DUTY2)
+				  compose: (sub1 (expt 2 ?DUTY2)))
 			  (repeat bytes: 1
-				  condition: (or ??NOTE3 ??DUTY3)
-				  compose: (+ ?NOTE3 (if ??DUTY3 #x80 0)))
+				  condition: (or pattern-start? ??NOTE3 ??DUTY3)
+				  compose: (+ ?NOTE3
+					      (if (or pattern-start? ??DUTY3)
+						  #x80 0)))
 			  (repeat bytes: 1
-				  condition: ??DUTY3
-				  compose: ?DUTY3)
+				  condition: (or pattern-start? ??DUTY3)
+				  compose: (sub1 (expt 2 ?DUTY3)))
 			  (repeat bytes: 1
-				  condition: (or ??NOTE4 ??DUTY4)
-				  compose: (+ ?NOTE4 (if ??DUTY4 #x80 0)))
+				  condition: (or pattern-start? ??NOTE4 ??DUTY4)
+				  compose: (+ ?NOTE4
+					      (if (or pattern-start? ??DUTY4)
+						  #x80 0)))
 			  (repeat bytes: 1
-				  condition: ??DUTY4
-				  compose: ?DUTY4)
+				  condition: (or pattern-start? ??DUTY4)
+				  compose: (sub1 (expt 2 ?DUTY4)))
 			  (after bytes: 1 compose: 1)))))))
