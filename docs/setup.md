@@ -483,7 +483,7 @@ Now, install the remaining dependencies with
 
 #### Step 3 - Get source code and runtime dependencies
 
-Download the Bintracker [source code](https://github.com/bintracker/bintracker/archive/refs/heads/master.zip) and unpack it to a directory of your choice. Next, download Tclkit 8.6 for Windows 64-bit from https://tclkits.rkeene.org/fossil/wiki/Downloads . Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Then, download the latest MAME release from https://github.com/mamedev/mame/releases and unpack the self-extracting archive to `bintracker\3rdparty\mame`.
+Download the Bintracker [source code](https://github.com/bintracker/bintracker/archive/refs/heads/master.zip) and unpack it to a directory of your choice. Next, download Tclkit 8.6 for Windows 64-bit from https://tclkits.rkeene.org/fossil/wiki/Downloads or generate an appropriate kit that includes the Tk package on https://kitcreator.rkeene.org/kitcreator . Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Then, download the latest MAME release from https://github.com/mamedev/mame/releases and unpack the self-extracting archive to `bintracker\3rdparty\mame`.
 
 
 #### Step 4 - Build Bintracker
