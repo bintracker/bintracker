@@ -60,11 +60,13 @@
 
 	      (run-tcp-listener
 	       (lambda ()
-		 (let ((read-result (read-line emul-input-port)))
-		   (unless (eof-object? read-result)
-		     (print read-result))
-		   (unless (eqv? 'stop (thread-specific (current-thread)))
-		     (run-tcp-listener)))))
+		 (condition-case
+		     (let ((read-result (read-line emul-input-port)))
+		       (unless (eof-object? read-result)
+			 (print read-result)))
+		   ((exn i/o net) #f))
+		 (unless (eqv? 'stop (thread-specific (current-thread)))
+		   (run-tcp-listener))))
 
 	      (launch-emul-process
 	       (lambda ()
@@ -122,7 +124,7 @@
 				;; shutdown is managed from outside this thread
 				;; so disabling timeouts should be safe
 				(tcp-read-timeout #f)
-				run-tcp-listener)))
+				(run-tcp-listener))))
 			   (thread-start! tcp-listener-thread)
 			   (set! emul-started #t))
 		       ((exn i/o net)
