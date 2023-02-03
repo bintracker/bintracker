@@ -55,6 +55,10 @@ local machine_features = {
    },
    spectrum = {
       post_load_actions = function ()
+	 -- clear pending interrupts
+	 machine_manager.devices[":maincpu"].state["IM"].value = 1
+	 machine_manager.devices[":maincpu"].state["IFF1"].value = 0
+	 machine_manager.devices[":maincpu"].state["IFF2"].value = 0
 	 -- set stack pointer to a safe address
 	 machine_manager.devices[":maincpu"].state["SP"].value = 0xfffe
 	 -- unfreeze Z80 emulation after halt instruction on newer MAME versions
