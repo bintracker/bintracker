@@ -162,7 +162,8 @@
 	    (for-each (lambda (mdef)
   			((ui-ref new-file-dialog 'mdef-selector)
 			 'insert '{} 'end text: (car mdef)
-  			 values: (list (cadr mdef) (third mdef))))
+  			 values: (list (exact->inexact (cadr mdef))
+				       (third mdef))))
   		      ;; TODO btdb-list-mdefs should always return a list!
   		      (btdb-list-mdefs))))
        `(do-bindings
