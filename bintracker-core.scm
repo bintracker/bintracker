@@ -39,12 +39,69 @@
 	(warning "Configuration file \"config/config.scm\" not found."))
     (unless (settings 'keymap) (load-keymap "en")))
 
+  ;; Helper for `info`. If no KEY-SPECification is given, generate an overview
+  ;; over the current key bindings. Otherwise, generate info on the given
+  ;; KEY-SPEC.
+  (define (make-keybinding-info #!optional key-spec)
+    (let* ((keymap (settings 'keymap))
+	   (binding->info
+	    (lambda (b)
+	      (string-append (string-pad-right (->string (car b)) 32)
+			     (->string (cadr b))
+			     "\n")))
+	   (key-spec-string
+	    (and key-spec
+		 (let* ((raw-str (->string key-spec))
+			(replace-pos (string-contains raw-str "Ctrl")))
+		   (if replace-pos
+		       (string-append (string-take raw-str replace-pos)
+				      "Control"
+				      (string-drop raw-str (+ replace-pos 4)))
+		       raw-str))))
+	   (normalized-key-spec
+	    (and key-spec
+		 (string->symbol
+		  (cond
+		   ((= 1 (string-length key-spec-string))
+		    (string-append "<Key-" key-spec-string ">"))
+		   ((and (not (string-prefix? "<" key-spec-string))
+			 (not (string-suffix? ">" key-spec-string)))
+		    (string-append "<" key-spec-string ">"))
+		   (else key-spec-string))))))
+      (if key-spec
+	  (string-intersperse
+	   (filter-map (lambda (group name)
+			 (and (key-binding group normalized-key-spec)
+			      (string-append
+			       name
+			       (->string
+				(key-binding group normalized-key-spec)))))
+		       (list 'global 'console 'edit 'note-entry)
+		       (list "global       "
+			     "repl         "
+			     "edit         "
+			     "note-entry   "))
+	   "\n")
+	  (string-append
+	   "\nGlobal\n======\n\n"
+	   (string-concatenate (map binding->info (app-keys-global keymap)))
+	   "\nREPL\n====\n\n"
+	   (string-concatenate (map binding->info (app-keys-console keymap)))
+	   "\nModule Editing\n\n"
+	   (string-concatenate (map binding->info (app-keys-edit keymap)))
+	   "\nNote Entry\n==========\n\n"
+	   (string-concatenate (map binding->info (app-keys-note-entry keymap)))
+	   "\nPlugins\n=======\n\n"
+	   (string-concatenate
+	    (map binding->info (app-keys-plugins keymap)))))))
+
+  ;; The internal help system.
   (define (info . args)
     (if (null? args)
 	(string-intersperse
 	 '("\n(info 'keybinding [KEY-SPEC])"
 	   "(info 'kb [KEY-SPEC])"
-	   "List known key bindings, or look up binding for KEY-SPEC.\n"
+	   "List active key bindings, or look up binding for KEY-SPEC.\n"
 	   "(info 'mdef NAME)"
 	   "Describe the MDAL definition NAME\n"
 	   "(info 'procedure PROCEDURE)"
@@ -54,17 +111,9 @@
 	(case (car args)
 	  ((kb keybinding)
 	   (let ((keybindings (settings 'keymap)))
-	     (string-concatenate
-	      (filter-map (lambda (group name)
-			    (and (key-binding group (cadr args))
-				 (string-append
-				  name
-				  (->string (key-binding group (cadr args))))))
-			  (list 'global 'console 'edit 'note-entry)
-			  (list "global       "
-				"repl         "
-				"edit         "
-				"note-entry   ")))))
+	     (if (> (length args) 1)
+		 (make-keybinding-info (cadr args))
+		 (make-keybinding-info))))
 	  ((mdef) (btdb-get-mdef-description (cadr args)))
 	  ((proc procedure) (procedure-information (if (procedure? (cadr args))
 						       (cadr args)
