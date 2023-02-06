@@ -508,6 +508,14 @@ If you succeed at building Bintracker on a non-Linux platform, please let us kno
 
 ## Adding ROM Files
 
-For legal reasons, Bintracker does not ship any of the ROM files required by MAME. They are usually easy to come by on the web, though (pro-tip: [archive.org](https://archive.org) is your friend). The tricky part is figuring out exactly which files MAME expects. The [Arcade Database](http://adb.arcadeitalia.net/) lists these details for every system supported in MAME.
+For legal reasons, Bintracker does not ship any of the ROM files required by MAME. They are usually easy to come by on the web, though (pro-tip: [archive.org](https://archive.org) is your friend). The tricky part is figuring out exactly which files MAME expects. The [Arcade Database](http://adb.arcadeitalia.net/) lists these details for every system supported in MAME (use the search to find your system, then check the section *Files* -> *Romset*).
 
-ROM files go into `bintracker/roms/*`, or whatever you specified as your ROM path in `config/emulators[.windows].scm`. Create a subfolder for each machine, named exactly as the machine is named on MAME (so, `spectrum` for ZX Spectrum 48k, `a2600` for Atari 2600/VCS, and so forth). The Arcade Database also list the official names.
+ROM files go into `bintracker/roms/*`, or whatever you specified as your ROM path in `config/emulators[.windows].scm`. Create a subfolder for each machine, named exactly as the machine is named on MAME. The Arcade Database also list the official names. The systems currently supported in Bintracker use the following names:
+
+| System                   | MAME Name | Remarks               |
+|--------------------------|-----------|-----------------------|
+| Atari 2600/VCS           | a2600     | requires no ROM files |
+| Dragon 32                | dragon32  |                       |
+| Exidy Sorcerer           | sorcerer  |                       |
+| Fairchild Channel F      | channelf  |                       |
+| Sinclair ZX Spectrum 48K | spectrum  |                       |
