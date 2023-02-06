@@ -81,6 +81,7 @@ nav:
       - "Schemta Assembler":
           - Introduction: 'schemta.md'
           - Schemta API: 'generated/schemta.md'
+      - "Additional Bindings": 'additional-bindings.md'
       - Examples: examples.md
   - "Frequently Asked Questions": FAQ.md
   - Contributing: contributing.md
