@@ -3,7 +3,10 @@
     (extra-formats::zx-tap-basic-loader
      extra-formats::zx-tap
      extra-formats::mmod->zx-tap
-     extra-formats::zx-tap-dialog)
+     extra-formats::zx-tap-dialog
+     extra-formats::dragon-cas
+     extra-formats::mmod->dragon-cas
+     extra-formats::dragon-cas-dialog)
 
   (import scheme (chicken base) (chicken port) (chicken io)
 	  (chicken bitwise) (chicken condition)
@@ -13,7 +16,8 @@
   (define (int->ascii n #!optional (endianness 'little-endian))
     (int->bytes n 2 endianness))
 
-  (define (show-export-dialog export-proc title #!optional (features '()))
+  (define (show-export-dialog export-proc title filetypes default-extension
+			      #!key (features '()))
     (letrec
   	((dialog-widget
   	  (make <ui-dialog>
@@ -104,8 +108,8 @@
 				  'get "1.0" "end-1c")))
 			   (filename
 			    (tk/get-save-file*
-  			     filetypes: '(((ZX Spectrum .tap) (.tap)))
-  			     defaultextension: '.tap)))
+  			     filetypes: filetypes
+  			     defaultextension: default-extension)))
 		      (unless (string-null? filename)
 			(export-proc filename (current 'mmod)
 				     origin: org loader: use-loader
@@ -216,5 +220,79 @@
   		     '(spectrum16 spectrum48 spectrum128)))
       (show-export-dialog extra-formats::mmod->zx-tap
   			  "ZX Spectrum .tap"
-  			  '(loader text))))
+			  '(((ZX Spectrum .tap) (.tap)))
+			  '.tap
+  			  features: '(loader text))))
+
+
+  (define (extra-formats::dragon-cas bin origin #!optional loader text)
+    ;; https://worldofdragon.org/index.php?title=Tape%5CDisk_Preservation#CAS_File_Format
+    ;; TODO check bin2cas https://www.6809.org.uk/dragon/#castools
+    (letrec* ((leader (integer->char #x55))
+	      (trailer (integer->char #x55))
+	      (sync (integer->char #x3c))
+	      (blocktype:namefile #\null)
+	      (blocktype:data (integer->char 1))
+	      (blocktype:eof (integer->char #xff))
+	      (file-id:basic #\null)
+	      ;; (file-id:data (integer->char 1))
+	      (file-id:binary (integer->char 2))
+	      (ascii:binary #\null)
+	      ;; (ascii:ascii (integer->char #xff))
+	      (gap:continuous #\null)
+	      ;; (gap:blocks (integer->char #xff))
+	      (namefile-block
+	       (append (list leader sync blocktype:namefile)
+		       (list (integer->char 15)) ; block length
+		       (string->list "CODE    ")
+		       (list file-id:binary ascii:binary gap:continuous)
+		       (map integer->char (int->ascii origin 'big-endian))
+		       (map integer->char (int->ascii origin 'big-endian))))
+	      (checksum
+	       (lambda (block)
+		 (list
+		  (integer->char
+		   (bitwise-and #xff
+				(apply + (map char->integer (cddr block))))))))
+	      (make-datablock
+	       (lambda (data)
+		 (let ((raw (append (list leader sync blocktype:data
+					  (integer->char (length data)))
+				    data)))
+		   (append raw (checksum raw) (list trailer)))))
+	      (chop-bin
+	       (lambda (bin)
+		 (cond
+		  ((null? bin) '())
+		  ((< (length bin) 255) (make-datablock bin))
+		  (else (cons (make-datablock (take bin 255))
+			      (chop-bin (drop bin 255))))))))
+      (append (make-list 128 leader)
+	      namefile-block
+	      (checksum namefile-block)
+	      (list trailer)
+	      (make-list 128 leader)
+	      (flatten (chop-bin bin))
+	      (list leader sync blocktype:eof #\null (integer->char #xff)
+		    trailer))))
+
+  (define (extra-formats::mmod->dragon-cas filename mod
+					   #!key (origin (mdef-default-origin
+							  (mmod-mdef mod)))
+					   (loader #t)
+					   text)
+    (let ((res (list->string (extra-formats::dragon-cas
+			      (mod->bin mod origin) origin loader text))))
+      (with-output-to-file filename (lambda () (write-string res)) #:binary)))
+
+  ;; Graphical interface for Dragon/CoCo .cas export.
+  (define (extra-formats::dragon-cas-dialog)
+    (when (and (current 'mmod)
+  	       (memv (string->symbol
+  		      (target-platform-id (mdef-target (current 'mdef))))
+  		     '(dragon32 dragon64)))
+      (show-export-dialog extra-formats::mmod->dragon-cas
+  			  "Dragon/CoCo .cas"
+			  '(((Dragon/CoCo .cas) (.cas)))
+			  '.cas)))
   ) ;; end module extra-formats
