@@ -43,6 +43,7 @@ local machine_features = {
    coco3 = {},
    dragon32 = {},
    kc85_4 = {},
+   mc10 = {},
    mz700 = {
       post_load_actions = function ()
 	 -- set stack pointer to a safe address
