@@ -1,0 +1,20 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.0 target: mc10
+ description: "An interrupt-driven 2-channel 1-bit player for the TRS-80 MC-10. Requires a 16K memory expansion.\n\nBy The Invisible Man 2021."
+ default-origin: #x5000
+
+ commands: ((command id: NOTE bits: 8 type: ukey
+	    	     flags: (use-last-set is-note)
+	    	     keys: (make-counters 0 96 1 0)
+	    	     default: rest))
+
+ input: ((group id: PATTERNS flags: (ordered)
+		nodes: ((clone 2 (block id: CH nodes: ((field from: NOTE)))))))
+
+ output: ((asm file: "bitx.asm")
+	  (group id: PATTERNS from: PATTERNS nodes:
+	  	 ((block id: CHANS from: (CH1 CH2)
+	  		 nodes: ((repeat bytes: 1 compose: (* 2 ?NOTE1))
+	  			 (repeat bytes: 1 compose: (* 2 ?NOTE2))))))
+	  (symbol id: endzix)
+	  (field bytes: 2 compose: #xffff)))
