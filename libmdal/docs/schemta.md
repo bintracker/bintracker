@@ -8,7 +8,14 @@ Schemta is a cross-platform, multi-target assembler for classic 8-bit and 16-bit
     - register/addressing aliases: `pc0` for `p`/`p0`, `(is)`, `(is+)`, `(is-)` for `s`, `i`, `d`
 * MOS Technology 6502/6507/6510
     - supports all illegal opcodes
-	- assumes absolute addressing for labels, force zero page with `<LABEL>`
+	- assumes absolute addressing for labels, force zero page with `<LABEL`
+* Motorola 6800
+	- supports undocumented opcodes `hcf`, `nba`, and immediate modes for `staa`/`stab`/`sts`/`stx`
+	- accepts alternate 6803 mnemonics (`bhs`, `blo`, `lsl`)
+	- does not auto-optimize extended->direct addressing, force direct addressing with `<`
+* Motorola 6803
+	- supports undocumented opcodes `hcf`, `nba`, and immediate modes for `staa`/`stab`/`sts`/`stx`
+	- does not auto-optimize extended->direct addressing, force direct addressing with `<`
 * Motorola 6809
     - supports undocumented opcodes `hcf`, `ncc` (`neg` + carry bit), `page`, and `reset`, as well as immediate addressing for `stx`/`stu`
 	- no support for direct page auto-magic
