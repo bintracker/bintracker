@@ -375,12 +375,13 @@ If the input group that created the abstract order list has the `looped` flag se
 
 ### Output `symbol`
 
-A symbol output node generates an internal symbol that can be referenced by other output nodes. The value of the symbol is set to the current origin (address in memory).
+A symbol output node generates an internal symbol that can be referenced by other output nodes. If neither the `compose` nor the `value` keyword is specified, the value of the symbol is set to the current origin (address in memory).
 
-| keyword | description                                 |
-|---------|---------------------------------------------|
-| `id`    | A unique identifier naming the symbol node. |
-
+| keyword   | description                                                                                        |
+|-----------|----------------------------------------------------------------------------------------------------|
+| `compose` | A [composition expression](#composition-expressions) that will be used to determine the symbol's value. Optional. |
+| `id`      | A unique identifier naming the symbol node.                                                        |
+| `value`   | A fixed integer value that will be assigned to the symbol. Optional.                               |
 
 
 ## Example
