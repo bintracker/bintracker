@@ -40,7 +40,7 @@ Currently, the following target systems are supported with one or more sound eng
 - Fairchild Channel F
 - Exidy Sorcerer 4 Voice Music System
 - Sinclair ZX Spectrum (beeper)
-- Sharp MZ-700
+- TRS-80 MC-10
 
 Eventually, Bintracker will feature sound engines on a wide range of target platforms, with a focus on lesser known systems.
 
