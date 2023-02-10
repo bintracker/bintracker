@@ -290,9 +290,9 @@
     (when (and (current 'mmod)
   	       (memv (string->symbol
   		      (target-platform-id (mdef-target (current 'mdef))))
-  		     '(dragon32 dragon64)))
+  		     '(dragon32 dragon64 mc10)))
       (show-export-dialog extra-formats::mmod->dragon-cas
-  			  "Dragon/CoCo .cas"
-			  '(((Dragon/CoCo .cas) (.cas)))
+  			  "Dragon/Tandy .cas"
+			  '(((Dragon/Tandy .cas) (.cas)))
 			  '.cas)))
   ) ;; end module extra-formats

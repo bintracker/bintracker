@@ -25,7 +25,7 @@
 		       (menu-items (alist-ref 'file
 					      (menu-items (state 'menu)))))
 	    `(command dragon-cas
-		      ".cas (Dragon/CoCo)"
+		      ".cas (Dragon/Tandy)"
 		      1
 		      #f
 		      ,extra-formats::dragon-cas-dialog))))))
