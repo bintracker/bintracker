@@ -128,21 +128,19 @@
 	      (file-md5sum (string-append mdal-mdef-dir mdef-id
   					  "/" mdef-id ".mdef"))
 	      (target-platform-id (mdef-target mdef))
-	      (mdef-description mdef)))))
+	      (or (mdef-description mdef) "")))))
 
   ;;; Add the MDAL definition named MDEF-ID to the Bintracker database. Returns
   ;;; `#t` on success, `#f` on failure.
   (define (btdb-add-mdef! mdef-id)
     (let ((info (gather-mdef-info mdef-id)))
       (and info
-	   (begin
-  	     (execute btdb (string-append
-  			    "INSERT INTO mdefs (id, version, "
-  			    "hash, platform, description) VALUES ('" mdef-id
-			    "', '" (car info)
-  			    "', '" (cadr info)
-			    "', '" (third info)
-  			    "', '" (or (fourth info) "") "');"))
+	   (let ((q (prepare btdb
+			     (string-append
+			      "INSERT INTO mdefs (id, version, hash, platform, "
+			      "description) VALUES (?, ?, ?, ?, ?);"))))
+	     (apply execute (cons q (cons mdef-id info)))
+	     (finalize! q)
 	     #t))))
 
   ;;; Remove the MDAL definition named MDEF-ID from the Bintracker
@@ -156,13 +154,12 @@
   (define (btdb-update-mdef! mdef-id)
     (let ((info (gather-mdef-info mdef-id)))
       (and info
-	   (begin
-	     (execute btdb (string-append "UPDATE mdefs SET "
-					  "version='" (car info)
-					  "', hash='" (cadr info)
-					  "', platform='" (third info)
-					  "', description='" (fourth info)
-					  "' WHERE id='" mdef-id "';"))
+	   (let ((q (prepare btdb
+			     (string-append "UPDATE mdefs SET version=?, "
+					    "hash=?, platform=?, "
+					    "description=? WHERE id=?;"))))
+	     (apply execute (cons q (append info (list mdef-id))))
+	     (finalize! q)
 	     #t))))
 
   ;;; Scan the MDAL mdef directory, and update the Bintracker database
@@ -186,20 +183,15 @@
 				    new-dirs
 				    infos)))
 	(unless (null? ids+infos)
-	  (execute btdb
-		   (string-append
-		    "INSERT INTO mdefs (id, version, "
-		    "hash, platform, description) VALUES "
-		    (string-intersperse
-		     (map (lambda (id+info)
-			    (string-append "('"
-					   (string-intersperse
-					    id+info
-					    "', '")
-					   "')"))
-			  ids+infos)
-		     ", ")
-		    ";")))
+	  (let ((q (prepare btdb
+			    (string-append "INSERT INTO mdefs (id, version, "
+					   "hash, platform, description) "
+					   "VALUES (?, ?, ?, ?, ?);"))))
+	    (for-each (lambda (id+info)
+			(print "adding " (car id+info))
+			(apply execute (cons q id+info)))
+		      ids+infos)
+	    (finalize! q)))
 	(for-each (lambda (dir)
 		    (print "found updated mdef: " dir)
 		    (unless (btdb-update-mdef! dir)
