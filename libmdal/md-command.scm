@@ -171,7 +171,8 @@
 					     shift))))
 				     ,keys))))
 	     flags: flags
-	     range: (or range
+	     range: (or (and range (make-range min: (car range)
+					       max: (cadr range)))
 			(and (memv type '(int uint))
 			     (bits->range bits (eqv? type 'int))))
 	     description: description))))
