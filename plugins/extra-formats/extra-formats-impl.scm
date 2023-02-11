@@ -290,7 +290,7 @@
     (when (and (current 'mmod)
   	       (memv (string->symbol
   		      (target-platform-id (mdef-target (current 'mdef))))
-  		     '(dragon32 dragon64 mc10)))
+  		     '(dragon32 dragon64 coco3 mc10)))
       (show-export-dialog extra-formats::mmod->dragon-cas
   			  "Dragon/Tandy .cas"
 			  '(((Dragon/Tandy .cas) (.cas)))
