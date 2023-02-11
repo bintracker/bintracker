@@ -1082,7 +1082,10 @@
       `(let ,(make-let-block required-fields field-list mdef)
 	 ,(if (null? required-symbols)
 	      `(list 'assign (list 'label (quote ,target-symbol)) ,expr)
-	      ;; TODO untested
+	      ;; TODO this works only for assigning plain symbols. To assign
+	      ;; to the output of a full sexp-directive, the right-hand side of
+	      ;; the assignment must be wrapped in another sexp-directive, as
+	      ;; for regular transformer bodies.
 	      `(list
 		'assign
 		`(list 'label (quote ,target-symbol))

@@ -625,6 +625,9 @@
   (define (do-assign node state)
     (let ((result (cond
   		   ((number? (third node)) (third node))
+		   ((and (pair? (third node))
+			 (eqv? 'symbol-ref (car (third node))))
+		    (alist-ref (cadr (cadr (third node))) (state 'symbols)))
   		   ((and (pair? (third node))
   			 (eqv? 'sexp-directive (car (third node))))
   		    (do-sexp-directive (third node) state))
