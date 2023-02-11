@@ -1040,7 +1040,8 @@
 	     (ui-metastate buf 'mdef)
 	     node-id
 	     (case cmd-type
-	       ((int uint) (string->number new-val (settings 'number-base)))
+	       ((int uint reference) (string->number new-val
+						     (settings 'number-base)))
 	       ((string) new-val)
 	       ((trigger label) #t)
 	       ((key ukey) (string->symbol new-val))
