@@ -364,7 +364,11 @@
 			(error 'plugins
 			       (string-append
 				"Failed to register plugin " name ", reason: "
-				(->string exn)))
+				(with-output-to-string
+				  (lambda ()
+				    (print-error-message exn
+							 (current-output-port)
+							 "")))))
 		      (read-plugin-file name))))
 		(string-split (cadr args))))
 	      (else (error 'plugins (string-append "Unknown command "
