@@ -1,0 +1,48 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 1.0 target: coco3
+ description: "A re-implementation of Hal Chamberlain's classic 4-channel wavetable algorithm from 1977.\n\nBy Paul Fiscarelli and Simon Jonassen, 2021.\n\nNote values C-0 - G-0 are tweaked to facilitate the use of slow-running percussive wavetables."
+ default-origin: #xe00
+
+ commands: ((command id: SPEED bits: 8 type: uint default: #xa
+		     description: "Global speed modifier")
+	    (command id: WAVE bits: 3 type: reference reference-to: WAVETABLES
+		     default: 0 flags: (is-waveform)
+		     description: "Select wavetable")
+	    (command id: TICKS bits: 8 type: uint default: #x20
+		     flags: (use-last-set)
+		     description: "Ticks per row")
+	    (command id: NOTE bits: 8 type: ukey
+	    	     flags: (use-last-set is-note)
+	    	     keys: (make-counters 0 96 1 0)
+	    	     default: rest)
+	    (command id: SAMPLE bits: 6 type: uint default: 0
+		     flags: (use-last-set is-pcm-data)
+		     description: "6-bit unsigned sample value"))
+
+ input: ((field from: SPEED)
+	 (clone 4 (field from: WAVE))
+	 (group id: PATTERNS flags: (ordered)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(clone 4 (block id: CH nodes: ((field from: NOTE))))))
+	 (group id: WAVETABLES block-length: 256
+	 	nodes: ((block id: WAVE nodes: ((field from: SAMPLE))))))
+
+ output: ((symbol id: mtempo compose: ?SPEED)
+	  (symbol id: wftable1 compose: (symbolic-ref WT ?WAVE1))
+	  (symbol id: wftable2 compose: (symbolic-ref WT ?WAVE2))
+	  (symbol id: wftable3 compose: (symbolic-ref WT ?WAVE3))
+	  (symbol id: wftable4 compose: (symbolic-ref WT ?WAVE4))
+	  (asm file: "4vmp.asm")
+	  (group id: WAVETABLES from: WAVETABLES nodes:
+	  	 ((block id: WT from: (WAVE)
+	  		 nodes: ((repeat bytes: 1 compose: ?SAMPLE)))))
+	  (symbol id: note)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS from: (TEMPO CH1 CH2 CH3 CH4)
+			 nodes: ((repeat bytes: 1 compose: ?TICKS)
+				 (repeat bytes: 1 compose: (* 2 ?NOTE1))
+				 (repeat bytes: 1 compose: (* 2 ?NOTE2))
+				 (repeat bytes: 1 compose: (* 2 ?NOTE3))
+				 (repeat bytes: 1 compose: (* 2 ?NOTE4))))))
+	  (field bytes: 1 compose: 0)
+	  (symbol id: endnote)))

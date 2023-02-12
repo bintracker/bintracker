@@ -519,3 +519,5 @@ ROM files go into `bintracker/roms/*`, or whatever you specified as your ROM pat
 | Exidy Sorcerer           | sorcerer  |                       |
 | Fairchild Channel F      | channelf  |                       |
 | Sinclair ZX Spectrum 48K | spectrum  |                       |
+| TRS-80 MC-10             | mc10      |                       |
+| Tandy Color Computer 3   | coco3     |                       |
