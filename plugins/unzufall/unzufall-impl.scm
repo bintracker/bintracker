@@ -119,11 +119,7 @@
       (make-hooks
        `(configure-text-style
 	 .
-	 ,(lambda ()
-	    ((ui-ref dialog-widget 'desc) 'configure
-	     bg: (colors 'background) fg: (colors 'text)
-	     font: (list family: (settings 'font-mono)
-  			 size: (settings 'font-size)))))
+	 ,(lambda () (stylize-text-widget (ui-ref dialog-widget 'desc))))
        `(init
 	 .
 	 ,(lambda a

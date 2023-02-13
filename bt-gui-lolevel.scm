@@ -85,6 +85,14 @@
     (tk/place (tk 'create-widget 'sizegrip style: 'BT.TSizegrip)
 	      anchor: 'se relx: 1.0 rely: 1.0))
 
+  ;;; Change the style of the Tk text WIDGET so it matches Bintracker's look.
+  (define (stylize-text-widget widget)
+    (widget 'configure
+	    bg: (colors 'background) fg: (colors 'text)
+	    insertbackground: (colors 'text)
+	    font: (list family: (settings 'font-mono)
+  			size: (settings 'font-size))))
+
   ;; ---------------------------------------------------------------------------
   ;;; ### Accessibility
   ;; ---------------------------------------------------------------------------

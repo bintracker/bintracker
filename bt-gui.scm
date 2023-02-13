@@ -144,10 +144,7 @@
        `(configure-text-style
 	 .
 	 ,(lambda ()
-	    ((ui-ref new-file-dialog 'description) 'configure
-	     bg: (colors 'background) fg: (colors 'text)
-	     font: (list family: (settings 'font-mono)
-  			  size: (settings 'font-size)))))
+	    (stylize-text-widget (ui-ref new-file-dialog 'description))))
        `(list-platforms
 	 .
 	 ,(lambda ()
