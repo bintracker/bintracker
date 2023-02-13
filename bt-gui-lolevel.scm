@@ -297,10 +297,8 @@
 	    	   "-fieldbackground $colors(-background)"))
 	    "" ,(string-intersperse
 	    	 '("    ttk::style map Treeview"
-	    	   "-background [list selected $colors(-text)"
-	    	   "!selected $colors(-background)]"
-	    	   "-foreground [list selected $colors(-background)"
-	    	   "!selected $colors(-text)]"))
+	    	   "-background [list selected $colors(-text)]"
+	    	   "-foreground [list selected $colors(-background)]"))
 	    "" ,(string-intersperse
 	    	 '("    ttk::style configure TSpinbox"
 	    	   "-arrowcolor $colors(-text)"
