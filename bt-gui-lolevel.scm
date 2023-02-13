@@ -1361,7 +1361,7 @@
      (expand-icon (tk/icon "expand.png"))
      collapse-button
      content-box
-     (collapsible #t)
+     (collapsible #f)
      (collapsed #f)))
 
   (define-method (initialize-instance after: (buf <ui-buffer>))
