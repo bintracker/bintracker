@@ -220,14 +220,10 @@ TAGS: $(BT_SRC)bt-types.scm\
 .PHONY: mame-bridge
 mame-bridge:
 	cp -r $(BT_SRC)mame-bridge ./
-# mame-bridge/mame-startup.lua: $(BT_SRC)mame-bridge/mame-startup.lua
-# 	mkdir -p mame-bridge
-# 	cp $< mame-bridge/
 
 .PHONY: config
 config:
 	cp -r $(BT_SRC)config/ .
-	-rm -r config/*~
 
 .PHONY: roms
 roms:
@@ -244,9 +240,11 @@ plugins:
 plugin-docs:
 	mkdir -p gendoc/plugins/mml
 	mkdir -p gendoc/plugins/prng
+	mkdir -p gendoc/plugins/snippets
 	mkdir -p gendoc/plugins/unzufall
 	cp $(BT_SRC)plugins/mml/README.md gendoc/plugins/mml/
 	cp $(BT_SRC)plugins/prng/README.md gendoc/plugins/prng/
+	cp $(BT_SRC)plugins/snippets/README.md gendoc/plugins/snippets/
 	cp $(BT_SRC)plugins/unzufall/README.md gendoc/plugins/unzufall/
 
 .PHONY: resources

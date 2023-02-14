@@ -14,6 +14,7 @@ Bindings from the following Chicken Scheme modules and eggs (libraries) are avai
 - [chicken.platform](https://wiki.call-cc.org/man/5/Module%20(chicken%20platform)) - host system introspection
 - [chicken.port](https://wiki.call-cc.org/man/5/Module%20(chicken%20port)) - manipulating port objects
 - [chicken.random](https://wiki.call-cc.org/man/5/Module%20(chicken%20random)) - pseudo-random number generation
+- [chicken.sort](https://wiki.call-cc.org/man/5/Module%20(chicken%20sort)) - list and vector sorting
 - [chicken.string](https://wiki.call-cc.org/man/5/Module%20(chicken%20string)) - string operations
 
 
@@ -33,10 +34,12 @@ Bindings from the following Chicken Scheme modules and eggs (libraries) are avai
 - [coops](https://wiki.call-cc.org/eggref/5/coops) - object system
 - [list-utils](https://wiki.call-cc.org/eggref/5/list-utils) - additional convenience utilities for list manipulation
 - [pstk](https://wiki.call-cc.org/eggref/5/pstk) - interaction with Tcl/Tk.
-- [sqlite3](https://wiki.call-cc.org/eggref/5/sqlite3) (`execute` procedure only) - run statements on SQLite databases
+- [s11n](https://wiki.call-cc.org/eggref/5/s11n) - serialization
+- [simple-md5](https://wiki.call-cc.org/eggref/5/simple-md5) - MD5 hashing
+- [sqlite3](https://wiki.call-cc.org/eggref/5/sqlite3) - run statements on SQLite databases
 
 
-For code running in the repl, the above bindings are automatically available. For plugin code, required modules must be explicitly [imported](https://api.call-cc.org/5/doc/chicken/modules/import).
+For code running in the repl, the above bindings are automatically available. For plugin code, [import](https://api.call-cc.org/5/doc/chicken/modules/import) the `bintracker-core` module to make bindings available.
 
 
 ## Requests

@@ -9,19 +9,19 @@
   (import scheme (chicken base) (chicken platform) (chicken string)
 	  (chicken module) (chicken io) (chicken bitwise) (chicken format)
 	  (chicken file) (chicken random) (chicken condition) (chicken port)
+	  (chicken sort)
 	  srfi-1 srfi-13 srfi-14 srfi-18 srfi-69
 	  pstk typed-records matchable list-utils comparse coops sqlite3
-	  bitstring
+	  bitstring s11n simple-md5
 	  mdal bt-maths bt-state bt-types bt-db bt-emulation bt-gui)
   ;; all symbols that are required in generated code (mdal compiler generator)
   ;; must be re-exported
   (reexport mdal pstk bt-maths bt-types bt-state bt-db bt-emulation bt-gui
 	    (chicken base) (chicken string) (chicken module) (chicken bitwise)
 	    (chicken file) (chicken platform) (chicken random) (chicken io)
-	    (chicken condition) (chicken port)
+	    (chicken condition) (chicken port) (chicken sort)
   	    srfi-1 srfi-13 srfi-14 srfi-18 srfi-69 coops list-utils
-	    bitstring comparse
-	    (only sqlite3 execute))
+	    bitstring comparse s11n simple-md5 sqlite3)
 
 
   ;; ---------------------------------------------------------------------------
