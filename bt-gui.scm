@@ -166,16 +166,24 @@
        `(do-bindings
 	 .
 	 ,(lambda ()
-	    (let* ((platform-selector (ui-ref new-file-dialog
-					      'platform-selector))
-		   (mdef-selector (ui-ref new-file-dialog 'mdef-selector))
-		   (description-widget (ui-ref new-file-dialog 'description))
-		   (get-item-list (lambda ()
-  				    (string-split
-  				     (string-delete
-  				      (string->char-set "{}")
-  				      (->string
-				       (mdef-selector 'children '{})))))))
+	    (letrec* ((platform-selector (ui-ref new-file-dialog
+						 'platform-selector))
+		      (mdef-selector (ui-ref new-file-dialog 'mdef-selector))
+		      (description-widget (ui-ref new-file-dialog 'description))
+		      (get-item-list (lambda ()
+  				       (string-split
+  					(string-delete
+  					 (string->char-set "{}\"")
+  					 (->string
+					  (mdef-selector 'children '{}))))))
+		      (get-item-text
+		       (lambda (item #!optional (tries 0))
+			 (when (> tries 50)
+			   (error 'ttk::treeview "Failed to get item text"))
+			 (let ((text (mdef-selector 'item item text:)))
+			   (if (> (string-length text) 1)
+			       text
+			       (get-item-text item (+ 1 tries)))))))
 	      (tk/bind platform-selector
 		       (inverse-key-binding 'global 'where)
 		       (lambda () (say "platform selection")))
@@ -209,34 +217,21 @@
   					      values: (list (cadr mdef)
 							    (third mdef))))
   			     (btdb-list-mdefs selected-platform))
-		   (tk/update 'idletasks)
-		   (mdef-selector 'focus (car (get-item-list)))
-		   (mdef-selector 'selection 'set
-  				  (list (car (get-item-list)))))))
+		   (focus-first-treeview-item mdef-selector))))
 	      (tk/bind
 	       mdef-selector
 	       '<<TreeviewSelect>>
-	       ;; TODO this fails when selection was set automatically,
-	       ;; because Tk delays execution of the selection too long.
-	       ;; Calling tk/update or tk/update 'idletasks hangs the app.
-	       ;; For now, use tk/after 100 as a (very brittle) work-around.
-	       ;; Update: Seems fairly stable now with forcing a tk/update
-	       ;; 'idletasks in the ComboboxSelect event above. Still fails
-	       ;; without a delay though.
 	       (lambda ()
-	       	 (tk/after
-	       	  20
-	       	  (lambda ()
-	       	    (let* ((selected-engine
-	       		    (string->symbol
-	       		     (mdef-selector
-  	       		      'item (mdef-selector 'selection) text:)))
-	       		   (description (->string (btdb-get-mdef-description
-	       					   selected-engine))))
-	       	      (description-widget 'configure state: 'normal)
-	       	      (description-widget 'delete "0.0" 'end)
-	       	      (description-widget 'insert 'end description)
-	       	      (description-widget 'configure state: 'disabled))))))))))
+		 (and-let* ((selection (get-treeview-selection mdef-selector)))
+	       	   (let* ((_ (wait-for-treeview-item mdef-selector selection))
+			  (selected-engine
+	       		   (string->symbol (get-item-text selection)))
+	       		  (description (->string (btdb-get-mdef-description
+	       					  selected-engine))))
+	       	     (description-widget 'configure state: 'normal)
+	       	     (description-widget 'delete "0.0" 'end)
+	       	     (description-widget 'insert 'end description)
+	       	     (description-widget 'configure state: 'disabled)))))))))
       'finalizers
       (make-hooks
        `(ex
@@ -246,7 +241,7 @@
   		((mdef-selector (ui-ref new-file-dialog 'mdef-selector))
   		 (item-list (string-split
   			     (string-delete
-  			      (string->char-set "{}")
+  			      (string->char-set "{}\"")
   			      (->string (mdef-selector 'children '{})))))
 		 (_ (not (null? item-list)))
   		 (selected-def (mdef-selector 'item (mdef-selector 'focus)

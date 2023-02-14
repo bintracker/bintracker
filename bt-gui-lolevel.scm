@@ -8,7 +8,7 @@
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
 	  (chicken file) (chicken io) (chicken sort) (chicken process)
-	  coops list-utils typed-records srfi-1 srfi-4 srfi-13 pstk
+	  coops list-utils typed-records srfi-1 srfi-4 srfi-13 srfi-14 pstk
 	  stb-image stb-image-write web-colors
 	  bt-state bt-types)
 
@@ -92,6 +92,42 @@
 	    insertbackground: (colors 'text)
 	    font: (list family: (settings 'font-mono)
   			size: (settings 'font-size))))
+
+  ;;; Work-around for Tk wonkyness when referencing treeview items. Call this
+  ;;; procedure before calling `focus` or `selection set` on a treeview. TREE
+  ;;; shall be a ttk::treeview widget, and ITEM is the Tk identifier of item
+  ;;; that is referenced. TRIES is for internal use only.
+  (define (wait-for-treeview-item tree item #!optional (tries 0))
+    (when (> tries 50)
+      (error 'ttk::treeview
+	     (string-append "Failed to find item " (->string item))))
+    (let ((item-exists (string->number (tree 'exists item))))
+      (or (and item-exists (= 1 item-exists))
+	  (wait-for-treeview-item tree item (+ 1 tries)))))
+
+  ;;; Work-around for Tk wonkyness when querying a treeview's selection. Call
+  ;;; this instead of using a raw `ttk::treeview 'selection` command.
+  (define (get-treeview-selection tree #!optional (tries 0))
+    (when (> tries 50)
+      (error 'ttk::treeview "Failed to get selection"))
+    (let ((selection (tree 'selection)))
+      (if (string-null? selection)
+	  #f
+	  (if (string-prefix? "I" (->string selection))
+	      selection
+	      (get-treeview-selection tree (+ 1 tries))))))
+
+  ;;; Focus and select the first item in the ttk::treeview TREE. The treeview
+  ;;; must contain at least one item.
+  (define (focus-first-treeview-item tree)
+    (let ((first-item
+	   (car (string-split
+  		 (string-delete (string->char-set "{}\"")
+  				(->string (tree 'children '{})))))))
+      (wait-for-treeview-item tree first-item)
+      (tree 'focus first-item)
+      (tree 'selection 'set (list first-item))))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Accessibility
