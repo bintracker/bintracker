@@ -113,7 +113,13 @@
 		      ((condition-property-accessor 'exn 'message) exn))
 		  "\n"))
 		(repl-insert-prompt (repl)))
-  	    (after-load-file-hooks 'execute #f filename))))))
+  	    (after-load-file-hooks 'execute #f
+				   (if (and (string-prefix? "{" filename)
+					    (string-suffix? "}" filename))
+				       (string-drop (string-drop-right filename
+								       1)
+						    1)
+				       filename)))))))
 
   (define (create-new-module mdef-name)
     (when (close-file)
