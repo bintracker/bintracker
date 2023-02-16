@@ -8,7 +8,7 @@
     *
 
   (import scheme (chicken base) (chicken pathname) (chicken string)
-	  (chicken sort) (chicken module)
+	  (chicken sort) (chicken module) (chicken file)
 	  (chicken random) (chicken condition) (chicken port)
 	  list-utils srfi-1 srfi-13 srfi-14 srfi-69
 	  coops typed-records pstk stack comparse matchable
@@ -95,9 +95,17 @@
       ;; TODO not sure if not using tk/safe-dialogue is a good idea here, keep
       ;; an eye on it
       (sleep 1) ;; work-around for freeze-up after closing current module view
-      (let ((filename (tk/get-open-file
-  		       filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}})))
-	(unless (string-null? filename)
+      (let* ((filename-raw
+	      (tk/get-open-file
+  	       filetypes: '{{{MDAL Modules} {.mmod}} {{All Files} *}}))
+	     ;; Work-around for Tk returning filename enclosed in an extra pair
+	     ;; of quotes on some occasions
+	     (filename (if (and (string-prefix? "\"" filename-raw)
+				(string-suffix? "\"" filename-raw))
+			   (string-drop (string-drop-right filename-raw 1) 1)
+			   filename-raw)))
+	(unless (or (string-null? filename)
+		    (not (file-exists? filename)))
   	  (handle-exceptions
   	      exn
 	      (begin
@@ -266,10 +274,11 @@
       (let* ((mdef-selector (ui-ref new-file-dialog 'mdef-selector))
 	     (item-list (string-split
   			 (string-delete
-  			  (string->char-set "{}")
+  			  (string->char-set "{}\"")
   			  (->string (mdef-selector 'children '{}))))))
 	(unless (null? item-list)
 	  (tk/focus mdef-selector)
+	  (wait-for-treeview-item mdef-selector (car item-list))
 	  (mdef-selector 'focus (car item-list))
 	  (mdef-selector 'selection 'set (list (car item-list)))))))
 
