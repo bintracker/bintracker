@@ -1794,16 +1794,20 @@
 	id: id
 	;; TODO: (mdef-group-ordered? parent-inode-id proto-mdef)
 	fn: (lambda (onode parent-inode mdef md-symbols)
-	      (let* ((parent (if (or (not resize)
-				     (inode-config-block-length
-				      (mdef-inode-ref parent-inode-id mdef)))
-				 ;; do not resize if input block length is fixed
-				 parent-inode
-				 (resize-blocks
-				  parent-inode
-				  parent-inode-id
-				  (and (fixnum? resize) resize)
-				  mdef)))
+	      (let* ((fixed-block-length
+		      (inode-config-block-length
+		       (mdef-inode-ref parent-inode-id mdef)))
+		     (parent
+		      (cond
+		       ((not resize) parent-inode)
+		       (fixed-block-length (resize-blocks parent-inode
+							  parent-inode-id
+							  fixed-block-length
+							  mdef))
+		       (else (resize-blocks parent-inode
+					    parent-inode-id
+					    (and (fixnum? resize) resize)
+					    mdef))))
 		     (order-alist
 		      (make-order-alist (subnode-ref order-id parent)
 					source-block-ids mdef
