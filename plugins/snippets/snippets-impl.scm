@@ -244,8 +244,8 @@
 		     (let* ((selector (ui-ref dialog 'selector))
 			    (id (selector 'item (selector 'focus) text:)))
 		       (unless (string-null? id)
-			 (edit (current 'blockview) 'current 'set
-			       (snippets::load id))))))))))
+			 (ui-paste (current 'blockview)
+				   (snippets::load id))))))))))
       dialog))
 
   (define (snippets::load-dialog)

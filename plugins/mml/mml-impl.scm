@@ -211,8 +211,8 @@
       		    exn
 		    (report-exception
 		     exn "MML Error" "An error occured in MML")
-      		  (edit (current 'blockview) 'current 'set
-      			(mml::read ((ui-ref dialog-widget 'tbox)
+		  (ui-paste (current 'blockview)
+			    (mml::read ((ui-ref dialog-widget 'tbox)
 				    'get "0.0" 'end)
 				   (string->number ((ui-ref dialog-widget 'qnt)
 						    'get))))))))))
