@@ -1521,6 +1521,8 @@
      footer
      cancel-button
      confirm-button
+     (cancel-text "Cancel")
+     (confirm-text "Confirm")
      (children initform: '() accessor: ui-children)
      (traverse '())))
 
@@ -1551,10 +1553,12 @@
 	  (set! (slot-value d 'footer) (tl 'create-widget 'frame))
 	  (set! (slot-value d 'confirm-button)
 	    ((slot-value d 'footer) 'create-widget 'button
-	     text: "Confirm" command: (lambda () (finalize #t))))
+	     text: (slot-value d 'confirm-text)
+	     command: (lambda () (finalize #t))))
 	  (set! (slot-value d 'cancel-button)
 	    ((slot-value d 'footer) 'create-widget 'button
-	     text: "Cancel" command: (lambda () (finalize #f))))
+	     text: (slot-value d 'cancel-text)
+	     command: (lambda () (finalize #f))))
 	  (set! (slot-value d 'traverse)
 	    (append (slot-value d 'traverse)
 		    '(cancel-button confirm-button)))
