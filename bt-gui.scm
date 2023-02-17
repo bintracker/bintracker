@@ -4203,6 +4203,9 @@
     (ui-set-focus buf (caar (slot-value buf 'subgroups)))
     (tk/pack (slot-value buf 'tabs) expand: 1 fill: 'both))
 
+  (define-method (ui-destroy before: (buf <ui-subgroups>))
+    (for-each ui-destroy (map cdr (slot-value buf 'subgroups))))
+
   (define-method (ui-metastate primary: (buf <ui-subgroups>)
   			       #!rest args)
     (apply (slot-value buf 'metastate-accessor) args))

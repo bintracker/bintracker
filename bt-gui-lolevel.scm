@@ -778,7 +778,8 @@
   ;;; before destroying its associated Tk widgets. You cannot resurrect ELEM
   ;;; after calling this method.
   (define-method (ui-destroy primary: (elem <ui-element>))
-    (tk-with-lock (lambda () (tk/destroy (ui-box elem)))))
+    (for-each (o ui-destroy cdr) (ui-children elem))
+    (tk/destroy (ui-box elem)))
 
   ;;; Returns ELEMs child UI element with the identifier CHILD-ELEMENT. The
   ;;; requested element may be a direct descendant of ELEM, or an indirect
