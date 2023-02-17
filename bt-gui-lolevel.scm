@@ -1522,7 +1522,7 @@
      cancel-button
      confirm-button
      (children initform: '() accessor: ui-children)
-     (traverse #f)))
+     (traverse '())))
 
   (define-method (ui-show primary: (d <ui-dialog>) #!key initializer-args)
     ;; TODO busy the actual parent
@@ -1555,6 +1555,9 @@
 	  (set! (slot-value d 'cancel-button)
 	    ((slot-value d 'footer) 'create-widget 'button
 	     text: "Cancel" command: (lambda () (finalize #f))))
+	  (set! (slot-value d 'traverse)
+	    (append (slot-value d 'traverse)
+		    '(cancel-button confirm-button)))
 	  (set! (ui-children d)
 	    (map (lambda (child-spec)
 		   `(,(car child-spec)
@@ -1606,13 +1609,17 @@
       (tk/destroy (ui-box d))))
 
   (define-method (ui-ref primary: (elem <ui-dialog>) child-element)
-    (let ((children (ui-children elem)))
-      (and (ui-children elem)
-  	   (or (alist-ref child-element children)
-	       (and-let* ((ce (find (lambda (child)
-  				      (ui-ref (cdr child) child-element))
-  				    children)))
-		 (ui-ref (cdr ce) child-element))))))
+    (case child-element
+      ((cancel-button) (slot-value elem 'cancel-button))
+      ((confirm-button) (slot-value elem 'confirm-button))
+      (else
+       (let ((children (ui-children elem)))
+	 (and (ui-children elem)
+  	      (or (alist-ref child-element children)
+		  (and-let* ((ce (find (lambda (child)
+  					 (ui-ref (cdr child) child-element))
+  				       children)))
+		    (ui-ref (cdr ce) child-element))))))))
 
 
   ;; ---------------------------------------------------------------------------

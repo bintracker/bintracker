@@ -152,9 +152,15 @@
 	    ((description text takefocus: 0 state: disabled bd: 0
 			  highlightthickness: 0 height: 10 wrap: word))
 	    yscroll #t))
-      'traverse '(mdef-selector platform-selector)
+      'traverse '(mdef-selector)
       'initializers
       (make-hooks
+       `(rotate-focus
+	 .
+	 ,(lambda ()
+	    (set! (slot-value new-file-dialog 'traverse)
+	      (append (slot-value new-file-dialog 'traverse)
+		      (list 'platform-selector)))))
        `(configure-text-style
 	 .
 	 ,(lambda ()
