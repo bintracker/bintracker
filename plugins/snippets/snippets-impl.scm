@@ -211,10 +211,25 @@
 	    `((lst ,<ui-wrapper> setup
 		   ((selector treeview columns: (ID Name Tags)
 			      selectmode: browse show: ()))
-		   yscroll #t))
-	    'traverse '(selector)
+		   yscroll #t)
+	      (pm ,<ui-wrapper> setup
+		  ((lpm label text: "Paste Mode:                ")
+		   (pm1 radiobutton text: " Replace")
+		   (pm2 radiobutton text: " Porous/under")
+		   (pm3 radiobutton text: " Porous/over"))))
+	    'traverse '(selector pm1 pm2 pm3)
 	    'initializers
 	    (make-hooks
+	     (cons 'setup-vars
+		   (lambda ()
+		     (let ((paste-mode (tk-var "pastemode")))
+		       ((ui-ref dialog 'pm1)
+			'configure variable: paste-mode value: "r")
+		       ((ui-ref dialog 'pm2)
+			'configure variable: paste-mode value: "u")
+		       ((ui-ref dialog 'pm3)
+			'configure variable: paste-mode value: "o")
+		       (tk-set-var! "pastemode" "r"))))
 	     (cons 'list-snippets
 		   (lambda ()
 		     (let ((selector (ui-ref dialog 'selector)))
@@ -244,8 +259,12 @@
 		     (let* ((selector (ui-ref dialog 'selector))
 			    (id (selector 'item (selector 'focus) text:)))
 		       (unless (string-null? id)
-			 (ui-paste (current 'blockview)
-				   (snippets::load id))))))))))
+			 ((case (car (string->list (tk-get-var "pastemode")))
+			    ((#\r) ui-paste)
+			    ((#\o) ui-porous-paste-over)
+			    ((#\u) ui-porous-paste-under))
+			  (current 'blockview)
+			  (snippets::load id))))))))))
       dialog))
 
   (define (snippets::load-dialog)
