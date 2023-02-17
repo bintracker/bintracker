@@ -944,7 +944,7 @@
   		       (<= new-val to))
   		  (begin (set! (slot-value buf 'statevar) new-val)
   		   	 (when callback (callback)))
-  		  (spinbox 'set (slot-value buf 'state-var))))))
+  		  (spinbox 'set (slot-value buf 'statevar))))))
       (set! (slot-value buf 'label)
   	(box 'create-widget 'label text: (car setup)
   	     foreground: (colors 'text)))
@@ -952,17 +952,21 @@
       	       (lambda ()
 		 (tk-with-lock
 		  (lambda ()
-      		    (validate-new-value (add1 (string->number (spinbox 'get))))))
+		    (let ((new-val (string->number (spinbox 'get))))
+      		      (validate-new-value (and new-val (add1 new-val))))))
 		 (focus 'resume)))
       (tk/bind spinbox '<<Decrement>>
       	       (lambda ()
 		 (tk-with-lock
 		  (lambda ()
-      		    (validate-new-value (sub1 (string->number (spinbox 'get))))))
+		    (let ((new-val (string->number (spinbox 'get))))
+      		      (validate-new-value (and new-val (sub1 new-val))))))
       		 (focus 'resume)))
       (tk/bind* spinbox '<Return>
   		(lambda ()
-  		  (validate-new-value (string->number (spinbox 'get)))
+		  (tk-with-lock
+		   (lambda ()
+  		     (validate-new-value (string->number (spinbox 'get)))))
   		  (focus 'resume)))
       (set! (slot-value buf 'spinbox) spinbox)
       (tk/pack (slot-value buf 'label) side: 'left padx: 5)
