@@ -239,10 +239,12 @@ plugins:
 .PHONY: plugin-docs
 plugin-docs:
 	mkdir -p gendoc/plugins/mml
+	mkdir -p gendoc/plugins/pcmconv
 	mkdir -p gendoc/plugins/prng
 	mkdir -p gendoc/plugins/snippets
 	mkdir -p gendoc/plugins/unzufall
 	cp $(BT_SRC)plugins/mml/README.md gendoc/plugins/mml/
+	cp $(BT_SRC)plugins/pcmconv/README.md gendoc/plugins/pcmconv/
 	cp $(BT_SRC)plugins/prng/README.md gendoc/plugins/prng/
 	cp $(BT_SRC)plugins/snippets/README.md gendoc/plugins/snippets/
 	cp $(BT_SRC)plugins/unzufall/README.md gendoc/plugins/unzufall/

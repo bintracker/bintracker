@@ -47,6 +47,7 @@ nav:
       - Plugins:
           - Overview: plugins.md
           - mml: 'plugins/mml/README.md'
+          - pcmconv: 'plugins/pcmconv/README.md'
           - prng: 'plugins/prng/README.md'
           - snippets: 'plugins/snippets/README.md'
           - unzufall: 'plugins/unzufall/README.md'
