@@ -27,7 +27,7 @@ By utz 2019-2022."
 		     flags: (use-last-set)
 		     description: "Drum length in ticks")
 	    (command id: PWM bits: 8 type: uint default: 0
-		     flags: (is-pwm-data)
+		     flags: (is-pwm-data sample-rate:15429)
 		     description: "PWM sample data"))
 
  input: ((group id: PATTERNS flags: (ordered looped)

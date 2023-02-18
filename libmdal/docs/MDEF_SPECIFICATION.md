@@ -177,6 +177,7 @@ In addition to the above mandatory flags, you can set any number of optional use
 | `is-pwm-data`   | PWM sample data                                         | `uint`                     |
 | `is-volume`     | volume setting                                          | `uint`                     |
 | `is-waveform`   | waveform setting                                        | `key`, `ukey`, `reference` |
+| `sample-rate:N` | sample rate in Hz, where *N* is an integer              | `int`, `uint`              |
 
 
 #### Auto-Generated Commands
