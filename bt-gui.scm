@@ -4874,9 +4874,8 @@
       			 (string-append "Failed to run emulator. "
       					"Playback will be unavailable."))
       			#f)
-      		    (platform->emulator
-		     (target-platform-id
-      		      (mdef-target (car (slot-value buf 'mmod))))))))
+      		    (emulate (target-platform-id
+      			      (mdef-target (car (slot-value buf 'mmod))))))))
       	(when emul
       	  (set! (slot-value buf 'emulator) emul)
       	  (emul 'start)))

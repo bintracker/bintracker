@@ -28,6 +28,10 @@ Access various components of the module interface the user is currently  interac
 
 Edit contents of a group field, blockview, or order-view.
 
+**[`(emulate PLATFORM-ID)`](generated/bt-emulation.md#def-emulate)**
+
+Generate an emulator object suitable for the target system with the MDAL platform id PLATFORM.
+
 **[`(EMULATOR 'exec|info|pause|quit|run|unpause|start [ARGS...])`](generated/bt-emulation.md#def-make-emulator)**
 
 Interact with an EMULATOR. Use `(current 'emulator)` to retrieve the emulator of the currently active module view.
@@ -50,10 +54,6 @@ Access the internal help system. This feature is not complete yet.
 **[`(multibuffer-show CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>
 
 Interact with multibuffers.
-
-**[`(platform->emulator PLATFORM-ID)`](generated/bt-emulation.md#def-platform-emulator)**
-
-Generate an emulator object suitable for the target system with the MDAL platform id PLATFORM.
 
 **[`(plugins ['register NAME1...])`](generated/bintracker-core.md#def-plugins)**
 

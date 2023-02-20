@@ -168,14 +168,14 @@
   ;;; lists in the Bintracker config directory. An exception is raised if no
   ;;; entry is found for either the target system, or the emulator program that
   ;;; the target system requests.
-  (define (platform->emulator platform)
+  (define (emulate platform)
     (let* ((platform-config
-	    (let ((pf (or (alist-ref platform
+	    (let ((pf (or (alist-ref (->string platform)
 				     (read (open-input-file
 					    "config/systems.scm"))
 				     string=)
 			  (error (string-append "Unknown target system "
-						platform)))))
+						(->string platform))))))
 	      (apply (lambda (#!key emulator (startup-args '()))
 		       `(,emulator ,startup-args))
 		     pf)))
