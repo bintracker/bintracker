@@ -4904,6 +4904,10 @@
   ;;; - `mdef`: The current MDAL engine definition.
   ;;; - `emulator`: The current emulator object.
   ;;; - `buffer`: The current focussed buffer.
+  ;;; - `selection`: A list containing the first row, first field, last row, and
+  ;;; last field of the current block selection
+  ;;; - `selected-contents`: The contents of the current block selection, or the
+  ;;; value at the current cursor position if no selection is active
   (define (current what)
     (let ((find-module-element
 	   (lambda (partial-id)
@@ -4926,6 +4930,10 @@
 		      (ui-metastate mv 'emulator)))
 	((buffer) (and (focus 'which)
   		       (focus 'assoc (car (focus 'which)))))
+	((selection) (and-let* ((bv (current 'blockview)))
+		       (ui-normalized-selection bv)))
+	((selected-contents) (and-let* ((bv (current 'blockview)))
+			       (ui-selected-contents bv)))
 	(else (error 'current
 		     (string-append "Unknown element " (->string what)))))))
 
