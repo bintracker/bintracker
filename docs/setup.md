@@ -10,7 +10,9 @@ Currently, binaries are only provided for Windows. Linux and MacOS users need to
 
 The full package contains all the required dependencies to run Bintracker, except the ROM files for MAME emulation. Simply extract `bintracker-win64-full.zip` to a directory of your choice. Next, [add ROM files](#adding-rom-files) for all the machines you want to use.
 
-Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
+!!! info ""
+
+    Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
 
 #### Core Package
 
@@ -18,7 +20,9 @@ The core package contains only Bintracker itself, without the MAME emulator and 
 
 Extract `bintracker-win64-core.zip` to a directory of your choice. Download [Tclkit 8.6 for Windows 64-bit](https://tclkits.rkeene.org/fossil/wiki/Downloads). Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Now, adjust `bintracker\config\emulators.windows.scm`, where `program-name` is the path to your `mame.exe` and `"roms"` is the path to your MAME ROM directory.
 
-Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
+!!! info ""
+
+    Bintracker requires access to the local network in order to communicate with MAME. Depending on your security setup, you may need to manually grant the required permissions.
 
 
 ## Compiling from Source
@@ -85,7 +89,9 @@ For most target systems you want to emulate, you will also need to obtain ROM fi
 
 Once you've completed these steps, you can run the `bintracker` executable in the `build` directory.
 
-If you notice sound being choppy, you can try adding `"-nofilter" "-nomax"` and/or `"-autoframeskip"` to the list of MAME default-args in `config/emulators.scm`. Especially hard cases may be fixed with `"-video" "none"`. Newer versions of MAME will complain about the latter, but it nevertheless fixes most cases of bad audio.
+!!! tip ""
+
+    If you notice sound being choppy, you can try adding `"-nofilter" "-nomax"` and/or `"-autoframeskip"` to the list of MAME default-args in `config/emulators.scm`. Especially hard cases may be fixed with `"-video" "none"`. Newer versions of MAME will complain about the latter, but it nevertheless fixes most cases of bad audio.
 
 
 ### Windows

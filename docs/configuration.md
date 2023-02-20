@@ -18,7 +18,9 @@ You can supply your custom keymap by copying one of the maps provided in `config
 
 You can also use the main configuration file to override selected key bindings with the [`bind-keys!`](generated/bt-state.md#def-bind-keys!) procedure.
 
-**WARNING:** Do not rebind keyboard shortcuts that would normally trigger a menu action, as this may cause the user interface to become unstable.
+!!! danger "WARNING"
+
+    Do not rebind keyboard shortcuts that would normally trigger a menu action, as this may cause the user interface to become unstable.
 
 
 ### Color Schemes
