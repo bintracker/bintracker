@@ -91,6 +91,10 @@ nav:
   - "Fan Art": fanart.md
 
 markdown_extensions:
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
