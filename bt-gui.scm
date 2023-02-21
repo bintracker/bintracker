@@ -1143,6 +1143,9 @@
 		  (and (not (settings 'repl-enable-struct-edit))
 		       (parse (any-of a-atom a-cons) input-str)))
   	      (begin
+		(set! (slot-value buf 'history-pointer) 0)
+		(set! (slot-value buf 'history)
+		  (cons input-str (slot-value buf 'history)))
   		(repl-insert
   		 buf
   		 (let ((res (->string (eval (read (open-input-string
@@ -1152,9 +1155,6 @@
   		     (say 'sanitize res))
   		   (string-append "\n" res)))
   		(repl-insert-prompt buf)
-		(set! (slot-value buf 'history-pointer) 0)
-		(set! (slot-value buf 'history)
-		  (cons input-str (slot-value buf 'history)))
 		((slot-value buf 'repl) 'mark 'set 'insert "end-1c"))
 	      ((slot-value buf 'repl) 'insert 'insert
   	       (string-append "\n" (make-string (+ 3 (string-length prompt))))))
