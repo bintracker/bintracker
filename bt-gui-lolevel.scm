@@ -128,6 +128,10 @@
       (tree 'focus first-item)
       (tree 'selection 'set (list first-item))))
 
+  ;;; Convert Tk's "0" and "1" responses to conditional queries to `#f`/`#t`.
+  (define (tk-true? tk-eval-result)
+    (= 1 (string->number tk-eval-result)))
+
 
   ;; ---------------------------------------------------------------------------
   ;;; ### Accessibility

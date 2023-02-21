@@ -148,6 +148,7 @@
 	       (default-major-row-highlight . 2)
 	       (default-minor-row-highlight . 4)
 	       (default-block-length . 16)
+	       (repl-enable-struct-edit #t)
 	       (journal-limit . 100)
 	       (dwim-module-edit . #t))))
       (lambda args

@@ -798,56 +798,272 @@
 	     (tk/pack yscroll side: 'right fill: 'y))
 	(tk/pack repl expand: 1 fill: 'both side: 'right))))
 
-  ;;; Protect the prompt string by applying various tweaks to the standard event
-  ;;; handlers of Tk text widgets.
+  ;;; Detect if the cursor is inside a quoted string.
+  (define (repl-cursor-in-string? repl-widget)
+    (letrec*
+	((prompt-index (repl-widget 'index "prompt"))
+	 (tag-str (lambda (s in-str? escape?)
+		    (if (null? s)
+			`(,in-str?)
+			(let* ((toggle-in-str?
+				(and (not escape?) (eq? (car s) #\")))
+			       (now-in-str?
+				(if toggle-in-str? (not in-str?) in-str?))
+			       (escape-next
+				(and (not in-str?) (eq? (car s) #\\))))
+			  (cons now-in-str?
+				(tag-str (cdr s) now-in-str? escape-next)))))))
+      (last (tag-str (take (string->list (repl-widget 'get prompt-index 'end))
+			   (string-length
+			    (repl-widget
+			     'get prompt-index (repl-widget 'index 'insert))))
+		     #f
+		     #f))))
+
+  ;;; Enable automatic insertion of closing parens/braces/brackets/double quotes
+  ;;; when typing the corresponding opening character.
+  (define (repl-enable-auto-pairs repl-widget repl-tk-id)
+    (let ((make-bracket-check
+	   (lambda (open-event close-event open-char close-char)
+	     (tk/bind
+	      repl-widget
+	      open-event
+	      (lambda ()
+		(let* ((insert-pos
+			(repl-widget 'index 'insert))
+		       (insert-prefix
+			(repl-widget 'get (string-append insert-pos "-2c")
+				     insert-pos)))
+		  (if (or (repl-cursor-in-string? repl-widget)
+			  (and (string=? "\\" (string-drop insert-prefix 1))
+			       (not (string=? "\\\\" insert-prefix))))
+		      (repl-widget 'insert insert-pos open-char)
+		      (begin
+			(repl-widget 'insert insert-pos
+				     (string-append open-char close-char))
+			(tk-eval (string-append "tk::TextSetCursor "
+						repl-tk-id
+						" insert-1displayindices")))))))
+	     (tk/bind
+	      repl-widget
+	      close-event
+	      (lambda ()
+		(let* ((insert-pos
+			(repl-widget 'index 'insert))
+		       (insert-prefix
+			(repl-widget 'get (string-append insert-pos "-2c")
+				     insert-pos)))
+		  (when (or (repl-cursor-in-string? repl-widget)
+			    (and (string=? "\\" (string-drop insert-prefix 1))
+				 (not (string=? "\\\\" insert-prefix))))
+		      (repl-widget 'insert insert-pos close-char)))))
+	     (tk-eval (string-append
+		       "bind " repl-tk-id " " (symbol->string open-event)
+		       " +break"))
+	     (tk-eval (string-append
+		       "bind " repl-tk-id " " (symbol->string close-event)
+		       " +break")))))
+      (for-each (lambda (spec)
+		  (apply make-bracket-check spec))
+		'((<Key-parenleft> <Key-parenright> "(" ")")
+		  (<Key-braceleft> <Key-braceright> "{" "}")
+		  (<Key-bracketleft> <Key-bracketleft> "[" "]")))
+      (tk/bind
+       repl-widget
+       '<Key-quotedbl>
+       (lambda ()
+	 (let* ((insert-pos (repl-widget 'index 'insert))
+		(insert-prefix (repl-widget 'get
+					    (string-append insert-pos "-2c")
+					    insert-pos)))
+	   (cond
+	    ((and (string=? "\\" (string-drop insert-prefix 1))
+		  (not (string=? "\\\\" insert-prefix)))
+	     (repl-widget 'insert insert-pos "\""))
+	    ((not (repl-cursor-in-string? repl-widget))
+	     (repl-widget 'insert insert-pos "\"\"")
+	     (tk-eval (string-append "tk::TextSetCursor "
+				     repl-tk-id
+				     " insert-1displayindices")))))))
+      (tk-eval (string-append "bind " repl-tk-id " <Key-quotedbl> +break"))))
+
+  ;;; Enhance the repl by applying various tweaks to the standard event handlers
+  ;;; of Tk text widgets.
   (define-method (repl-modify-default-events primary: (buf <ui-repl>))
-    (tk/bind (slot-value buf 'repl) '<<PrevChar>>
-	     (lambda ()
-	       (let* ((mark->pos
-		       (lambda (mark)
-			 (map string->number
-  			      (string-split
-			       ((slot-value buf 'repl) 'index mark)
-  			       "."))))
-		      (cursor-pos (mark->pos 'insert))
-		      (prompt-pos (mark->pos "prompt")))
-		 (unless (and (= (car prompt-pos) (car cursor-pos))
-			      (<= (cadr cursor-pos) (cadr prompt-pos)))
-		   (tk-eval (string-append "tk::TextSetCursor "
-					   ((slot-value buf 'repl) 'get-id)
-					   " insert-1displayindices"))))))
-    (tk-eval (string-append "bind "
-			    ((slot-value buf 'repl) 'get-id)
-			    " <<PrevChar>> +break"))
-    (tk/bind (slot-value buf 'repl) '<BackSpace>
-	     (lambda ()
-	       (let* ((mark->pos
-		       (lambda (mark)
-			 (map string->number
-  			      (string-split
-			       ((slot-value buf 'repl) 'index mark)
-  			       "."))))
-		      (cursor-pos (mark->pos 'insert))
-		      (prompt-pos (mark->pos "prompt"))
-		      (tk-id ((slot-value buf 'repl) 'get-id)))
-		 (unless (and (= (car prompt-pos) (car cursor-pos))
-			      (<= (cadr cursor-pos) (cadr prompt-pos)))
-		   (tk-eval
-		    (string-append
-		     "if {[tk::TextCursorInSelection "
-		     tk-id
-		     "]} {\n\t"
-		     tk-id
-		     " delete sel.first sel.last\n} else {\n\tif {["
-		     tk-id
-		     " compare insert != 1.0]} {\n\t\t"
-		     tk-id
-		     " delete insert-1c\n}\n\t "
-		     tk-id
-		     " see insert\n}"))))))
-    (tk-eval (string-append "bind "
-			    ((slot-value buf 'repl) 'get-id)
-			    " <BackSpace> +break")))
+    (let* ((repl-widget (slot-value buf 'repl))
+	   (repl-id (repl-widget 'get-id)))
+      ;; Protect the prompt prefix
+      (tk/bind
+       repl-widget
+       '<<PrevChar>>
+       (lambda ()
+	 (let* ((mark->pos (lambda (mark)
+			     (map string->number
+  				  (string-split (repl-widget 'index mark)
+						"."))))
+		(cursor-pos (mark->pos 'insert))
+		(prompt-pos (mark->pos "prompt")))
+	   (unless (and (= (car prompt-pos) (car cursor-pos))
+			(<= (cadr cursor-pos) (cadr prompt-pos)))
+	     (tk-eval (string-append "tk::TextSetCursor "
+				     repl-id
+				     " insert-1displayindices"))))))
+      (tk-eval (string-append "bind " repl-id " <<PrevChar>> +break"))
+      (tk/bind
+       repl-widget
+       '<BackSpace>
+       (lambda ()
+	 (let* ((mark->pos
+		 (lambda (mark)
+		   (map string->number
+  			(string-split (repl-widget 'index mark) "."))))
+		(cursor-pos (mark->pos 'insert))
+		(prompt-pos (mark->pos "prompt")))
+	   (unless (and (= (car prompt-pos) (car cursor-pos))
+			(<= (cadr cursor-pos) (cadr prompt-pos)))
+	     (if (tk-true? (tk-eval
+			    (string-append "tk::TextCursorInSelection "
+					   repl-id)))
+		 (repl-widget 'delete 'sel.first 'sel.last)
+		 (when (tk-true? (repl-widget 'compare 'insert '!= '1.0))
+		   (if (settings 'repl-enable-struct-edit)
+		       (let* ((insert-pos
+			       (repl-widget 'index 'insert))
+			      (insert-prefix4
+			       (repl-widget 'get
+					    (string-append insert-pos "-4c")
+					    insert-pos))
+			      (insert-prefix3
+			       (string-drop insert-prefix4 1))
+			      (insert-prefix2
+			       (string-drop insert-prefix3 1))
+			      (insert-prefix1
+			       (string-drop insert-prefix2 1))
+			      (insert-suffix0
+			       (repl-widget 'get insert-pos))
+			      (insert-suffix
+			       (and (not (string-null? insert-suffix0))
+				    insert-suffix0))
+			      (insert-enclose
+			       (and insert-suffix
+				    (string-append insert-prefix1
+						   insert-suffix))))
+			 (cond
+			  ;; cursor in string|not after list/string delimiter
+			  ((or (and (repl-cursor-in-string? repl-widget)
+				    (not (string=? "\"" insert-prefix1)))
+			       (and (string=? "\\" insert-prefix1)
+				    (not (string=? "\\\\" insert-prefix2)))
+			       (not (memq (car (string->list insert-prefix1))
+					  '(#\( #\) #\[ #\] #\{ #\} #\"))))
+			   (repl-widget 'delete 'insert-1c))
+			  ;; cursor after empty list/string
+			  ((and (or (string=? insert-prefix2 "\"\"")
+				    (string=? insert-prefix2 "()")
+				    (string=? insert-prefix2 "[]")
+				    (string=? insert-prefix2 "{}"))
+				(not (and (string=? "\\"
+						    (string-drop-right
+						     insert-prefix3 2))
+					  (not (string=? "\\\\"
+							 (string-drop-right
+							  insert-prefix4 2))))))
+			   (repl-widget 'delete 'insert-2c 'insert))
+			  ;; cursor inside empty list/string
+			  ((and insert-suffix
+				(or (string=? insert-enclose "\"\"")
+				    (string=? insert-enclose "()")
+				    (string=? insert-enclose "[]")
+				    (string=? insert-enclose "{}"))
+				(not (and (string=? "\\"
+						    (string-drop-right
+						     insert-prefix2 1))
+					  (not (string=? "\\\\"
+							 (string-drop-right
+							  insert-prefix3 1))))))
+			   (repl-widget 'delete 'insert-1c 'insert+1c))))
+		       (repl-widget 'delete 'insert-1c))))
+	     (repl-widget 'see 'insert)))))
+      (tk-eval (string-append "bind " repl-id " <BackSpace> +break"))
+      (tk/bind
+       repl-widget
+       '<Delete>
+       (lambda ()
+	 (let* ((mark->pos
+		 (lambda (mark)
+		   (map string->number
+  			(string-split (repl-widget 'index mark) "."))))
+		(cursor-pos (mark->pos 'insert))
+		(prompt-pos (mark->pos "prompt")))
+	   (unless (or (< (car cursor-pos) (car prompt-pos))
+		       (and (= (car prompt-pos) (car cursor-pos))
+			    (<= (cadr cursor-pos) (cadr prompt-pos))))
+	     (if (tk-true? (tk-eval
+			    (string-append "tk::TextCursorInSelection "
+					   repl-id)))
+		 (repl-widget 'delete 'sel.first 'sel.last)
+		 (when (tk-true? (repl-widget 'compare 'insert '!= '1.0))
+		   (if (settings 'repl-enable-struct-edit)
+		       (let* ((insert-pos
+			       (repl-widget 'index 'insert))
+			      (insert-prefix3
+			       (repl-widget 'get
+					    (string-append insert-pos "-3c")
+					    insert-pos))
+			      (insert-prefix2
+			       (string-drop insert-prefix3 1))
+			      (insert-prefix1
+			       (string-drop insert-prefix2 1))
+			      (insert-suffix0
+			       (repl-widget 'get insert-pos 'end))
+			      (insert-suffix1
+			       (and (>= (string-length insert-suffix0) 1)
+				    (string-take insert-suffix0 1)))
+			      (insert-suffix2
+			       (and (>= (string-length insert-suffix0) 2)
+				    (string-take insert-suffix0 2)))
+			      (insert-enclose
+			       (and insert-suffix1
+				    (string-append insert-prefix1
+						   insert-suffix1))))
+			 (when insert-suffix1
+			   (cond
+			    ;; cursor in string|not before list/string delimiter
+			    ((or (and (repl-cursor-in-string? repl-widget)
+				      (not (string=? "\"" insert-suffix1)))
+				 (and (string=? "\\" insert-prefix1)
+				      (not (string=? "\\\\" insert-prefix2)))
+				 (not (memq (car (string->list insert-suffix1))
+					    '(#\( #\) #\[ #\] #\{ #\} #\"))))
+			     (repl-widget 'delete 'insert))
+			    ;; cursor in empty list/string
+			    ((and (or (string=? insert-enclose "\"\"")
+				      (string=? insert-enclose "()")
+				      (string=? insert-enclose "[]")
+				      (string=? insert-enclose "{}"))
+				  (not
+				   (and (string=? "\\"
+						  (string-drop-right
+						   insert-prefix2 1))
+					(not (string=? "\\\\"
+						       (string-drop-right
+							insert-prefix3 1))))))
+			     (repl-widget 'delete 'insert-1c 'insert+1c))
+			    ;; cursor before empty list/string
+			    ((and insert-suffix2
+				  (or (string=? insert-suffix2 "\"\"")
+				      (string=? insert-suffix2 "()")
+				      (string=? insert-suffix2 "[]")
+				      (string=? insert-suffix2 "{}"))
+				  (not (and (string=? "\\" insert-prefix1)
+					    (not (string=? "\\\\"
+							   insert-prefix2)))))
+			     (repl-widget 'delete 'insert 'insert+2c)))))
+		       (repl-widget 'delete 'insert))))
+	     (repl-widget 'see 'insert)))))
+      (tk-eval (string-append "bind " repl-id " <Delete> +break"))
+      (when (settings 'repl-enable-struct-edit)
+	(repl-enable-auto-pairs repl-widget repl-id))))
 
   ;;; Insert STR at the end of the prompt of the `<ui-repl>` instance BUF.
   (define-method (repl-insert primary: (buf <ui-repl>) str)
@@ -857,7 +1073,8 @@
 
   (define-method (repl-insert-prompt primary: (buf <ui-repl>))
     (repl-insert buf (string-append "\n" (slot-value buf 'prompt)))
-    ((slot-value buf 'repl) 'mark 'set "prompt" "end-1c"))
+    ((slot-value buf 'repl) 'mark 'set "prompt" "end-1c")
+    ((slot-value buf 'repl) 'mark 'set 'insert 'end))
 
   ;;; Clear the prompt of the `<ui-repl>` instance BUF.
   (define-method (repl-clear primary: (buf <ui-repl>))
@@ -910,10 +1127,10 @@
 					  "\n"
 					  formatted-call-chain
 					  "\n"))
-  	       (when (settings 'text-to-speech)
-  		 (say 'sanitize (exn->message exn)))
-  	       (repl-insert-prompt buf)
-  	       ((slot-value buf 'repl) 'see 'end))
+  	  (when (settings 'text-to-speech)
+  	    (say 'sanitize (exn->message exn)))
+  	  (repl-insert-prompt buf)
+  	  ((slot-value buf 'repl) 'see 'end))
       (let ((input-str (repl-get buf "prompt" "end-1c"))
   	    (prompt (slot-value buf 'prompt)))
   	(unless (string-null? input-str)
@@ -921,7 +1138,10 @@
   	  ;; which has it's own special requirements that may change. We should
   	  ;; use a separate parser here (and it should probably be derived from
   	  ;; scm2wiki as that's the most robust one).
-  	  (if (parse (any-of a-atom a-cons) input-str)
+  	  (if (or (and (settings 'repl-enable-struct-edit)
+		       (string-null? (string-trim (repl-get buf 'insert 'end))))
+		  (and (not (settings 'repl-enable-struct-edit))
+		       (parse (any-of a-atom a-cons) input-str)))
   	      (begin
   		(repl-insert
   		 buf
@@ -936,10 +1156,8 @@
 		(set! (slot-value buf 'history)
 		  (cons input-str (slot-value buf 'history)))
 		((slot-value buf 'repl) 'mark 'set 'insert "end-1c"))
-  	      (repl-insert
-  	       buf
-  	       (string-append "\n"
-  			      (make-string (+ 3 (string-length prompt))))))
+	      ((slot-value buf 'repl) 'insert 'insert
+  	       (string-append "\n" (make-string (+ 3 (string-length prompt))))))
   	  ((slot-value buf 'repl) 'see 'end)))))
 
   (define-method (ui-focus primary: (buf <ui-repl>))

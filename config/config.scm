@@ -64,6 +64,13 @@
 ;; (settings 'theme-generator 'default-theme-generator)
 
 
+;; REPL settings
+;; -------------
+
+;; Enable or disable structured editing.
+;; (settings 'repl-enable-struct-edit #t)
+
+
 ;; MMOD buffer settings
 ;; --------------------
 
