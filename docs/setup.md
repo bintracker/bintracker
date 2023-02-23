@@ -59,12 +59,11 @@ $ chicken-install args base64 bitstring comparse coops list-utils matchable pstk
 ```
 
 Note that in order to build the sqlite3 extension, you need an [sqlite3](https://sqlite.org) installation. Your system most likely will have one installed already, but if not, install it through your distro's package manager.
+
 To build the Bintracker documentation, you will need [scm2wiki](https://github.com/utz82/scm2wiki), [MkDocs](https://www.mkdocs.org/), and the [mkdocs-material](https://github.com/squidfunk/mkdocs-material) theme.
 
 ```sh
-git clone https://github.com/utz82/scm2wiki.git
-cd scm2wiki
-chicken-install
+chicken-install scm2wiki
 $ pip install --user mkdocs mkdocs-material
 ```
 
@@ -77,6 +76,8 @@ You are now ready to build Bintracker.
 $ cd build/
 $ make
 ```
+
+To build the documentation, run `make docs`.
 
 You can do a parallel build (`make -jX`), however time savings will be minimal. You can `make tests` to run unit tests on libmdal and Schemta. If you are using Emacs and are planning on writing code for Bintracker, you can run make with an additional `ETAGS=1` argument to generate a suitable TAGS file in the main directory.
 
