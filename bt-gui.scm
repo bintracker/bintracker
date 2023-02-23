@@ -981,7 +981,12 @@
 					  (not (string=? "\\\\"
 							 (string-drop-right
 							  insert-prefix3 1))))))
-			   (repl-widget 'delete 'insert-1c 'insert+1c))))
+			   (repl-widget 'delete 'insert-1c 'insert+1c))
+			  (else
+			   (tk-eval (string-append
+				     "tk::TextSetCursor "
+				     repl-id
+				     " insert-1displayindices")))))
 		       (repl-widget 'delete 'insert-1c))))
 	     (repl-widget 'see 'insert)))))
       (tk-eval (string-append "bind " repl-id " <BackSpace> +break"))
