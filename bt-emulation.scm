@@ -44,6 +44,7 @@
   ;;; * `'pause` - Pause emulation.
   ;;; * `'unpause` - Unpause emulation.
   ;;; * `'start` - Launch emulator program in new thread.
+  ;;; * `'reset` - Reset in the emulator.
   ;;; * `'quit` - Exit the Emulator.
   (define (make-emulator program program-args)
     (unless (executable-exists? program)
@@ -154,9 +155,8 @@
 		  (string-append "b" (number->string (cadr args))
 				 "%" (base64-encode
 				      (list->string (caddr args))))))
-	  ((reset) (send-command (if (and (not (null? (cdr args)))
-					  (eqv? 'hard (cadr args)))
-				     "rh" "rs")))
+	  ;; FIXME hard resets break pipe, disable for now
+	  ((reset) (send-command "rs"))
 	  ;; ((setpc) (send-command
 	  ;; 	    (string-append "s" (number->string (cadr args)))))
 	  ((exec) (send-command (string-append "x" (cadr args))))

@@ -197,9 +197,9 @@ local machine_run_bin = function (argstr)
 end
 
 local machine_reset = function (reset_type)
-   if reset_type == "h" then
+   if string.sub(reset_type, 1, 1) == "h" then
       machine_manager:hard_reset()
-   elseif reset_type == "s" then
+   elseif string.sub(reset_type, 1, 1) == "s" then
       machine_manager:soft_reset()
    end
 end
