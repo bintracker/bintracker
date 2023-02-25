@@ -954,8 +954,52 @@
   ;;; of Tk text widgets.
   (define-method (repl-modify-default-events primary: (buf <ui-repl>))
     (let* ((repl-widget (slot-value buf 'repl))
-	   (repl-id (repl-widget 'get-id)))
+	   (repl-id (repl-widget 'get-id))
+	   (make-linestart-proc
+	    (lambda (internal-proc)
+	      (lambda ()
+		(tk-eval (string-append
+			  internal-proc " " repl-id
+			  (if (string-prefix?
+			       "repl>"
+			       (repl-widget 'get
+					    '(insert display linestart)
+					    '(insert display lineend)))
+			      " {insert display linestart+6c}"
+			      " {insert display linestart}"))))))
+	   (make-updown-adjust
+	    ;; TODO this is a rather dirty hack. A cleaner option would be to
+	    ;; provide an alternative to tk::TextUpDownLine and then call
+	    ;; tk::TextSetCursor with that.
+	    (lambda (offset)
+	      (lambda ()
+		(tk-eval (string-append
+			  "tk::TextSetCursor " repl-id " "
+			  "[tk::TextUpDownLine " repl-id " " offset "]"))
+		(when (and (string-prefix?
+			    "repl>"
+			    (repl-widget 'get
+					 '(insert display linestart)
+					 '(insert display lineend)))
+			   (< (string->number
+			       (cadr (string-split (repl-widget 'index 'insert)
+						   ".")))
+			      6))
+		  (tk-eval
+		   (string-append "tk::TextSetCursor "
+				  repl-id
+				  " {insert display linestart+6c}")))))))
       ;; Protect the prompt prefix
+      (tk/bind repl-widget '<<LineStart>>
+	       (make-linestart-proc "tk::TextSetCursor"))
+      (tk-eval (string-append "bind " repl-id " <<LineStart>> +break"))
+      (tk/bind repl-widget '<<SelectLineStart>>
+	       (make-linestart-proc "tk::TextKeySelect"))
+      (tk-eval (string-append "bind " repl-id " <<SelectLineStart>> +break"))
+      (tk/bind repl-widget '<<PrevLine>> (make-updown-adjust "-1"))
+      (tk-eval (string-append "bind " repl-id " <<PrevLine>> +break"))
+      (tk/bind repl-widget '<<NextLine>> (make-updown-adjust "1"))
+      (tk-eval (string-append "bind " repl-id " <<NextLine>> +break"))
       (tk/bind
        repl-widget
        '<<PrevChar>>
