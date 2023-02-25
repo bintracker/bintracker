@@ -822,6 +822,67 @@
 		     #f
 		     #f))))
 
+  ;;; Delete text from the current cursor position to the end of the current
+  ;;; line or the end of the current s-expr, whatever comes first. If the cursor
+  ;;; positioned before a multi-line s-expr, line breaks inside that s-expr are
+  ;;; ignored.
+  (define (repl-kill-line repl-widget repl-tk-id)
+    (letrec*
+	((text (string->list (repl-widget 'get 'insert 'end)))
+	 (text-prefix (repl-widget 'get 'insert-2c 'insert))
+	 (init-escaped (and (string=? "\\" (string-drop text-prefix 1))
+			    (not (string=? "\\\\" text-prefix))))
+	 (get-kill-length
+	  (lambda (chars count in-string escape ignore-level)
+	    (if (null? chars)
+		count
+		(let ((escape-next
+		       (and (not escape) (eq? (car chars) #\\)))
+		      (next-in-string
+		       (if escape
+			   in-string
+			   (if in-string
+			       (not (eq? (car chars) #\"))
+			       (eq? (car chars) #\"))))
+		      (next-ignore-level
+		       (if (and (not escape) (not in-string))
+			   (case (car chars)
+			     ((#\( #\{ #\[) (add1 ignore-level))
+			     ((#\) #\} #\]) (sub1 ignore-level))
+			     (else ignore-level))
+			   ignore-level)))
+		  (if (and (not escape)
+			   (not in-string)
+			   (= 0 ignore-level)
+			   (memq (car chars) '(#\) #\} #\] #\newline)))
+		      (if (eq? (car chars) #\newline)
+			  (+ 1 count)
+			  count)
+		      (get-kill-length (cdr chars)
+				       (+ 1 count)
+				       next-in-string
+				       escape-next
+				       next-ignore-level))))))
+	 (get-kill-length-str
+	  (lambda (chars count escape)
+	    (if (null? chars)
+		count
+		(let ((escape-next (and (not escape) (eq? (car chars) #\\))))
+		  (if (and (not escape) (eq? (car chars) #\"))
+		      count
+		      (get-kill-length-str (cdr chars)
+					   (+ 1 count)
+					   escape-next))))))
+	 (kill-length
+	  (if (repl-cursor-in-string? repl-widget)
+	      (get-kill-length-str text 0 init-escaped)
+	      (get-kill-length text 0 #f init-escaped 0))))
+      (when (> kill-length 0)
+	(repl-widget 'delete
+		     'insert
+		     (string-append "insert+" (number->string kill-length) "c"))
+	(repl-widget 'see 'insert))))
+
   ;;; Enable automatic insertion of closing parens/braces/brackets/double quotes
   ;;; when typing the corresponding opening character.
   (define (repl-enable-auto-pairs repl-widget repl-tk-id)
@@ -858,7 +919,7 @@
 		  (when (or (repl-cursor-in-string? repl-widget)
 			    (and (string=? "\\" (string-drop insert-prefix 1))
 				 (not (string=? "\\\\" insert-prefix))))
-		      (repl-widget 'insert insert-pos close-char)))))
+		    (repl-widget 'insert insert-pos close-char)))))
 	     (tk-eval (string-append
 		       "bind " repl-tk-id " " (symbol->string open-event)
 		       " +break"))
@@ -911,6 +972,11 @@
 				     repl-id
 				     " insert-1displayindices"))))))
       (tk-eval (string-append "bind " repl-id " <<PrevChar>> +break"))
+      (when (settings 'repl-enable-struct-edit)
+	(tk/bind repl-widget
+		 '<Control-k>
+		 (lambda () (repl-kill-line repl-widget repl-id)))
+	(tk-eval (string-append "bind " repl-id " <Control-k> +break")))
       (tk/bind
        repl-widget
        '<BackSpace>
