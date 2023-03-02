@@ -1000,6 +1000,11 @@
       (tk-eval (string-append "bind " repl-id " <<PrevLine>> +break"))
       (tk/bind repl-widget '<<NextLine>> (make-updown-adjust "1"))
       (tk-eval (string-append "bind " repl-id " <<NextLine>> +break"))
+      ;; Work-around to re-enable default bindings for linewise selection, which
+      ;; get broken by rebinding <<PrevLine>>/<<NextLine>> above.
+      ;; TODO: properly handle those so prompt string cannot be selected.
+      (tk/bind repl-widget '<<SelectNextLine>> (lambda () #t))
+      (tk/bind repl-widget '<<SelectPrevLine>> (lambda () #t))
       (tk/bind
        repl-widget
        '<<PrevChar>>
