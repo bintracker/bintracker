@@ -84,7 +84,7 @@ You can do a parallel build (`make -jX`), however time savings will be minimal. 
 
 #### Step 3 - Emulator Setup
 
-If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame64` is in your search path. If your MAME executable is not named "mame64", edit the file `config/emulators.scm` accordingly.
+If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame` is in your search path. If your MAME executable is not named "mame", edit the file `config/emulators.scm` accordingly.
 
 For most target systems you want to emulate, you will also need to obtain ROM files. See [Adding ROM Files](#adding-rom-files) for details on how to add ROMs to MAME for use in Bintracker.
 

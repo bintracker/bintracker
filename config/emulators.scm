@@ -1,5 +1,5 @@
 
-((mame program-name: "mame64"
+((mame program-name: "mame"
        default-args: ("-w" "-skip_gameinfo" "-autoboot_script"
 		      "mame-bridge/mame-startup.lua"
 		      "-rompath" "roms"
