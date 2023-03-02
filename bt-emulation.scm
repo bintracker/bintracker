@@ -110,7 +110,7 @@
 
 	      (connect-emul
 	       (lambda (#!optional (tries 0))
-		 (if (= tries 5)
+		 (if (= tries 10)
 		     (warning "Could not connect to emulator")
 		     (condition-case
 			 (begin
