@@ -4258,6 +4258,7 @@
 	     (parent-instance ((node-path parent-instance-path)
   	   		       global-node))
 	     (group-id (slot-value buf 'group-id))
+	     (length-field-id (symbol-append group-id '_LENGTH))
 	     (all-field-ids (slot-value buf 'field-ids))
 	     (field-index (lambda (id)
 			    (list-index (cute eqv? <> id) all-field-ids)))
@@ -4298,6 +4299,9 @@
 			    (filter-map
 			     (lambda (row val)
 			       (and (validate-field-value mdef field-id val #t)
+				    (not (and (eqv? action-type 'set)
+					      (eqv? field-id length-field-id)
+					      (null? val)))
 				    (list action-type
 					  order-path
 					  field-id
