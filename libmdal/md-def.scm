@@ -162,8 +162,10 @@
     (alist->hash-table
      (filter-map (lambda (id)
 		   (or (and (symbol-contains id "_LENGTH")
-			    (cons id (make-command type: 'uint bits: 16
-						   flags: '(use-last-set))))
+			    (cons id (make-command
+				      type: 'uint bits: 16 default: 16
+				      range: (make-range min: 1 max: #xffff)
+				      flags: '(use-last-set))))
 		       (and (string-prefix? "R_" (symbol->string id))
   			    (cons id (make-command type: 'reference bits: 16
   						   reference-to:
