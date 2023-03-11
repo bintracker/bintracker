@@ -153,7 +153,10 @@
 		     ((string) 0)
 		     ((trigger) 1)
 		     (else bits))
-	     default: default
+	     default: (or default
+			  (and range (car range))
+			  (and (memv type '(int uint))
+			       0))
 	     reference-to: reference-to
 	     keys: (and keys
 			(if (pair? (car keys))
