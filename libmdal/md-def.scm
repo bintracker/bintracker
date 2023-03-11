@@ -521,7 +521,7 @@
 		 (itree-add-modifier-nodes (cdr itree) modifier-node-ids)))))
 
   ;;; Evaluate the list of command configuration expressions. The resulting
-  ;;; alit of commands does contain the required default commands, but not
+  ;;; alist of commands does contain the required default commands, but not
   ;;; the auto-generated order commands.
   (define (get-mdef-base-commands commands path-prefix target)
     (let ((base-commands
