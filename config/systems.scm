@@ -7,7 +7,7 @@
  ("coco3" emulator: mame startup-args: ("coco3"))
  ("dragon32" emulator: mame startup-args: ("dragon32"))
  ("kc85_4" emulator: mame startup-args: ("kc85_4"))
- ("mc10" emulator: mame startup-args: ("mc10"))
+ ("mc10" emulator: mame startup-args: ("mc10" "-ext" "ram"))
  ("mz700" emulator: mame startup-args: ("mz700"))
  ("spectrum48" emulator: mame startup-args: ("spectrum"))
  ("sorcerer" emulator: mame startup-args: ("sorcerer")))

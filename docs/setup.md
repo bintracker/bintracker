@@ -16,7 +16,7 @@ The full package contains all the required dependencies to run Bintracker, excep
 
 #### Core Package
 
-The core package contains only Bintracker itself, without the MAME emulator and the Tclkit utility. Use this if you already have MAME installed.
+The core package contains only Bintracker itself, without the MAME emulator and the Tclkit utility. Use this if you already have MAME installed. Note that Bintracker requires MAME v0.233 or higher.
 
 Extract `bintracker-win64-core.zip` to a directory of your choice. Download [Tclkit 8.6 for Windows 64-bit](https://tclkits.rkeene.org/fossil/wiki/Downloads). Move the executable to `bintracker\3rdparty` and rename it to `tclkit.exe`. Now, adjust `bintracker\config\emulators.windows.scm`, where `program-name` is the path to your `mame.exe` and `"roms"` is the path to your MAME ROM directory.
 
@@ -84,7 +84,7 @@ You can do a parallel build (`make -jX`), however time savings will be minimal. 
 
 #### Step 3 - Emulator Setup
 
-If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame` is in your search path. If your MAME executable is not named "mame", edit the file `config/emulators.scm` accordingly.
+If you haven't done so already, install [MAME](https://mamedev.org) and make sure `mame` is in your search path. If your MAME executable is not named "mame", edit the file `config/emulators.scm` accordingly. Note that Bintracker requires MAME v0.233 or higher.
 
 For most target systems you want to emulate, you will also need to obtain ROM files. See [Adding ROM Files](#adding-rom-files) for details on how to add ROMs to MAME for use in Bintracker.
 

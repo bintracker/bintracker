@@ -141,8 +141,8 @@ local machine_load_bin = function (addr, data)
    end
    for i = 1, #datatbl do
       mem:write_u8(local_addr, datatbl[i])
-      -- print("write: ", (tostring(datatbl[i])),
-      -- 	    ", read: ", (tostring(mem:read_u8(local_addr))))
+      -- rprint("write: " .. (tostring(datatbl[i])) ..
+      -- 	     ", read: " .. (tostring(mem:read_u8(local_addr))))
       local_addr = local_addr + 1
    end
 end
