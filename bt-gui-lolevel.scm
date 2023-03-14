@@ -204,8 +204,8 @@
 					    "Supported by:\n"
 					    "Catskull Electronics, "
 					    "Denis Perevalov, "
-					    "Radian "
-					    "\n\nDedicated to Ján Deák")
+					    "Radian, NeuroNoNeuro "
+					    "\n\nDedicated to Ján Deák ")
 		     type: 'ok))
 
   ;;; Display a message box for the given EXN, and output a summary of the
