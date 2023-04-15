@@ -268,7 +268,7 @@ mdal-targets:
 tests: schemta-tests
 
 .PHONY: schemta-tests
-schemta-tests: m6502-tests m6809-tests
+schemta-tests: m6502-tests m6809-tests i8080-tests
 
 .PHONY: m6809-tests
 m6809-tests: schemta-exe mdal-targets
@@ -279,6 +279,11 @@ m6809-tests: schemta-exe mdal-targets
 m6502-tests: schemta-exe mdal-targets
 	cp -t ./ $(MDAL_SRC)schemta-tests/m6502.tests.scm && csi m6502.tests.scm -e
 	-rm m6502.tests.scm
+
+.PHONY: i8080-tests
+i8080-tests: schemta-exe mdal-targets
+	cp -t ./ $(MDAL_SRC)schemta-tests/i8080.tests.scm && csi i8080.tests.scm -e
+	-rm i8080.tests.scm
 
 .PHONY: clean
 clean:
