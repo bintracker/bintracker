@@ -139,7 +139,13 @@
      key-group
      (if (eq? key-group 'note-entry)
 	 '()
-	 (alist-update key-spec
+	 (alist-update (cond-expand
+			 ;; might need to do this for macOS as well
+			 (windows (string->symbol
+				   (string-translate*
+				    (symbol->string key-spec)
+				    '(("ISO_Left_Tab" . "Shift-Tab")))))
+			 (else key-spec))
 		       (list action)
 		       (get-keybinding-group key-group)))))
 
