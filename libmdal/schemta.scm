@@ -31,7 +31,8 @@
 	    (chicken bitwise))
 
   (defstruct asm-target
-    ((endian 'little) : symbol)
+    ((id 'unknown) : symbol)
+    ((byte-order 'little-endian) : symbol)
     ((registers '()) : (list-of (list symbol fixnum)))
     ((register-sets '()) : (list-of (list symbol (list-of symbol))))
     ((addressing-modes '()) : (list-of (list symbol procedure)))
@@ -676,12 +677,12 @@
   	0))
 
   (define (word->bytes w target)
-    (if (eq? 'little (asm-target-endian target))
+    (if (eq? 'little-endian (asm-target-byte-order target))
   	(list (lsb w) (msb w))
   	(list (msb w) (lsb w))))
 
   (define (long->bytes l target)
-    (if (eq? 'little (asm-target-endian target))
+    (if (eq? 'little-endian (asm-target-byte-order target))
   	(append (word->bytes l target) (word->bytes (msw l) target))
   	(append (word->bytes (msw l) (word->bytes l target)))))
 
@@ -898,9 +899,14 @@
 							(->string args)))))))))
 
   ;;; Low level interace for `make-target`.
-  (define (construct-target #!key endian (registers '()) (register-sets '())
-			    (addressing-modes '()) (flags '())
-			    (flag-sets '()) (extra '()) instructions)
+  (define (construct-target #!key id byte-order (registers '())
+			    (register-sets '()) (addressing-modes '())
+			    (flags '()) (flag-sets '()) (extra '())
+			    instructions)
+    (unless (memv byte-order '(little-endian big-endian))
+      (error 'schemta#construct-target
+	     (string-append "Invalid target byte order \"" (->string byte-order)
+			    "\"")))
     (fluid-let ((register
 		 (lambda (set-id)
 		   (bind (apply any-of
@@ -932,7 +938,7 @@
 			       (car (alist-ref type _addressing-modes))))
 		    (extras (lambda (id) (car (alist-ref id _extra))))
 		    (flag-value (lambda (c)
-				       (car (alist-ref c flags))))
+				  (car (alist-ref c flags))))
 		    (register-value (lambda (r)
 				      (car (alist-ref r registers)))))
 	  (letrec ((eval-operand-options
@@ -945,7 +951,8 @@
 					(cadr opt) operand-count (+ 1 depth))))
 			       ops)))))
 	    (make-asm-target
-	     endian: endian
+	     id: (or id 'unknown)
+	     byte-order: byte-order
 	     registers: registers
 	     register-sets: register-sets
 	     flags: flags
@@ -974,6 +981,7 @@
     (let ((target-str (symbol->string target-name)))
       (or (target-cache 'get target-name)
 	  (let ((config-filename (string-append *schemta-include-path*
+						"/cpu/"
 						target-str
 						".scm")))
 	    (if (file-exists? config-filename)

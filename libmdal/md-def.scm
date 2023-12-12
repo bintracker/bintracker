@@ -302,13 +302,17 @@
   (define (mdef-get-target-endianness cfg)
     ((o cpu-endianness target-platform-cpu mdef-target) cfg))
 
+  ; temporary adapter for using asm target definitions as mdal cpu definitions
+  (define (asm-target->cpu _ #!key id byte-order)
+    (make-cpu id: id endianness: byte-order))
+
   ;;; Create an target from a target config file
   (define (target-generator target-id path-prefix)
     (let* ((mk-target-decl
 	    (lambda (#!key id cpu clock-speed (default-start-address 0)
 			   (exports '()))
 	      (list id
-		    (apply make-cpu
+		    (apply asm-target->cpu
 			   (read (open-input-file
 				  (string-append path-prefix "mdal-targets/cpu/"
 						 (symbol->string cpu) ".scm"))))

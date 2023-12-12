@@ -258,7 +258,7 @@ A target specification file should contain a single top-level s-expression which
 ```scheme
 (asm-target
  ;; KEYWORD            ;; ARGUMENT
- endian: little/big    ;; specify the endianness of the taret platform.
+ byte-order: symbol    ;; big-endian/little-endian
  registers: ()         ;; an alist where the keys are register names (as
                        ;; unquoted symbols), and values are substitution values
 					   ;; that may be used for constructing output
