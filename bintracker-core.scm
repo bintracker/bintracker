@@ -95,30 +95,34 @@
 	   (string-concatenate
 	    (map binding->info (app-keys-plugins keymap)))))))
 
-  ;; The internal help system.
-  (define (info . args)
-    (if (null? args)
-	(string-intersperse
-	 '("\n(info 'keybinding [KEY-SPEC])"
-	   "(info 'kb [KEY-SPEC])"
-	   "List active key bindings, or look up binding for KEY-SPEC.\n"
-	   "(info 'mdef NAME)"
-	   "Describe the MDAL definition NAME\n"
-	   "(info 'procedure PROCEDURE)"
-	   "(info 'proc PROCEDURE)"
-	   "Describe the procedure PROCEDURE\n")
-	 "\n")
-	(case (car args)
-	  ((kb keybinding)
-	   (let ((keybindings (settings 'keymap)))
-	     (if (> (length args) 1)
-		 (make-keybinding-info (cadr args))
-		 (make-keybinding-info))))
-	  ((mdef) (btdb-get-mdef-description (cadr args)))
-	  ((proc procedure) (procedure-information (if (procedure? (cadr args))
-						       (cadr args)
-						       (eval (cadr args)))))
-	  (else (string-append "Unknown command " (->string args))))))
+  ;;; (info [keybinding|mdef|procedure])
+  ;;; The internal help system.
+  (define-syntax info
+    (syntax-rules ()
+      ((info)
+       (string-intersperse
+	'("\n(info keybinding [KEY-SPEC])"
+	  "(info kb [KEY-SPEC])"
+	  "List active key bindings, or look up binding for KEY-SPEC.\n"
+	  "(info mdef NAME)"
+	  "Describe the MDAL definition NAME\n"
+	  "(info procedure PROCEDURE)"
+	  "(info proc PROCEDURE)"
+	  "Describe the procedure PROCEDURE\n")
+	"\n"))
+      ((info ...)
+       (let ((args '(...)))
+	 (case (car args)
+	   ((kb keybinding)
+	    (let ((keybindings (settings 'keymap)))
+	      (if (> (length args) 1)
+		  (make-keybinding-info (cadr args))
+		  (make-keybinding-info))))
+	   ((mdef) (btdb-get-mdef-description (cadr args)))
+	   ((proc procedure) (procedure-information (if (procedure? (cadr args))
+							(cadr args)
+							(eval (cadr args)))))
+	   (else (string-append "Unknown command " (->string args))))))))
 
 
   ;; ---------------------------------------------------------------------------
@@ -227,9 +231,9 @@
 							      'shuffle-current)
 					  ,shuffle-current)
 				 (command  shuffle-synced "synchronized" 0
-					  ,(key-binding->info
-					    'edit 'shuffle-synced-current)
-					  ,shuffle-synced-current)))
+					   ,(key-binding->info
+					     'edit 'shuffle-synced-current)
+					   ,shuffle-synced-current)))
 			       (submenu
 				transpose
 				"Transpose..."
