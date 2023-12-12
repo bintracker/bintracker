@@ -9,110 +9,84 @@ Provided here is a list of some common API entry points. The list is inevitably 
 
 ## Procedures & Methods
 
-<details markdown>
-<summary>**[`(assemble TARGET-CPU SOURCE key: ORG EXTRA-SYMBOLS MAX-PASSES)`](generated/schemta.md#def-assemble)**<br></summary>
-Assemble the string SOURCE, returning a list of byte values. TARGET-CPU must be a symbol identifying the instruction set to use.
-</details>
+??? tip "[`(assemble TARGET-CPU SOURCE key: ORG EXTRA-SYMBOLS MAX-PASSES)`](generated/schemta.md#def-assemble)"
 
-<details markdown>
-<summary>**[`(assemble TARGET-CPU SOURCE key: ORG EXTRA-SYMBOLS MAX-PASSES)`](generated/schemta.md#def-assemble)**</summary>
-Assemble the string SOURCE, returning a list of byte values. TARGET-CPU must be a symbol identifying the instruction set to use.
-</details>
+    Assemble the string SOURCE, returning a list of byte values. TARGET-CPU must be a symbol identifying the instruction set to use.
 
-<details markdown>
-<summary>**[`(clipboard ['put CONTENTS])`](generated/bt-state.md#procedure-clipboard-args)**</summary>
-Without arguments, retrieve the clipboard contents, returning an s-expression. Otherwise, copy CONTENTS to the clipboard.
-</details>
+??? tip "[`(clipboard ['put CONTENTS])`](generated/bt-state.md#procedure-clipboard-args)"
 
-<details markdown>
-<summary>**[`(copy CONTENTS)`](generated/bt-state.md#def-copy)**</summary>
-Alias for `(clipboard 'put CONTENTS)`.
-</details>
+    Without arguments, retrieve the clipboard contents, returning an s-expression. Otherwise, copy CONTENTS to the clipboard.
 
-<details markdown>
-<summary>**[`(current WHAT)`](generated/bt-gui.md#def-current)**</summary>
-Access various components of the module interface the user is currently  interacting with. WHAT must be one of:
+??? tip "[`(copy CONTENTS)`](generated/bt-state.md#def-copy)"
 
-- `'blockview`: The current `<ui-blockview>` instance.
-- `'buffer`: The current focussed buffer.
-- `'emulator`: The current emulator object.
-- `'group-fields`: The current `<ui-group-fields>` instance.
-- `'mdef`: The current MDAL engine definition.
-- `'mmod`: The current MDAL module.
-- `'module-view`: The current `<ui-module-view>` instance.
-- `'order-view`: The current `<ui-order-view>` instance.
-- `'selected-contents`: The contents of the current block selection, or the value at cursor
-- `'selection`: A list containing the first row, first field, last row, and last field of the current block selection
-</details>
+    Alias for `(clipboard 'put CONTENTS)`.
 
-<details markdown>
-<summary>**[`(edit BUFFER WHAT [VALUE])`](generated/bt-gui.md#def-ui-group-field)** (`<ui-group-field>`)<br>
-**[`(edit BUFFER WHERE WHAT [CONTENTS])`](generated/bt-gui.md#def-ui-basic-block-view)** (`<ui-basic-block-view>`)</summary>
-Edit contents of a group field, blockview, or order-view.
-</details>
+??? tip "[`(current WHAT)`](generated/bt-gui.md#def-current)"
 
-<details markdown>
-<summary>**[`(emulate PLATFORM-ID)`](generated/bt-emulation.md#def-emulate)**</summary>
-Generate an emulator object suitable for the target system with the MDAL platform id PLATFORM.
-</details>
+    Access various components of the module interface the user is currently  interacting with. WHAT must be one of:
 
-<details markdown>
-<summary>**[`(EMULATOR 'exec|info|pause|quit|run|unpause|start [ARGS...])`](generated/bt-emulation.md#def-make-emulator)**</summary>
-Interact with an EMULATOR. Use `(current 'emulator)` to retrieve the emulator of the currently active module view.
-</details>
+    - `'blockview`: The current `<ui-blockview>` instance.
+    - `'buffer`: The current focussed buffer.
+    - `'emulator`: The current emulator object.
+    - `'group-fields`: The current `<ui-group-fields>` instance.
+    - `'mdef`: The current MDAL engine definition.
+    - `'mmod`: The current MDAL module.
+    - `'module-view`: The current `<ui-module-view>` instance.
+    - `'order-view`: The current `<ui-order-view>` instance.
+    - `'selected-contents`: The contents of the current block selection, or the value at cursor
+    - `'selection`: A list containing the first row, first field, last row, and last field of the current block selection
 
-<details markdown>
-<summary>**[`(focus 'assoc|add|list|next|previous|remove|resume|set|suspend|which [ARGS...])`](generated/bt-state.md#def-make-focus-control)**</summary>
-Interact with the input focus controller.
-</details>
+??? tip "[`(edit BUFFER WHAT [VALUE])`](generated/bt-gui.md#def-ui-group-field) (`<ui-group-field>`)<br>[`(edit BUFFER WHERE WHAT [CONTENTS])`](generated/bt-gui.md#def-ui-basic-block-view) (`<ui-basic-block-view>`)"
 
-<details markdown>
-<summary>**[`(HOOKS 'add|execute|list|remove [ARGS...])`](generated/bt-types.md#def-make-hooks)**</summary>
-Modify [hook sets](#hook-sets).
-</details>
+    Edit contents of a group field, blockview, or order-view.
 
-<details markdown>
-<summary>**[`(info ['kb|keybinding KEYSTROKE])`](generated/bintracker-core.md#def-info)**</summary>
-Access the internal help system. This feature is not complete yet.
-</details>
+??? tip "[`(emulate PLATFORM-ID)`](generated/bt-emulation.md#def-emulate)"
 
-<details markdown>
-<summary>**[`(multibuffer-add BUFFER CHILD-SPEC [key: BEFORE])`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>
-**[`(multibuffer-hide CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>
-**[`(multibuffer-delete CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>
-**[`(multibuffer-show CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**</summary>
-Interact with multibuffers.
-</details>
+    Generate an emulator object suitable for the target system with the MDAL platform id PLATFORM.
 
-<details markdown>
-<summary>**[`(plugins ['register NAME1...])`](generated/bintracker-core.md#def-plugins)**</summary>
-Without arguments, returns the list of registered plugins. Otherwise, register the given plugin(s).
-</details>
+??? tip "[`(EMULATOR 'exec|info|pause|quit|run|unpause|start [ARGS...])`](generated/bt-emulation.md#def-make-emulator)"
 
-<details markdown>
-<summary>**[`(redo)`](generated/bt-gui.md#def-redo)**</summary>
-Re-apply the latest undone edit.
-</details>
+    Interact with an EMULATOR. Use `(current 'emulator)` to retrieve the emulator of the currently active module view.
 
-<details markdown>
-<summary>**[`(say S-EXPR|'where|what)`](generated/bt-gui.md#def-say)**</summary>
-Make the screen reader/text-to-speech tool say things. `'where` and `what` will report the location of resp. value under the cursor. Any other S-EXPRession will be read out as is (with some sanitation performed).
-</details>
+??? tip "[`(focus 'assoc|add|list|next|previous|remove|resume|set|suspend|which [ARGS...])`](generated/bt-state.md#def-make-focus-control)"
 
-<details markdown>
-<summary>**[`(settings [WHICH [NEW-VALUE]])`](generated/bt-types.md#def-settings)**</summary>
-Read or set global settings.
-</details>
+    Interact with the input focus controller.
 
-<details markdown>
-<summary>**[`(ui)`](generated/bt-state.md#def-ui)**</summary>
-Returns the main UI [multibuffer](generated/bt-gui-lolevel.md#def-ui-multibuffer).
-</details>
+??? tip "[`(HOOKS 'add|execute|list|remove [ARGS...])`](generated/bt-types.md#def-make-hooks)"
 
-<details markdown>
-<summary>**[`(undo)`](generated/bt-gui.md#def-undo)**</summary>
-Undo the latest edit.
-</details>
+    Modify [hook sets](#hook-sets).
+
+??? tip "[`(info ['kb|keybinding KEYSTROKE])`](generated/bintracker-core.md#def-info)"
+
+    Access the internal help system. This feature is not complete yet.
+
+??? tip "[`(multibuffer-add BUFFER CHILD-SPEC [key: BEFORE])`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>**[`(multibuffer-hide CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>**[`(multibuffer-delete CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)**<br>**[`(multibuffer-show CHILD-ID)`](generated/bt-gui-lolevel.md#def-ui-multibuffer)"
+
+    Interact with multibuffers.
+
+??? tip "[`(plugins ['register NAME1...])`](generated/bintracker-core.md#def-plugins)"
+
+    Without arguments, returns the list of registered plugins. Otherwise, register the given plugin(s).
+
+??? tip "[`(redo)`](generated/bt-gui.md#def-redo)"
+
+    Re-apply the latest undone edit.
+
+??? tip "[`(say S-EXPR|'where|what)`](generated/bt-gui.md#def-say)"
+
+    Make the screen reader/text-to-speech tool say things. `'where` and `what` will report the location of resp. value under the cursor. Any other S-EXPRession will be read out as is (with some sanitation performed).
+
+??? tip "[`(settings [WHICH [NEW-VALUE]])`](generated/bt-types.md#def-settings)"
+
+    Read or set global settings.
+
+??? tip "[`(ui)`](generated/bt-state.md#def-ui)"
+
+    Returns the main UI [multibuffer](generated/bt-gui-lolevel.md#def-ui-multibuffer).
+
+??? tip "[`(undo)`](generated/bt-gui.md#def-undo)"
+
+    Undo the latest edit.
 
 
 ### libmdal
@@ -154,45 +128,33 @@ Undo the latest edit.
 
 ### UI Class Methods
 
-<details markdown>
-<summary>**[`(ui-children BUFFER)`](generated/bt-gui.md)**</summary>
-Returns the child elements of the UI class instance BUFFER. Defined for all UI classes. Note that some UI classes bypass the children mechanism, most notably [`<ui-multibuffer>`](generated/bt-gui-lolevel.md#def-ui-multibuffer).
-</details>
+??? tip "[`(ui-children BUFFER)`](generated/bt-gui.md)"
 
-<details markdown>
-<summary>**[`(ui-destroy BUFFER)`](generated/bt-gui.md)**</summary>
-Unmap and destroy the UI class instance BUFFER. Defined for all UI classes.
-</details>
+    Returns the child elements of the UI class instance BUFFER. Defined for all UI classes. Note that some UI classes bypass the children mechanism, most notably [`<ui-multibuffer>`](generated/bt-gui-lolevel.md#def-ui-multibuffer).
 
-<details markdown>
-<summary>
-**[`(ui-hide BUFFER)`](generated/bt-gui.md)**</summary>
-Hide the UI class instance BUFFER. Defined for all UI classes.
-</details>
+??? tip "[`(ui-destroy BUFFER)`](generated/bt-gui.md)"
 
-<details markdown>
-<summary>
-**[`(ui-metastate BUFFER [ACTION [ARGS...]])`](generated/bt-gui.md#def-ui-module-view)**</summary>
-Access the metastate controller of a module view or any child element thereof. Defined for all module-related UI classes.
-</details>
+    Unmap and destroy the UI class instance BUFFER. Defined for all UI classes.
 
-<details markdown>
-<summary>
-**[`(ui-ref BUFFER CHILD-ID)`](generated/bt-gui.md)**</summary>
-Recursively search the child elements of the UI class instance BUFFER for a buffer named CHILD-ID. Defined for all UI classes. Note that some UI classes bypass the children mechanism, most notably [`<ui-multibuffer>`](generated/bt-gui-lolevel.md#def-ui-multibuffer).
-</details>
+??? tip "[`(ui-hide BUFFER)`](generated/bt-gui.md)"
 
-<details markdown>
-<summary>
-**[`(ui-show BUFFER)`](generated/bt-gui.md)**</summary>
-Show the UI class instance BUFFER. Defined for all UI classes. `ui-show` recursively calls `ui-show` on all children of BUFFER. Note that some UI classes bypass the children mechanism, most notably [`<ui-multibuffer>`](generated/bt-gui-lolevel.md#def-ui-multibuffer).
-</details>
+    Hide the UI class instance BUFFER. Defined for all UI classes.
 
-<details markdown>
-<summary>
-**[`(ui-update BUFFER)`](generated/bt-gui.md)**</summary>
-Update the display of the UI class instance BUFFER. Defined for `<ui-group-fields>`, `<ui-basic-block-view>` and derived classes.
-</details>
+??? tip "[`(ui-metastate BUFFER [ACTION [ARGS...]])`](generated/bt-gui.md#def-ui-module-view)"
+
+    Access the metastate controller of a module view or any child element thereof. Defined for all module-related UI classes.
+
+??? tip "[`(ui-ref BUFFER CHILD-ID)`](generated/bt-gui.md)"
+
+    Recursively search the child elements of the UI class instance BUFFER for a buffer named CHILD-ID. Defined for all UI classes. Note that some UI classes bypass the children mechanism, most notably [`<ui-multibuffer>`](generated/bt-gui-lolevel.md#def-ui-multibuffer).
+
+??? tip "[`(ui-show BUFFER)`](generated/bt-gui.md)"
+
+    Show the UI class instance BUFFER. Defined for all UI classes. `ui-show` recursively calls `ui-show` on all children of BUFFER. Note that some UI classes bypass the children mechanism, most notably [`<ui-multibuffer>`](generated/bt-gui-lolevel.md#def-ui-multibuffer).
+
+??? tip "[`(ui-update BUFFER)`](generated/bt-gui.md)"
+
+    Update the display of the UI class instance BUFFER. Defined for `<ui-group-fields>`, `<ui-basic-block-view>` and derived classes.
 
 
 ## Hook Sets
