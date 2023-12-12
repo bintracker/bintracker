@@ -83,7 +83,7 @@
 
   ;;; Convert the integer I into a list of bytes, capped at NUMBER-OF-BYTES
   ;;; and respecting ENDIANness.
-  (define (int->bytes i number-of-bytes endian)
+  (define (int->bytes i number-of-bytes byte-order)
     (letrec* ((make-bytes (lambda (restval remaining-bytes)
 			    (if (zero? remaining-bytes)
 				'()
@@ -91,7 +91,7 @@
 				      (make-bytes (arithmetic-shift restval -8)
 						  (sub1 remaining-bytes))))))
 	      (byte-list (make-bytes i number-of-bytes)))
-      (if (eq? 'little-endian endian)
+      (if (eq? 'little-endian byte-order)
 	  byte-list
 	  (reverse byte-list))))
 

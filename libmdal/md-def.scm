@@ -8,7 +8,7 @@
      *supported-mmod-versions*
      make-cpu
      cpu-id
-     cpu-endianness
+     cpu-byte-order
      make-target-platform
      target-platform-id
      target-platform-cpu
@@ -49,7 +49,7 @@
      mdef-inode-ref
      mdef-group-ordered?
      mdef-group-order-editable?
-     mdef-get-target-endianness
+     mdef-get-target-byte-order
      mdef-get-parent-node-id
      mdef-get-parent-node-type
      mdef-get-node-ancestors-ids
@@ -101,7 +101,7 @@
   ;; ---------------------------------------------------------------------------
 
   (defstruct cpu
-    id endianness)
+    id byte-order)
 
   ;;; Describe the target system of a sound driver.
   (defstruct target-platform
@@ -298,13 +298,9 @@
 	      (= 2 (length (mdef-get-subnode-ids (symbol-append id '_ORDER)
 						 (mdef-itree def)))))))
 
-  ;;; Returns the endianness of the configuration's target platform.
-  (define (mdef-get-target-endianness cfg)
-    ((o cpu-endianness target-platform-cpu mdef-target) cfg))
-
-  ; temporary adapter for using asm target definitions as mdal cpu definitions
-  (define (asm-target->cpu _ #!key id byte-order)
-    (make-cpu id: id endianness: byte-order))
+  ;;; Returns the byte-order of the configuration's target platform.
+  (define (mdef-get-target-byte-order cfg)
+    ((o cpu-byte-order target-platform-cpu mdef-target) cfg))
 
   ;;; Create an target from a target config file
   (define (target-generator target-id path-prefix)
@@ -312,10 +308,12 @@
 	    (lambda (#!key id cpu clock-speed (default-start-address 0)
 			   (exports '()))
 	      (list id
-		    (apply asm-target->cpu
-			   (read (open-input-file
-				  (string-append path-prefix "mdal-targets/cpu/"
-						 (symbol->string cpu) ".scm"))))
+		    (apply make-cpu
+			   (cdr
+			    (read
+			     (open-input-file
+			      (string-append path-prefix "mdal-targets/cpu/"
+					     (symbol->string cpu) ".scm")))))
 		    clock-speed default-start-address exports)))
 	   (target-decl
 	    (apply mk-target-decl
@@ -965,8 +963,8 @@
 	 symbols))
 
   ;; Transform the compose expression EXPR so it will output its result as a
-  ;; list of n BYTES, in ENDIANNESS order.
-  (define (expr->bytes expr bytes endianness)
+  ;; list of n BYTES, in BYTE-ORDER order.
+  (define (expr->bytes expr bytes byte-order)
     (let ((raw-list (case bytes
 		      ((1) `((lsb ,expr)))
 		      ((2) `((lsb ,expr)
@@ -984,7 +982,7 @@
 			      (->string bytes)
 			      "' unsupported for compose"
 			      "expressions using symbolic-ref"))))))
-      (if (eqv? endianness 'big-endian)
+      (if (eqv? byte-order 'big-endian)
 	  (reverse raw-list)
 	  raw-list)))
 
@@ -1011,7 +1009,7 @@
   ;; EXPR that resolves to one or more byte values.
   (define (make-transformer-body expr bytes required-symbols required-fields
 				 mdef field-list is-condition)
-    (let* ((endianness (mdef-get-target-endianness mdef))
+    (let* ((byte-order (mdef-get-target-byte-order mdef))
 	   (required-symbols-plain (strip-symbol-names required-symbols))
 	   (have-symbolic-ref (memv 'symbolic-ref (flatten expr)))
 	   (have-numeric-ref (memv 'numeric-ref (flatten expr)))
@@ -1022,14 +1020,14 @@
 	     ,(cond
 	       (is-condition expr)
 	       (have-numeric-ref
-		`(delay (int->bytes ,expr ,bytes (quote ,endianness))))
-	       (else `(int->bytes ,expr ,bytes (quote ,endianness)))))
+		`(delay (int->bytes ,expr ,bytes (quote ,byte-order))))
+	       (else `(int->bytes ,expr ,bytes (quote ,byte-order)))))
 	  (if have-symbolic-ref
 	      (let* ((symref-transform-raw (transform-symbolic-refs expr))
 		     (symref-let-bindings (car symref-transform-raw))
 		     (symref-expr (expr->bytes (cadr symref-transform-raw)
 					       bytes
-					       endianness))
+					       byte-order))
 		     (reqsym-bindings
 		      (map (lambda (sym sym-plain)
 			     (list sym `(symbol-ref ',sym-plain)))
@@ -1074,7 +1072,7 @@
 				      ',required-symbols
 				      ',required-symbols-plain))
 		     ;; TODO this only works for group fields
-		     (list ,(list 'int->bytes ',expr ,bytes '',endianness)))
+		     (list ,(list 'int->bytes ',expr ,bytes '',byte-order)))
 		  ',required-symbols-plain
 		  ,bytes))))))
 
@@ -1083,7 +1081,7 @@
   (define (make-symbolic-transformer-body expr bytes required-symbols
 					  required-fields mdef field-list
 					  target-symbol)
-    (let* ((endianness (mdef-get-target-endianness mdef))
+    (let* ((byte-order (mdef-get-target-byte-order mdef))
 	   (required-symbols-plain (strip-symbol-names required-symbols)))
       `(let ,(make-let-block required-fields field-list mdef)
 	 ,(if (null? required-symbols)
@@ -1191,7 +1189,7 @@
   (define (make-ofield proto-mdef mdef-dir path-prefix
 		       #!key bytes compose reference-to)
     (let ((compose-proc (transform-compose-expr compose bytes proto-mdef))
-	  (endianness (mdef-get-target-endianness proto-mdef))
+	  (byte-order (mdef-get-target-byte-order proto-mdef))
 	  (id (gensym 'md__ofield_))
 	  (constant? (is-constant? compose)))
       (list
@@ -1206,14 +1204,14 @@
 			  (cons (cons id (cons bytes (list res)))
 				md-symbols))))))
        (if constant?
-	   (list (int->bytes (eval compose) bytes endianness))
+	   (list (int->bytes (eval compose) bytes byte-order))
 	   `((md-result ,bytes ,id)))
        '()
        (if constant?
 	   `((asm ,(string-append
 		    "    .db "
 		    (string-intersperse
-		     (map ->string (int->bytes (eval compose) bytes endianness))
+		     (map ->string (int->bytes (eval compose) bytes byte-order))
 		     ","))))
 	   `((md-result ,id))))))
 
@@ -1356,7 +1354,7 @@
 					 (int->bytes
 					  x
 					  element-size
-					  (mdef-get-target-endianness mdef))))
+					  (mdef-get-target-byte-order mdef))))
 				   raw-order))
 			     (output-length (* element-size
 					       (length (flatten raw-order)))))
@@ -1618,7 +1616,7 @@
 			   (transform-compose-expr condition 0 proto-mdef
 						   field-list: subnode-ids
 						   is-condition: #t)))
-	   (endianness (mdef-get-target-endianness proto-mdef)))
+	   (byte-order (mdef-get-target-byte-order proto-mdef)))
       (make-onode
        type: 'field
        fn: (if condition

@@ -13,8 +13,8 @@
 	  srfi-1 srfi-13 coops pstk
 	  bt-state bt-types bt-gui mdal schemta)
 
-  (define (int->ascii n #!optional (endianness 'little-endian))
-    (int->bytes n 2 endianness))
+  (define (int->ascii n #!optional (byte-order 'little-endian))
+    (int->bytes n 2 byte-order))
 
   (define (show-export-dialog export-proc title filetypes default-extension
 			      #!key (features '()))

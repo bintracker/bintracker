@@ -90,7 +90,7 @@
 
   ;;; Generate a function that extracts the sample at {{offset}} in an u8vector
   ;;; {{data}} representing raw PCM data
-  (define (make-sample-extractor rate sample-length signedness endianness)
+  (define (make-sample-extractor rate sample-length signedness byte-order)
     (let* ((unsigned (eq? signedness 'unsigned))
 	   (bits-per-sample (* 8 sample-length))
 	   (maxint+1 (expt 2 (if unsigned
@@ -110,9 +110,9 @@
 
   ;;; Convert raw (headerless) PCM WAV data into an `audio` structure.
   ;;; SAMPLE-LENGTH is the number of bytes used by one sample in one channel.
-  (define (raw->audio data channels rate sample-length signedness endianness)
+  (define (raw->audio data channels rate sample-length signedness byte-order)
     (letrec* ((extract-sample (make-sample-extractor rate sample-length
-						     signedness endianness))
+						     signedness byte-order))
 	      (extract-channel
 	       (lambda (channel remaining-data)
 		 (if (= 0 (u8vector-length remaining-data))
@@ -132,9 +132,9 @@
   ;;; Construct an `audio` structure from a raw (headerless) PCM audio file.
   (define (import-raw filename
 		      #!optional (channels 1) (rate 44100) (sample-length 1)
-		      (signedness 'unsigned) (endianness 'little))
+		      (signedness 'unsigned) (byte-order 'little-endian))
     (raw->audio (with-input-from-file filename read-u8vector)
-		channels rate sample-length signedness endianness))
+		channels rate sample-length signedness byte-order))
 
   ;;; Construct an `audio` structure from a PCM WAVE (RIFF) file.
   (define (import-pcm-wav filename)
@@ -146,10 +146,10 @@
 		 (raw->audio (bitstring->u8vector sample-data)
 			     num-channels sample-rate
 			     (quotient block-align num-channels)
-			     'signed 'little))
+			     'signed 'little-endian))
 		(else (error "Not a valid PCM WAV file.")))))
 
-  (define (audio->raw audio bits-per-sample signedness endianness)
+  (define (audio->raw audio bits-per-sample signedness byte-order)
     (letrec* ((maxint (sub1 (expt 2 (sub1 bits-per-sample))))
 	      (float->list-of-int
 	       (lambda (f)
@@ -159,7 +159,7 @@
 		   ;; TODO variable bit depth
 		   (if (= bits-per-sample 8)
 		       (list i)
-		       (if (eqv? 'little endianness)
+		       (if (eqv? 'little-endian byte-order)
 			   (list (bitwise-and #xff i)
 				 (bitwise-and #xff (quotient i #x100)))
 			   (list (bitwise-and #xff (quotient i #x100))
@@ -215,7 +215,7 @@
     (audio->raw audio
 		bits-per-sample
 		(if (= 8 bits-per-sample) 'unsigned 'signed)
-		'little))
+		'little-endian))
 
   ;;; Export the `audio` structure AUDIO to the PCM WAV file FILENAME, using a
   ;;; bit depth of BITS-PER-SAMPLE.
