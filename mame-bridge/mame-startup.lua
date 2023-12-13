@@ -68,6 +68,7 @@ local machine_features = {
 	 end
       end
    },
+   sol20 = {},
    sorcerer = {
       post_load_actions = function ()
 	 -- unfreeze Z80 emulation after halt instruction on newer MAME versions

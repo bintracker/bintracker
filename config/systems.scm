@@ -10,4 +10,5 @@
  ("mc10" emulator: mame startup-args: ("mc10" "-ext" "ram"))
  ("mz700" emulator: mame startup-args: ("mz700"))
  ("spectrum48" emulator: mame startup-args: ("spectrum"))
+ ("sol20" emulator: mame startup-args: ("sol20"))
  ("sorcerer" emulator: mame startup-args: ("sorcerer")))
