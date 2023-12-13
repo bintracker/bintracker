@@ -252,10 +252,11 @@ Groups wrap logical units of input nodes, including other groups.
 ¹ It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-blocks) instead.
 
 
-| flag      | description                                                    |
-|-----------|----------------------------------------------------------------|
-| `ordered` | An order (sequence) node will be generated for this group.²    |
-| `looped`  | The order specifies a loop point. Requires the `ordered` flag. |
+| flag       | description                                                    |
+|------------|----------------------------------------------------------------|
+| `ordered`  | An order (sequence) node will be generated for this group.²    |
+| `looped`   | The order specifies a loop point. Requires the `ordered` flag. |
+| `playable` | Let editors know that this group can be played back.           |
 
 ² Internally, orders are always created, but the compiler treats orders differently depending on this flag. When the flag is set, the compiler merges and splits block instances according to each position in the order. Without the flag set, the compiler considers only unique order positions.
 

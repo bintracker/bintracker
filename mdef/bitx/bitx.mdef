@@ -8,7 +8,7 @@
 	    	     keys: (make-counters 0 96 1 0)
 	    	     default: rest))
 
- input: ((group id: PATTERNS flags: (ordered)
+ input: ((group id: PATTERNS flags: (ordered playable)
 		nodes: ((clone 2 (block id: CH nodes: ((field from: NOTE)))))))
 
  output: ((asm file: "bitx.asm")

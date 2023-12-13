@@ -14,7 +14,7 @@
 		     flags: (use-last-set is-note enable-modifiers)))
 
  input: ((field from: DUTY)
-	 (group id: PATTERNS flags: (ordered)
+	 (group id: PATTERNS flags: (ordered playable)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(clone 4 (block id: CH
 					nodes: ((field from: NOTE)))))))

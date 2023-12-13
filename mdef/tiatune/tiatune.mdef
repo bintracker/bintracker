@@ -23,7 +23,7 @@ By utz 2017."
 		     flags: (is-note use-last-set)
 		     keys: (make-counters 1 97 1 0)))
 
- input: ((group id: PATTERNS flags: (ordered)
+ input: ((group id: PATTERNS flags: (ordered playable)
 	 	nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 	 		(clone 2 (block id: CH nodes: ((field from: NOTE)
 						       (field from: VOLUME)

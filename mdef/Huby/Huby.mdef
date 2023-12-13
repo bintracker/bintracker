@@ -15,7 +15,7 @@
 		     flags: (is-percussion)))
 
  input: ((field from: BPM)
-	 (group id: PATTERNS flags: (ordered)
+	 (group id: PATTERNS flags: (ordered playable)
 		nodes: ((block id: DRUMS nodes: ((field from: DRUM)))
 			(clone 2 (block id: CH
 					nodes: ((field from: NOTE)))))))

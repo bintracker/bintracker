@@ -24,7 +24,7 @@ By utz 2017."
 	    	     description: "Interrupting click drum, 1 = kick, 2 = noise"))
 
  input: ((clone 3 (field from: DUTY))
-	 (group id: PATTERNS flags: (ordered)
+	 (group id: PATTERNS flags: (ordered playable)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(block id: DRUMS nodes: ((field from: DRUM)))
 			(clone 2 (block id: CH nodes: ((field from: NOTE))))

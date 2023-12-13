@@ -21,7 +21,7 @@ By Hikaru/Intense 2020."
 		     description: "Interrupting click drum"))
 
  input: ((field from: TEMPO)
-	 (group id: PATTERNS flags: (ordered)
+	 (group id: PATTERNS flags: (ordered playable)
 		nodes: ((block id: DRUMS nodes: ((field from: DRUM)))
 			(clone 4 (block id: CH
 					nodes: ((field from: NOTE)

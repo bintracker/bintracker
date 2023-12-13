@@ -371,13 +371,18 @@
       (emul 'run (mdef-default-origin (car mmod)) (mod->bin mmod))))
 
   (define (play-pattern)
-    (and-let* ((emul (ui-metastate (current 'module-view) 'emulator))
-	       (mmod (ui-metastate (current 'module-view) 'mmod))
-  	       (origin (mdef-default-origin (car mmod))))
+    (and-let* ((current-module-view (current 'module-view))
+	       (emul (ui-metastate current-module-view 'emulator))
+	       (mmod (ui-metastate current-module-view 'mmod))
+	       (mdef (mmod-mdef mmod))
+	       (group-id (slot-value (current 'blockview) 'group-id))
+	       (_ (memv 'playable
+			(inode-config-flags (mdef-inode-ref group-id mdef))))
+  	       (origin (mdef-default-origin mdef)))
       (emul 'run origin
 	    (mod->bin (derive-single-pattern-mmod
       		       mmod
-      		       (slot-value (current 'blockview) 'group-id)
+      		       group-id
       		       (ui-blockview-get-current-order-pos
       			(current 'blockview)))))))
 

@@ -30,7 +30,7 @@ By utz 2019-2022."
 		     flags: (is-pwm-data sample-rate:15429)
 		     description: "PWM sample data"))
 
- input: ((group id: PATTERNS flags: (ordered looped)
+ input: ((group id: PATTERNS flags: (ordered looped playable)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(block id: DRUMS nodes: ((field from: DRUM)
 						 (field from: DLEN)))

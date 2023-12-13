@@ -21,7 +21,7 @@
 
  input: ((field from: SPEED)
 	 (clone 4 (field from: WAVE))
-	 (group id: PATTERNS flags: (ordered)
+	 (group id: PATTERNS flags: (ordered playable)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(clone 4 (block id: CH nodes: ((field from: NOTE))))))
 	 (group id: WAVETABLES block-length: 256

@@ -8,7 +8,7 @@
 	    	     keys: (make-counters 1 107 1 0)
 	    	     default: rest))
 
- input: ((group id: PATTERNS flags: (ordered)
+ input: ((group id: PATTERNS flags: (ordered playable)
 		nodes: ((clone 4 (block id: CH nodes: ((field from: NOTE)))))))
 
  output: ((asm file: "buzzplayer.asm")

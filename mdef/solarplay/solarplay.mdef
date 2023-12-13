@@ -15,7 +15,7 @@
 		     keys: (make-dividers 232 16 0)
 		     default: rest))
 
- input: ((group id: PATTERNS flags: (ordered looped)
+ input: ((group id: PATTERNS flags: (ordered looped playable)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(clone 3 (block id: CH
 					nodes: ((field from: NOTE)

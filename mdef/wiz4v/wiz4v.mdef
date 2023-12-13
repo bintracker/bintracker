@@ -18,7 +18,7 @@
 		     flags: (use-last-set is-pcm-data)
 		     description: "6-bit unsigned sample value"))
 
- input: ((group id: PATTERNS flags: (ordered)
+ input: ((group id: PATTERNS flags: (ordered playable)
 		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
 			(clone 4 (block id: CH
 					nodes: ((field from: NOTE)
