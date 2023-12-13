@@ -1,0 +1,36 @@
+(mdal-definition
+ mdef-version: 2 engine-version: 0.1 target: sol20
+ description: "A modern driver for the Sol-20 Music System."
+
+ default-origin: 0
+
+ commands: ((command id: TICKS bits: 5 type: uint default: 4
+	    	     flags: (use-last-set is-ticks)
+	    	     description: "Ticks per row")
+	    (command id: VOLUME bits: 4 type: uint default: 7
+		     flags: (use-last-set is-volume)
+		     description: "Channel volume")
+	    (command id: NOTE bits: 16 type: ukey
+		     flags: (enable-modifiers use-last-set is-note)
+		     keys: (make-dividers 232 16 0)
+		     default: rest))
+
+ input: ((group id: PATTERNS flags: (ordered looped)
+		nodes: ((block id: TEMPO nodes: ((field from: TICKS)))
+			(clone 3 (block id: CH
+					nodes: ((field from: NOTE)
+						(field from: VOLUME)))))))
+
+ output: ((asm file: "solarplay.asm")
+	  (order from: PATTERNS layout: pointer-matrix element-size: 2)
+	  (field bytes: 2 compose: 0)
+	  (field bytes: 2 compose: $mdal__order_patterns_loop)
+	  (group id: PATTERNS from: PATTERNS nodes:
+		 ((block id: CHANS from: (TEMPO CH1 CH2 CH3) resize: 1
+			 nodes: ((repeat bytes: 1 compose: ?TICKS)
+				 (repeat bytes: 2 compose: ?NOTE1)
+				 (repeat bytes: 1 compose: ?VOLUME1)
+				 (repeat bytes: 2 compose: ?NOTE2)
+				 (repeat bytes: 1 compose: ?VOLUME2)
+				 (repeat bytes: 2 compose: ?NOTE3)
+				 (repeat bytes: 1 compose: ?VOLUME3)))))))
