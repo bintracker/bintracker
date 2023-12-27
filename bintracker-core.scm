@@ -110,8 +110,8 @@
 	  "(info proc PROCEDURE)"
 	  "Describe the procedure PROCEDURE\n")
 	"\n"))
-      ((info ...)
-       (let ((args '(...)))
+      ((info args* ...)
+       (let ((args '(args* ...)))
 	 (case (car args)
 	   ((kb keybinding)
 	    (let ((keybindings (settings 'keymap)))
