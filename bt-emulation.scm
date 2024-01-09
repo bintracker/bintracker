@@ -26,16 +26,18 @@
 			   (file-executable? path))))
 		  (string-split (get-environment-variable "PATH") ":")))))
 
-  ;;; Create an emulator interface for the emulator PROGRAM. PROGRAM-ARGS
-  ;;; shall be a list of command line argument strings that are passed to
-  ;;; `program` on startup.
+
+  ;;; ### Emulator adapters
   ;;;
-  ;;; The returned emulator is not yet running. To run it, call
-  ;;; `(EMULATOR 'start)`.
+  ;;; An emulator adapter is a procedure that takes two arguments, the path to
+  ;;; an emulator PROGRAM, and PROGRAM-ARGS, a list of optional command line
+  ;;; that will be passed to PROGRAM.
   ;;;
-  ;;; The following other commands may be available, depending on the features
-  ;;; of the emulator application:
+  ;;; The procedure must return a procedure EMULATOR that accepts an arbitrary
+  ;;; number of args. The procedure must implement at least the following
+  ;;; interface:
   ;;;
+  ;;; * `(EMULATOR 'start)` - Launch the external emulator process.
   ;;; * `'exec CMD` - Execute raw command on the emulator's interpreter. The
   ;;; details of CMD depend on the receiving emulator. For MAME commands, see
   ;;; `mame-bridge/mame-startup.lua`.
@@ -46,7 +48,12 @@
   ;;; * `'start` - Launch emulator program in new thread.
   ;;; * `'reset` - Reset in the emulator.
   ;;; * `'quit` - Exit the Emulator.
-  (define (make-emulator program program-args)
+  ;;;
+  ;;; See `provide-mame-instance` below for an example of how to implement an
+  ;;; emulator adapter.
+
+  ;;; Emulator adapter for MAME.
+  (define (make-mame-instance program program-args)
     (unless (executable-exists? program)
       (error 'make-emulator
 	     (string-append "Emulator \""
@@ -188,10 +195,13 @@
 				      (else "config/emulators.scm")))))
 			    (error (string-append "Unknown emulator "
 						  (car platform-config))))))
-	      (apply (lambda (#!key program-name (default-args '()))
-		       `(,program-name . ,default-args))
+	      (apply (lambda (#!key program-name
+				    (adapter 'make-mame-instance)
+				    (default-args '()))
+		       (list (eval adapter) program-name default-args))
 		     emul))))
-      (make-emulator (car emulator-args)
-		     (append (cdr emulator-args) (cadr platform-config)))))
+      ((car emulator-args)
+       (cadr emulator-args)
+       (append (caddr emulator-args) (cadr platform-config)))))
 
   ) ;; end module bt-emulation
