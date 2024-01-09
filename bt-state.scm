@@ -216,7 +216,7 @@
 				(map (lambda (b)
 				       (list (if (eqv? '<Control-ISO_Left_Tab>
 						       (car b))
-						 '<Shift-Tab>
+						 '<Control-Shift-Tab>
 						 (car b))
 					     (cadr b)))
 				     entry)
