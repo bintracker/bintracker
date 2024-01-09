@@ -60,7 +60,8 @@
     (make-hooks
      `(delete-module-view . ,(lambda () (multibuffer-delete (ui) 'module-view)))
      `(show-welcome-buffer . ,(lambda () (multibuffer-show (ui) 'welcome)))
-     `(update-window-title . ,update-window-title!)))
+     `(update-window-title . ,update-window-title!)
+     `(log-close . ,(lambda () (event-log 'put "Closed work file.")))))
 
   ;;; Close the currently opened module file.
   (define (close-file)
@@ -80,6 +81,30 @@
   			     `(module-view #t 5 ,<ui-module-view>
   					   mmod ,mmod filename ,filename)
   			     before: 'repl)))
+     `(log-start
+       . ,(lambda (mmod filename)
+	    (let* ((mmod (or mmod (current 'mmod)))
+		   (mdef-version
+		    (and mmod (mdef-engine-version (mmod-mdef mmod))))
+		   (engine-id
+		    (and mdef-version
+			 (string-append (->string (mdef-id (mmod-mdef mmod)))
+					" v"
+					(->string (engine-version-major
+						   mdef-version))
+					"."
+					(->string (engine-version-minor
+						   mdef-version))))))
+	      (event-log 'put
+			 (if filename
+			     (string-append
+			      "Opened "
+			      filename
+			      (if engine-id
+				  (string-append ", a " engine-id " module.")
+				  "."))
+			     (string-append
+			      "Created new " engine-id " module."))))))
      `(focus-first-block
        . ,(lambda args
   	    (and-let* ((entry (find (lambda (entry)

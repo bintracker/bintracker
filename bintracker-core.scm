@@ -354,6 +354,9 @@
 	      (set! registry
 		(cons (list id version author license description)
 		      registry))
+	      (event-log 'put
+			 (string-append "Loaded plugin " (->string id) " v"
+					(->string version) "."))
 	      #t))))
       (lambda args
 	(if (null? args)
@@ -385,7 +388,8 @@
   ;;; The set of hooks that will be executed immediately after startup.
   (define after-startup-hooks
     (make-hooks
-     `(init-focus . ,(lambda () (focus 'resume)))))
+     `(init-focus . ,(lambda () (focus 'resume)))
+     `(log-app-start . ,(lambda () (event-log 'put "Started application.")))))
 
   ;;; The list of hooks that will be executed on startup.
   (define on-startup-hooks

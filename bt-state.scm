@@ -554,6 +554,15 @@
     (with-output-to-string
       (lambda () (print-error-message exn))))
 
+  ;;; `(event-log 'get|put [CONTENTS])`
+  ;;; Internal application log.
+  (define event-log
+    (let ((loglist '()))
+      (lambda (what . args)
+	(case what
+	  ((get) loglist)
+	  ((put) (set! loglist (append args loglist)))))))
+
   ;;; Write a log file with information on the current crash. Returns the
   ;;; filename of the log file.
   (define (write-crash-log exn #!key stack-trace mmod-dump)
@@ -565,6 +574,8 @@
 		 "\nOS: " (software-version)
 		 "\nArchitecture: " (machine-type)
 		 "\nChicken version: " (chicken-version #t)
+		 "\n\n"
+		 (string-intersperse (reverse (event-log 'get)) "\n")
 		 "\n\n"
 		 (exn->message exn)
 		 "\n"
