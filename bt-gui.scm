@@ -392,8 +392,10 @@
 
   (define (play-from-start)
     (and-let* ((emul (ui-metastate (current 'module-view) 'emulator))
-	       (mmod (ui-metastate (current 'module-view) 'mmod)))
-      (emul 'run (mdef-default-origin (car mmod)) (mod->bin mmod))))
+	       (mmod (ui-metastate (current 'module-view) 'mmod))
+	       (bin (safe-call "Error: Failed to compile module"
+			       (mod->bin mmod))))
+      (emul 'run (mdef-default-origin (car mmod)) bin)))
 
   (define (play-pattern)
     (and-let* ((current-module-view (current 'module-view))
@@ -403,13 +405,14 @@
 	       (group-id (slot-value (current 'blockview) 'group-id))
 	       (_ (memv 'playable
 			(inode-config-flags (mdef-inode-ref group-id mdef))))
-  	       (origin (mdef-default-origin mdef)))
-      (emul 'run origin
-	    (mod->bin (derive-single-pattern-mmod
-      		       mmod
-      		       group-id
-      		       (ui-blockview-get-current-order-pos
-      			(current 'blockview)))))))
+  	       (origin (mdef-default-origin mdef))
+	       (bin (safe-call "Error: Failed to compile module"
+			       (mod->bin (derive-single-pattern-mmod
+      					  mmod
+      					  group-id
+      					  (ui-blockview-get-current-order-pos
+      					   (current 'blockview)))))))
+      (emul 'run origin bin)))
 
   (define (stop-playback)
     (and-let* ((emul (ui-metastate (current 'module-view) 'emulator)))
@@ -4971,12 +4974,16 @@
   	     (slot-value buf 'emulator)
   	     (case (cadr args)
   	       ((play-row)
-  		(let ((mmod (slot-value buf 'mmod)))
+  		(and-let*
+		    ((mmod (slot-value buf 'mmod))
+		     (bin (safe-call
+			   "Error: Failed to compile module."
+			   (mod->bin (apply derive-single-row-mmod
+  					    (cons mmod (cddr args)))
+  				     extra-symbols: '((row-play . #t))))))
   		  ((slot-value buf 'emulator) 'run
   		   (mdef-default-origin (car mmod))
-  		   (mod->bin (apply derive-single-row-mmod
-  				    (cons mmod (cddr args)))
-  			     extra-symbols: '((row-play . #t)))))))))
+  		   bin))))))
   	((modified)
   	 (if (null? (cdr args))
   	     (slot-value buf 'modified)

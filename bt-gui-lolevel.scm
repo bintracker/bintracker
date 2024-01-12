@@ -219,6 +219,22 @@
       		       detail: (string-append prologue "\n\n" message)
       		       type: 'ok)))
 
+  ;;; `(safe-call PROLOGUE BODY ...)`
+  ;;; Execute BODY. In case of an exception, write PROLOGUE followed by the
+  ;;; exception message to the global event log, show an error dialogue, and
+  ;;; return `#f`.
+  (define-syntax safe-call
+    (syntax-rules ()
+      ((_ prologue what ...)
+       (handle-exceptions
+	   exn
+	   (begin
+	     (event-log 'put prologue)
+	     (event-log 'put (exn->message exn))
+	     (report-exception exn prologue)
+	     #f)
+	 what ...))))
+
   ;;; Display a message box that asks the user whether to save unsaved changes
   ;;; before exiting or closing. EXIT-OR-CLOSING should be the string
   ;;; `"exit"` or `"closing"`, respectively.
