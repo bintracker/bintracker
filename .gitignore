@@ -9,6 +9,7 @@ cfg/
 roms/*
 !roms/spectrum
 roms/spectrum/spectrum.rom
+.cache/
 build/*
 !build/Makefile
 !build/Makefile.msys

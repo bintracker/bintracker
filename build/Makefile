@@ -185,7 +185,7 @@ docs: gendoc-dirs\
 	for file in ../libmdal/docs/*.md; do cp $$file gendoc/; done
 	cp -r ../docs/assets/ gendoc/
 	cp -r ../docs/images/ gendoc/
-	cd .. && mkdocs build
+	cd .. && python3 -m mkdocs build
 
 gendoc-dirs:
 	mkdir -p gendoc/

@@ -29,6 +29,7 @@ theme:
     - 404.html
 
 plugins:
+  - privacy
   - search
   - offline
 
