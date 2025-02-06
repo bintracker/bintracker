@@ -44,7 +44,7 @@ Provided here is a list of some common API entry points. The list is inevitably 
 
     Generate an emulator object suitable for the target system with the MDAL platform id PLATFORM.
 
-??? tip "[`(EMULATOR 'exec|info|pause|quit|run|unpause|start [ARGS...])`](generated/bt-emulation.md#def-make-emulator)"
+??? tip "[`(EMULATOR 'exec|info|pause|quit|run|unpause|start [ARGS...])`](generated/bt-emulation.md#emulator-adapters)"
 
     Interact with an EMULATOR. Use `(current 'emulator)` to retrieve the emulator of the currently active module view.
 
@@ -91,11 +91,11 @@ Provided here is a list of some common API entry points. The list is inevitably 
 
 ### libmdal
 
-**[`block-field-ref`](generated/md-types.md/def-block-field-ref)**
+**[`block-field-ref`](generated/md-types.md#def-block-field-ref)**
 **[`file->mmod`](generated/md-parser.md#def-file-mmod)**
-**[`inode-instance-ref`](generated/md-types.md/def-inode-instance-ref)**
+**[`inode-instance-ref`](generated/md-types.md#def-inode-instance-ref)**
 **[`mmod-mdef`](generated/md-types.md#def-mmod-mdef)**
-**[`mmod-global-node`](generated#md-types.md#def-mmod-global-node)**
+**[`mmod-global-node`](generated/md-types.md#def-mmod-global-node)**
 **[`mmod->file`](generated/mdal.md#def-mmod-file)**
 **[`mod->bin`](generated/mdal.md#def-mod-bin)**
 **[`node-path`](generated/md-types.md#def-node-path)**
@@ -159,8 +159,8 @@ Provided here is a list of some common API entry points. The list is inevitably 
 
 ## Hook Sets
 
-- **[`on-startup-hooks`](generated/bintracker-core.md#variable-on-startup-hooks)**
-- **[`after-startup-hooks`](generated/bintracker-core.md#variable-after-startup-hooks)**
+- **[`on-startup-hooks`](generated/bintracker-core.md#def-on-startup-hooks)**
+- **[`after-startup-hooks`](generated/bintracker-core.md#def-after-startup-hooks)**
 - **[`after-load-file-hooks`](generated/bt-gui.md#variable-after-load-file-hooks)**
 - **[`on-save-file-hooks`](generated/bt-gui.md#variable-on-save-file-hooks)**
 - **[`on-close-file-hooks`](generated/bt-gui.md#variable-on-close-file-hooks)**

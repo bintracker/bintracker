@@ -4,7 +4,7 @@ This chapter describes how to develop plugins for Bintracker.
 
 ## About Plugins
 
-Plugins extend Bintracker's core functionality by defining additional procedures, registering new hooks, adding key bindings, etc. Bintracker plugins are Scheme code wrapped in a [plugin definition expression](#plugin-defintions). The plugin code is executed at runtime, usually as the last step of reading the main configuration file.
+Plugins extend Bintracker's core functionality by defining additional procedures, registering new hooks, adding key bindings, etc. Bintracker plugins are Scheme code wrapped in a [plugin definition expression](#plugin-definitions). The plugin code is executed at runtime, usually as the last step of reading the main configuration file.
 
 Plugin code has access to standard Scheme bindings, the entire Bintracker API including libmdal and Schemta, and a range of [additional bindings](additional-bindings.md). A plugin may also depend on other plugins, and has access to bindings exported by those dependencies.
 
@@ -29,7 +29,7 @@ where IDENTIFIER is a string naming the plugin, VERSION is a version number stri
 
 ## Plugin Files
 
-A plugin file is a file containing a single [plugin definition](#plugin-definition). The name of the file shall be the same as the plugin identifier, with an `.scm` ending. The file and any additional assets must reside in a sub-directory of the `plugins` directory with the same name as the plugin.
+A plugin file is a file containing a single [plugin definition](#plugin-definitions). The name of the file shall be the same as the plugin identifier, with an `.scm` ending. The file and any additional assets must reside in a sub-directory of the `plugins` directory with the same name as the plugin.
 
 
 ## Contributing plugins to the official repository

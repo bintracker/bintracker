@@ -121,7 +121,7 @@ The same syntax rules as for [labels](#labels) apply.
 
 ### Directives (Pseudo-Ops)
 
-Schemta assembler directives are prefixed by a dot. A directive can be one of the pre-defined directives listed below, or a [dot expression](#dot-expressions).
+Schemta assembler directives are prefixed by a dot. A directive can be one of the pre-defined directives listed below, or a [dot expression](#embedding-scheme-with-dot-expressions).
 
 
 #### .align

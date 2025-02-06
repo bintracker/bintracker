@@ -1,6 +1,6 @@
 # Configuration
 
-Bintracker's behavior and appearance can be configured in a different ways. The most common way is to set various configuration options in the [configuration file](#configuration-file-configscm). You can also temporarily change some of these options by using Bintracker's built-in [repl](#temporary-tweaks-using-the-repl). Furthermore, any user code may read and change configuration options, as well as register new ones.
+Bintracker's behavior and appearance can be configured in a different ways. The most common way is to set various configuration options in the [configuration file](#main-configuration-file-configscm). You can also temporarily change some of these options by using Bintracker's built-in [repl](#temporary-tweaks-using-the-repl). Furthermore, any user code may read and change configuration options, as well as register new ones.
 
 Bintracker has a powerful configuration system. Not just the look and feel, but just about any aspect of how Bintracker works can be modified.
 

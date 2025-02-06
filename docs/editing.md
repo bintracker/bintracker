@@ -31,7 +31,7 @@ Despite the name, Bintracker is not a tracker. It is a virtual machine running a
 
 ## Sequences
 
-In Bintracker, sequences (also known as song orders) are quite complex, and somewhat different from other trackers. Fortunately, you can avoid dealing with sequences altogether by using [automatic sequencing](#automatic-sequencing).
+In Bintracker, sequences (also known as song orders) are quite complex, and somewhat different from other trackers. Fortunately, you can avoid dealing with sequences altogether by using [automatic sequencing](#automatic-sequence-mode).
 
 Sequences are regular MDAL blocks, which means editing them works exactly like editing a pattern or an effects table.
 

@@ -198,7 +198,7 @@ Additionally, for each group input element that uses an order (sequence), refere
 
 Input nodes describe the data format that users will use to compose for a given music engine. An input node is an expression taking the form `(NODE-TYPE id: ID ARGS ...)`, where NODE-TYPE is one of the three built-in node types `field`, `block`, `group`, ID is a unique identifier, and ARGS are the remaining arguments, which depend on the node type.
 
-The basic building blocks of the input configuration are [`field`s](#input-field). A field relates to a feature in the underlying music player. They could relate to global values, such as a global tempo setting, or an element within a larger structure, such as a note field within a pattern block. For the latter purpose, fields may be grouped into [`block`s](#input-blocks), which may in turn be grouped into [`group`s](#input-group). Fields may also be direct children of a `group`.
+The basic building blocks of the input configuration are [`field`s](#input-field). A field relates to a feature in the underlying music player. They could relate to global values, such as a global tempo setting, or an element within a larger structure, such as a note field within a pattern block. For the latter purpose, fields may be grouped into [`block`s](#input-block), which may in turn be grouped into [`group`s](#input-group). Fields may also be direct children of a `group`.
 
 The parent node of all defined input nodes is an implicit `group` node called `GLOBAL`.
 
@@ -249,7 +249,7 @@ Groups wrap logical units of input nodes, including other groups.
 | `id:`        | A unique identifier naming the symbol node.                                         |
 | `nodes:`     | A list of child nodes, which may be `field`s, `block`s, and/or other `group`s.      |
 
-¹ It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-blocks) instead.
+¹ It is normally not necessary to force a fixed `block-size` on `ordered` groups. Use `resize` on relevant [output blocks](#output-block) instead.
 
 
 | flag       | description                                                    |
