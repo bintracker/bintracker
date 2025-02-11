@@ -60,11 +60,11 @@ $ chicken-install args base64 bitstring comparse coops csm list-utils matchable 
 
 Note that in order to build the sqlite3 extension, you need an [sqlite3](https://sqlite.org) installation. Your system most likely will have one installed already, but if not, install it through your distro's package manager.
 
-To build the Bintracker documentation, you will need [scm2wiki](https://github.com/utz82/scm2wiki), [MkDocs](https://www.mkdocs.org/), and the [mkdocs-material](https://github.com/squidfunk/mkdocs-material) theme.
+To build the Bintracker documentation, you will need [scm2wiki](https://github.com/utz82/scm2wiki), [MkDocs](https://www.mkdocs.org/), and the [mkdocs-material](https://github.com/squidfunk/mkdocs-material) theme. The makefile receipe `doc-toolchain` will set up a virtual environment and install the required dependencies into it.
 
 ```sh
-chicken-install scm2wiki
-$ pip install --user mkdocs mkdocs-material
+$ chicken-install scm2wiki
+$ make doc-toolchain
 ```
 
 

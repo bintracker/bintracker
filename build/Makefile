@@ -11,6 +11,10 @@ BT_SRC = ../
 ifdef ETAGS
  DO_TAGS = TAGS
 endif
+VENV = .venv
+VENV_PYTHON = $(VENV)/bin/python3
+SYSTEM_PYTHON = $(or $(shell which python3), $(shell which python))
+PYTHON = $(or $(wildcard $(VENV_PYTHON)), $(SYSTEM_PYTHON))
 
 # Might need to use csc -compile-syntax in places. See:
 # https://lists.nongnu.org/archive/html/chicken-users/2017-08/msg00004.html
@@ -137,6 +141,20 @@ schemta.import.so: schemta.so
 schemta-exe: $(MDAL_SRC)schemta-exe.scm schemta.import.so
 	$(CSC) $< -b -O3 -compile-syntax -o $@
 
+$(VENV_PYTHON):
+	rm -rf $(VENV)
+	$(SYSTEM_PYTHON) -m venv $(VENV)
+
+venv: $(VENV_PYTHON)
+
+doc-deps:
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -r ../requirements.txt
+
+.PHONY: venv doc-deps
+
+doc-toolchain: venv doc-deps
+
 # generate documentation
 gendoc/generated/%.md: $(BT_SRC)%.scm
 	$(DOCGEN) -a -i $< -o $@ -m
@@ -185,7 +203,7 @@ docs: gendoc-dirs\
 	for file in ../libmdal/docs/*.md; do cp $$file gendoc/; done
 	cp -r ../docs/assets/ gendoc/
 	cp -r ../docs/images/ gendoc/
-	cd .. && python3 -m mkdocs build
+	cd .. && ./build/$(PYTHON) -m mkdocs build
 
 gendoc-dirs:
 	mkdir -p gendoc/
