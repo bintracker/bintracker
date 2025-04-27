@@ -6,6 +6,7 @@
   startup-args: ("channelf" "-cart" "mame-bridge/channelf_dummy.bin"))
  ("coco3" emulator: mame startup-args: ("coco3"))
  ("dragon32" emulator: mame startup-args: ("dragon32" "-ext" "ram"))
+ ;; ("dragon32" emulator: xroar startup-args: ("-machine" "dragon32"))
  ("kc85_4" emulator: mame startup-args: ("kc85_4"))
  ("mc10" emulator: mame startup-args: ("mc10" "-ext" "ram"))
  ("mz700" emulator: mame startup-args: ("mz700"))

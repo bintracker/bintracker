@@ -6,4 +6,9 @@
 		      "-uimodekey" "F12"
 		      "-nomouse"
 		      "-mouse_device" "none"
-		      "-autoboot_delay" "0")))
+		      "-autoboot_delay" "0"))
+
+ ;; (xroar adapter: make-gdb-instance
+ ;; 	program-name: "xroar"
+ ;; 	default-args: ("-ao" "alsa" "-gdb" "-gdb-port" "4322" "-v" "3" "-debug-gdb" "-1"))
+ )
