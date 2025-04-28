@@ -18,7 +18,7 @@
 		;; opt	6809
 
                 ;; org     $e00
-Start           orcc    #$50
+Start           orcc    #$50    ; disable IRQ+FIRQ
                 lda     #$3F
                 sta     $ff23
 		sta	$ffd9
@@ -58,6 +58,10 @@ Start           orcc    #$50
 		andcc	#$bf
 
 loop		inc	$400
+l2              nop             ; stuff instruction register TODO remove when
+                nop             ; compiling to file
+l3              nop
+                nop
 		jmp	<loop
 
 ;*******************************************************************************
@@ -126,10 +130,9 @@ npt0
 		sta	<MDur		;store
 		bne	oks
                 .(if (defined? 'row-play)
-                     " clra\n sta $ff20\n sta $ff91\n sta $ff93\n rti"
+                     ;; " clra\n sta $ff20\n sta $ff91\n sta $ff93\n sta $94"
+                        " ldd #$b700\n std l2\n lda #$94\n sta l3\n rti" ;
                      " ldu #Note\n bra npt0")
-		;; ldu	#Note
-		;; bra	xpt
 
 oks		pulu    a,b ;; pulu	d		;get 1st 2 notes
 		sta	<.(+ 2 (symbol-ref 'v1))	;store to voice #1
