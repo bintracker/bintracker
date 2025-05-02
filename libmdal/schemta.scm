@@ -182,8 +182,9 @@
   ;;; instruction can be resolved immediately.
   (define (resolve-instruction opcode operands target)
     ;; (print "resolve-instruction " opcode " " operands)
-    (let ((options (hash-table-ref (asm-target-instructions target)
-				   opcode)))
+    (let ((options (hash-table-ref/default (asm-target-instructions target)
+					   opcode
+					   #f)))
       (if options
 	  (resolve-operands operands (car options) target)
 	  (error (string-append "unknown mnemonic: " (->string opcode))))))
@@ -334,7 +335,8 @@
 			      (string-downcase (string-append head
 							      remainder)))))
 		 (if (hash-table-ref/default (asm-target-instructions target)
-					     opcode #f)
+					     opcode
+					     #f)
 		     (result opcode)
 		     fail))))
 
