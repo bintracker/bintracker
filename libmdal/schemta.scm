@@ -24,8 +24,9 @@
 
   (import scheme (chicken base) (chicken string) (chicken bitwise) (chicken io)
 	  (chicken port) (chicken module) (chicken file) (chicken type)
-	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69 miscmacros
-	  comparse typed-records)
+	  (chicken fixnum)
+	  srfi-1 srfi-4 srfi-13 srfi-14 srfi-69
+	  miscmacros comparse typed-records)
 
   (reexport srfi-1 srfi-13 srfi-14 srfi-69 comparse (chicken string)
 	    (chicken bitwise))
@@ -603,7 +604,7 @@
 		       (org (state 'current-origin))
 		       (evaluated-operands
 			(map (cute eval-operand <> state) (third node))))
-		   (when org (state 'current-origin (+ org (cadr node))))
+		   (when org (state 'current-origin (fx+ org (cadr node))))
 		   (if (and (every identity evaluated-operands)
 			    (or (not require-current-org) org))
 		       (let* ((operand-map
@@ -620,7 +621,7 @@
 		       (begin (state 'done? #f)
 			      (list node)))))))
   	(begin (and-let* ((org (state 'current-origin)))
-  		 (state 'current-origin (+ org (cadr node))))
+  		 (state 'current-origin (fx+ org (cadr node))))
 	       (state 'done? #f)
   	       (list node))))
 
@@ -708,7 +709,7 @@
       				 (third node))
       			    (string->bytes (third node)))))
 	      (and-let* ((org (state 'current-origin)))
-      		(state 'current-origin (+ org len)))
+      		(state 'current-origin (fx+ org len)))
       	      (or (and (every identity res)
 		       (list (map lsb res)))
 		  (begin (state 'done? #f) (list node)))))
@@ -720,7 +721,7 @@
 							 (state 'target)))))
       				   (apply list (third node)))))))
 	      (and-let* ((org (state 'current-origin)))
-		(state 'current-origin (+ org (* 2 (length (third node))))))
+		(state 'current-origin (fx+ org (fx* 2 (length (third node))))))
 	      (if (every identity (car res))
 		  res
 		  (begin (state 'done? #f) (list node)))))
@@ -732,13 +733,13 @@
 							 (state 'target)))))
       				   (apply list (third node)))))))
 	      (and-let* ((org (state 'current-origin)))
-		(state 'current-origin (+ org (* 4 (length (third node))))))
+		(state 'current-origin (fx+ org (fx* 4 (length (third node))))))
 	      (if (every identity (car res))
 		  res
 		  (begin (state 'done? #f) (list node)))))
       ((ds) (or (and-let* ((fillbyte (get-fill-param node state)))
 		  (and-let* ((org (state 'current-origin)))
-		    (state 'current-origin (+ org (caaddr node))))
+		    (state 'current-origin (fx+ org (caaddr node))))
       		  (list (make-list (caaddr node) fillbyte)))
 		(begin (state 'done? #f) (list node))))
       ((align)
@@ -746,7 +747,7 @@
 	 (error 'schemta#do-directive "cannot align to 0"))
        (or (and-let* ((org (state 'current-origin))
 		      (align (caaddr node))
-		      (nextorg (* align (quotient (+ org (sub1 align))
+		      (nextorg (fx* align (quotient (fx+ org (sub1 align))
       						  align)))
 		      (fillbyte (get-fill-param node state))
       		      (fill (list (make-list (- nextorg org) fillbyte))))
@@ -769,8 +770,8 @@
 				       (call-with-input-file (third node)
 					 (cute read-string #f <>))))))
 		      (when (state 'current-origin)
-      			(state 'current-origin (+ (state 'current-origin)
-						  (length bytes))))
+      			(state 'current-origin (fx+ (state 'current-origin)
+						    (length bytes))))
       		      (list bytes))
       		    (error 'schemta#do-directive
 			   (string-append "included binary " (third node)
@@ -801,8 +802,8 @@
 	       ;; and those that do not, and invalidate current-origin
 	       ;; accordingly.
 	       (when (and (state 'current-origin) (> (length node) 3))
-		 (state 'current-origin (+ (state 'current-origin)
-					   (cadddr node))))
+		 (state 'current-origin (fx+ (state 'current-origin)
+					     (cadddr node))))
 	       (list node))
 	(fluid-let ((current-origin (state 'current-origin))
 		    (symbol-ref (lambda (s) (symbol-lookup s state #f)))
@@ -821,8 +822,8 @@
 	      (if (every number? (flatten res))
 		  (begin
 		    (when (state 'current-origin)
-		      (state 'current-origin (+ (length (flatten res))
-						(state 'current-origin))))
+		      (state 'current-origin (fx+ (length (flatten res))
+						  (state 'current-origin))))
 		    res)
 		  (begin (state 'done? #f)
 			 (state 'current-origin #f)
@@ -839,16 +840,16 @@
       (if res
 	  ;; Pass length as car of result list!
 	  (begin (when (state 'current-origin)
-		   (state 'current-origin (+ (state 'current-origin)
-					     (car res))))
+		   (state 'current-origin (fx+ (state 'current-origin)
+					       (car res))))
 		 (if (and (pair? (cdr res))
 			  (not (symbol? (cadr res))))
 		     (remove null? (cdr res))
 		     (cdr res)))
 	  (begin (if (and (state 'current-origin)
 			  (cadr node))
-		     (state 'current-origin (+ (state 'current-origin)
-					       (cadr node)))
+		     (state 'current-origin (fx+ (state 'current-origin)
+						 (cadr node)))
 		     (state 'current-origin #f))
 		 (list node)))))
 
@@ -865,7 +866,7 @@
     ;; (print "assemble-node " ast-node " " (state 'current-origin))
     (if (number? (car ast-node))
   	(begin (and-let* ((org (state 'current-origin)))
-		 (state 'current-origin (+ org (length ast-node))))
+		 (state 'current-origin (fx+ org (length ast-node))))
   	       (list ast-node))
 	((case (car ast-node)
   	   ((instruction) do-instruction)
@@ -950,7 +951,9 @@
 			  (map (lambda (opt)
 				 (list (eval (car opt))
 				       (eval-operand-options
-					(cadr opt) operand-count (+ 1 depth))))
+					(cadr opt)
+					operand-count
+					(fx+ 1 depth))))
 			       ops)))))
 	    (make-asm-target
 	     id: (or id 'unknown)
@@ -1161,13 +1164,13 @@
 	      ((target) target)
 	      ((assemble)
 	       (let ((initial-pass pass))
-		 (until (or done? (= pass (+ initial-pass (cadr args))))
+		 (until (or done? (= pass (fx+ initial-pass (cadr args))))
 			(reset-state!)
 			(set! ast
 			  (concatenate
 			   (map-in-order (cute assemble-node <> accessor)
 					 ast)))
-			(set! pass (+ 1 pass)))
+			(set! pass (fx+ 1 pass)))
 		 done?))
 	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
@@ -1292,13 +1295,13 @@
 	      ((target) target)
 	      ((assemble)
 	       (let ((initial-pass pass))
-		 (until (or done? (= pass (+ initial-pass (cadr args))))
+		 (until (or done? (= pass (fx+ initial-pass (cadr args))))
 		 	(reset-state!)
 		 	(set! ast
 		 	  (concatenate
 		 	   (map-in-order (cute assemble-node <> accessor)
 		 			 ast)))
-		 	(set! pass (+ 1 pass)))
+		 	(set! pass (fx+ 1 pass)))
 		 done?))
 	      ((current-origin) current-origin)
 	      ((result) (and done? (ast->bytes ast)))
