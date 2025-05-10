@@ -254,7 +254,7 @@
 		      16 char-set:hex-digit))
 
   (define a-octal (number-parser (char-seq "0o") 8
-				    (string->char-set "01234567")))
+				 (string->char-set "01234567")))
 
   (define a-binary (number-parser (is #\%) 2 (string->char-set "01")))
 
@@ -410,7 +410,8 @@
 
   (define a-sexp
     (bind a-sexp-string
-	  (lambda (s) (result (with-input-from-string s read)))))
+	  (lambda (s) (result (with-input-from-string (string-downcase s)
+				read)))))
 
   (define (a-numeric target)
     (any-of a-number (a-symbol target) a-sexp-directive))
@@ -557,9 +558,8 @@
   (define (symbol-lookup s state default)
     (alist-ref
      (if (is-local-symbol? s)
-  	 (symbol-append (state 'local-namespace)
-			(string->symbol (string-downcase (symbol->string s))))
-  	 (string->symbol (string-downcase (symbol->string s))))
+  	 (symbol-append (state 'local-namespace) s)
+	 s)
      (state 'symbols)
      eqv?
      default))
