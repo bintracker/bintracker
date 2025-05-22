@@ -901,7 +901,7 @@
 	      (else (error 'target-cache (string-append "Invalid command "
 							(->string args)))))))))
 
-  ;;; Low level interace for `make-target`.
+  ;;; Low level interface for `make-target`.
   (define (construct-target #!key id byte-order (registers '())
 			    (register-sets '()) (addressing-modes '())
 			    (flags '()) (flag-sets '()) (extra '())
