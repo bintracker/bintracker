@@ -978,7 +978,8 @@
 					       parser (car opts) 0))
 					    (cdr opts)))))
 				(cdr ins))))
-		   instructions))))))))
+		   instructions)
+	      test: eq?)))))))
 
   ;;; Creates an `asm-target` struct for the given TARGET-NAME, which must be
   ;;; a symbol.
