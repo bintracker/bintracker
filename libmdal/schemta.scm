@@ -607,17 +607,16 @@
 		   (when org (state 'current-origin (fx+ org (cadr node))))
 		   (if (and (every identity evaluated-operands)
 			    (or (not require-current-org) org))
-		       (let* ((operand-map
-			       (map (lambda (op n)
-  				      (list (string->symbol
-  					     (string-append "%op"
-							    (number->string n)))
-  					    op))
-  				    evaluated-operands
-  				    (iota (length evaluated-operands) 1 1)))
-  			      (res (list (eval `(let ,operand-map
-						  ,(last node))))))
-  			 res)
+		       (let ((operand-map
+			      (map (lambda (op n)
+  				     (list (string->symbol
+  					    (string-append "%op"
+							   (number->string n)))
+  					   op))
+  				   evaluated-operands
+  				   (iota (length evaluated-operands) 1 1))))
+  			 (list (eval `(let ,operand-map
+					,(last node)))))
 		       (begin (state 'done? #f)
 			      (list node)))))))
   	(begin (and-let* ((org (state 'current-origin)))
