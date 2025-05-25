@@ -40,7 +40,11 @@
 					    (displace a-number))
 					   (result (list 'list `(quote ,reg)
 							 displace)))))
-		    (memory-indirect (in-parens numeric)))
+		    (memory-indirect (in-parens numeric))
+		    (register-indirect
+		     (in-parens (any-of (register 'r16+sp)
+					(register 'i16)
+					(is #\c)))))
 
  flags: ((nz 0) (z 8) (nc #x10) (c #x18)
  	 (po #x20) (pe #x28) (p #x30) (m #x38))
@@ -92,7 +96,7 @@
   				 ((char-seq "(hl)")
   				  (#xcb (+ #x46 (* 8 %op1))))
   				 ((register 'r8)
-  				  (#xcb (+ #x40 (* 8 %op1)
+				  (#xcb (+ #x40 (* 8 %op1)
   					   (register-value %op2)))))))))
   (call (1 ((numeric (#xcd (lsb %op1) (msb %op1)))))
   	(2 (((flag 'all) ((numeric ((+ #xc4 (flag-value %op1))

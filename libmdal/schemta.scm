@@ -60,6 +60,9 @@
   (define symbol #f)
   (define symbol-ref #f)
   (define defined? #f)
+  (define %op1 #f)
+  (define %op2 #f)
+  (define %op3 #f)
 
   ;; ---------------------------------------------------------------------------
   ;; Assembler primitives
@@ -110,8 +113,8 @@
 					     (required-symbols (cdr expr))))
 		   ((eq? 'symbol-ref (car expr))
 		    (list (eval (call-with-input-string
-				    (string-downcase (->string (cadr expr)))
-				  read))))
+				 (string-downcase (->string (cadr expr)))
+				 read))))
 		   (else (required-symbols (cdr expr))))))
 
   ;;; List the symbols required to evaluate the given OPERANDS
@@ -354,7 +357,6 @@
 						    (string->char-set " "))
 				    (string->char-set ";,"))))))
 		   (lambda (r)
-		     ;; (print "parsed " r)
 		     (result (string-downcase r)))))
      (maybe (is #\,))))
 
@@ -566,7 +568,6 @@
      default))
 
   (define (eval-operand op state)
-    ;; (print "eval-operand " op)
     (if (pair? op)
   	(case (car op)
   	  ((label)
@@ -581,7 +582,7 @@
 		 res)))
   	  ;; TODO address etc
   	  (else op))
-  	(if (number? op) op `(quote ,op))))
+	op))
 
   (define (do-instruction node state)
     ;; (print "do-instruction " node)
@@ -607,22 +608,20 @@
 		   (when org (state 'current-origin (fx+ org (cadr node))))
 		   (if (and (every identity evaluated-operands)
 			    (or (not require-current-org) org))
-		       (let ((operand-map
-			      (map (lambda (op n)
-  				     (list (string->symbol
-  					    (string-append "%op"
-							   (number->string n)))
-  					   op))
-  				   evaluated-operands
-  				   (iota (length evaluated-operands) 1 1))))
-  			 (list (eval `(let ,operand-map
-					,(last node)))))
+		       (fluid-let
+			   ((%op1 (and (not (null? evaluated-operands))
+				       (car evaluated-operands)))
+			    (%op2 (and (> (length evaluated-operands) 1)
+				       (cadr evaluated-operands)))
+			    (%op3 (and (> (length evaluated-operands) 2)
+				       (caddr evaluated-operands))))
+			 (list (eval (last node))))
 		       (begin (state 'done? #f)
 			      (list node)))))))
-  	(begin (and-let* ((org (state 'current-origin)))
-  		 (state 'current-origin (fx+ org (cadr node))))
+	(begin (and-let* ((org (state 'current-origin)))
+		 (state 'current-origin (fx+ org (cadr node))))
 	       (state 'done? #f)
-  	       (list node))))
+	       (list node))))
 
   ;;; Execute .equ directive.
   (define (do-assign node state)
@@ -1313,7 +1312,7 @@
 	      (else (error 'assembly (string-append "Invalid command "
 						    (->string args)))))))))
 
-   ;;; Assemble the string SOURCE, returning a list of byte values.
+  ;;; Assemble the string SOURCE, returning a list of byte values.
   ;;; TARGET-CPU must be a symbol identifying the instruction set to use.
   ;;; `#:org` takes a start address (origin, defaults to 0). `#:extra-symbols`
   ;;; takes a list of key, value pairs that will be defined as assembly-level
